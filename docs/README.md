@@ -1,0 +1,24 @@
+# Floor: the plan
+
+A standalone Floor, compatible with lore. Read in this order.
+
+## The entities
+
+1. [Station](entities/station.md): one unit of work, one function, three kinds
+2. [Agent definition](entities/agent-definition.md): model, prompt, timeout, tags, repo variants
+3. [Assembly line](entities/assembly-line.md): nodes and edges, with four of lore's lines converted
+4. [Assembly run](entities/assembly-run.md): a run and its visits, traced step by step
+
+## The design
+
+- [API sketch](api_sketch.md): every endpoint, the conventions, the lore compatibility table and the converter
+- [Assembly run storage](assembly_run_storage.md): the model, routing, dispatch, events, costs, tables, and the mapping from lore's columns
+- [Development loop](dev_loop.md): minikube, hot reload, one command
+
+## The reviews
+
+- [Comparison with lore](reviews/comparison_with_lore.md): first pass, the walk itself
+- [Second pass](reviews/review_second_pass.md): everything around the walk, and the complexity check
+
+Both reviews are applied. They are kept as the record of why the plan looks
+the way it does.
