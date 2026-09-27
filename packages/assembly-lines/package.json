@@ -1,0 +1,25 @@
+{
+  "name": "@floor/assembly-lines",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The walk kernel: pure edge-selection and back-edge accounting replayed over persisted visits, plus content-hashing for versioned definitions. Ported from lore's @re-cinq/lore-assembly-lines (transition.ts, definition-hash.ts) and adapted to the Floor's vocabulary: a node's outcomes are declared by its station rather than fixed to three, a node's human-ness is its station kind rather than a node type, and there is no failure classification, so every failure spends its edge's iteration budget.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

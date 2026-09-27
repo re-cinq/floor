@@ -1,0 +1,17 @@
+{
+  "name": "floor",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "build": "npm run build -w @floor/assembly-lines && npm run build -w @floor/cluster-agent",
+    "test": "npm run test -w @floor/assembly-lines && npm run test -w @floor/cluster-agent",
+    "typecheck": "npm run typecheck -w @floor/assembly-lines && npm run typecheck -w @floor/cluster-agent"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
