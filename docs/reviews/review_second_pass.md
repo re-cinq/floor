@@ -6,7 +6,7 @@ the ai-agent-subsystem passed: a run takes a list of watched files, each
 uploadable to any URL with a header secret and reported with its sha256, and
 a list of files to download. One addition the review did not foresee: a
 human node's `reports`, so an outside event can answer for a person. The
-previous versions of every document are in `.backup-2026-09-27/`.
+previous versions of every document are in git history, at commit 716ae67.
 
 2026-09-27. Two inputs: a fresh read of every plan document, and a second
 exploration of lore covering what the Floor does *around* the walk (the
