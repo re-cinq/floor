@@ -1,24 +1,9 @@
-// The pull loop: claim `station_run.dispatch`/`station_run.abort` events by
-// tag, create or delete the AgentDefinition + Station + Agent triple, ack.
-// Shape (idle backoff, never-throws-in-the-tick, poll forever) ported from
-// lore's `@re-cinq/lore-cluster-agent` (events/claim/claim-loop.ts);
-// the dispatch/abort handling itself is new, since lore dispatches an Agent
-// CR straight from its own database row rather than an HTTP-claimed event.
-//
-// `station_run.abort` is read broadly here: not only a cancelled visit, but
-// every visit's end, successful or not. Nothing in the walk currently tells
-// this agent when a visit REPORTS successfully (the pod's own supervisor
-// posts straight to the Floor's sink, never through this agent — see
-// domain/agent-triple.ts's file header), so without this reading, a
-// successful visit's CR triple and secret key would never be reclaimed.
-// This is a one-line extension of an existing event's meaning, not a new
-// concept, but it is a judgement call beyond what
-// docs/assembly_run_storage.md states (`station_run.abort` there is
-// triggered by `cancel` alone) — flagged here for confirmation.
+// The pull loop: claim station_run.dispatch/abort events by tag, create or delete the CR triple, ack. See ../README.md for the abort-on-every-end judgement call.
 
 import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
 import { buildAgentTriple, type DispatchNeed } from "./domain/agent-triple.js";
+import type { GitNeedResolved } from "./domain/need.js";
 import type { ClaimedEvent, DispatchBriefResponse, FloorClient } from "./floor-client.js";
 import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js";
 
@@ -29,7 +14,7 @@ export interface ClaimLoopDeps {
   tags: string[];
   secretName?: string;
   claimLimit?: number;
-  sleep: (ms: number) => Promise<void>;
+  sleep: (delayMs: number) => Promise<void>;
   running?: () => boolean;
 }
 
@@ -59,9 +44,7 @@ export async function runClaimLoop(deps: ClaimLoopDeps): Promise<void> {
   await runPollLoop<ClaimTickOutcome[]>({
     tick: () => claimTick(deps, secretName, claimLimit),
     delayFor: (outcomes, idleTicks) =>
-      outcomes.length === 0
-        ? backoffDelay(BASE_INTERVAL_MS, idleTicks, MAX_IDLE_DELAY_MS)
-        : 0,
+      outcomes.length === 0 ? backoffDelay(BASE_INTERVAL_MS, idleTicks, MAX_IDLE_DELAY_MS) : 0,
     isIdle: (outcomes) => outcomes.length === 0,
     sleep: deps.sleep,
     running: deps.running,
@@ -83,19 +66,22 @@ async function handle(
   secretName: string,
   event: ClaimedEvent,
 ): Promise<ClaimTickOutcome> {
+  const floor = deps.floor;
+
   try {
     const outcome =
       event.name === "station_run.dispatch"
         ? await dispatch(deps, secretName, event.payload.visitId)
         : await abort(deps, secretName, event.payload.visitId);
 
-    await deps.floor.ack(event.id);
+    await floor.ack(event.id);
 
     return outcome;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const failed = floor.fail(event.id, message);
 
-    await deps.floor.fail(event.id, message).catch(() => undefined);
+    await failed.catch(() => undefined);
 
     return { kind: "error", message };
   }
@@ -129,38 +115,38 @@ async function dispatch(
   return { kind: "dispatched", visitId };
 }
 
-// A git need declaring write access is exchanged for a push credential and
-// written into its own secret key; every other need is carried through as
-// given. See floor-client.ts's `gitCredential` for why read-only git needs
-// get no credential here.
+// A git need declaring write access is exchanged for a push credential and written into its own secret key; every other need is carried through as given.
 async function resolveNeeds(
   deps: ClaimLoopDeps,
   secretName: string,
   visitId: string,
   brief: DispatchBriefResponse,
 ): Promise<DispatchNeed[]> {
-  return Promise.all(
-    brief.needs.map(async (need): Promise<DispatchNeed> => {
-      if (need.kind !== "git" || need.access !== "write") {
-        return need.kind === "git"
-          ? { name: need.name, kind: "git", path: need.path, repoUrl: need.repoUrl, ref: need.ref }
-          : need;
-      }
-      const token = await deps.floor.gitCredential(visitId);
-      const key = gitCredentialSecretKey(visitId, need.name);
+  return Promise.all(brief.needs.map((need) => resolveNeed(deps, secretName, visitId, need)));
+}
 
-      await deps.secrets.setKey(secretName, key, token);
+async function resolveNeed(
+  deps: ClaimLoopDeps,
+  secretName: string,
+  visitId: string,
+  need: DispatchBriefResponse["needs"][number],
+): Promise<DispatchNeed> {
+  if (need.kind !== "git") return need;
+  if (need.access !== "write") return gitNeedWithToken(need);
 
-      return {
-        name: need.name,
-        kind: "git",
-        path: need.path,
-        repoUrl: need.repoUrl,
-        ref: need.ref,
-        tokenSecret: key,
-      };
-    }),
-  );
+  const token = await deps.floor.gitCredential(visitId);
+  const key = gitCredentialSecretKey(visitId, need.name);
+
+  await deps.secrets.setKey(secretName, key, token);
+
+  return gitNeedWithToken(need, key);
+}
+
+function gitNeedWithToken(
+  need: { name: string; path: string; repoUrl: string; ref: string },
+  tokenSecret?: string,
+): GitNeedResolved {
+  return { name: need.name, kind: "git", path: need.path, repoUrl: need.repoUrl, ref: need.ref, tokenSecret };
 }
 
 async function abort(
@@ -168,19 +154,28 @@ async function abort(
   secretName: string,
   visitId: string,
 ): Promise<ClaimTickOutcome> {
-  await deps.resources.delete(`floor-${visitId}`);
-  await deps.secrets.deleteKey(secretName, tokenSecretKey(visitId)).catch(() => undefined);
+  const secrets = deps.secrets;
 
-  const needNames = await deps.floor
-    .brief(visitId)
-    .then((brief) => brief.needs.filter((n) => n.kind === "git").map((n) => n.name))
-    .catch(() => [] as string[]);
+  await deps.resources.delete(`floor-${visitId}`);
+  await secrets.deleteKey(secretName, tokenSecretKey(visitId)).catch(() => undefined);
+
+  const gitNeedNames = await gitNeedNamesOf(deps, visitId);
 
   await Promise.all(
-    needNames.map((name) =>
-      deps.secrets.deleteKey(secretName, gitCredentialSecretKey(visitId, name)).catch(() => undefined),
-    ),
+    gitNeedNames.map((name) => secrets.deleteKey(secretName, gitCredentialSecretKey(visitId, name)).catch(() => undefined)),
   );
 
   return { kind: "aborted", visitId };
+}
+
+// Best effort: the visit may be long gone by the time its abort is claimed, in which case there is nothing left to name here.
+async function gitNeedNamesOf(deps: ClaimLoopDeps, visitId: string): Promise<string[]> {
+  try {
+    const brief = await deps.floor.brief(visitId);
+    const gitNeeds = brief.needs.filter((need) => need.kind === "git");
+
+    return gitNeeds.map((need) => need.name);
+  } catch {
+    return [];
+  }
 }

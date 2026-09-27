@@ -1,20 +1,35 @@
 {
   "name": "floor",
   "private": true,
-  "engines": { "node": ">=22" },
-  "workspaces": ["packages/*", "apps/*"],
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "build": "npm run build -w @floor/assembly-lines && npm run build -w @floor/store && npm run build -w @floor/cluster-agent",
     "test": "npm run test -w @floor/assembly-lines && npm run test -w @floor/store && npm run test -w @floor/cluster-agent",
     "typecheck": "npm run typecheck -w @floor/assembly-lines && npm run typecheck -w @floor/store && npm run typecheck -w @floor/cluster-agent",
     "db:up": "docker start floor-postgres 2>/dev/null || docker run --name floor-postgres -e POSTGRES_PASSWORD=floor -e POSTGRES_DB=floor -p 5433:5432 -d pgvector/pgvector:pg16",
     "db:down": "docker rm -f floor-postgres",
-    "db:migrate": "npm run build -w @floor/store && FLOOR_DATABASE_URL=${FLOOR_DATABASE_URL:-postgres://postgres:floor@localhost:5433/floor} npm run migrate -w @floor/store"
+    "db:migrate": "npm run build -w @floor/store && FLOOR_DATABASE_URL=${FLOOR_DATABASE_URL:-postgres://postgres:floor@localhost:5433/floor} npm run migrate -w @floor/store",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
     "@vitest/coverage-v8": "^5.0.0",
-    "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0",
+    "eslint": "^10.11.0",
+    "typescript-eslint": "^8.70.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@eslint/markdown": "^8.0.3",
+    "@re-cinq/eslint-plugin-re-lint": "^1.5.0",
+    "jscpd": "^5.3.2",
+    "globals": "^17.12.0",
+    "@eslint/js": "^10.0.1"
   }
 }

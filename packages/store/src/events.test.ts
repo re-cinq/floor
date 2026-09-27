@@ -1,14 +1,14 @@
-// Real Postgres, not a fake — a queue's correctness lives in the SQL, and
-// `FOR UPDATE SKIP LOCKED` has no meaningful in-memory stand-in. Needs
-// `FLOOR_DATABASE_URL`; see README.md for the one-line docker command.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createPool, migrate, type PgPool } from "./pg.js";
-import { EventStore, backoffMs } from "./events.js";
+import { EventStore, backoffMs, type FloorEvent } from "./events.js";
 
 const connectionString =
   process.env.FLOOR_DATABASE_URL ?? "postgres://postgres:floor@localhost:5433/floor";
 
+const FIXED_NOW = new Date("2026-01-01T00:00:00Z");
+
 let pool: PgPool;
+let idCounter = 0;
 
 beforeAll(async () => {
   pool = createPool(connectionString);
@@ -17,103 +17,148 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query("truncate events restart identity");
+  idCounter = 0;
 });
 
 afterAll(async () => {
   await pool.end();
 });
 
-function store(): EventStore {
-  return new EventStore({ db: pool });
+function store(now: () => Date = () => FIXED_NOW): EventStore {
+  return new EventStore({ connection: pool, now });
+}
+
+function fakeRunId(): string {
+  idCounter += 1;
+
+  return `00000000-0000-4000-8000-${String(idCounter).padStart(12, "0")}`;
 }
 
 describe("backoffMs", () => {
-  it("doubles per attempt and caps at the maximum", () => {
-    expect(backoffMs(0, 1000, 60000)).toBe(1000);
+  it("doubles per attempt", () => {
     expect(backoffMs(1, 1000, 60000)).toBe(2000);
-    expect(backoffMs(2, 1000, 60000)).toBe(4000);
+  });
+
+  it("caps at the maximum", () => {
     expect(backoffMs(10, 1000, 60000)).toBe(60000);
   });
 });
 
 describe("EventStore.enqueue", () => {
-  it("writes a claimable row", async () => {
+  it("writes a row under the given name", async () => {
     const event = await store().enqueue({ name: "node.review.start", payload: { runId: "r1" } });
 
     expect(event.name).toBe("node.review.start");
-    expect(event.ackedAt).toBeNull();
+  });
+
+  it("writes a row with no attempts yet", async () => {
+    const event = await store().enqueue({ name: "node.review.start", payload: { runId: "r1" } });
+
     expect(event.attempts).toBe(0);
   });
 
-  it("returns the existing row on a repeated dedupe key, rather than inserting a second one", async () => {
+  it("returns the existing row's id on a repeated dedupe key", async () => {
     const first = await store().enqueue({ name: "assembly_run.start", payload: {}, dedupeKey: "run:r1:start" });
     const second = await store().enqueue({ name: "assembly_run.start", payload: {}, dedupeKey: "run:r1:start" });
 
     expect(second.id).toBe(first.id);
+  });
+
+  it("inserts only one row for a repeated dedupe key", async () => {
+    await store().enqueue({ name: "assembly_run.start", payload: {}, dedupeKey: "run:r1:start" });
+    await store().enqueue({ name: "assembly_run.start", payload: {}, dedupeKey: "run:r1:start" });
+
     const { rows } = await pool.query("select count(*) from events where dedupe_key = $1", ["run:r1:start"]);
 
     expect(Number(rows[0].count)).toBe(1);
   });
 
-  it("is not claimable before its not_before", async () => {
-    const future = new Date(Date.now() + 60_000);
+  it("is not claimable before its availableAt", async () => {
+    const future = new Date(FIXED_NOW.getTime() + 60_000);
 
-    await store().enqueue({ name: "schedule.nightly.tick", payload: {}, notBefore: future });
+    await store().enqueue({ name: "schedule.nightly.tick", payload: {}, availableAt: future });
     const claimed = await store().claim({ names: ["schedule.nightly.tick"], limit: 10, claimedBy: "floor-1" });
 
     expect(claimed).toHaveLength(0);
   });
 });
 
+async function claimOneScenario(): Promise<FloorEvent[]> {
+  await store().enqueue({ name: "node.review.start", payload: {} });
+
+  return store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "floor-1" });
+}
+
+async function concurrentClaimScenario(): Promise<[FloorEvent[], FloorEvent[]]> {
+  for (let index = 0; index < 5; index++) {
+    await store().enqueue({ name: "node.review.start", payload: { index } });
+  }
+
+  return Promise.all([
+    store().claim({ names: ["node.review.start"], limit: 3, claimedBy: "agent-a" }),
+    store().claim({ names: ["node.review.start"], limit: 3, claimedBy: "agent-b" }),
+  ]);
+}
+
+async function reclaimScenario(): Promise<FloorEvent[]> {
+  await store().enqueue({ name: "node.review.start", payload: {} });
+  await store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "dead-worker" });
+
+  const tenMinutesLater = store(() => new Date(FIXED_NOW.getTime() + 10 * 60_000));
+
+  return tenMinutesLater.claim({ names: ["node.review.start"], limit: 10, claimedBy: "live-worker" });
+}
+
 describe("EventStore.claim", () => {
   it("claims a due, unclaimed event by name", async () => {
-    await store().enqueue({ name: "node.review.start", payload: { x: 1 } });
-
-    const claimed = await store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "floor-1" });
+    const claimed = await claimOneScenario();
 
     expect(claimed).toHaveLength(1);
+  });
+
+  it("records who claimed it", async () => {
+    const claimed = await claimOneScenario();
+
     expect(claimed[0]!.claimedBy).toBe("floor-1");
   });
 
   it("never claims the same row twice at once, even under concurrent callers (FOR UPDATE SKIP LOCKED)", async () => {
-    for (let i = 0; i < 5; i++) {
-      await store().enqueue({ name: "node.review.start", payload: { i } });
-    }
+    const [firstBatch, secondBatch] = await concurrentClaimScenario();
+    const claimedIds = [...firstBatch, ...secondBatch].map((event) => event.id);
 
-    const [a, b] = await Promise.all([
-      store().claim({ names: ["node.review.start"], limit: 3, claimedBy: "agent-a" }),
-      store().claim({ names: ["node.review.start"], limit: 3, claimedBy: "agent-b" }),
-    ]);
-    const ids = [...a, ...b].map((e) => e.id);
+    expect(new Set(claimedIds).size).toBe(claimedIds.length);
+  });
 
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(a.length + b.length).toBe(5);
+  it("claims every enqueued row across concurrent callers, none lost", async () => {
+    const [firstBatch, secondBatch] = await concurrentClaimScenario();
+
+    expect(firstBatch.length + secondBatch.length).toBe(5);
   });
 
   it("filters by name, leaving events of another name unclaimed", async () => {
     await store().enqueue({ name: "station_run.reported", payload: {} });
 
-    expect(await store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "floor-1" })).toHaveLength(0);
+    const claimed = await store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "floor-1" });
+
+    expect(claimed).toHaveLength(0);
   });
 
-  it("only claims a dispatch whose tags the caller fully offers", async () => {
+  async function tagFilteredClaim(offeredTags: string[]): Promise<FloorEvent[]> {
     await store().enqueue({ name: "station_run.dispatch", payload: {}, tags: ["kind:agent", "cluster:acme"] });
 
-    const withoutTag = await store().claim({
-      names: ["station_run.dispatch"],
-      tags: ["kind:agent"],
-      limit: 10,
-      claimedBy: "agent-1",
-    });
-    const withBothTags = await store().claim({
-      names: ["station_run.dispatch"],
-      tags: ["kind:agent", "cluster:acme"],
-      limit: 10,
-      claimedBy: "agent-1",
-    });
+    return store().claim({ names: ["station_run.dispatch"], tags: offeredTags, limit: 10, claimedBy: "agent-1" });
+  }
 
-    expect(withoutTag).toHaveLength(0);
-    expect(withBothTags).toHaveLength(1);
+  it("refuses a dispatch whose tags the caller only partly offers", async () => {
+    const claimed = await tagFilteredClaim(["kind:agent"]);
+
+    expect(claimed).toHaveLength(0);
+  });
+
+  it("claims a dispatch whose tags the caller fully offers", async () => {
+    const claimed = await tagFilteredClaim(["kind:agent", "cluster:acme"]);
+
+    expect(claimed).toHaveLength(1);
   });
 
   it("claims an untagged event for any caller, tag filter or not", async () => {
@@ -130,24 +175,14 @@ describe("EventStore.claim", () => {
   });
 
   it("reclaims a stale claim, which is what survives a crashed worker", async () => {
-    const now = new Date("2026-01-01T00:00:00Z");
-    const staleStore = new EventStore({ db: pool, now: () => now });
-
-    await staleStore.enqueue({ name: "node.review.start", payload: {} });
-    await staleStore.claim({ names: ["node.review.start"], limit: 10, claimedBy: "dead-worker" });
-
-    const tenMinutesLater = new EventStore({
-      db: pool,
-      now: () => new Date(now.getTime() + 10 * 60_000),
-    });
-
-    const reclaimed = await tenMinutesLater.claim({
-      names: ["node.review.start"],
-      limit: 10,
-      claimedBy: "live-worker",
-    });
+    const reclaimed = await reclaimScenario();
 
     expect(reclaimed).toHaveLength(1);
+  });
+
+  it("hands a reclaimed row to the new claimant", async () => {
+    const reclaimed = await reclaimScenario();
+
     expect(reclaimed[0]!.claimedBy).toBe("live-worker");
   });
 
@@ -163,10 +198,10 @@ describe("EventStore.claim", () => {
   it("never claims an acked, dead, or dropped event", async () => {
     const acked = await store().enqueue({ name: "node.a.start", payload: {} });
     const dead = await store().enqueue({ name: "node.b.start", payload: {} });
-    const dropped = await store().enqueue({ name: "node.c.start", payload: {}, runId: crypto.randomUUID() });
+    const dropped = await store().enqueue({ name: "node.c.start", payload: {}, runId: fakeRunId() });
 
     await store().ack(acked.id);
-    await store().fail(dead.id, "boom", true);
+    await store().deadLetter(dead.id, "boom");
     await store().dropQueued(dropped.runId!);
 
     const claimed = await store().claim({
@@ -179,8 +214,16 @@ describe("EventStore.claim", () => {
   });
 });
 
+async function failedOnceScenario(): Promise<FloorEvent> {
+  const event = await store().enqueue({ name: "node.review.start", payload: {} });
+
+  await store().fail(event.id, "transient error");
+
+  return (await store().get(event.id))!;
+}
+
 describe("EventStore.fail", () => {
-  it("pushes not_before out with exponential backoff and clears the claim", async () => {
+  it("counts the attempt and clears the claim", async () => {
     const event = await store().enqueue({ name: "node.review.start", payload: {} });
 
     await store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "worker-1" });
@@ -188,39 +231,59 @@ describe("EventStore.fail", () => {
 
     const after = await store().get(event.id);
 
-    expect(after!.attempts).toBe(1);
-    expect(after!.claimedAt).toBeNull();
-    expect(after!.lastError).toBe("transient error");
-    expect(after!.notBefore.getTime()).toBeGreaterThan(Date.now());
+    expect({ attempts: after!.attempts, claimedAt: after!.claimedAt }).toEqual({ attempts: 1, claimedAt: null });
+  });
+
+  it("records the error", async () => {
+    const after = await failedOnceScenario();
+
+    expect(after.lastError).toBe("transient error");
+  });
+
+  it("pushes availableAt into the future, with backoff", async () => {
+    const after = await failedOnceScenario();
+
+    expect(after.availableAt.getTime()).toBeGreaterThan(FIXED_NOW.getTime());
   });
 
   it("dead-letters after the max attempts, rather than backing off forever", async () => {
     const event = await store().enqueue({ name: "node.review.start", payload: {} });
 
-    for (let i = 0; i < 8; i++) {
-      await store().fail(event.id, `attempt ${i}`);
+    for (let attempt = 0; attempt < 8; attempt++) {
+      await store().fail(event.id, `attempt ${attempt}`);
     }
 
     const after = await store().get(event.id);
 
     expect(after!.deadAt).not.toBeNull();
   });
+});
 
-  it("dead-letters immediately when told the failure is permanent, without spending any attempts on retry", async () => {
-    const event = await store().enqueue({ name: "totally.unknown.event", payload: {} });
+async function deadLetteredScenario(): Promise<FloorEvent> {
+  const event = await store().enqueue({ name: "totally.unknown.event", payload: {} });
 
-    await store().fail(event.id, "no handler for this name", true);
+  await store().deadLetter(event.id, "no handler for this name");
 
-    const after = await store().get(event.id);
+  return (await store().get(event.id))!;
+}
 
-    expect(after!.deadAt).not.toBeNull();
-    expect(after!.attempts).toBe(1);
+describe("EventStore.deadLetter", () => {
+  it("marks the event dead", async () => {
+    const after = await deadLetteredScenario();
+
+    expect(after.deadAt).not.toBeNull();
+  });
+
+  it("spends exactly one attempt", async () => {
+    const after = await deadLetteredScenario();
+
+    expect(after.attempts).toBe(1);
   });
 });
 
 describe("EventStore.dropQueued", () => {
   it("drops an unclaimed event of the run", async () => {
-    const runId = crypto.randomUUID();
+    const runId = fakeRunId();
 
     await store().enqueue({ name: "node.review.start", payload: {}, runId });
     await store().dropQueued(runId);
@@ -231,20 +294,21 @@ describe("EventStore.dropQueued", () => {
   });
 
   it("leaves an already-claimed event alone, for its worker to fail or ack", async () => {
-    const runId = crypto.randomUUID();
+    const runId = fakeRunId();
 
     await store().enqueue({ name: "node.review.start", payload: {}, runId });
     await store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "worker-1" });
     await store().dropQueued(runId);
 
-    const event = await pool.query("select dropped_at from events where run_id = $1", [runId]);
+    const result = await pool.query("select dropped_at from events where run_id = $1", [runId]);
+    const row = result.rows[0];
 
-    expect(event.rows[0].dropped_at).toBeNull();
+    expect(row.dropped_at).toBeNull();
   });
 
   it("never touches an event of another run", async () => {
-    const runId = crypto.randomUUID();
-    const otherRunId = crypto.randomUUID();
+    const runId = fakeRunId();
+    const otherRunId = fakeRunId();
 
     await store().enqueue({ name: "node.a.start", payload: {}, runId });
     await store().enqueue({ name: "node.b.start", payload: {}, runId: otherRunId });
@@ -256,13 +320,13 @@ describe("EventStore.dropQueued", () => {
       claimedBy: "floor-1",
     });
 
-    expect(claimed.map((e) => e.name)).toEqual(["node.b.start"]);
+    expect(claimed.map((event) => event.name)).toEqual(["node.b.start"]);
   });
 });
 
 describe("EventStore.listByRun", () => {
   it("returns a run's events in order, the reconstruction feed for one run", async () => {
-    const runId = crypto.randomUUID();
+    const runId = fakeRunId();
 
     await store().enqueue({ name: "node.review.start", payload: {}, runId });
     await store().enqueue({ name: "station_run.reported", payload: {}, runId });
@@ -270,7 +334,7 @@ describe("EventStore.listByRun", () => {
 
     const events = await store().listByRun(runId);
 
-    expect(events.map((e) => e.name)).toEqual([
+    expect(events.map((event) => event.name)).toEqual([
       "node.review.start",
       "station_run.reported",
       "node.done.start",

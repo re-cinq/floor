@@ -1,6 +1,4 @@
-// The unbounded polling loop: tick forever, react, sleep a chosen delay.
-// Ported verbatim from lore's `@re-cinq/lore-shared` (lib/poll-loop.ts);
-// nothing here is lore-specific. This is what the claim loop is built on.
+// The unbounded polling loop: tick forever, react, sleep a chosen delay; ported verbatim from lore's lib/poll-loop.ts. See ../../README.md.
 
 /** min(baseMs * 2^attempts, maxMs). A negative attempt count floors at the base. */
 export function backoffDelay(
@@ -19,7 +17,7 @@ export interface PollLoopDeps<Outcome> {
   delayFor: (outcome: Outcome, idleTicks: number) => number;
   /** Omitted = nothing is idle, so `idleTicks` stays 0 and the delay is flat. */
   isIdle?: (outcome: Outcome) => boolean;
-  sleep: (ms: number) => Promise<void>;
+  sleep: (delayMs: number) => Promise<void>;
   /** Tests bound the loop; production runs forever. */
   running?: () => boolean;
 }

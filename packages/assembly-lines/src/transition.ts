@@ -1,25 +1,4 @@
-// The walk kernel: a pure replay over persisted visits, so duplicate or
-// concurrent advancers converge and a Floor restart loses nothing. Ported
-// from lore's `@re-cinq/lore-assembly-lines` (transition.ts) — see
-// docs/reviews/comparison_with_lore.md ("the kernel decides, events carry").
-//
-// Two deliberate departures from lore, both from docs/entities/station.md
-// and docs/assembly_run_storage.md:
-//
-//   - A node's outcomes are whatever its station declares (`outcomes: [...]`),
-//     not a fixed `success | changes_requested | failed`. `on` was already a
-//     plain string in lore's WalkEdge, so nothing here changes for that; only
-//     NodeVisit.outcome widens from a closed union to `string`.
-//   - There is no failure classification (no `failureClass`, no permanent
-//     failures). Every failed visit spends its edge's iteration budget the
-//     same way. Lore's out-of-credit gate becomes a queue-side `not_before`
-//     push (docs/assembly_run_storage.md, "Provider out of credit"), not a
-//     per-visit "this retry cannot help" decision — so `isPermanentNodeFailure`
-//     has no counterpart here.
-//
-// "Human-ness" is a station kind (docs/entities/station.md: kind "human"),
-// not a node type, so WalkGraph.nodes carries `kind` instead of lore's
-// `type`; a node with no `kind` is a marker.
+// The walk kernel: a pure replay over persisted visits; ported from lore's transition.ts with two departures documented in README.md (dynamic outcomes, no failure classification).
 
 export interface WalkEdge {
   from: string;
@@ -63,10 +42,10 @@ export function selectEdge(
   outcome: string,
 ): WalkEdge | null {
   const candidates = assemblyLine.edges.filter(
-    (e) => e.from === from && (e.on === outcome || e.on === "always"),
+    (edge) => edge.from === from && (edge.on === outcome || edge.on === "always"),
   );
 
-  return candidates.find((e) => e.on === outcome) ?? candidates.at(0) ?? null;
+  return candidates.find((edge) => edge.on === outcome) ?? candidates.at(0) ?? null;
 }
 
 interface WalkState {
@@ -98,6 +77,7 @@ export function getNextTransition(
   if (blocked) {
     return blocked;
   }
+
   const { state, failure } = replayFromLastHandRun(assemblyLine, visits);
 
   if (failure) {
@@ -115,7 +95,7 @@ function replayBlocked(
   visits: NodeVisit[],
   maxNodes: number,
 ): Transition | null {
-  if (visits.some((v) => v.outcome === null)) {
+  if (visits.some((visit) => visit.outcome === null)) {
     return { kind: "await" };
   }
 
@@ -144,7 +124,7 @@ function unattendedVisits(
   return (
     visits.length -
     1 -
-    visits.findLastIndex((v) => human.has(v.nodeId) || Boolean(v.requestedBy))
+    visits.findLastIndex((visit) => human.has(visit.nodeId) || Boolean(visit.requestedBy))
   );
 }
 
@@ -180,7 +160,8 @@ function walkFromLastHandRun(
   if (index < 0) {
     return walk;
   }
-  visits.slice(0, index).forEach((v) => recordVisit(v, walk.accounting));
+
+  visits.slice(0, index).forEach((visit) => recordVisit(visit, walk.accounting));
   walk.state.currentId = visits[index]!.nodeId;
   walk.state.iteration = visits[index]!.iteration;
 
@@ -190,7 +171,7 @@ function walkFromLastHandRun(
 function lastHandRun(
   visits: readonly Pick<NodeVisit, "requestedBy">[],
 ): number {
-  return visits.findLastIndex((v) => v.requestedBy);
+  return visits.findLastIndex((visit) => visit.requestedBy);
 }
 
 // A walk that has not started: at the entry node, on its first iteration, having spent nothing. Every replay begins here — the history is what moves it, so nothing is carried over between calls.
@@ -235,6 +216,7 @@ function applyVisit(
   if (diverged) {
     return diverged;
   }
+
   const chosen = selectEdge(assemblyLine, visit.nodeId, visit.outcome!);
 
   if (!chosen) {
@@ -297,11 +279,13 @@ function followEdge(
 
     return null;
   }
+
   const outcome = budgetOutcome(assemblyLine, visit, chosen, accounting);
 
   if (isTransition(outcome)) {
     return outcome;
   }
+
   state.iteration = (accounting.highestIteration.get(outcome.nextId) ?? 0) + 1;
   state.currentId = outcome.nextId;
 
@@ -331,6 +315,7 @@ function budgetOutcome(
   if (chosen.iterationMax !== undefined && count > chosen.iterationMax) {
     return budgetSpent(assemblyLine, visit, chosen, key);
   }
+
   accounting.backEdgeCounts.set(key, count);
 
   return { nextId: chosen.to };

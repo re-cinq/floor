@@ -42,18 +42,21 @@ const dispatchBrief: DispatchBriefResponse = {
   conversation: { mode: "new" },
 };
 
-// Runs the loop for exactly one tick by making `running()` false after the
-// first sleep call, the same "bound the loop in tests" convention lore's
-// poll-loop uses.
 async function runOneTick(
   claim: (tags: string[], limit: number) => Promise<ClaimedEvent[]>,
   rest: Parameters<typeof runClaimLoop>[0],
-) {
+): Promise<void> {
   let ticks = 0;
 
   await runClaimLoop({
     ...rest,
-    floor: fakeFloor({ claim, ack: rest.floor.ack, fail: rest.floor.fail, brief: rest.floor.brief, gitCredential: rest.floor.gitCredential }),
+    floor: fakeFloor({
+      claim,
+      ack: rest.floor.ack,
+      fail: rest.floor.fail,
+      brief: rest.floor.brief,
+      gitCredential: rest.floor.gitCredential,
+    }),
     sleep: async () => {
       ticks += 1;
     },
@@ -61,59 +64,69 @@ async function runOneTick(
   });
 }
 
-describe("runClaimLoop: dispatch", () => {
-  it("fetches the brief, writes the visit token secret, applies the triple, and acks", async () => {
-    const applied: unknown[] = [];
-    const floor = fakeFloor({
-      claim: vi.fn(() =>
-        Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: "v1" } } as ClaimedEvent]),
-      ),
-      brief: vi.fn(() => Promise.resolve(dispatchBrief)),
-    });
-    const secrets = fakeSecrets();
-    const resources = fakeResources({
-      apply: vi.fn((triple) => {
-        applied.push(triple);
+interface DispatchScenario {
+  floor: FloorClient;
+  secrets: SecretKeyWriter;
+  resources: AgentResourcesApi;
+  applied: unknown[];
+}
 
-        return Promise.resolve({ name: "floor-v1", created: true });
-      }),
-    });
+async function dispatchScenario(brief: DispatchBriefResponse): Promise<DispatchScenario> {
+  const applied: unknown[] = [];
+  const floor = fakeFloor({
+    claim: vi.fn(() =>
+      Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: brief.visitId } } as ClaimedEvent]),
+    ),
+    brief: vi.fn(() => Promise.resolve(brief)),
+    gitCredential: vi.fn(() => Promise.resolve("ghs_pushtoken")),
+  });
+  const secrets = fakeSecrets();
+  const resources = fakeResources({
+    apply: vi.fn((triple) => {
+      applied.push(triple);
 
-    await runOneTick(floor.claim, {
-      floor,
-      resources,
-      secrets,
-      tags: ["kind:agent"],
-      sleep: async () => {},
-    });
-
-    expect(secrets.setKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"), "visit-token-abc");
-    expect(applied).toHaveLength(1);
-    expect(floor.ack).toHaveBeenCalledWith("e1");
+      return Promise.resolve({ name: `floor-${brief.visitId}`, created: true });
+    }),
   });
 
-  it("exchanges a write-access git need for a push credential and writes it under its own key", async () => {
-    const floor = fakeFloor({
-      claim: vi.fn(() =>
-        Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: "v1" } } as ClaimedEvent]),
-      ),
-      brief: vi.fn(() =>
-        Promise.resolve({
-          ...dispatchBrief,
-          needs: [
-            { name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/a/b.git", ref: "main", access: "write" as const },
-          ],
-        }),
-      ),
-      gitCredential: vi.fn(() => Promise.resolve("ghs_pushtoken")),
-    });
-    const secrets = fakeSecrets();
-    const resources = fakeResources();
+  await runOneTick(floor.claim, { floor, resources, secrets, tags: ["kind:agent"], sleep: async () => {} });
 
-    await runOneTick(floor.claim, { floor, resources, secrets, tags: [], sleep: async () => {} });
+  return { floor, secrets, resources, applied };
+}
 
-    expect(floor.gitCredential).toHaveBeenCalledWith("v1");
-    expect(secrets.setKey).toHaveBeenCalledWith(
+const writeGitNeed = {
+  name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/a/b.git", ref: "main", access: "write" as const,
+};
+
+describe("runClaimLoop: dispatch", () => {
+  it("writes the visit token into the named secret", async () => {
+    const scenario = await dispatchScenario(dispatchBrief);
+
+    expect(scenario.secrets.setKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"), "visit-token-abc");
+  });
+
+  it("applies exactly one triple", async () => {
+    const scenario = await dispatchScenario(dispatchBrief);
+
+    expect(scenario.applied).toHaveLength(1);
+  });
+
+  it("acks the claimed event", async () => {
+    const scenario = await dispatchScenario(dispatchBrief);
+
+    expect(scenario.floor.ack).toHaveBeenCalledWith("e1");
+  });
+
+  it("exchanges a write-access git need for a push credential", async () => {
+    const scenario = await dispatchScenario({ ...dispatchBrief, needs: [writeGitNeed] });
+
+    expect(scenario.floor.gitCredential).toHaveBeenCalledWith("v1");
+  });
+
+  it("writes the exchanged push credential under its own key", async () => {
+    const scenario = await dispatchScenario({ ...dispatchBrief, needs: [writeGitNeed] });
+
+    expect(scenario.secrets.setKey).toHaveBeenCalledWith(
       "agent-secrets",
       gitCredentialSecretKey("v1", "workspace"),
       "ghs_pushtoken",
@@ -121,32 +134,18 @@ describe("runClaimLoop: dispatch", () => {
   });
 
   it("never exchanges a read-access git need, since the endpoint refuses it", async () => {
-    const floor = fakeFloor({
-      claim: vi.fn(() =>
-        Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: "v1" } } as ClaimedEvent]),
-      ),
-      brief: vi.fn(() =>
-        Promise.resolve({
-          ...dispatchBrief,
-          needs: [
-            { name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/a/b.git", ref: "main", access: "read" as const },
-          ],
-        }),
-      ),
-    });
+    const withReadNeed = {
+      ...dispatchBrief,
+      needs: [
+        { name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/a/b.git", ref: "main", access: "read" as const },
+      ],
+    };
+    const scenario = await dispatchScenario(withReadNeed);
 
-    await runOneTick(floor.claim, {
-      floor,
-      resources: fakeResources(),
-      secrets: fakeSecrets(),
-      tags: [],
-      sleep: async () => {},
-    });
-
-    expect(floor.gitCredential).not.toHaveBeenCalled();
+    expect(scenario.floor.gitCredential).not.toHaveBeenCalled();
   });
 
-  it("fails the event, rather than acking, when the dispatch throws", async () => {
+  async function dispatchThrowsScenario(): Promise<FloorClient> {
     const floor = fakeFloor({
       claim: vi.fn(() =>
         Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: "v1" } } as ClaimedEvent]),
@@ -162,85 +161,109 @@ describe("runClaimLoop: dispatch", () => {
       sleep: async () => {},
     });
 
+    return floor;
+  }
+
+  it("never acks when the dispatch throws", async () => {
+    const floor = await dispatchThrowsScenario();
+
     expect(floor.ack).not.toHaveBeenCalled();
+  });
+
+  it("fails the event with the thrown message when the dispatch throws", async () => {
+    const floor = await dispatchThrowsScenario();
+
     expect(floor.fail).toHaveBeenCalledWith("e1", "brief unavailable");
   });
 });
 
+async function abortScenario(brief: DispatchBriefResponse | Error): Promise<DispatchScenario> {
+  const floor = fakeFloor({
+    claim: vi.fn(() =>
+      Promise.resolve([{ id: "e2", name: "station_run.abort", payload: { visitId: "v1" } } as ClaimedEvent]),
+    ),
+    brief: vi.fn(() => (brief instanceof Error ? Promise.reject(brief) : Promise.resolve(brief))),
+  });
+  const resources = fakeResources();
+  const secrets = fakeSecrets();
+
+  await runOneTick(floor.claim, { floor, resources, secrets, tags: [], sleep: async () => {} });
+
+  return { floor, secrets, resources, applied: [] };
+}
+
 describe("runClaimLoop: abort", () => {
-  it("deletes the CR triple and the visit's token secret, then acks", async () => {
-    const floor = fakeFloor({
-      claim: vi.fn(() =>
-        Promise.resolve([{ id: "e2", name: "station_run.abort", payload: { visitId: "v1" } } as ClaimedEvent]),
-      ),
-      brief: vi.fn(() => Promise.resolve({ ...dispatchBrief, needs: [] })),
-    });
-    const resources = fakeResources();
-    const secrets = fakeSecrets();
+  it("deletes the CR triple named after the visit", async () => {
+    const scenario = await abortScenario({ ...dispatchBrief, needs: [] });
 
-    await runOneTick(floor.claim, { floor, resources, secrets, tags: [], sleep: async () => {} });
-
-    expect(resources.delete).toHaveBeenCalledWith("floor-v1");
-    expect(secrets.deleteKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"));
-    expect(floor.ack).toHaveBeenCalledWith("e2");
+    expect(scenario.resources.delete).toHaveBeenCalledWith("floor-v1");
   });
 
-  it("also reclaims a git credential secret named after each git need the visit had", async () => {
-    const floor = fakeFloor({
-      claim: vi.fn(() =>
-        Promise.resolve([{ id: "e2", name: "station_run.abort", payload: { visitId: "v1" } } as ClaimedEvent]),
-      ),
-      brief: vi.fn(() =>
-        Promise.resolve({
-          ...dispatchBrief,
-          needs: [{ name: "workspace", kind: "git" as const, path: "repo", repoUrl: "u", ref: "main", access: "write" as const }],
-        }),
-      ),
-    });
-    const secrets = fakeSecrets();
+  it("deletes the visit's token secret", async () => {
+    const scenario = await abortScenario({ ...dispatchBrief, needs: [] });
 
-    await runOneTick(floor.claim, { floor, resources: fakeResources(), secrets, tags: [], sleep: async () => {} });
-
-    expect(secrets.deleteKey).toHaveBeenCalledWith("agent-secrets", gitCredentialSecretKey("v1", "workspace"));
+    expect(scenario.secrets.deleteKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"));
   });
 
-  it("still deletes the CR triple and the token secret when the brief can no longer be fetched (the visit is long gone)", async () => {
-    const floor = fakeFloor({
-      claim: vi.fn(() =>
-        Promise.resolve([{ id: "e2", name: "station_run.abort", payload: { visitId: "v1" } } as ClaimedEvent]),
-      ),
-      brief: vi.fn(() => Promise.reject(new Error("410 gone"))),
-    });
-    const resources = fakeResources();
-    const secrets = fakeSecrets();
+  it("acks the claimed event", async () => {
+    const scenario = await abortScenario({ ...dispatchBrief, needs: [] });
 
-    await runOneTick(floor.claim, { floor, resources, secrets, tags: [], sleep: async () => {} });
+    expect(scenario.floor.ack).toHaveBeenCalledWith("e2");
+  });
 
-    expect(resources.delete).toHaveBeenCalledWith("floor-v1");
-    expect(secrets.deleteKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"));
-    expect(floor.ack).toHaveBeenCalledWith("e2");
+  it("reclaims a git credential secret named after each git need the visit had", async () => {
+    const withGitNeed = {
+      ...dispatchBrief,
+      needs: [{ name: "workspace", kind: "git" as const, path: "repo", repoUrl: "u", ref: "main", access: "write" as const }],
+    };
+    const scenario = await abortScenario(withGitNeed);
+
+    expect(scenario.secrets.deleteKey).toHaveBeenCalledWith("agent-secrets", gitCredentialSecretKey("v1", "workspace"));
+  });
+
+  it("still deletes the CR triple when the brief can no longer be fetched", async () => {
+    const scenario = await abortScenario(new Error("410 gone"));
+
+    expect(scenario.resources.delete).toHaveBeenCalledWith("floor-v1");
+  });
+
+  it("still deletes the token secret when the brief can no longer be fetched", async () => {
+    const scenario = await abortScenario(new Error("410 gone"));
+
+    expect(scenario.secrets.deleteKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"));
   });
 });
 
-describe("runClaimLoop: idle backoff", () => {
-  it("does not sleep zero when nothing was claimed", async () => {
-    const sleeps: number[] = [];
-    let ticks = 0;
-    const floor = fakeFloor({ claim: vi.fn(() => Promise.resolve([])) });
+async function idleScenario(): Promise<number[]> {
+  let ticks = 0;
+  const sleeps: number[] = [];
+  const floor = fakeFloor({ claim: vi.fn(() => Promise.resolve([])) });
 
-    await runClaimLoop({
-      floor,
-      resources: fakeResources(),
-      secrets: fakeSecrets(),
-      tags: [],
-      sleep: async (ms) => {
-        sleeps.push(ms);
-        ticks += 1;
-      },
-      running: () => ticks < 2,
-    });
+  await runClaimLoop({
+    floor,
+    resources: fakeResources(),
+    secrets: fakeSecrets(),
+    tags: [],
+    sleep: async (delayMs) => {
+      sleeps.push(delayMs);
+      ticks += 1;
+    },
+    running: () => ticks < 2,
+  });
+
+  return sleeps;
+}
+
+describe("runClaimLoop: idle backoff", () => {
+  it("sleeps a positive delay on the first idle tick", async () => {
+    const sleeps = await idleScenario();
 
     expect(sleeps[0]).toBeGreaterThan(0);
+  });
+
+  it("never shrinks the delay on a second consecutive idle tick", async () => {
+    const sleeps = await idleScenario();
+
     expect(sleeps[1]).toBeGreaterThanOrEqual(sleeps[0]!);
   });
 });

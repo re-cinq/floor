@@ -1,5 +1,3 @@
-// Test shape (a fake CustomObjectsApi refusing with a chosen error) ported
-// from lore's `@re-cinq/lore-cluster-agent` (outbound/kube-agent-api.test.ts).
 import { describe, expect, it, vi } from "vitest";
 import type { CustomObjectsApi } from "@kubernetes/client-node";
 import { KubeAgentResourcesApi } from "./agent-resources.js";
@@ -45,8 +43,8 @@ describe("KubeAgentResourcesApi.apply", () => {
     const api = fakeApi({
       createNamespacedCustomObject: vi
         .fn()
-        .mockResolvedValueOnce({}) // station
-        .mockResolvedValueOnce({}) // agentdefinition
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({})
         .mockRejectedValueOnce({ code: 409 }) as CustomObjectsApi["createNamespacedCustomObject"],
     });
 
@@ -69,7 +67,13 @@ describe("KubeAgentResourcesApi.apply", () => {
 });
 
 describe("KubeAgentResourcesApi.delete", () => {
-  it("deletes all three resources and reports deleted:true", async () => {
+  it("reports deleted:true when the apiserver accepts every removal", async () => {
+    const result = await new KubeAgentResourcesApi(() => fakeApi(), "floor-agents").delete("floor-v1");
+
+    expect(result).toEqual({ name: "floor-v1", deleted: true });
+  });
+
+  it("deletes all three resources", async () => {
     const calls: string[] = [];
     const api = fakeApi({
       deleteNamespacedCustomObject: vi.fn((args: { plural: string }) => {
@@ -79,9 +83,8 @@ describe("KubeAgentResourcesApi.delete", () => {
       }) as CustomObjectsApi["deleteNamespacedCustomObject"],
     });
 
-    const result = await new KubeAgentResourcesApi(() => api, "floor-agents").delete("floor-v1");
+    await new KubeAgentResourcesApi(() => api, "floor-agents").delete("floor-v1");
 
-    expect(result).toEqual({ name: "floor-v1", deleted: true });
     expect(calls.sort()).toEqual(["agentdefinitions", "agents", "stations"]);
   });
 

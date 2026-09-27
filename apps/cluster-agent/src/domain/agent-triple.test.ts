@@ -24,23 +24,33 @@ describe("buildAgentTriple", () => {
   it("names all three resources identically, after the visit", () => {
     const { agentDefinition, station, agent } = buildAgentTriple(brief());
 
-    expect(agentDefinition.metadata?.name).toBe("floor-abc-123");
-    expect(station.metadata?.name).toBe("floor-abc-123");
-    expect(agent.metadata?.name).toBe("floor-abc-123");
+    expect({
+      agentDefinition: agentDefinition.metadata?.name,
+      station: station.metadata?.name,
+      agent: agent.metadata?.name,
+    }).toEqual({
+      agentDefinition: "floor-abc-123",
+      station: "floor-abc-123",
+      agent: "floor-abc-123",
+    });
   });
 
   it("points the Agent at the Station, and the Station at the AgentDefinition", () => {
     const { station, agent } = buildAgentTriple(brief());
 
-    expect(agent.spec?.stationRef).toBe("floor-abc-123");
-    expect(station.spec?.agentDefRef).toBe("floor-abc-123");
+    expect({ stationRef: agent.spec?.stationRef, agentDefRef: station.spec?.agentDefRef }).toEqual({
+      stationRef: "floor-abc-123",
+      agentDefRef: "floor-abc-123",
+    });
   });
 
   it("carries the model and the unrendered prompt template onto the AgentDefinition, never rendering it twice", () => {
     const { agentDefinition } = buildAgentTriple(brief());
 
-    expect(agentDefinition.spec?.model).toBe("claude-sonnet-4-6");
-    expect(agentDefinition.spec?.prompt).toBe("Review the diff on {pr_url}.");
+    expect({ model: agentDefinition.spec?.model, prompt: agentDefinition.spec?.prompt }).toEqual({
+      model: "claude-sonnet-4-6",
+      prompt: "Review the diff on {pr_url}.",
+    });
   });
 
   it("turns a git need into a repo the AgentDefinition clones, at its branch, with its token secret", () => {
@@ -58,8 +68,9 @@ describe("buildAgentTriple", () => {
         ],
       }),
     );
+    const resources = agentDefinition.spec?.resources;
 
-    expect(agentDefinition.spec?.resources?.repos).toEqual([
+    expect(resources?.repos).toEqual([
       {
         name: "workspace",
         url: "https://github.com/re-cinq/lore.git",
@@ -110,8 +121,9 @@ describe("buildAgentTriple", () => {
     const { agentDefinition } = buildAgentTriple(
       brief({ produces: [{ name: "patch", kind: "file", path: "out/patch.diff" }] }),
     );
+    const output = agentDefinition.spec?.output;
 
-    expect(agentDefinition.spec?.output?.watch).toEqual([
+    expect(output?.watch).toEqual([
       {
         event: "produced.patch",
         path: "out/patch.diff",
@@ -127,14 +139,16 @@ describe("buildAgentTriple", () => {
     const { agentDefinition } = buildAgentTriple(
       brief({ produces: [{ name: "pr_number", kind: "value" }] }),
     );
+    const output = agentDefinition.spec?.output;
 
-    expect(agentDefinition.spec?.output?.watch).toEqual([]);
+    expect(output?.watch).toEqual([]);
   });
 
   it("streams turns, cost and the result to this visit's sink, authenticated by its own token", () => {
     const { agentDefinition } = buildAgentTriple(brief());
+    const output = agentDefinition.spec?.output;
 
-    expect(agentDefinition.spec?.output?.sinks).toEqual([
+    expect(output?.sinks).toEqual([
       {
         type: "http",
         url: "http://host.minikube.internal:8080/station-runs/abc-123/sink",
@@ -145,16 +159,18 @@ describe("buildAgentTriple", () => {
 
   it("omits conversation entirely on a fresh visit", () => {
     const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new" } }));
+    const resources = agentDefinition.spec?.resources;
 
-    expect(agentDefinition.spec?.resources?.conversation).toBeUndefined();
+    expect(resources?.conversation).toBeUndefined();
   });
 
   it("restores the previous session and pins this run's own state to continue", () => {
     const { agentDefinition } = buildAgentTriple(
       brief({ conversation: { mode: "continue", sessionRef: "sha256-deadbeef" } }),
     );
+    const resources = agentDefinition.spec?.resources;
 
-    expect(agentDefinition.spec?.resources?.conversation).toEqual({
+    expect(resources?.conversation).toEqual({
       source: "http://host.minikube.internal:8080/api/conversations",
       id: "sha256-deadbeef",
       pin: "floor-abc-123",
@@ -162,12 +178,18 @@ describe("buildAgentTriple", () => {
     });
   });
 
-  it("names the model's secret so the subsystem injects it, only when one is given", () => {
-    expect(
-      buildAgentTriple(brief({ modelSecretKey: "ANTHROPIC_API_KEY" })).agentDefinition.spec
-        ?.resources?.secrets,
-    ).toEqual([{ name: "ANTHROPIC_API_KEY", ref: "ANTHROPIC_API_KEY" }]);
-    expect(buildAgentTriple(brief()).agentDefinition.spec?.resources?.secrets).toBeUndefined();
+  it("names the model's secret so the subsystem injects it, when one is given", () => {
+    const { agentDefinition } = buildAgentTriple(brief({ modelSecretKey: "ANTHROPIC_API_KEY" }));
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.secrets).toEqual([{ name: "ANTHROPIC_API_KEY", ref: "ANTHROPIC_API_KEY" }]);
+  });
+
+  it("names no secret when the visit carries no model secret key", () => {
+    const { agentDefinition } = buildAgentTriple(brief());
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.secrets).toBeUndefined();
   });
 
   it("carries the deadline onto the Station as its wall-clock limit", () => {
@@ -179,8 +201,10 @@ describe("buildAgentTriple", () => {
   it("keeps no run history, since a triple is minted per visit and is noise the moment it reports", () => {
     const { station } = buildAgentTriple(brief());
 
-    expect(station.spec?.successfulRunsHistoryLimit).toBe(0);
-    expect(station.spec?.failedRunsHistoryLimit).toBe(0);
+    expect({
+      succeeded: station.spec?.successfulRunsHistoryLimit,
+      failed: station.spec?.failedRunsHistoryLimit,
+    }).toEqual({ succeeded: 0, failed: 0 });
   });
 
   it("carries the visit id onto the Agent as its correlation id", () => {
@@ -204,7 +228,9 @@ describe("buildAgentTriple", () => {
       }),
     );
 
-    expect(agent.spec?.targetRepo).toBe("re-cinq/lore");
-    expect(agent.spec?.branch).toBe("main");
+    expect({ targetRepo: agent.spec?.targetRepo, branch: agent.spec?.branch }).toEqual({
+      targetRepo: "re-cinq/lore",
+      branch: "main",
+    });
   });
 });

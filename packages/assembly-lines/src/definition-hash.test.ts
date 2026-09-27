@@ -1,7 +1,3 @@
-// Ported from lore's `@re-cinq/lore-assembly-lines` (definition-hash.test.ts).
-// `definitionHash` here takes a plain body rather than a typed `AssemblyLine`
-// (see definition-hash.ts), so the fixture is a plain object; the cases are
-// otherwise unchanged.
 import { describe, it, expect } from "vitest";
 import { definitionHash } from "./definition-hash.js";
 
@@ -73,8 +69,11 @@ describe("definitionHash", () => {
     expect(definitionHash(edited)).not.toBe(definitionHash(line()));
   });
 
-  it("changes when the entry or exit node changes", () => {
+  it("changes when the entry node changes", () => {
     expect(definitionHash(line({ entry: "done" }))).not.toBe(definitionHash(line()));
+  });
+
+  it("changes when the exit node changes", () => {
     expect(definitionHash(line({ exit: "implement" }))).not.toBe(definitionHash(line()));
   });
 

@@ -7,6 +7,7 @@ async function main(): Promise<void> {
   if (!connectionString) {
     throw new Error("FLOOR_DATABASE_URL is required");
   }
+
   const pool = createPool(connectionString);
 
   try {

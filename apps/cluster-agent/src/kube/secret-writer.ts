@@ -1,13 +1,9 @@
-// Adds or removes a single key in a Kubernetes Secret without disturbing
-// its other keys — how a visit's git token or model API key lands in
-// `agent-secrets` before the Agent CR references it, and how it is removed
-// once the visit reports. Ported from lore's `@re-cinq/lore-cluster-agent`
-// (outbound/kube-token-provisioner.ts, `KubeSecretKeyWriter`); the token
-// itself is minted elsewhere (the git-credential exchange is an HTTP concern
-// on the Floor, docs/api_sketch.md — this is only the Kubernetes write).
+// Adds or removes one key in a Kubernetes Secret without disturbing its other keys; ported from lore's KubeSecretKeyWriter. See ../../README.md.
 
 import { isConflict } from "../lib/k8s-errors.js";
 import { agentsNamespace, coreApi } from "./clients.js";
+
+const MAX_CONFLICT_RETRIES = 4;
 
 export interface SecretKeyWriter {
   setKey(secret: string, key: string, value: string): Promise<void>;
@@ -54,11 +50,35 @@ export class KubeSecretKeyWriter implements SecretKeyWriter {
     });
   }
 
-  // One read-modify-replace. Rereads every time it is called, which is the
-  // point: a concurrent write bumps resourceVersion, the replace 409s, and
-  // retrying against a stale copy would drop whichever key the other writer
-  // had just added.
-  private async mutateOnce(
+  // Retries the read-modify-replace on a conflict, so a concurrent writer's key is never dropped.
+  private async mutate(
+    secret: string,
+    change: (data: Record<string, string>) => void,
+  ): Promise<void> {
+    for (let attempt = 0; ; attempt++) {
+      const done = await this.attemptMutate(secret, change, attempt);
+
+      if (done) return;
+    }
+  }
+
+  // One read-modify-replace attempt; rereads every time, since a concurrent write bumps resourceVersion and retrying against a stale copy would drop whichever key the other writer had just added.
+  private async attemptMutate(
+    secret: string,
+    change: (data: Record<string, string>) => void,
+    attempt: number,
+  ): Promise<boolean> {
+    try {
+      await this.replaceOnce(secret, change);
+
+      return true;
+    } catch (err) {
+      if (isConflict(err) && attempt < MAX_CONFLICT_RETRIES) return false;
+      throw err;
+    }
+  }
+
+  private async replaceOnce(
     secret: string,
     change: (data: Record<string, string>) => void,
   ): Promise<void> {
@@ -77,23 +97,5 @@ export class KubeSecretKeyWriter implements SecretKeyWriter {
       namespace: this.namespace,
       body: current,
     });
-  }
-
-  private async mutate(
-    secret: string,
-    change: (data: Record<string, string>) => void,
-  ): Promise<void> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await this.mutateOnce(secret, change);
-
-        return;
-      } catch (err) {
-        if (isConflict(err) && attempt < 4) {
-          continue;
-        }
-        throw err;
-      }
-    }
   }
 }

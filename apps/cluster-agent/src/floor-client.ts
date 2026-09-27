@@ -1,7 +1,9 @@
-// Thin HTTP client for the endpoints this agent calls on the Floor
-// (docs/api_sketch.md, "Events - the queue that drives everything": every
-// worker pulls). No retry logic here beyond what fetch gives for free — the
-// claim loop above it decides what a failure means.
+// Thin HTTP client for the endpoints this agent calls on the Floor (docs/api_sketch.md, "Events"); no retry beyond what fetch gives, the claim loop decides what a failure means.
+
+import type { BriefNeed, Produce } from "./domain/need.js";
+import type { DispatchSettings, Conversation } from "./domain/agent-triple.js";
+
+const HTTP_NO_CONTENT = 204;
 
 export interface ClaimedEvent {
   id: string;
@@ -9,33 +11,17 @@ export interface ClaimedEvent {
   payload: { visitId: string };
 }
 
-// The rich, executor-facing response `GET /station-runs/:id/brief` returns
-// for a machine dispatcher (docs/assembly_run_storage.md calls this "the
-// executor's private view"). A service SDK reduces the same response down
-// to the plain `{needs: Record<string,string>}` a station author sees; this
-// agent, building a Kubernetes manifest, needs the fuller structure — each
-// need's kind, path and access, not just its resolved value.
+/** The executor-facing response `GET /station-runs/:id/brief` returns for a machine dispatcher; richer than the plain Brief a station author sees, since a Kubernetes manifest needs each need's kind, path and access. */
 export interface DispatchBriefResponse {
   visitId: string;
   floorBaseUrl: string;
-  /** The visit token itself, scoped to this one visit — the Floor mints it at open and hands it back here so the executor can inject it into the pod's environment; see claim-loop.ts. */
+  /** Scoped to this one visit; injected into the pod's environment by the claim loop. */
   token: string;
   deadlineMinutes: number;
-  settings: {
-    model?: string;
-    prompt: string;
-    image: string;
-    disallowedTools?: string[];
-    skills?: string[];
-    env?: Record<string, string>;
-  };
-  needs: (
-    | { name: string; kind: "value"; value: string }
-    | { name: string; kind: "file"; path: string; url: string }
-    | { name: string; kind: "git"; path: string; repoUrl: string; ref: string; access: "read" | "write" }
-  )[];
-  produces: { name: string; kind: "value" | "file"; path?: string }[];
-  conversation: { mode: "new" } | { mode: "continue"; sessionRef: string };
+  settings: DispatchSettings;
+  needs: BriefNeed[];
+  produces: Produce[];
+  conversation: Conversation;
   modelSecretKey?: string;
 }
 
@@ -55,7 +41,7 @@ export class FloorClient {
   async claim(tags: string[], limit: number): Promise<ClaimedEvent[]> {
     const res = await this.post("/events/claim", { tags, limit });
 
-    if (res.status === 204) return [];
+    if (res.status === HTTP_NO_CONTENT) return [];
     if (!res.ok) throw await httpError("claim", res);
 
     return (await res.json()) as ClaimedEvent[];
@@ -67,10 +53,18 @@ export class FloorClient {
     if (!res.ok) throw await httpError("ack", res);
   }
 
-  async fail(eventId: string, error: string, permanent = false): Promise<void> {
-    const res = await this.post(`/events/${eventId}/fail`, { error, permanent });
+  /** Requeues with backoff. */
+  async fail(eventId: string, error: string): Promise<void> {
+    const res = await this.post(`/events/${eventId}/fail`, { error, permanent: false });
 
     if (!res.ok) throw await httpError("fail", res);
+  }
+
+  /** No retry: an unknown event name, for instance, would never succeed. */
+  async deadLetter(eventId: string, error: string): Promise<void> {
+    const res = await this.post(`/events/${eventId}/fail`, { error, permanent: true });
+
+    if (!res.ok) throw await httpError("dead-letter", res);
   }
 
   async brief(visitId: string): Promise<DispatchBriefResponse> {
@@ -83,7 +77,7 @@ export class FloorClient {
     return (await res.json()) as DispatchBriefResponse;
   }
 
-  /** Only for a `git` need declaring `access: write` (docs/api_sketch.md); refused with 403 for any other need. There is deliberately no read-credential exchange here — a read-only git need in this design clones without a token, which only works against a public repo. See the claim loop's dispatch handler for where this is called. */
+  /** Only for a `git` need declaring `access: write`; refused with 403 otherwise. A read-only need clones without a token, which only works against a public repo — see claim-loop.ts's dispatch handler. */
   async gitCredential(visitId: string): Promise<string> {
     const res = await this.post(`/station-runs/${visitId}/git-credential`, {});
 

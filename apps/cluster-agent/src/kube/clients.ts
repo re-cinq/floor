@@ -1,9 +1,4 @@
-// One Kubernetes client per process, not one per call, and the namespace
-// every custom resource and secret lives in. Ported and trimmed from lore's
-// `@re-cinq/lore-cluster-agent` (outbound/kube-clients.ts): lore's
-// `loadKube` picks between in-cluster config, a named kubeconfig file, and
-// the default kubeconfig, by environment variable; kept as-is, since a dev
-// machine (docs/dev_loop.md) and a real cluster need exactly that choice.
+// One Kubernetes client per process, and the namespace every resource lives in; trimmed from lore's kube-clients.ts. See ../../README.md.
 
 import {
   CoreV1Api,
@@ -16,22 +11,22 @@ export function agentsNamespace(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function loadKube(
-  kc: Pick<KubeConfig, "loadFromCluster" | "loadFromFile" | "loadFromDefault">,
+  kubeConfigLoader: Pick<KubeConfig, "loadFromCluster" | "loadFromFile" | "loadFromDefault">,
   env: NodeJS.ProcessEnv = process.env,
 ): void {
   if (env.FLOOR_KUBE_IN_CLUSTER === "1") {
-    kc.loadFromCluster();
+    kubeConfigLoader.loadFromCluster();
 
     return;
   }
 
   if (env.FLOOR_KUBECONFIG) {
-    kc.loadFromFile(env.FLOOR_KUBECONFIG);
+    kubeConfigLoader.loadFromFile(env.FLOOR_KUBECONFIG);
 
     return;
   }
 
-  kc.loadFromDefault();
+  kubeConfigLoader.loadFromDefault();
 }
 
 let config: KubeConfig | undefined;

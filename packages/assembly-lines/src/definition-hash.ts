@@ -1,12 +1,4 @@
-// Content hash of a versioned definition (line, station, or agent
-// definition — docs/assembly_run_storage.md, "Tables": `definitions.hash`).
-// Hashed over sorted keys (array order DOES participate, since
-// `selectEdge`'s candidates[0] fallback means edge order can change the
-// walk) with `description` denylisted so a new field hashes — and
-// over-refuses — by default. Ported verbatim from lore's
-// `@re-cinq/lore-assembly-lines` (definition-hash.ts), generalised from
-// `AssemblyLine` to any JSON-shaped definition body, since the Floor
-// content-hashes three kinds of thing, not one.
+// Content hash of a versioned definition (line, station, or agent definition); ported from lore's definition-hash.ts. See README.md.
 
 import { createHash } from "node:crypto";
 
@@ -27,9 +19,9 @@ function canonicalJson(value: unknown): string {
   }
 
   const fields = Object.entries(value)
-    .filter(([k, v]) => v !== undefined && !IGNORED_KEYS.has(k))
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`);
+    .filter(([key, fieldValue]) => fieldValue !== undefined && !IGNORED_KEYS.has(key))
+    .sort(([left], [right]) => (left < right ? -1 : 1))
+    .map(([key, fieldValue]) => `${JSON.stringify(key)}:${canonicalJson(fieldValue)}`);
 
   return `{${fields.join(",")}}`;
 }

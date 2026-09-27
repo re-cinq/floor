@@ -64,7 +64,15 @@ describe("KubeSecretKeyWriter.setKey", () => {
     ).rejects.toMatchObject({ code: 409 });
   });
 
-  it("rethrows a non-conflict failure immediately, without retrying", async () => {
+  it("rethrows a non-conflict failure immediately", async () => {
+    const core = fakeCore({ replaceNamespacedSecret: () => Promise.reject({ code: 403 }) });
+
+    await expect(
+      new KubeSecretKeyWriter("floor-agents", () => core).setKey("agent-secrets", "k", "v"),
+    ).rejects.toMatchObject({ code: 403 });
+  });
+
+  it("never retries a non-conflict failure", async () => {
     let attempts = 0;
     const core = fakeCore({
       replaceNamespacedSecret: () => {
@@ -74,9 +82,10 @@ describe("KubeSecretKeyWriter.setKey", () => {
       },
     });
 
-    await expect(
-      new KubeSecretKeyWriter("floor-agents", () => core).setKey("agent-secrets", "k", "v"),
-    ).rejects.toMatchObject({ code: 403 });
+    await new KubeSecretKeyWriter("floor-agents", () => core)
+      .setKey("agent-secrets", "k", "v")
+      .catch(() => undefined);
+
     expect(attempts).toBe(1);
   });
 });

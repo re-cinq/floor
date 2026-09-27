@@ -1,0 +1,89 @@
+// Repo-wide flat ESLint config: core + typescript-eslint + the published @re-cinq/eslint-plugin-re-lint house rules, every rule at "error".
+import eslintJs from "@eslint/js";
+import tseslint from "typescript-eslint";
+import stylistic from "@stylistic/eslint-plugin";
+import markdown from "@eslint/markdown";
+import globals from "globals";
+import reLint from "@re-cinq/eslint-plugin-re-lint";
+
+const FIRST_PARTY = { firstPartyScopes: ["@floor"] };
+
+export default tseslint.config(
+  {
+    ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", ".backup-2026-09-27/**"],
+  },
+
+  // Type-aware TypeScript across every workspace package.
+  {
+    files: ["**/*.ts"],
+    extends: [eslintJs.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      parserOptions: {
+        // Config files sit beside a package, not under its src/, so no tsconfig covers them.
+        projectService: {
+          allowDefaultProject: [
+            "*.mjs",
+            "packages/*/vitest.config.ts",
+            "apps/*/vitest.config.ts",
+          ],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: { ...globals.node },
+    },
+    plugins: { "re-lint": reLint },
+    rules: {
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": "error",
+      "@typescript-eslint/await-thenable": "error",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/no-unnecessary-condition": "error",
+      // A test that never imports the module it names is testing nothing.
+      "re-lint/test-imports-its-subject": ["error", FIRST_PARTY],
+      // jscpd-backed; scoped to the source trees, never node_modules/dist/docs.
+      "re-lint/no-duplicate-code": [
+        "error",
+        {
+          roots: ["packages", "apps"],
+          formats: ["typescript"],
+          minTokens: 50,
+          ignore: ["**/dist/**", "**/*.d.ts"],
+        },
+      ],
+    },
+  },
+
+  // The house preset: every rule in it is already "error" (its own convention).
+  ...reLint.configs.recommended({ tseslint, stylistic }),
+
+  // Two overrides on top of the preset, both matching lore's own eslint.config.mjs.
+  {
+    files: ["**/*.ts"],
+    rules: {
+      // The pure replay in transition.ts needs a state and an accounting object alongside its visit and graph.
+      "max-params": ["error", { max: 4 }],
+      // `on`, `to` and `id` are short, ubiquitous field names (WalkEdge.on/to matches lore; `id` is standard), not vague ones.
+      "id-length": ["error", { min: 3, exceptions: ["on", "to", "id"] }],
+    },
+  },
+
+  // A config file has no tsconfig of its own, so no strict-mode info reaches this type-aware rule.
+  {
+    files: ["**/vitest.config.ts"],
+    rules: { "@typescript-eslint/no-unnecessary-condition": "off" },
+  },
+
+  // Markdown link hygiene on the plan itself; no spec/ADR link convention assumed here.
+  {
+    files: ["docs/**/*.md"],
+    plugins: { markdown, "re-lint": reLint },
+    language: "markdown/gfm",
+    rules: { "re-lint/no-dead-md-links": "error" },
+  },
+);
+
+// Opt-in rules left off: no-cross-layer-import (no layers.yaml), the models/enforce/api-error trio (no such module yet), no-forbidden-imports (nothing forbidden yet), the UI-only rules (no UI here), and the spec-link rules (docs/ is a plan, not a specs/adrs tree).
