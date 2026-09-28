@@ -24,6 +24,7 @@ const REVIEW_STATION: StationBody = {
   produces: [
     { name: "review_verdict", kind: "value" },
     { name: "review_findings", kind: "file", path: "findings.md" },
+    { name: "review_output", kind: "file", from: "output" },
   ],
 };
 
@@ -155,6 +156,13 @@ describe("POST /station-runs/:id/sink", () => {
     });
   });
 
+  it("hands on what the agent said last, whole, as a file the station declares from its output", async () => {
+    const { bag } = await reviewApproved();
+    const said = await deps().blobs.get(bag.review_output.ref);
+
+    expect(said!.bytes.toString()).toContain("Looks good.\nLORE_NODE_RESULT:");
+  });
+
   it("drops a produced name the station does not declare", async () => {
     const { bag } = await reviewApproved();
 
@@ -241,7 +249,7 @@ describe("POST /station-runs/:id/sink", () => {
     await post(brief, { kind: "lifecycle", phase: "agent", status: "succeeded", exitCode: 0 });
     await loop().pass();
 
-    expect(Object.keys(await deps().runs.bag(runId))).toEqual(["pr_url"]);
+    expect(Object.keys(await deps().runs.bag(runId))).not.toContain("review_findings");
   });
 });
 

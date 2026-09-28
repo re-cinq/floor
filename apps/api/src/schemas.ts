@@ -44,7 +44,9 @@ const needSpec = z.object({
   optional: z.boolean().optional(),
 });
 
-const produceSpec = z.object({ name: z.string(), kind: z.enum(["value", "file"]), path: z.string().optional() });
+const produceSpec = z
+  .object({ name: z.string(), kind: z.enum(["value", "file"]), path: z.string().optional(), from: z.literal("output").optional() })
+  .refine((produce) => !produce.from || (produce.kind === "file" && !produce.path), { message: "from: output is for a file, and takes no path" });
 
 export const stationBodySchema = z.object({
   kind: z.enum(["agent", "service", "human"]),

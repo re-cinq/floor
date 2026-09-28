@@ -62,10 +62,18 @@ export class Sink {
     const station = await this.deps.definitions.byHashOnly<StationBody>("station", visit.stationHash ?? "");
 
     enforce(station, `visit "${visit.id}" has no station to read outcomes from`);
-    const verdict = readAgentVerdict(result?.text, station.body.outcomes);
-    const produced = { ...declaredValues(station.body, verdict.produced), ...(await this.filesOf(visit.id, station.body)) };
+    const said = result?.text ?? "";
+    const verdict = readAgentVerdict(said, station.body.outcomes);
+    const produced = { ...declaredValues(station.body, verdict.produced), ...(await this.allFilesOf(visit.id, station.body, said)) };
 
     return withSession({ outcome: verdict.outcome, produced, error: verdict.error }, sessionRef);
+  }
+
+  private async allFilesOf(visitId: string, station: StationBody, said: string): Promise<Record<string, string>> {
+    const uploaded = await this.filesOf(visitId, station);
+    const spoken = await this.outputsOf(station, said);
+
+    return { ...uploaded, ...spoken };
   }
 
   private async resultOf(visitId: string): Promise<ResultNote | null> {
@@ -78,6 +86,16 @@ export class Sink {
     const latest = await this.deps.records.latest(visitId, "session");
 
     return latest ? (latest.body as { ref: string }).ref : undefined;
+  }
+
+  // What the agent said last, stored whole under each name the station declares as `from: output`.
+  private async outputsOf(station: StationBody, text: string): Promise<Record<string, string>> {
+    const declared = station.produces.filter((produce) => produce.from === "output");
+
+    if (declared.length === 0) return {};
+    const stored = await this.deps.blobs.put(Buffer.from(text), "text/plain; charset=utf-8");
+
+    return Object.fromEntries(declared.map((produce) => [produce.name, stored.hash]));
   }
 
   // Only what the station declares as a file it produces; a later upload under the same name wins.

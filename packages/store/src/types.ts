@@ -116,6 +116,8 @@ export interface ProduceSpec {
   name: string;
   kind: "value" | "file";
   path?: string;
+  /** Agent kind, `file` only: the file is what the agent said last, whole, and not something it wrote to `path`. How a prompt that answers in its output, as lore's do, hands that answer on. */
+  from?: "output";
 }
 
 export interface StationBody {
