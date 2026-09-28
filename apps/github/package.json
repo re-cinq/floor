@@ -22,5 +22,15 @@
     "@vitest/coverage-v8": "^5.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./review-router": {
+      "types": "./dist/review-router.d.ts",
+      "default": "./dist/review-router.js"
+    }
   }
 }

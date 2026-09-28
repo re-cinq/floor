@@ -93,8 +93,8 @@ describe("convertLine: lore's code-review", () => {
     ]);
   });
 
-  it("starts on a pull request opening, where lore started it from code", () => {
-    expect(lineOf(codeReview()).start).toMatchObject({ on: ["github.pull_request.opened", "github.pull_request.synchronize"], when: { draft: false } });
+  it("starts on a pull request opening, or when the router asks for it, where lore started it from code", () => {
+    expect(lineOf(codeReview()).start).toMatchObject({ on: ["github.pull_request.opened", "review.full.requested"], when: { draft: false } });
   });
 
   it("names the definition after its model when the cluster runs another", () => {

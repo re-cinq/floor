@@ -71,8 +71,8 @@ FLOOR_API_URL="${BASE}" FLOOR_CLUSTER_AGENT_TOKEN="${TOKEN}" FLOOR_HEALTH_PORT="
 PIDS+=($!)
 FLOOR_API_URL="${BASE}" FLOOR_SERVICE_TOKEN="${TOKEN}" node scripts/stations/post-review.mjs >"${LOGS}/post-review.log" 2>&1 &
 PIDS+=($!)
-# The receiver alone: with no GitHub credential, @floor/github starts no station of its own.
-FLOOR_API_URL="${BASE}" FLOOR_SERVICE_TOKEN="${TOKEN}" PORT="$((PORT + 2))" GITHUB_WEBHOOK_SECRET="${WEBHOOK_SECRET}" \
+# The receiver and the review router: with no GitHub credential, @floor/github starts no post-review station of its own.
+FLOOR_API_URL="${BASE}" FLOOR_SERVICE_TOKEN="${TOKEN}" PORT="$((PORT + 2))" GITHUB_WEBHOOK_SECRET="${WEBHOOK_SECRET}" GITHUB_REVIEW_ROUTER=1 \
   env -u GITHUB_TOKEN -u GITHUB_APP_ID node apps/github/dist/index.js >"${LOGS}/github.log" 2>&1 &
 PIDS+=($!)
 
@@ -80,42 +80,62 @@ say "converting lore's code-review from ${LORE_DIR}, and putting it to the floor
 FLOOR_SERVICE_TOKEN="${TOKEN}" node packages/lore-converter/dist/cli.js \
   --lore "${LORE_DIR}" --line code-review --model "${MODEL}" --put "${BASE}" \
   | jq -r '"line \(.line.id): nodes \([.line.body.nodes[].id] | join(" -> ")); stations \([.stations[].id] | join(", ")); agent definition \(.agentDefinitions[0].id)"'
+FLOOR_SERVICE_TOKEN="${TOKEN}" node packages/lore-converter/dist/cli.js \
+  --lore "${LORE_DIR}" --line code-review-recheck --model "${MODEL}" --put "${BASE}" \
+  | jq -r '"line \(.line.id): nodes \([.line.body.nodes[].id] | join(" -> "))"'
+
+# What GitHub would send, signed as GitHub signs it.
+deliver() {
+  local action="$1" webhook signature status
+  webhook="$(jq -cn --arg action "${action}" --arg repository "${REPOSITORY#github.com/}" --arg branch "${BRANCH}" --arg url "${PULL_REQUEST}" '{
+    action: $action, number: 1,
+    repository: {full_name: $repository}, sender: {login: "walk-code-review.sh"},
+    pull_request: {html_url: $url, title: "Review the change on branch \($branch)", draft: false, merged: false,
+                   head: {ref: $branch, sha: ""}, base: {ref: "main"}}}')"
+  signature="sha256=$(printf '%s' "${webhook}" | openssl dgst -sha256 -hmac "${WEBHOOK_SECRET}" | sed 's/^.* //')"
+  for _ in $(seq 1 50); do
+    status="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${RECEIVER}" -H "x-github-event: pull_request" \
+      -H "x-github-delivery: walk-${action}-$(date +%s%N)" -H "x-hub-signature-256: ${signature}" -d "${webhook}" || true)"
+    [ "${status}" = "202" ] && break
+    sleep 0.2
+  done
+  [ "${status}" = "202" ] || { what_went_wrong; fail "the receiver answered ${status} to the webhook"; }
+  echo "the receiver took it: ${status}"
+}
+
+# The id of the run of a line on this pull request, once there is one.
+run_of() {
+  local line="$1" found=""
+  for _ in $(seq 1 100); do
+    found="$(api "${BASE}/assembly-runs?line=${line}&subject=pr_url:${PULL_REQUEST}&open=$2" | jq -r '.items[0].id // empty')"
+    [ -n "${found}" ] && break
+    sleep 0.2
+  done
+  echo "${found}"
+}
+
+# Waits for a run to settle, and says its outcome.
+settled() {
+  local run="$1" outcome=null seen="" now
+  for _ in $(seq 1 "$((WAIT_SECONDS / 5))"); do
+    outcome="$(api "${BASE}/assembly-runs/${run}" | jq -r .run.outcome)"
+    [ "${outcome}" != "null" ] && break
+    now="$(kubectl -n "${FLOOR_AGENTS_NAMESPACE}" get pods --no-headers 2>/dev/null | awk '!/agent-controller/ {printf "%s  ", $3}' || true)"
+    if [ "${now}" != "${seen}" ]; then echo "  pods: ${now:-none yet}" >&2; seen="${now}"; fi
+    sleep 5
+  done
+  echo "${outcome}"
+}
 
 say "GitHub delivers: a pull request opened on ${REPOSITORY}, branch ${BRANCH}"
-WEBHOOK="$(jq -cn --arg repository "${REPOSITORY#github.com/}" --arg branch "${BRANCH}" --arg url "${PULL_REQUEST}" '{
-  action: "opened", number: 1,
-  repository: {full_name: $repository}, sender: {login: "walk-code-review.sh"},
-  pull_request: {html_url: $url, title: "Review the change on branch \($branch)", draft: false, merged: false,
-                 head: {ref: $branch, sha: ""}, base: {ref: "main"}}}')"
-SIGNATURE="sha256=$(printf '%s' "${WEBHOOK}" | openssl dgst -sha256 -hmac "${WEBHOOK_SECRET}" | sed 's/^.* //')"
-for _ in $(seq 1 50); do
-  STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${RECEIVER}" -H "x-github-event: pull_request" \
-    -H "x-github-delivery: walk-$(date +%s)" -H "x-hub-signature-256: ${SIGNATURE}" -d "${WEBHOOK}" || true)"
-  [ "${STATUS}" = "202" ] && break
-  sleep 0.2
-done
-[ "${STATUS}" = "202" ] || { what_went_wrong; fail "the receiver answered ${STATUS} to the webhook"; }
-echo "the receiver took it: ${STATUS}"
+deliver opened
 
-RUN=""
-for _ in $(seq 1 50); do
-  RUN="$(api "${BASE}/assembly-runs?subject=pr_url:${PULL_REQUEST}" | jq -r '.items[0].id // empty')"
-  [ -n "${RUN}" ] && break
-  sleep 0.2
-done
-[ -n "${RUN}" ] || { what_went_wrong; fail "the event started no run"; }
-echo "run ${RUN}, started by the event"
+RUN="$(run_of code-review true)"
+[ -n "${RUN}" ] || { what_went_wrong; fail "the webhook started no run"; }
+echo "run ${RUN}, started by the webhook"
 
 say "waiting for the review, up to ${WAIT_SECONDS}s"
-OUTCOME=null
-SEEN=""
-for _ in $(seq 1 "$((WAIT_SECONDS / 5))"); do
-  OUTCOME="$(api "${BASE}/assembly-runs/${RUN}" | jq -r .run.outcome)"
-  [ "${OUTCOME}" != "null" ] && break
-  NOW="$(kubectl -n "${FLOOR_AGENTS_NAMESPACE}" get pods --no-headers 2>/dev/null | awk '!/agent-controller/ {printf "%s  ", $3}' || true)"
-  if [ "${NOW}" != "${SEEN}" ]; then echo "  pods: ${NOW:-none yet}"; SEEN="${NOW}"; fi
-  sleep 5
-done
+OUTCOME="$(settled "${RUN}")"
 
 say "the run"
 api "${BASE}/assembly-runs/${RUN}" | jq '{outcome: .run.outcome, reason: .run.reason, review_summary: .bag.review_summary.ref}'
@@ -136,4 +156,16 @@ if [ "${OUTCOME}" != "success" ] || [ -z "${POSTED}" ]; then
   fail "outcome ${OUTCOME}, review ${POSTED:-not taken by post-review}; logs kept in ${LOGS}"
 fi
 
-say "walked: lore's code-review, converted, settled as success"
+say "GitHub delivers: a push to the same pull request"
+deliver synchronize
+RECHECK="$(run_of code-review-recheck true)"
+[ -n "${RECHECK}" ] || { what_went_wrong; fail "the push started no recheck"; }
+echo "the router chose the recheck, the pull request having been reviewed: run ${RECHECK}"
+
+say "waiting for the recheck, up to ${WAIT_SECONDS}s"
+RECHECKED="$(settled "${RECHECK}")"
+api "${BASE}/assembly-runs/${RECHECK}" | jq '{outcome: .run.outcome, reason: .run.reason, review_summary: .bag.review_summary.ref}'
+api "${BASE}/station-runs?run=${RECHECK}" | jq -r '.items[] | "\(.nodeId)#\(.iteration)\t\(.report.outcome // "open")\t\(.report.error // "")"'
+[ "${RECHECKED}" = "success" ] || { what_went_wrong; fail "the recheck ended as ${RECHECKED}; logs kept in ${LOGS}"; }
+
+say "walked: lore's code-review and its recheck, converted, both settled as success"

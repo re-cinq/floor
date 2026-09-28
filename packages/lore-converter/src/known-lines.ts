@@ -24,6 +24,10 @@ export const DEFAULT_ARGS: Record<string, LineArgSpec> = {
 };
 
 // lore's floor posted the review from a hook, `postReviewFromNode`, once the review node ended. Here it is a station like any other.
+function postReviewAfter(node: string): HookStation {
+  return { ...POST_REVIEW, after: node };
+}
+
 const POST_REVIEW: HookStation = {
   after: "review",
   outcomes: ["success", "changes_requested"],
@@ -44,18 +48,24 @@ const POST_REVIEW: HookStation = {
   bind: { review_output: "{node}_output" },
 };
 
+const REVIEW_ARGS: KnownLine["args"] = {
+  repo: { kind: "git" },
+  pr_url: { kind: "value", subject: true },
+  description: { kind: "value" },
+};
+
+const FROM_A_PULL_REQUEST = { repo: "{repository}@{head_ref}", pr_url: "{pull_request_url}", description: "{title}" };
+
+// A push to a pull request starts neither of these by itself. lore chose in code: the full review if none had run, the fast recheck if one had. Here a router line chooses, `review-router` in @floor/github, and asks for one by name.
 export const KNOWN_LINES: Partial<Record<string, KnownLine>> = {
   "code-review": {
-    args: {
-      repo: { kind: "git" },
-      pr_url: { kind: "value", subject: true },
-      description: { kind: "value" },
-    },
-    start: {
-      on: ["github.pull_request.opened", "github.pull_request.synchronize"],
-      when: { draft: false },
-      args: { repo: "{repository}@{head_ref}", pr_url: "{pull_request_url}", description: "{title}" },
-    },
+    args: REVIEW_ARGS,
+    start: { on: ["github.pull_request.opened", "review.full.requested"], when: { draft: false }, args: FROM_A_PULL_REQUEST },
     hooks: [POST_REVIEW],
+  },
+  "code-review-recheck": {
+    args: REVIEW_ARGS,
+    start: { on: ["review.recheck.requested"], args: FROM_A_PULL_REQUEST },
+    hooks: [postReviewAfter("recheck")],
   },
 };

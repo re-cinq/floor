@@ -25,6 +25,7 @@
     "@vitest/coverage-v8": "^5.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0",
-    "@floor/station": "*"
+    "@floor/station": "*",
+    "@floor/github": "*"
   }
 }

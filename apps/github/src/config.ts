@@ -11,6 +11,8 @@ export interface Config {
   webhookSecret?: string;
   /** Absent: no post-review station. */
   tokenFor?: TokenFor;
+  /** The review router needs only the floor, so it is asked for by name: `GITHUB_REVIEW_ROUTER=1`. */
+  routesReviews: boolean;
 }
 
 const DEFAULT_PORT = 8280;
@@ -25,6 +27,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, now: () => Date = () => new D
     apiUrl,
     webhookSecret: env.GITHUB_WEBHOOK_SECRET,
     tokenFor: tokenProvider(env, { apiUrl, now }),
+    routesReviews: env.GITHUB_REVIEW_ROUTER === "1",
   };
 }
 
