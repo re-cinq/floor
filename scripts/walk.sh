@@ -64,6 +64,11 @@ for _ in $(seq 1 50); do
 done
 
 api "${BASE}/assembly-runs/${RUN}" | jq '{outcome: .run.outcome, bag}'
+
+say "claiming the abort: the visit is done, and the floor tells its worker to let go"
+RELEASED="$(api -X POST "${BASE}/events/claim" -d '{"tags":["station:walk-work"],"limit":1}')"
+jq -r '.[0] | "\(.name) for visit \(.payload.visitId)"' <<<"${RELEASED}"
+api -X POST "${BASE}/events/$(jq -r '.[0].id' <<<"${RELEASED}")/ack"
 say "its events, in order"
 api "${BASE}/events?run=${RUN}" | jq -r '.items[] | "\(.id)\t\(.name)\t\(if .ackedAt then "acked" elif .deadAt then "dead" else "open" end)"'
 

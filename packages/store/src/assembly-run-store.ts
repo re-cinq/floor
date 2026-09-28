@@ -12,6 +12,7 @@ import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
 import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable } from "./rows.js";
 import {
+  claimedDispatchTags,
   closeOpenHumanVisits,
   insertRun,
   insertVisit,
@@ -159,6 +160,7 @@ export class AssemblyRunStore {
       await events.enqueue({
         name: "station_run.abort",
         payload: { visitId: visit.stationRunId },
+        dedupeKey: `station_run.abort:${visit.stationRunId}`,
         tags: visit.dispatchTags,
         runId,
       });
@@ -267,9 +269,25 @@ export class AssemblyRunStore {
   private async reportInClient(client: PoolClient, visitId: string, report: Report, worker?: string): Promise<Visit> {
     const visit = await writeReport(client, { visitId, report, worker, now: this.now() });
 
+    await this.releaseWorker(client, visit);
     await this.advance(client, visit.runId);
 
     return visit;
+  }
+
+  // A worker that claimed the dispatch holds something for this visit (a pod, a secret); the visit being done, it is told to let go. Deduplicated, so a replayed report tells it once.
+  private async releaseWorker(client: PoolClient, visit: Visit): Promise<void> {
+    const tags = await claimedDispatchTags(client, visit.id);
+
+    if (!tags) return;
+
+    await this.eventsOn(client).enqueue({
+      name: "station_run.abort",
+      payload: { visitId: visit.id },
+      dedupeKey: `station_run.abort:${visit.id}`,
+      tags,
+      runId: visit.runId,
+    });
   }
 
   private async advance(client: PoolClient, runId: string): Promise<void> {

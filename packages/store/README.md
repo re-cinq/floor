@@ -48,7 +48,10 @@ replaces with one table and a tag filter.
   visit whose deadline has passed — a human visit's deadline is null, so it
   never matches). Every follow-up event is written in the same transaction as the
   row that caused it (docs/assembly_run_storage.md, "Every follow-up event
-  is written in the transaction that caused it").
+  is written in the transaction that caused it"). A report on a visit
+  whose dispatch a worker claimed also posts `station_run.abort`, so the
+  worker lets go of whatever it holds for the visit; cancel and fail post it
+  for every open visit.
 - `start-events.ts`, `refusal.ts` — a node's start event name (its line's own
   `start:`, or `node.<id>.start`), and `Refusal`: the error for a request the
   store will never accept, as opposed to one worth retrying.

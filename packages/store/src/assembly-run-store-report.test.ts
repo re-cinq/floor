@@ -180,3 +180,44 @@ describe("AssemblyRunStore.list", () => {
     expect(page.items).toHaveLength(0);
   });
 });
+
+describe("AssemblyRunStore.report: releasing the worker", () => {
+  async function aborts(runId: string) {
+    const runEvents = await events().listByRun(runId);
+
+    return runEvents.filter((event) => event.name === "station_run.abort");
+  }
+
+  async function reportedAfterClaim(times: number) {
+    const { runId, visitId } = await openEntryVisit();
+
+    await events().claim({ names: ["station_run.dispatch"], tags: ["kind:agent"], limit: 1, claimedBy: "cluster-agent" });
+
+    for (let attempt = 0; attempt < times; attempt++) {
+      await store().report(visitId, { outcome: "success" });
+    }
+
+    return { visitId, aborts: await aborts(runId) };
+  }
+
+  it("tells the worker that claimed the dispatch to let go of the visit", async () => {
+    const reported = await reportedAfterClaim(1);
+
+    expect(reported.aborts).toMatchObject([{ payload: { visitId: reported.visitId }, tags: ["kind:agent"] }]);
+  });
+
+  it("tells it once, though the report is replayed", async () => {
+    const reported = await reportedAfterClaim(2);
+
+    expect(reported.aborts).toHaveLength(1);
+  });
+
+  it("tells nobody when no worker ever claimed the dispatch", async () => {
+    const { runId, visitId } = await openEntryVisit();
+
+    await store().report(visitId, { outcome: "success" });
+
+    expect(await aborts(runId)).toEqual([]);
+  });
+});
+

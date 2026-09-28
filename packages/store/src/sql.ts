@@ -200,3 +200,15 @@ export async function nodeVisitCount(client: Queryable, runId: string, nodeId: s
 
   return { openVisit: visits.find((visit) => visit.report === null) ?? null, highestIteration: visits.at(0)?.iteration ?? 0 };
 }
+
+/** The tags of this visit's dispatch, when a worker claimed it: only then may something of the visit exist outside the floor. Null when nobody did. */
+export async function claimedDispatchTags(client: Queryable, visitId: string): Promise<string[] | null> {
+  const { rows } = await client.query(
+    `select tags from events
+     where name = 'station_run.dispatch' and payload->>'visitId' = $1 and (claimed_at is not null or acked_at is not null)
+     limit 1`,
+    [visitId],
+  );
+
+  return rows[0] ? (rows[0].tags as string[]) : null;
+}
