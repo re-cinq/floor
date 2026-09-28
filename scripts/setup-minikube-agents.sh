@@ -21,8 +21,11 @@ COPY_FROM="${FLOOR_COPY_SECRETS_FROM:-}"
 FLOOR_PORT="${PORT:-8080}"
 
 # The pair the subsystem released as v0.11.6; they move together, never one without the other.
-CONTROLLER_IMAGE="${FLOOR_CONTROLLER_IMAGE:-ghcr.io/re-cinq/ai-agent-controller@sha256:7730775126e43856f0101ff17d3f0e5c4f784dcc1aece9c464401913349e9c8a}"
-AGENT_IMAGE="${FLOOR_AGENT_IMAGE:-ghcr.io/re-cinq/ai-agent@sha256:56ce7fa583033915bbfdb42862079658a52ba3387373edfb6a29d5083092bd43}"
+# Check what a digest really is before trusting a label: the subsystem's own deploy/ at the
+# v0.11.6 tag still pins v0.11.3.
+#   docker image inspect <image> --format '{{index .Config.Labels "org.opencontainers.image.version"}}'
+CONTROLLER_IMAGE="${FLOOR_CONTROLLER_IMAGE:-ghcr.io/re-cinq/ai-agent-controller@sha256:b580a1229c81dfbbc7b91306c0fe362779b5e7599a272ca5f3838e52b1a336f2}"
+AGENT_IMAGE="${FLOOR_AGENT_IMAGE:-ghcr.io/re-cinq/ai-agent@sha256:dd7ad55176efaf0453fad0ea1486b33ef70fd1c93b49cd6320c08ee9feec8736}"
 
 write_pull_secret() {
   if [ -n "${GHCR_USER:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
@@ -35,6 +38,9 @@ write_pull_secret() {
     kubectl -n "${COPY_FROM}" get secret ghcr-pull-secret -o json \
       | jq --arg namespace "${NAMESPACE}" '{apiVersion, kind, type, data, metadata: {name: .metadata.name, namespace: $namespace}}' \
       | kubectl apply -f - >/dev/null
+  elif kubectl -n "${NAMESPACE}" get secret ghcr-pull-secret >/dev/null 2>&1; then
+    log "ghcr-pull-secret kept as it is"
+    return
   else
     fail "no way to pull the subsystem's images: set GHCR_USER and GHCR_TOKEN in ${ENV_FILE} (a GitHub token with read:packages), or FLOOR_COPY_SECRETS_FROM"
   fi
