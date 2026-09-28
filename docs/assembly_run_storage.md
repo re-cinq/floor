@@ -70,9 +70,15 @@ produces:
   - { name: pr_number, kind: value }
 ```
 
-`path` is relative to the pod's workspace and is read only for the agent
-kind. The bag is the only channel between stations and it is write-forward
-only.
+`path` is relative to the pod's workspace, `/workspace`, and is read only
+for the agent kind. An agent's prompt is told where each one is: besides
+every value need under its own name, it gets `{<name>_path}` for every file
+need, git need and file the station produces, as a full path. A prompt that
+names a bare `note.md` is wrong whenever no repo is cloned, because the
+agent's working directory is then `/`. The bag is the only channel between
+stations and it is write-forward only.
+
+> **Not built yet.** `must_change` is accepted and ignored.
 
 **Conversation.** With `continue`, the previous visit is the last successful
 visit of the same node in the same run, or, when the station sets
@@ -137,9 +143,23 @@ start:
     pr_url: "{pull_request_url}"
 ```
 
+`when` compares a field's text form, so `false` in the line matches `false`
+in the payload. Only the latest version of a line is started by an event.
+The run's repo is the one its `git` argument names, else the payload's
+`repo`, else its `repository`; an event naming none starts nothing and is
+dead-lettered, naming the line.
+
+**A line never starts on an internal event of its own runs.** A line
+declaring `internal.run.settled` would otherwise start again on its own
+settling, forever. Two lines can still start each other in turn; nothing
+stops that.
+
 If an open run already holds the subject, `start` returns that run. `entry`
-starts at a node other than the line's entry; the node must exist and its
-required needs must be seeded.
+starts at a node other than the line's entry; the node must exist.
+
+> **Not built yet.** A line's `files` are accepted and ignored, start
+> arguments are not checked against the line's `args`, and a start cannot
+> name a line version: it takes the latest.
 
 ## Routing: the kernel decides, events carry
 
@@ -156,26 +176,48 @@ a node a person or an outside system starts.
 | a run, at start | `internal.run.started`, and the entry node's start event |
 | a visit, at open | `station_run.dispatch`, for agent and service kinds |
 | a report | the next node's start event, or the settle below |
+| a report, when a worker claimed the visit's dispatch | `station_run.abort` for that visit |
 | an outcome on the run, at settle | `internal.run.settled` |
-| a cancel | `station_run.abort` for each open visit |
+| a cancel, or a fail | `station_run.abort` for each open visit, and `internal.run.settled` |
+
+`station_run.abort` means "let go of this visit": a worker deletes what it
+holds for it, a pod and its secret keys. It is posted when a visit ends for
+any reason, not only when it is cut short, because nothing else tells a
+cluster agent that a pod's visit is over. A dispatch nobody claimed gets
+none, since nothing exists to let go of.
 
 `internal.run.settled` is what everything after a run hangs on: a failure
 notice, a check run, settling a task in lore. Each is a line that declares
-it as its start event. The floor has no hooks.
+it as its start event. The floor has no hooks. Both internal events say
+whose run it was: `runId`, `lineId`, `repo`, `subjectKey`, `outcome`,
+`reason`.
 
-**A start from outside closes open human visits first.** When a start event
-other than `node.<id>.start` opens a visit, the store closes any open human
-visit of that run as `cancelled`. The edge back then opens the human node at
-its next iteration, which keeps the kernel's replay consistent.
+**A run that cannot go on is failed.** When the store refuses to open a
+node (a required need is not in the bag, its station is gone), the run is
+settled as `error` with the refusal as its reason. Otherwise it would have
+nothing open and nothing queued, and wait forever.
+
+**A start from outside closes open human visits first.** The walk posts a
+start event with an iteration; a person or an outside system posts one
+without. A start without one is a start by hand, whatever its name: the
+store closes any open human visit of that run as `cancelled`, opens the node
+at its next iteration, and records who asked. The edge back then opens the
+human node at its next iteration, which keeps the kernel's replay
+consistent. A redelivered start by hand finds the visit it already opened
+and opens nothing.
+
+> **Not built yet.** A start event for a run that has already settled is
+> refused. Retrying a node of a finished run needs a way to reopen it.
 
 **An event may answer for a person.** A human node may declare `reports`:
 an event name, an optional `when`, and an outcome. When that event arrives
 for the run, the store writes the report on the node's open visit. That is
 how a merged PR or a green CI moves a waiting run on.
 
-**Finding the run.** An event acting on a run carries `run_id`, or a
-`subject_key` resolved to the open run holding it on that repo. An event
-resolving to no open run is acked and logged.
+**Finding the run.** An event acting on a run carries `runId`, or a
+`subjectKey` and its `repo`, resolved to the open run holding that subject.
+A subject that finds no open run is acked: the run is simply not open. A
+run id that finds no run is a mistake, and the event is dead-lettered.
 
 ## Resolution at open
 
@@ -203,9 +245,10 @@ the floor report the visit `failed`, `error: unclaimed`, naming the tags no
 worker offers. A launch that fails is failed back to the queue and retried
 with backoff.
 
-**Provider out of credit.** When a visit fails with that error class, the
-floor pushes `not_before` on every pending agent dispatch by five minutes.
-The gate is data in the queue, so a restart does not forget it.
+> **Not built yet.** **Provider out of credit.** When a visit fails with
+> that error class, the floor pushes `not_before` on every pending agent
+> dispatch by five minutes. The gate is data in the queue, so a restart does
+> not forget it.
 
 ### The agent kind runs on the ai-agent-subsystem, with no code of ours in the pod
 
@@ -217,19 +260,47 @@ The cluster agent turns a claimed brief into one `Agent` resource:
 | a `file` need | `files`: path, the blob URL, a header secret |
 | a `value` need | `parameters`, which fill the prompt's `{placeholders}` |
 | a `file` produce | `output.watch`: path, upload to `/blobs`, a header secret |
-| the previous `sessionRef` | `resources.conversation`: restore, and save as a new archive |
+| anything with a path | `parameters`: `<name>_path`, its full path under `/workspace` |
+| the conversation it continues | `resources.conversation`: the earlier visit's id to restore from, this visit's id to save under |
 | the model | `resources.secrets`: the key for that model family |
 | turns, cost, the result | `output.sinks`: `POST /station-runs/:id/sink` |
-| the visit token | the header secret, created for the visit and deleted at its report |
+| the visit token | the header secret, created for the visit and deleted when its abort is claimed |
+| always | `resources.skills_source`: the floor's `/skills`, where the pod fetches the agent's settings |
+| always | `permission_mode: bypass`, unless the definition says otherwise |
 
 The floor names a model; **the cluster agent owns the secret** for it, in
-its own cluster. The prompt is rendered once, by the subsystem, from
-`parameters`. The floor does not render it a second time.
+its own cluster, and says which key that is where it is not the usual API
+key: a laptop running on a Claude subscription holds
+`CLAUDE_CODE_OAUTH_TOKEN`. The name must be a key that exists, because the
+pod's reference to it is not optional. The prompt is rendered once, by the
+subsystem, from `parameters`. The floor does not render it a second time.
 
-The sink endpoint turns the stream into rows: cost and turns become
-records, each uploaded file's sha256 becomes a produced item, and the
-terminal event, with `LORE_NODE_RESULT:` or `REVIEW_RESULT:` parsed from the
-output, is enqueued as `station_run.reported`.
+**What the subsystem requires, learned by running it.**
+
+- A header secret holds a header, `Authorization: Bearer <token>`, not a
+  token. A value with no colon is dropped without a word.
+- The agent is started with a settings file fetched from `skills_source`.
+  With none the agent dies at once, so the floor serves one.
+- The conversation is saved under an id the agent takes as its session id,
+  which must be a uuid. So it is the visit's id, and `sessionRef` on the
+  report stays what it was: the hash of the archive.
+- A pod has nobody to answer a permission prompt, so without `bypass` every
+  tool is refused.
+- A station's run history is never 0. At 0 the controller deletes a finished
+  `Agent`, reconciles the copy still in its cache, and runs the job again.
+
+**The sink takes one event per request**, each in the subsystem's envelope,
+`{source, event}`. A line of the agent's own stream becomes a `turn` record.
+Its result line becomes an `llm_call` record with the cost. A file event for
+an uploaded file becomes a produced item, if the station declares it and the
+blob is really in the store. The lifecycle event that ends the visit becomes
+`station_run.reported`, once however often it is posted: the agent phase
+ending either way, or the init phase failing. The outcome is parsed from the
+result's text: `LORE_NODE_RESULT:` first, then `REVIEW_RESULT:`, then
+`success`; a marker that is there and cannot be read is `failed`. Only
+outcomes and produces the station declares are taken.
+
+A pod killed from outside posts nothing. Its visit fails at its deadline.
 
 ## Templates
 
@@ -239,6 +310,12 @@ Every value is escaped for where it lands and never enters a shell or a
 query.
 
 ## Security: how the rules are enforced
+
+> **Not built yet**, of the list below: the lint fence, the branded route
+> type, fuzzing, the threat models, and the second reviewer. Built: the
+> template engine as one module, with tests named after the attacks; the
+> visit token, with tests proving it reaches only its own visit; no
+> outbound request from the floor.
 
 - Rules are tests first, each with a hostile input named after the attack.
 - One module per boundary: templates, routes, tokens; a lint rule fences the
@@ -263,11 +340,14 @@ interface AssemblyRunStore {
   get(runId): Promise<Run | null>;
   list(filter, page): Promise<Page<Run>>;
   cancel(runId, reason): Promise<Run>;
+  fail(runId, reason): Promise<Run>;                    // a run that cannot go on
   bag(runId): Promise<Record<string, Item>>;
   next(runId): Promise<Transition>;                     // pure
   settle(runId): Promise<Run>;
 
   openVisit(runId, nodeId, iteration, requestedBy?): Promise<{ visit: Visit; created: boolean }>;
+  openVisitByHand(runId, nodeId, requestedBy): Promise<{ visit: Visit; created: boolean }>;
+  nodeStartedBy(runId, eventName): Promise<string | null>;
   report(visitId, report: Report): Promise<Visit>;      // exactly once
   visits(runId): Promise<Visit[]>;
   visit(visitId): Promise<Visit | null>;
@@ -277,10 +357,13 @@ interface AssemblyRunStore {
 | event | handler calls |
 |---|---|
 | a line's start event | `start` |
-| a node's start event | `openVisit` |
+| a node's start event, with an iteration | `openVisit` |
+| a node's start event, without one | `openVisitByHand` |
+| a node's start event the store refuses | `fail` on the run, and the event is dead |
 | an event a human node's `reports` names | `report` on that node's open visit |
 | `station_run.reported` | `report`, then `next`; the store wrote the follow-up |
-| a dispatch past `queue_wait`, a visit past its deadline | `report` with `failed` |
+| a dispatch past `queue_wait`, a visit past its deadline | `report` with `failed`, by the sweeper |
+| any other event | `report` on the waiting nodes it answers for, then `start` for each line declaring it |
 
 ## Events: the queue and the loop
 
@@ -329,8 +412,13 @@ Postgres advisory lock on a dedicated session.
 
 An event with no handler and no line starting on it is acked and counted.
 
-**Retention.** Events of a run are kept while it is open and 30 days after.
-`internal.*` events are the audit log and are never deleted.
+The lease is checked before every pass: Postgres drops an advisory lock
+with its connection and tells nobody. A refusal from the store is never
+retried, the event is dead at once; anything else is.
+
+> **Not built yet.** **Retention.** Events of a run are kept while it is
+> open and 30 days after. `internal.*` events are the audit log and are
+> never deleted. Today nothing is deleted.
 
 ## Costs
 
@@ -341,10 +429,11 @@ The floor collects every cost itself.
 - **Cost rows are never dropped.** A batch that is oversized or partly
   malformed still has its `llm_call` rows written.
 - **Missing cost is an anomaly.** An agent visit that ends with no
-  `llm_call` record raises `internal.cost.missing`. It never fails the visit.
+  `llm_call` record raises `internal.cost.missing`. It never fails the
+  visit. *Not built yet.*
 - **Crashes still cost.** Records are written during the visit.
 - **Rollups are queries.** Visit, run and aggregate cost are sums over
-  records.
+  records. *Not built yet: the cost is recorded, nothing sums it.*
 
 ## Concurrency
 
@@ -430,6 +519,10 @@ create table station_run_records (
 A Postgres `bytea` blob store is the default (decided 2026-09-25); lore uses
 an object bucket behind the same port. A blob is reaped when no visit
 references its hash and no run is open.
+
+> **Not built yet.** The reaper exists and nothing runs it. When something
+> does, it must leave alone what a visit still running has uploaded: those
+> blobs are named by nothing until the visit reports.
 
 ## Mapping from lore's columns
 

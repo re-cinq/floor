@@ -43,7 +43,11 @@ produces:
 | `agent_definition`, `conversation`, `conversation_key` | agent kind only |
 | `route` | human kind only: the page template a person works on |
 
-`path` is relative to the pod's workspace and matters only to the agent kind.
+`path` is relative to the pod's workspace, `/workspace`, and matters only
+to the agent kind. The prompt gets each one as `{<name>_path}`, in full.
+
+> **Not built yet.** `must_change` is accepted and ignored. `route` is
+> stored and never rendered.
 
 ## The interface
 
@@ -80,19 +84,27 @@ ai-agent-subsystem, translating the brief:
 | a `git` need | a repo to clone, at the branch, with a token secret |
 | a `file` need | a file to download to `path` |
 | a `value` need | a parameter that fills the prompt's `{placeholder}` |
-| a `file` produce | a watched path, uploaded to the blob store |
+| anything with a path | a parameter, `{<name>_path}`: where it is in the workspace |
+| a `file` produce | a watched path, uploaded to the blob store when the agent ends |
 | the previous conversation | restored before the agent starts, saved after |
 | turns, cost, the result | streamed to the visit's sink endpoint |
 
 The subsystem's supervisor does the fetching, cloning, prompt filling,
-uploading and streaming. The floor's sink endpoint turns that stream into
-records, produced items and the report. The outcome is parsed from the
+uploading and posting. The floor's sink endpoint turns those events, one
+per request, into records, produced items and the report. A value the agent
+produces goes in its marker, as JSON:
+`LORE_NODE_RESULT: {"outcome":"success","produced":{"review_verdict":"approved"}}`.
+Only what the station declares is taken. The outcome is parsed from the
 agent's own output: `LORE_NODE_RESULT:` first, then `REVIEW_RESULT:`, then
 `success`; a malformed marker is `failed`.
 
 Writing an agent station is writing the YAML above and a prompt.
 
 ### service
+
+> **Not built yet.** The SDK. A service station works today by calling the
+> API itself: claim, read the visit, post the report, ack. `scripts/walk.sh`
+> does exactly that with curl.
 
 A station that sits next to its data, so no pod and no clone.
 
@@ -116,6 +128,9 @@ real `retrospective` are this kind. So is everything that talks to GitHub on
 the floor's behalf: `open-pr`, `mark-ready`, `post-review`, `post-reply`.
 
 ### human
+
+> **Not built yet.** The page. A human visit opens, waits with no deadline,
+> and is answered by a report or by an event its node's `reports` names.
 
 Nothing is dispatched. The route is rendered from the needs when a person
 opens the page. The page shows the needs and offers actions; each action
@@ -194,10 +209,13 @@ produces:
 
 1. A node's start event arrives. The store resolves the station version,
    its agent definition and repo variant, and each need from the bag.
-2. A visit opens with a frozen brief, a token and a deadline, and, for agent
-   and service kinds, a `station_run.dispatch` event in the same transaction.
+2. A visit opens with a frozen brief and a deadline, and, for agent and
+   service kinds, a `station_run.dispatch` event in the same transaction.
+   Its token is minted when its brief is asked for.
 3. A worker claims the dispatch. For human, a person opens the page.
 4. `handle(brief)` runs: in a pod, in a service, or on a page.
 5. Exactly one `station_run.reported` arrives. The store merges `produced`
    into the bag and writes the next start event. The line decides what is
    next.
+6. The worker that claimed the dispatch is told to let go, by
+   `station_run.abort`.

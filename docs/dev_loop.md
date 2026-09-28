@@ -15,7 +15,7 @@ edits runs on the host, where a file save restarts it in under a second.
 | the floor (API + loop) | host | `tsc --watch` recompiles, `node --watch dist/` restarts |
 | the cluster agent | host, with a kubeconfig holding only the minikube context | same pair |
 | service stations | host, claiming from the queue | same pair |
-| the ai-agent-subsystem | minikube, installed from its release manifest | not ours to edit |
+| the ai-agent-subsystem | minikube, installed from the manifests vendored in `deploy/agent-subsystem/` | not ours to edit |
 | agent pods | minikube | every visit is a new pod |
 
 None of our code runs inside a pod, so nothing of ours needs reloading
@@ -27,7 +27,25 @@ sink resolve there in dev. That is one setting, the floor's public base URL.
 Service stations and the cluster agent only call out to the floor, so they
 need no address of their own.
 
+## What there is today
+
+| command | what it does |
+|---|---|
+| `npm run db:up` | Postgres in a container, on :5433 |
+| `npm run minikube-setup` | installs the ai-agent-subsystem into minikube, in the floor's own namespace `floor-agents`, beside any other install; runs the next command |
+| `npm run minikube-claude-auth` | gives the agents a Claude credential: an API key, or your own subscription through `claude setup-token`. Run again when a token expires |
+| `scripts/walk.sh` | boots the floor and walks a run through a service station, over HTTP |
+| `scripts/walk-agent.sh` | boots the floor and the cluster agent and walks a run through a real agent pod |
+
+Setup pins a kubeconfig to the minikube context, so neither it nor the
+cluster agent can act on whatever cluster `kubectl` points at. The test
+suites run in their own database, `floor_test`: they truncate their tables,
+which would delete a running floor's runs from under it.
+
 ## One command
+
+> **Not built yet.** `npm start`, and the watch pairs. Today the floor and
+> the cluster agent are built once and started by the walk scripts.
 
 `npm start` does, in order: start Postgres, run migrations, start minikube
 if it is not running, install the ai-agent-subsystem, build once, then start

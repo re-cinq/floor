@@ -28,11 +28,13 @@ configured to do it.
 | `settings.timeout_minutes` | the work budget of a visit |
 | `settings.image` | the execution image |
 | `settings.tags` | which cluster agents may run it; a claimer must offer all of them |
-| `settings.config` | open object passed through to the subsystem: `skills`, `pod_resources`, `disallowed_tools`, `env`, `command`, `workdir` |
+| `settings.config` | open object passed through to the subsystem. Read today: `skills`, `disallowed_tools`, `env`, `permission_mode` (`bypass` when absent), `max_turns`, `model_secret_key`. Not built yet: `pod_resources`, `command`, `workdir` |
 | `variants` | `host/owner/name` → partial settings merged over the defaults, per field, and per key inside `config` |
 
 The model's API key is not here. The floor names a model; the cluster agent
-owns the secret for that model family, in its own cluster.
+owns the secret for that model family, in its own cluster. A definition
+with no `model` gets no secret at all, since the family is read from the
+model's name.
 
 ## Example, from lore
 

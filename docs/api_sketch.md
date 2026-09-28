@@ -17,27 +17,35 @@ each entity has its own page under [entities/](entities/).
   deadline, good for reading its brief and its needs' blobs, writing its
   produces' blobs, its records and its report, and trading for a git
   credential when a need declares write access. A human session on the
-  visit's repo satisfies the same check for a human visit.
+  visit's repo satisfies the same check for a human visit. *Human sessions
+  are not built yet: a person acts through the service token.*
 - **Errors.** RFC 9457 problem details, `application/problem+json`. A refused
   write returns 409 and names the resource holding it in `detail`.
 - **Pagination.** Every list takes `limit` (default 50, max 200) and an
   opaque `cursor`. Lists are ordered newest first on `(created_at, id)`.
-  Lists marked *filter required* return 400 without one.
+  Lists marked *filter required* return 400 without one. *Built for runs
+  and records; the other lists return everything.*
 - **Creates are idempotent by their natural key**, not by a header. A run by
   its subject, a definition and a blob by their content hash, an event by
   its `dedupe_key`. Repeating a create returns what already exists.
 - **Type safety.** Definitions, run arguments and event payloads are typed
-  schemas. A failing POST returns 400 with every error, not the first.
+  schemas. A failing POST returns 400 with every error, not the first. *The
+  shape of a definition is checked. What it refers to is not yet: an edge to
+  a node that does not exist is found when a run reaches it.*
+- **Field names.** Request and response bodies are `camelCase`: `runId`,
+  `dedupeKey`, `availableAt`, `startItems`.
 - **Tenancy is the database.** One floor serves one tenant. Lore gives each
   team its own schema; standalone has one. No row carries a tenant column.
 - **Size bounds.** A `value` item is at most 4 KB, a brief at most 64 KB; a
-  blob at most 64 MB, a conversation archive at most 256 MB. Over the bound
-  is refused with a named error, never truncated.
+  blob at most 64 MB, a conversation archive at most 256 MB, a record at
+  most 64 KB. Over the bound is refused with a named error, never truncated.
+  *The bounds on a value item and on a brief are not enforced yet, except
+  for a value rendered from a template.*
 
 ## Health and version
 
 GET    /healthz                          // process up
-GET    /readyz                           // holds the single-instance lease and can reach its database
+GET    /readyz                           // holds the single-instance lease and can reach its database; 503 otherwise
 GET    /version                          // build sha, schema version
 
 ## Assembly lines - blueprints for assembly runs
@@ -50,16 +58,17 @@ POST   /assembly-lines                   // create a line (first version); 400 w
 PUT    /assembly-lines/:id               // does NOT mutate; creates a new version, returns its hash
 DELETE /assembly-lines/:id               // archives; 409 while runs are open on it
 
-POST   /assembly-lines/:id/start         // body: args (validated against the schema), optional version, optional entry.
-                                         // If an open run already holds the subject, returns that run (200, joined: true)
+POST   /assembly-lines/:id/start         // body: repo, startItems, optional entry. 201, or, if an open run already
+                                         // holds the subject, that run (200, joined: true)
+                                         // not built yet: checking startItems against the line's args, and naming a version
 
 A run is also started by an **event**, when the line declares `start.on`.
 That is how a PR opening starts a review and a schedule starts a sweep.
 
 ## Assembly runs - one execution of a line, walked on events
 
-GET    /assembly-runs                    // filter required: line, open, repo, subject, since
-GET    /assembly-runs/:id                // run + line (id, hash) + current node + bag + cost
+GET    /assembly-runs                    // filter required: line, open, repo, subject. Not built yet: since
+GET    /assembly-runs/:id                // run + bag. Not built yet: current node, cost
 POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops its queued events, aborts open visits
 
 // its visits:  GET /station-runs?run=:id        its events:  GET /events?run=:id
@@ -72,19 +81,30 @@ Read-only. A visit is open until its one report arrives, and the report
 arrives as an event: `station_run.reported`, posted to `/events` with the
 visit token.
 
-GET    /station-runs                     // filter required: run, node, open, station, since
-GET    /station-runs/:id                 // the visit + outcome + worker + deadline + cost
-GET    /station-runs/:id/brief           // the resolved needs, with URLs; visit token
+GET    /station-runs                     // run required; node and open narrow it. Not built yet: station, since
+GET    /station-runs/:id                 // the visit + outcome + worker + deadline. Not built yet: cost
+GET    /station-runs/:id/brief           // for the executor: each need with its kind, path and access, the resolved
+                                         // settings, and a freshly minted visit token. 409 once the visit is done
 POST   /station-runs/:id/git-credential  // visit token -> short-lived token for the one repo of a git need declaring
-                                         // `access: write`; 403 if no such need, 409 once the visit is done
+                                         // `access: write`. Not built yet: answers 501, no provider is configured
 
 The data plane, written with the visit token, never through the queue:
 
 POST   /station-runs/:id/records         // batch of records, each with a kind (log | turn | llm_call) and a body
 GET    /station-runs/:id/records         // filter required: kind; optional since (cursor), to follow a visit live
-POST   /station-runs/:id/sink            // the ai-agent-subsystem's output stream (NDJSON). Turns and cost become
-                                         // records; file events become produced items; the terminal event is
-                                         // enqueued as `station_run.reported`. Agent pods need nothing else.
+POST   /station-runs/:id/sink            // one event of the ai-agent-subsystem's supervisor per request, in its
+                                         // `{source, event}` envelope. Turns and cost become records; file events
+                                         // become produced items; the event ending the visit is enqueued as
+                                         // `station_run.reported`, once. 409 for a visit already done.
+
+What else an agent pod calls, because the subsystem requires it:
+
+GET    /skills/settings.json             // the agent's settings, fetched by the pod's init with no credential
+POST   /conversations/:visitId           // body: the archive (gzip); saved as a blob, noted on the visit. Visit token
+GET    /conversations/:visitId           // the archive that visit saved; for a service, or the visit continuing it
+
+> **Not built yet.** `/skills/:name.tar.gz`. A definition may name skills,
+> and the pod will ask for them here and find nothing.
 
 ## Stations - the registry a line node points at
 
@@ -109,33 +129,44 @@ GET    /agent-definitions/:id/versions
 GET    /agent-definitions/:id/versions/:hash
 POST   /agent-definitions
 PUT    /agent-definitions/:id            // new version
-DELETE /agent-definitions/:id            // archives; 409 while a station's latest version references it
+DELETE /agent-definitions/:id            // archives. Not built yet: 409 while a station's latest version references it
 
 ## Costs - collected by the floor for every visit
+
+> **Not built yet.** Each visit's cost is recorded as an `llm_call` record;
+> nothing sums them.
 
 GET    /costs                            // filter required: repo, line, station, since, until; group by day | line | station | model
                                          // returns cost, tokens in and out, visit count, and visits with missing cost
 
 ## Blobs - content-addressed bytes behind every `file` item
 
-GET    /blobs/:hash                      // 404 unless the caller's token or session covers this hash
+GET    /blobs/:hash                      // not built yet: 404 unless the caller's token covers this hash.
+                                         // Today any authenticated caller may read any blob
 POST   /blobs                            // body bytes; returns the sha256; 413 above the cap
 
 ## Events - the queue that drives everything
 
-GET    /events                           // filter required: since (cursor), name, run, station-run. The feed: poll it, no SSE
+GET    /events                           // run required. Not built yet: since (cursor), name, station-run, which
+                                         // make it the feed: poll it, no SSE
 GET    /events/:id
-POST   /events                           // body: name, payload, optional dedupe_key, not_before, run_id or subject_key.
-                                         // A visit token may post only `station_run.reported`, for its own visit
+POST   /events                           // body: name, payload, optional dedupeKey, availableAt, runId. A payload
+                                         // naming a run does so by `runId`, or by `subjectKey` and `repo`.
+                                         // A visit token may post only `station_run.reported`, for its own visit.
+                                         // A report is stamped with the run of the visit it names
 
 Workers pull. Opening a visit for an agent or service station enqueues
-`station_run.dispatch`; cancelling enqueues `station_run.abort`.
+`station_run.dispatch`; a visit ending, for any reason, enqueues
+`station_run.abort` for the worker that claimed it.
 
 POST   /events/claim                     // body: tags, limit; returns dispatch and abort events whose tags the caller offers
 POST   /events/:id/ack
 POST   /events/:id/fail                  // body: error, permanent; requeues with backoff, or dead-letters
 
 ## Schedules - predefined events on a cadence
+
+> **Not built yet.** None of it. The loop would carry a tick like any other
+> event; nothing posts one.
 
 A schedule is a name, a cron and an event payload, and holds exactly one
 pending event. Acking its tick enqueues the next occurrence. A line that
@@ -155,14 +186,17 @@ services without changing this API.
 
 | concern | contract kept | standalone | inside lore |
 |---|---|---|---|
-| transition replay | `getNextTransition` from `@re-cinq/lore-assembly-lines` | same lib | same lib |
+| transition replay | lore's `getNextTransition`, ported into `@floor/assembly-lines` | the port | the port |
 | line definitions | **converted**, see below | this floor's schema | converter output, checked in |
 | station contract | outcome vocabulary, `(run, node, iteration)`, `LORE_NODE_RESULT:` / `REVIEW_RESULT:` in agent output | same | same |
 | agent pods | the ai-agent-subsystem: an `Agent` resource per visit | one cluster agent on minikube | cluster agents per cluster, claiming by tag |
 | events queue | names, `dedupe_key`, `not_before`, claim/ack | own table | proxy to event-router |
-| git credentials | visit token → repo-scoped short-lived token | a GitHub App configured on a `git-credential` service station | lore's `POST /api/github-credentials` |
+| git credentials | visit token → repo-scoped short-lived token | not built yet; a GitHub App configured on a `git-credential` service station | lore's `POST /api/github-credentials` |
+| agent output | `LORE_NODE_RESULT:`, then `REVIEW_RESULT:`, then success | lore's parser, ported; outcomes are the station's own | same |
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled` |
 | agent context | none required | whatever the definition names | lore MCP gateway |
+
+> **Not built yet.** The converter.
 
 **The converter is a deliverable.** It reads each lore line and emits this
 floor's lines, stations and agent definitions:
