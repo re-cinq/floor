@@ -21,7 +21,7 @@ PORT="${PORT}" FLOOR_SERVICE_TOKEN="${TOKEN}" FLOOR_VISIT_TOKEN_SECRET="walk-sec
 SERVER=$!
 trap 'kill "${SERVER}" 2>/dev/null || true; wait "${SERVER}" 2>/dev/null || true' EXIT
 
-say "waiting for the floor to hold its lease"
+say "waiting for the floor"
 for _ in $(seq 1 50); do
   curl -sf "${BASE}/readyz" >/dev/null && break
   kill -0 "${SERVER}" 2>/dev/null || { cat "${LOG}"; exit 1; }

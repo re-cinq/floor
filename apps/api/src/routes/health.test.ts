@@ -12,15 +12,7 @@ describe("GET /healthz", () => {
 });
 
 describe("GET /readyz", () => {
-  it("is not ready while this instance does not hold the floor's lease", async () => {
-    const response = await injectJson(server(), { method: "GET", url: "/readyz" });
-
-    expect(response.statusCode).toBe(503);
-  });
-
-  it("reports ready once it holds the lease and can reach the database", async () => {
-    await loop().pass();
-
+  it("is ready without the floor's lease, since serving needs only the database", async () => {
     const response = await injectJson(server(), { method: "GET", url: "/readyz" });
 
     expect(response.result).toEqual({ status: "ready" });
@@ -28,6 +20,19 @@ describe("GET /readyz", () => {
 });
 
 describe("GET /version", () => {
+  it("says this instance does not run the loop, before it holds the lease", async () => {
+    const response = await injectJson<{ runsLoop: boolean }>(server(), { method: "GET", url: "/version" });
+
+    expect(response.result.runsLoop).toBe(false);
+  });
+
+  it("says this instance runs the loop, once it holds the lease", async () => {
+    await loop().pass();
+    const response = await injectJson<{ runsLoop: boolean }>(server(), { method: "GET", url: "/version" });
+
+    expect(response.result.runsLoop).toBe(true);
+  });
+
   it("returns a schema version", async () => {
     const response = await injectJson<{ schemaVersion: number }>(server(), { method: "GET", url: "/version" });
 

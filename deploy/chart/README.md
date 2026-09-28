@@ -106,6 +106,6 @@ Installed into a scratch namespace on minikube, from an image built from this re
 
 What that found, and what the chart does about it:
 
-- **One API replica, replaced, never rolled.** `/readyz` is the floor's lease, which one instance holds. A second replica is never ready, so `helm install --wait` waited on it until it timed out, and a rolling update would have waited for a new pod that cannot be ready while the old one lives. The chart refuses `api.replicas` above 1 and uses `strategy: Recreate`: an upgrade is a few seconds with no floor, during which workers find nothing to claim and try again.
+- **Ready means "can serve", not "runs the loop".** `/readyz` used to be the floor's lease, which one instance holds. A second replica was never ready, so `helm install --wait` waited on it until it timed out, and a rolling update would have waited for a new pod that cannot be ready while the old one lives. Now every replica that reaches Postgres is ready, the loop runs on whichever holds the lease, and `GET /version` on a replica says whether it is the one.
 - **CRDs are Helm's to create, never to change.** They are in `crds/`, so Helm installs them when the cluster has none, whatever `subsystem.enabled` says, and never upgrades or deletes them. `--skip-crds` leaves the cluster alone entirely.
 - **A password may hold any character.** The connection string is built with the user and password percent-encoded.

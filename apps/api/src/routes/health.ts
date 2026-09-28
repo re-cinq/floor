@@ -1,4 +1,4 @@
-// Health and version (docs/api_sketch.md, "Health and version"): unauthenticated, for a load balancer or a human.
+// Health and version (docs/api_sketch.md, "Health and version"): unauthenticated, for a load balancer or a human. Every instance that can reach its database serves; which one runs the loop is a fact about it, not a condition of serving.
 import type { Server } from "@hapi/hapi";
 import Boom from "@hapi/boom";
 import type { PgPool } from "@floor/store";
@@ -23,7 +23,6 @@ export function registerHealthRoutes(server: Server, readiness: Readiness): void
     path: "/readyz",
     options: { auth: false },
     handler: async () => {
-      if (!readiness.holdsLease()) throw Boom.serverUnavailable("another instance holds the floor's lease");
       if (!(await canReachDatabase(readiness.pool))) throw Boom.serverUnavailable("database unreachable");
 
       return { status: "ready" };
@@ -34,7 +33,7 @@ export function registerHealthRoutes(server: Server, readiness: Readiness): void
     method: "GET",
     path: "/version",
     options: { auth: false },
-    handler: () => ({ sha: process.env.FLOOR_BUILD_SHA ?? "dev", schemaVersion: SCHEMA_VERSION }),
+    handler: () => ({ sha: process.env.FLOOR_BUILD_SHA ?? "dev", schemaVersion: SCHEMA_VERSION, runsLoop: readiness.holdsLease() }),
   });
 }
 

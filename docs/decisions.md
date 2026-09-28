@@ -150,10 +150,12 @@ and the chart picks which to run. `version` is the tag of that image, so
 the API and the cluster agent cannot be deployed at different versions of
 the brief they exchange.
 
-**One API replica, replaced and not rolled.** `/readyz` is the lease, so a
-second replica is never ready and a rolling update never finishes. The
-chart refuses more than one. The other way out, every replica serving and
-one running the loop, changes what `/readyz` means and is not decided.
+**Every replica serves; one runs the loop.** The plan made `/readyz` the
+lease. Then a second replica is never ready, `helm install --wait` never
+returns, and a rolling update waits for a pod that cannot be ready while
+the old one lives. The API keeps nothing between requests, so nothing is
+lost by letting every replica answer. `/readyz` is now "can reach the
+database", and `/version` says whether this instance runs the loop.
 
 **The cluster agent outlives the floor.** A claim that cannot reach the
 floor is a tick that found nothing. It used to end the process, which on a

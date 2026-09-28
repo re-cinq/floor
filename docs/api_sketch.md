@@ -46,9 +46,8 @@ each entity has its own page under [entities/](entities/).
 ## Health and version
 
 GET    /healthz                          // process up
-GET    /readyz                           // holds the single-instance lease and can reach its database; 503 otherwise.
-                                         // So one instance serves, and a deployment has one replica
-GET    /version                          // build sha, schema version
+GET    /readyz                           // can reach its database; 503 otherwise. Every such instance serves
+GET    /version                          // build sha, schema version, and whether this instance runs the loop
 
 ## Assembly lines - blueprints for assembly runs
 

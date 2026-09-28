@@ -11,9 +11,9 @@ imagePullSecrets: []
 
 api:
   enabled: true
-  # One, and the chart refuses more. The floor's loop runs on the one instance holding its lease,
-  # and /readyz is that lease: a second replica would never be ready.
-  replicas: 1
+  # Every replica serves. The loop runs on the one holding the floor's lease, and another takes
+  # it over when that one goes; GET /version on a replica says whether it is the one.
+  replicas: 2
   # The address pods reach floor at (FLOOR_BASE_URL) — required when api.enabled.
   baseUrl: ""
   # A Secret holding keys "serviceToken" and "visitTokenSecret". Read by the api Deployment
