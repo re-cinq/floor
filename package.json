@@ -15,6 +15,8 @@
     "db:up": "docker start floor-postgres 2>/dev/null || docker run --name floor-postgres -e POSTGRES_PASSWORD=floor -e POSTGRES_DB=floor -p 5433:5432 -d pgvector/pgvector:pg16",
     "db:down": "docker rm -f floor-postgres",
     "db:migrate": "npm run build -w @floor/store && FLOOR_DATABASE_URL=${FLOOR_DATABASE_URL:-postgres://postgres:floor@localhost:5433/floor} npm run migrate -w @floor/store",
+    "minikube-setup": "bash scripts/setup-minikube-agents.sh",
+    "minikube-claude-auth": "bash scripts/minikube-claude-auth.sh",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

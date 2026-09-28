@@ -9,4 +9,4 @@ What runs an agent station's visit: the controller that turns an `Agent` resourc
 
 Left out on purpose: upstream's `NetworkPolicy` (on minikube the floor is a host process, which is exactly the traffic it would drop) and its `agent-launcher` service account (the cluster agent runs on the host, under your own kubeconfig).
 
-`scripts/setup-minikube-agents.sh` installs this. To move to a newer release, copy the new `deploy/crds/`, update the two image digests in the script, and bump `@re-cinq/agent-contracts`.
+`npm run minikube-setup` installs this, and `npm run minikube-claude-auth` gives its agents a Claude credential. To move to a newer release, copy the new `deploy/crds/`, update the two image digests in the script, and bump `@re-cinq/agent-contracts`.
