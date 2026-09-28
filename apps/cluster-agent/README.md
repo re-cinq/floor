@@ -61,7 +61,11 @@ exceptions called out in its file header:
    conversation archive.
 4. **The model's secret is this agent's to name** when the brief names none:
    `ANTHROPIC_API_KEY` for a `claude` model, and so on
-   (`domain/model-secret.ts`).
+   (`domain/model-secret.ts`). `FLOOR_MODEL_SECRET_KEYS` says what this
+   cluster holds where that differs: `claude=CLAUDE_CODE_OAUTH_TOKEN` for a
+   laptop running on a Claude subscription. The name must be a key that
+   exists in `agent-secrets`: the pod's reference to it is not optional, so
+   a wrong name is a pod that never starts.
 
 `claim-loop.ts` also widens `station_run.abort` beyond what
 `docs/assembly_run_storage.md` states (there, only `cancel` triggers it): it

@@ -5,6 +5,7 @@ import { FloorClient } from "./floor-client.js";
 import { KubeAgentResourcesApi } from "./kube/agent-resources.js";
 import { KubeSecretKeyWriter } from "./kube/secret-writer.js";
 import { runClaimLoop } from "./claim-loop.js";
+import { parseKeyByFamily } from "./domain/model-secret.js";
 
 const HTTP_OK = 200;
 const MS_PER_SECOND = 1000;
@@ -27,6 +28,7 @@ async function main(): Promise<void> {
     secrets: new KubeSecretKeyWriter(),
     tags,
     secretName: process.env.FLOOR_AGENT_SECRETS_NAME,
+    modelSecretKeys: parseKeyByFamily(process.env.FLOOR_MODEL_SECRET_KEYS),
     sleep,
   });
 }

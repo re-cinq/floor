@@ -6,7 +6,7 @@ import { buildAgentTriple, type DispatchNeed } from "./domain/agent-triple.js";
 import type { GitNeedResolved } from "./domain/need.js";
 import type { ClaimedEvent, DispatchBriefResponse, FloorClient } from "./floor-client.js";
 import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js";
-import { modelSecretKeyFor } from "./domain/model-secret.js";
+import { modelSecretKeyFor, type KeyByFamily } from "./domain/model-secret.js";
 
 export interface ClaimLoopDeps {
   floor: FloorClient;
@@ -14,6 +14,8 @@ export interface ClaimLoopDeps {
   secrets: SecretKeyWriter;
   tags: string[];
   secretName?: string;
+  /** The model secrets this cluster holds, by model family, where they differ from the usual API keys. */
+  modelSecretKeys?: KeyByFamily;
   claimLimit?: number;
   sleep: (delayMs: number) => Promise<void>;
   running?: () => boolean;
@@ -107,7 +109,7 @@ async function dispatch(
     visitId,
     floorBaseUrl: brief.floorBaseUrl,
     tokenSecretKey: tokenSecretKey(visitId),
-    modelSecretKey: brief.modelSecretKey ?? modelSecretKeyFor(brief.settings.model),
+    modelSecretKey: brief.modelSecretKey ?? modelSecretKeyFor(brief.settings.model, deps.modelSecretKeys),
     secretName,
     deadlineMinutes: brief.deadlineMinutes,
     settings: brief.settings,

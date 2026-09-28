@@ -1,3 +1,6 @@
 node_modules/
 dist/
 *.tsbuildinfo
+.env.local
+.floor-kubeconfig-minikube
+.floor-agents.env

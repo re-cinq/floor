@@ -1,0 +1,126 @@
+# The ai-agent-subsystem's controller, vendored from its deploy/ at v0.11.6 (see README.md).
+# __NAMESPACE__, __CONTROLLER_IMAGE__ and __AGENT_IMAGE__ are filled by scripts/setup-minikube-agents.sh.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-controller
+  namespace: __NAMESPACE__
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-controller
+  namespace: __NAMESPACE__
+rules:
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["agents"]
+    verbs: ["get", "list", "watch", "patch", "update", "delete"]
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["agents/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["stations", "agentdefinitions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-controller
+  namespace: __NAMESPACE__
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: agent-controller
+subjects:
+  - kind: ServiceAccount
+    name: agent-controller
+    namespace: __NAMESPACE__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-controller
+  namespace: __NAMESPACE__
+  labels:
+    agents.re-cinq.com/component: controller
+spec:
+  # One replica: a laptop has nothing to fail over to.
+  replicas: 1
+  selector:
+    matchLabels:
+      agents.re-cinq.com/component: controller
+  template:
+    metadata:
+      labels:
+        agents.re-cinq.com/component: controller
+    spec:
+      serviceAccountName: agent-controller
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: controller
+          image: __CONTROLLER_IMAGE__
+          imagePullPolicy: IfNotPresent
+          env:
+            # The controller reconciles this namespace only, which is what lets it
+            # sit beside another install of the subsystem on the same cluster.
+            - name: NAMESPACE
+              value: __NAMESPACE__
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HEALTH_PORT
+              value: "8081"
+            - name: AGENT_IMAGE
+              value: __AGENT_IMAGE__
+            - name: MAX_OUTPUT_BYTES
+              value: "262144"
+          ports:
+            - name: health
+              containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              # The upstream 128Mi OOM-killed lore's controller once Agent resources piled up; see lore's chart.
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
