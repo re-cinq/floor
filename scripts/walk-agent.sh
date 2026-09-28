@@ -58,7 +58,7 @@ done
 curl -sf "${BASE}/readyz" || { what_went_wrong; fail "the floor did not become ready"; }
 
 say "starting the cluster agent"
-FLOOR_API_URL="${BASE}" FLOOR_CLUSTER_AGENT_TOKEN="${TOKEN}" FLOOR_HEALTH_PORT="$((PORT - 1))" \
+FLOOR_API_URL="${BASE}" FLOOR_CLUSTER_AGENT_TOKEN="${TOKEN}" FLOOR_HEALTH_PORT="$((PORT - 1))" FLOOR_CLAIM_MAX_IDLE_MS=5000 \
   node apps/cluster-agent/dist/index.js >"${LOGS}/cluster-agent.log" 2>&1 &
 PIDS+=($!)
 
@@ -66,7 +66,7 @@ say "putting an agent definition, a station and a line: write -> done"
 api -X POST "${BASE}/agent-definitions" -d @- >/dev/null <<JSON
 {"id": "${NAME}", "settings": {
   "model": "${MODEL}", "image": "node:22-bookworm", "timeoutMinutes": 8, "config": {"maxTurns": 10},
-  "prompt": "Write exactly one short sentence about {topic} into the file /workspace/note.md. Do nothing else. When the file is written, end your reply with this line on its own: LORE_NODE_RESULT: success"
+  "prompt": "Write exactly one short sentence about {topic} into the file {note_path}. Do nothing else. When the file is written, end your reply with this line on its own: LORE_NODE_RESULT: success"
 }}
 JSON
 api -X POST "${BASE}/stations" -d @- >/dev/null <<JSON

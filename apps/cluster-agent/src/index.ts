@@ -29,6 +29,8 @@ async function main(): Promise<void> {
     tags,
     secretName: process.env.FLOOR_AGENT_SECRETS_NAME,
     modelSecretKeys: parseKeyByFamily(process.env.FLOOR_MODEL_SECRET_KEYS),
+    idleMs: millisecondsOf(process.env.FLOOR_CLAIM_IDLE_MS),
+    maxIdleMs: millisecondsOf(process.env.FLOOR_CLAIM_MAX_IDLE_MS),
     sleep,
   });
 }
@@ -41,6 +43,12 @@ function env(name: string, fallback?: string): string {
   }
 
   return value;
+}
+
+function millisecondsOf(given: string | undefined): number | undefined {
+  const parsed = Number(given);
+
+  return given && Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function startHealthServer(port: number): void {

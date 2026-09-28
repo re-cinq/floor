@@ -17,6 +17,9 @@ export interface ClaimLoopDeps {
   /** The model secrets this cluster holds, by model family, where they differ from the usual API keys. */
   modelSecretKeys?: KeyByFamily;
   claimLimit?: number;
+  /** How long to rest after finding nothing, and the most that rest may grow to while nothing keeps coming. */
+  idleMs?: number;
+  maxIdleMs?: number;
   sleep: (delayMs: number) => Promise<void>;
   running?: () => boolean;
 }
@@ -27,8 +30,8 @@ export type ClaimTickOutcome =
   | { kind: "aborted"; visitId: string }
   | { kind: "error"; message: string };
 
-const BASE_INTERVAL_MS = 5_000;
-const MAX_IDLE_DELAY_MS = 60_000;
+const DEFAULT_IDLE_MS = 5_000;
+const DEFAULT_MAX_IDLE_MS = 60_000;
 const DEFAULT_CLAIM_LIMIT = 10;
 const DEFAULT_SECRET_NAME = "agent-secrets";
 
@@ -52,7 +55,7 @@ export async function runClaimLoop(deps: ClaimLoopDeps): Promise<void> {
   await runPollLoop<ClaimTickOutcome[]>({
     tick: () => claimTick(deps, secretName, claimLimit),
     delayFor: (outcomes, idleTicks) =>
-      outcomes.length === 0 ? backoffDelay(BASE_INTERVAL_MS, idleTicks, MAX_IDLE_DELAY_MS) : 0,
+      outcomes.length === 0 ? backoffDelay(deps.idleMs ?? DEFAULT_IDLE_MS, idleTicks, deps.maxIdleMs ?? DEFAULT_MAX_IDLE_MS) : 0,
     isIdle: (outcomes) => outcomes.length === 0,
     sleep: deps.sleep,
     running: deps.running,

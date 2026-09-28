@@ -67,6 +67,17 @@ exceptions called out in its file header:
    exists in `agent-secrets`: the pod's reference to it is not optional, so
    a wrong name is a pod that never starts.
 
+5. **A prompt is told where things are.** Besides each value need under its
+   own name, a prompt gets `{<name>_path}` for every file need, git need and
+   file the station produces: its full path under `/workspace`
+   (`domain/prompt-parameters.ts`). With no repo cloned the agent's working
+   directory is `/`, so a prompt that says `note.md` has the agent write
+   somewhere the subsystem never looks.
+
+The loop rests 5 seconds after finding nothing, growing to a minute while
+nothing keeps coming; `FLOOR_CLAIM_IDLE_MS` and `FLOOR_CLAIM_MAX_IDLE_MS`
+change both. On a laptop a lower ceiling makes clean-up after a visit prompt.
+
 `claim-loop.ts` also widens `station_run.abort` beyond what
 `docs/assembly_run_storage.md` states (there, only `cancel` triggers it): it
 treats abort as "release this visit's cluster resources," fired on every

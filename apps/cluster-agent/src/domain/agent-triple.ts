@@ -9,6 +9,7 @@ import type {
   Station,
 } from "@re-cinq/agent-contracts";
 import type { ValueNeed, FileNeed, GitNeedResolved, Produce } from "./need.js";
+import { promptParameters } from "./prompt-parameters.js";
 
 export type DispatchNeed = ValueNeed | FileNeed | GitNeedResolved;
 export type DispatchProduce = Produce;
@@ -171,7 +172,6 @@ function buildStation(name: string, input: DispatchBrief): Station {
 function buildAgent(name: string, input: DispatchBrief): Agent {
   const gitNeed = gitNeedsOf(input).at(0);
   const fileNeeds = input.needs.filter((need): need is FileNeed => need.kind === "file");
-  const valueNeeds = input.needs.filter((need): need is ValueNeed => need.kind === "value");
 
   return {
     apiVersion: API_VERSION,
@@ -182,7 +182,7 @@ function buildAgent(name: string, input: DispatchBrief): Agent {
       taskId: input.visitId,
       targetRepo: gitNeed ? repoOwnerName(gitNeed.repoUrl) : undefined,
       branch: gitNeed?.ref,
-      parameters: Object.fromEntries(valueNeeds.map((need) => [need.name, need.value])),
+      parameters: promptParameters(input.needs, input.produces),
       files: fileNeeds.map((need) => ({ path: need.path, url: need.url, headers_secret: input.tokenSecretKey })),
     },
   };
