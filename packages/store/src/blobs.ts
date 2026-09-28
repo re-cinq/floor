@@ -2,11 +2,15 @@
 
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { enforce } from "./refusal.js";
 
 const BYTES_PER_KIB = 1024;
 const KIB_PER_MIB = 1024;
+const BYTES_PER_MIB = KIB_PER_MIB * BYTES_PER_KIB;
 const MAX_BLOB_MIB = 64;
-export const MAX_BLOB_BYTES = MAX_BLOB_MIB * KIB_PER_MIB * BYTES_PER_KIB;
+const MAX_ARCHIVE_MIB = 256;
+export const MAX_BLOB_BYTES = MAX_BLOB_MIB * BYTES_PER_MIB;
+export const MAX_ARCHIVE_BYTES = MAX_ARCHIVE_MIB * BYTES_PER_MIB;
 
 export interface Blob {
   hash: string;
@@ -25,7 +29,19 @@ export class BlobsStore {
 
   /** Idempotent on content: the same bytes always hash the same, so a repeated write is a no-op. Rejects over the size cap rather than truncating. */
   async put(bytes: Buffer, contentType?: string): Promise<{ hash: string; size: number }> {
-    if (bytes.length > MAX_BLOB_BYTES) throw new Error(`blob of ${bytes.length} bytes exceeds the ${MAX_BLOB_BYTES}-byte cap`);
+    enforce(bytes.length <= MAX_BLOB_BYTES, `blob of ${bytes.length} bytes exceeds the ${MAX_BLOB_BYTES}-byte cap`);
+
+    return this.store(bytes, contentType);
+  }
+
+  /** A conversation archive: a blob like any other, under its own, larger cap. */
+  async putArchive(bytes: Buffer): Promise<{ hash: string; size: number }> {
+    enforce(bytes.length <= MAX_ARCHIVE_BYTES, `archive of ${bytes.length} bytes exceeds the ${MAX_ARCHIVE_BYTES}-byte cap`);
+
+    return this.store(bytes, "application/gzip");
+  }
+
+  private async store(bytes: Buffer, contentType?: string): Promise<{ hash: string; size: number }> {
     const hash = `sha256-${createHash("sha256").update(bytes).digest("hex")}`;
 
     await this.deps.connection.query(

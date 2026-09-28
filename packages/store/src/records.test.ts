@@ -135,3 +135,21 @@ describe("RecordsStore.list", () => {
     expect(page.items).toHaveLength(0);
   });
 });
+
+describe("RecordsStore.latest", () => {
+  it("returns the newest record of the kind", async () => {
+    await store().append(VISIT_A, [
+      { kind: "log", body: { line: "one" }, occurredAt: FIXED_AT },
+      { kind: "log", body: { line: "two" }, occurredAt: FIXED_AT },
+    ]);
+
+    const latest = await store().latest(VISIT_A, "log");
+
+    expect(latest).toMatchObject({ seq: 2, body: { line: "two" } });
+  });
+
+  it("returns null for a kind the visit has none of", async () => {
+    expect(await store().latest(VISIT_A, "session")).toBeNull();
+  });
+});
+

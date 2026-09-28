@@ -1,7 +1,7 @@
 // Station runs (docs/api_sketch.md, "Station runs"): read-only except for a visit's own records; a report itself still arrives as an event.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import type { Deps } from "../deps.js";
-import type { Credentials } from "../auth.js";
+import { refusalForVisit, type Credentials } from "../auth.js";
 import { HTTP_CREATED } from "../http-status.js";
 import { parseBody } from "../parse.js";
 import { badRequest, forbidden, notFound } from "../problem.js";
@@ -37,7 +37,7 @@ async function createRecords(deps: Deps, request: Request, toolkit: ResponseTool
 
   if (!parsed.success) return badRequest(toolkit, "invalid records", parsed.errors);
   const visitId = request.params.id as string;
-  const guarded = guardVisitRecords(request.auth.credentials as Credentials, visitId);
+  const guarded = refusalForVisit(request.auth.credentials as Credentials, visitId);
 
   if (guarded) return forbidden(toolkit, guarded);
 
@@ -58,18 +58,11 @@ async function listRecords(deps: Deps, request: Request, toolkit: ResponseToolki
 
   if (!kind.success) return badRequest(toolkit, `invalid kind "${query.kind}"`);
   const visitId = request.params.id as string;
-  const guarded = guardVisitRecords(request.auth.credentials as Credentials, visitId);
+  const guarded = refusalForVisit(request.auth.credentials as Credentials, visitId);
 
   if (guarded) return forbidden(toolkit, guarded);
 
   return deps.records.list(visitId, kind.data, { after: sinceOf(query.since), limit: limitOf(query.limit) });
-}
-
-function guardVisitRecords(credentials: Credentials, visitId: string): string | null {
-  if (credentials.kind !== "visit") return null;
-  if (credentials.visitId !== visitId) return "a visit token may only touch its own visit";
-
-  return null;
 }
 
 function sinceOf(value: string | undefined): number | undefined {

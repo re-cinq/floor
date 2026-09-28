@@ -1,0 +1,123 @@
+// The sink (docs/assembly_run_storage.md, "The agent kind runs on the ai-agent-subsystem"): each event the pod's supervisor posts becomes a record, and the one that ends the visit becomes its report.
+import { readAgentVerdict } from "@floor/assembly-lines";
+import { enforce, type RecordKind, type Report, type StationBody, type Visit } from "@floor/store";
+import type { Deps } from "../deps.js";
+import { peel, readSinkEvent, type SinkEvent } from "./sink-event.js";
+
+const MAX_ERROR_CHARS = 300;
+const MAX_NOTES = 200;
+
+type SinkDeps = Pick<Deps, "runs" | "records" | "blobs" | "events" | "definitions" | "now">;
+type Ended = Extract<SinkEvent, { kind: "ended" }>;
+
+interface ResultNote {
+  text: string;
+  failed: boolean;
+}
+
+export class Sink {
+  constructor(private readonly deps: SinkDeps) {}
+
+  async take(visitId: string, body: unknown): Promise<SinkEvent> {
+    const visit = await this.deps.runs.visit(visitId);
+
+    enforce(visit, `no visit "${visitId}"`);
+    enforce(!visit.report, `visit "${visitId}" is already done`);
+    const event = readSinkEvent(body);
+
+    await this.note(visit, event, peel(body));
+    if (event.kind === "ended") await this.postReport(visit, event);
+
+    return event;
+  }
+
+  private async note(visit: Visit, event: SinkEvent, payload: unknown): Promise<void> {
+    await this.append(visit.id, recordKindOf(event), noteOf(event, payload));
+    if (event.kind !== "file" || !event.ref) return;
+
+    if (await this.deps.blobs.get(event.ref)) await this.append(visit.id, "produced", { name: event.name, ref: event.ref });
+  }
+
+  private async append(visitId: string, kind: RecordKind, body: unknown): Promise<void> {
+    await this.deps.records.append(visitId, [{ kind, body, occurredAt: this.deps.now() }]);
+  }
+
+  // Deduplicated on the visit: the supervisor retries a post it thinks was lost, and a visit reports once.
+  private async postReport(visit: Visit, ended: Ended): Promise<void> {
+    const report = await this.reportOf(visit, ended);
+
+    await this.deps.events.enqueue({
+      name: "station_run.reported",
+      payload: { visitId: visit.id, report },
+      dedupeKey: `station_run.reported:${visit.id}`,
+      runId: visit.runId,
+    });
+  }
+
+  private async reportOf(visit: Visit, ended: Ended): Promise<Report> {
+    const result = await this.resultOf(visit.id);
+    const sessionRef = await this.sessionOf(visit.id);
+
+    if (ended.failed || result?.failed) return withSession({ outcome: "failed", error: failureOf(ended, result) }, sessionRef);
+    const station = await this.deps.definitions.byHashOnly<StationBody>("station", visit.stationHash ?? "");
+
+    enforce(station, `visit "${visit.id}" has no station to read outcomes from`);
+    const verdict = readAgentVerdict(result?.text, station.body.outcomes);
+    const produced = { ...declaredValues(station.body, verdict.produced), ...(await this.filesOf(visit.id, station.body)) };
+
+    return withSession({ outcome: verdict.outcome, produced, error: verdict.error }, sessionRef);
+  }
+
+  private async resultOf(visitId: string): Promise<ResultNote | null> {
+    const latest = await this.deps.records.latest(visitId, "llm_call");
+
+    return latest ? (latest.body as ResultNote) : null;
+  }
+
+  private async sessionOf(visitId: string): Promise<string | undefined> {
+    const latest = await this.deps.records.latest(visitId, "session");
+
+    return latest ? (latest.body as { ref: string }).ref : undefined;
+  }
+
+  // Only what the station declares as a file it produces; a later upload under the same name wins.
+  private async filesOf(visitId: string, station: StationBody): Promise<Record<string, string>> {
+    const page = await this.deps.records.list(visitId, "produced", { limit: MAX_NOTES });
+    const notes = page.items.map((record) => record.body as { name: string; ref: string });
+    const declared = notes.filter((note) => declares(station, note.name, "file"));
+
+    return Object.fromEntries(declared.map((note) => [note.name, note.ref]));
+  }
+}
+
+function recordKindOf(event: SinkEvent): RecordKind {
+  if (event.kind === "turn") return "turn";
+
+  return event.kind === "result" ? "llm_call" : "log";
+}
+
+// The result line is kept whole for the record and summarised for the report that will be read from it.
+function noteOf(event: SinkEvent, payload: unknown): unknown {
+  return event.kind === "result" ? { text: event.text, failed: event.failed, ...event.cost } : payload;
+}
+
+function declaredValues(station: StationBody, said: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(said).filter(([name]) => declares(station, name, "value")));
+}
+
+function declares(station: StationBody, name: string, kind: "value" | "file"): boolean {
+  return station.produces.some((produce) => produce.name === name && produce.kind === kind);
+}
+
+// The agent's own last words first; the supervisor's reason only when it never spoke.
+function failureOf(ended: Ended, result: ResultNote | null): string {
+  const spoken = result?.failed ? result.text : "";
+
+  return (spoken || ended.error || "the agent failed").slice(0, MAX_ERROR_CHARS);
+}
+
+function withSession(report: Report, sessionRef: string | undefined): Report {
+  const defined = Object.entries({ ...report, sessionRef }).filter(([, value]) => value !== undefined);
+
+  return Object.fromEntries(defined) as unknown as Report;
+}

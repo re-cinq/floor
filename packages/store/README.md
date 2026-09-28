@@ -61,6 +61,10 @@ replaces with one table and a tag filter.
   the payload); `answer` writes the outcome a waiting node's `reports`
   declares for it; `runFor` finds the run by id, or by subject and repo. A
   line never starts on an internal event of its own runs.
+- `dispatch-brief.ts` — `DispatchBriefs.briefFor`: a visit's needs for a
+  machine. Values come from the brief the visit froze; files and git repos
+  are placed from the bag through the node's `bind`, a git need at the sha
+  the visit was promised.
 - `blobs.ts` — `BlobsStore`: `put` (content-addressed by sha256, idempotent,
   refuses over the 64 MB cap rather than truncating), `get`,
   `reapUnreferenced` (deletes and returns every hash no start item, produced

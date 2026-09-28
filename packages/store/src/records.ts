@@ -4,7 +4,8 @@ import type { Pool, PoolClient } from "pg";
 import { enforce } from "./refusal.js";
 import { withTransaction } from "./rows.js";
 
-export type RecordKind = "log" | "turn" | "llm_call";
+/** `produced` and `session` are the sink's own notes on a visit still running: what it has uploaded so far, and where its conversation was saved. */
+export type RecordKind = "log" | "turn" | "llm_call" | "produced" | "session";
 
 export interface RecordInput {
   kind: RecordKind;
@@ -57,6 +58,16 @@ export class RecordsStore {
     });
   }
 
+  /** The newest record of a kind, or null: what the sink last noted. */
+  async latest(visitId: string, kind: RecordKind): Promise<StationRunRecord | null> {
+    const { rows } = await this.deps.pool.query(
+      `select * from station_run_records where station_run_id = $1 and kind = $2 order by seq desc limit 1`,
+      [visitId, kind],
+    );
+
+    return rows[0] ? toRecord(rows[0]) : null;
+  }
+
   async list(visitId: string, kind: RecordKind, options: ListRecordsOptions): Promise<RecordsPage> {
     const { rows } = await this.deps.pool.query(
       `select * from station_run_records where station_run_id = $1 and kind = $2 and seq > $3 order by seq limit $4`,
@@ -94,8 +105,8 @@ async function appendKind(client: PoolClient, visitId: string, kind: RecordKind,
     `with next as (
        select coalesce(max(seq), 0) as base from station_run_records where station_run_id = $1 and kind = $2
      ), input as (
-       select (elem ->> 'occurredAt')::timestamptz as at, elem -> 'body' as body, row_number() over () as rn
-       from jsonb_array_elements($3::jsonb) as elem
+       select (elem ->> 'occurredAt')::timestamptz as at, elem -> 'body' as body, rn
+       from jsonb_array_elements($3::jsonb) with ordinality as listed(elem, rn)
      )
      insert into station_run_records (station_run_id, kind, seq, body, at)
      select $1, $2, next.base + input.rn, input.body, input.at

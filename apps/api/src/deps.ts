@@ -3,6 +3,7 @@ import {
   AssemblyRunStore,
   BlobsStore,
   DefinitionsStore,
+  DispatchBriefs,
   EventStore,
   OutsideEvents,
   RecordsStore,
@@ -19,6 +20,7 @@ export interface Deps {
   events: EventStore;
   blobs: BlobsStore;
   records: RecordsStore;
+  briefs: DispatchBriefs;
   outside: OutsideEvents;
 }
 
@@ -36,5 +38,6 @@ export function buildDeps(pool: PgPool, config: Config, now: () => Date = () => 
     events: new EventStore({ connection: pool, now }),
     blobs: new BlobsStore({ connection: pool }),
     records: new RecordsStore({ pool }),
+    briefs: new DispatchBriefs({ pool, runs, definitions }),
   };
 }

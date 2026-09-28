@@ -9,6 +9,14 @@ export {
 export { acquireLease, type Lease } from "./lease.js";
 export { Refusal, enforce } from "./refusal.js";
 export { renderTemplate } from "./template.js";
+export {
+  DispatchBriefs,
+  dispatchNeeds,
+  type DispatchBrief,
+  type DispatchBriefsDeps,
+  type DispatchConversation,
+  type DispatchNeed,
+} from "./dispatch-brief.js";
 export { OutsideEvents, type OutsideEvent, type OutsideEventsDeps, type RunRef } from "./outside-events.js";
 export {
   DefinitionsStore,
@@ -19,6 +27,7 @@ export {
 } from "./definitions.js";
 export {
   BlobsStore,
+  MAX_ARCHIVE_BYTES,
   MAX_BLOB_BYTES,
   type Blob,
   type BlobsStoreDeps,

@@ -1,5 +1,6 @@
 // RFC 9457 problem details (docs/api_sketch.md, "Errors"): every error response is application/problem+json.
 import type { ResponseToolkit } from "@hapi/hapi";
+import { HTTP_NOT_IMPLEMENTED } from "./http-status.js";
 
 export interface Problem {
   status: number;
@@ -29,4 +30,8 @@ export function conflict(toolkit: ResponseToolkit, detail: string): ReturnType<R
 
 export function forbidden(toolkit: ResponseToolkit, detail: string): ReturnType<ResponseToolkit["response"]> {
   return problemResponse(toolkit, { status: 403, title: "Forbidden", detail });
+}
+
+export function unconfigured(toolkit: ResponseToolkit, detail: string): ReturnType<ResponseToolkit["response"]> {
+  return problemResponse(toolkit, { status: HTTP_NOT_IMPLEMENTED, title: "Not Implemented", detail });
 }

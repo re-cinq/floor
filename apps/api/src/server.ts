@@ -7,6 +7,8 @@ import { registerRunRoutes } from "./routes/runs.js";
 import { registerStationRunRoutes } from "./routes/station-runs.js";
 import { registerBlobRoutes } from "./routes/blobs.js";
 import { registerEventRoutes } from "./routes/events.js";
+import { registerSinkRoutes } from "./routes/sink.js";
+import { registerConversationRoutes } from "./routes/conversations.js";
 
 export async function buildServer(deps: Deps, holdsLease: () => boolean): Promise<Hapi.Server> {
   const server = Hapi.server({ port: deps.config.port, host: "0.0.0.0" });
@@ -18,6 +20,8 @@ export async function buildServer(deps: Deps, holdsLease: () => boolean): Promis
   registerStationRunRoutes(server, deps);
   registerBlobRoutes(server, deps);
   registerEventRoutes(server, deps);
+  registerSinkRoutes(server, deps);
+  registerConversationRoutes(server, deps);
 
   await server.initialize();
 

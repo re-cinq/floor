@@ -39,3 +39,10 @@ function bearerToken(header: string | undefined): string | null {
 function unauthorized(): Error {
   return Boom.unauthorized("missing or invalid bearer token");
 }
+
+/** Why this caller may not touch this visit, or null when it may: a service may touch any, a visit token only its own. */
+export function refusalForVisit(credentials: Credentials, visitId: string): string | null {
+  if (credentials.kind !== "visit") return null;
+
+  return credentials.visitId === visitId ? null : "a visit token may only touch its own visit";
+}
