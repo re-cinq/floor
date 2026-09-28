@@ -130,6 +130,13 @@ receiver lifts what a line may want out of GitHub's nesting and names it
 plainly. The alternative, templates that reach into nested payloads, puts a
 path language into every line.
 
+**A choice about the past is a station, not a condition.** A push is
+reviewed in full or rechecked depending on whether a review already ran.
+`when` compares fields of one event and was left that way: a router line
+makes the choice and asks for a line by name. The other ways were a
+receiver that looks things up, or a `when` that can ask about past runs,
+which is the first step to a query language in every line.
+
 **A review is always a comment.** Never an approval or a request for
 changes, whatever the agent's verdict, as in lore. A person decides.
 

@@ -30,7 +30,7 @@ node packages/lore-converter/dist/cli.js --lore ~/workspace/lore --line code-rev
 
 A line's file does not say what starts it, what it is given, or what lore's floor did in code around it. `known-lines.ts` holds that, one line at a time, each read by hand from lore's code. A line with no entry there still converts, with the default arguments and no start event, and says so in its notes.
 
-Today it holds `code-review`: started by a pull request opening, and with a `post-review` station where lore's floor posted the review from a hook.
+Today it holds `code-review` and `code-review-recheck`. The first starts when a pull request opens, the second never by itself: a push goes to the review router in `@floor/github`, which asks for one or the other. Both have a `post-review` station where lore's floor posted the review from a hook.
 
 A service station converts with no needs and no produces. What a lore job read and wrote is in its code. Each is noted.
 

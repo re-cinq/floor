@@ -2,12 +2,13 @@
 
 The floor's GitHub side. Optional: a floor with no GitHub in its lines does not run it. The floor itself holds no provider client; this is where GitHub's is.
 
-One process, two halves. Each runs only when it has what it needs, so a deployment may be the receiver alone, the station alone, or both.
+One process, three parts. Each runs only when it has what it needs, so a deployment may be any of them alone.
 
 | half | runs when | what it does |
 |---|---|---|
 | the webhook receiver | `GITHUB_WEBHOOK_SECRET` is set | takes GitHub's webhooks at `POST /webhooks/github` and posts each to the floor as an event |
 | the `post-review` station | `GITHUB_TOKEN`, or `GITHUB_APP_ID` with a key, is set | posts the review an agent printed to the pull request |
+| the review router | `GITHUB_REVIEW_ROUTER=1` | chooses, for a push to a pull request, the full review or the recheck |
 
 ```
 FLOOR_API_URL=http://localhost:8180 FLOOR_SERVICE_TOKEN=floor-dev-token \
@@ -41,6 +42,12 @@ It reads the last fenced `REVIEW_FINDINGS` block the agent printed, which is lor
 
 When GitHub refuses the review for where a comment is placed, most often a line the pull request does not touch, it is posted again with every finding in the body.
 
+## The review router
+
+A push to a pull request is reviewed in full if it never was, and rechecked if it was. That is a choice about what has happened, and a line's `when` reads only the event in front of it. So the push starts a line of one node, `review-router`, whose station asks the floor whether a full review of this pull request ran to its end and went well, and then posts `review.full.requested` or `review.recheck.requested`. The lines start on those.
+
+The router puts its own station and line to the floor when it starts. The choice it made is in its run's bag, `routed_to`.
+
 ## Who it is, to GitHub
 
 A token given outright, `GITHUB_TOKEN`, wins. Otherwise it is a GitHub App: it signs a claim with the app's key, good for nine minutes, and trades it for a token for the installation on that one repository, kept until a minute before it expires.
@@ -49,4 +56,6 @@ A token given outright, `GITHUB_TOKEN`, wins. Otherwise it is a GitHub App: it s
 
 Against a stand-in for GitHub's API over real HTTP, `fake-github.ts`: it checks an app's claim against the app's public key as GitHub does, so a claim signed with another key is refused by it and not by a stub. The signature check is tested against the example in GitHub's own documentation.
 
-`scripts/walk-code-review.sh` sends a signed webhook through the receiver and walks the run it starts. Nothing here has posted to a real pull request.
+`scripts/walk-code-review.sh` sends a signed webhook through the receiver and walks the run it starts, then a push, which the router sends to the recheck.
+
+The app's authentication has been run against GitHub itself, with a read-only call. Nothing here has posted to a real pull request.
