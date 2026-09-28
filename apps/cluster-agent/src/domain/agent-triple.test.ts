@@ -163,6 +163,21 @@ describe("buildAgentTriple", () => {
     expect(resources?.skills_source).toBe("http://host.minikube.internal:8080/skills");
   });
 
+  it("names the definition's own skill registry when it has one", () => {
+    const { agentDefinition } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i", skillsSource: "http://registry.test/skills" } }));
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.skills_source).toBe("http://registry.test/skills");
+  });
+
+  it("gives the agent the MCP servers the definition names, each with the secret that opens it", () => {
+    const lore = { name: "lore", transport: "http" as const, url: "http://gateway.test/mcp", headersSecret: "lore-mcp-auth" };
+    const { agentDefinition } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i", mcpServers: [lore] } }));
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.mcp_servers).toEqual([{ name: "lore", transport: "http", url: "http://gateway.test/mcp", headers_secret: "lore-mcp-auth" }]);
+  });
+
   it("lets the agent use its tools unasked, a pod having nobody to ask", () => {
     const { agentDefinition } = buildAgentTriple(brief({}));
 

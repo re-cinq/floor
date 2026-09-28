@@ -5,6 +5,7 @@ import type {
   AgentDefinition,
   AgentResources,
   ConversationRef,
+  McpTransport,
   OutputSpec,
   Station,
 } from "@re-cinq/agent-contracts";
@@ -28,6 +29,19 @@ export interface DispatchSettings {
   /** `bypass` unless the definition says otherwise: a pod has nobody to answer a permission prompt, so `auto` there means every tool is refused. */
   permissionMode?: "auto" | "bypass";
   maxTurns?: number;
+  /** Where the pod fetches its skills and the agent's settings; the floor's own registry when the definition names none. */
+  skillsSource?: string;
+  mcpServers?: DispatchMcpServer[];
+}
+
+/** `headersSecret` names a key in the cluster's `agent-secrets` holding the header to send, whole: `Authorization: Bearer <token>`. The pod's reference to it is not optional, so a key that is not there is a pod that never starts. */
+export interface DispatchMcpServer {
+  name: string;
+  transport: McpTransport;
+  command?: string;
+  args?: string[];
+  url?: string;
+  headersSecret?: string;
 }
 
 export interface DispatchBrief {
@@ -95,9 +109,16 @@ function agentResources(name: string, input: DispatchBrief): AgentResources {
     })),
     skills: input.settings.skills,
     // Always set, skills or none: the subsystem fetches the agent's settings.json from here, and starts Claude pointing at it.
-    skills_source: `${input.floorBaseUrl}/skills`,
+    skills_source: input.settings.skillsSource ?? `${input.floorBaseUrl}/skills`,
+    mcp_servers: mcpServersOf(input.settings),
     conversation: conversationRef(input),
   };
+}
+
+function mcpServersOf(settings: DispatchSettings): AgentResources["mcp_servers"] {
+  const servers = settings.mcpServers;
+
+  return servers?.map(({ headersSecret, ...server }) => ({ ...server, headers_secret: headersSecret }));
 }
 
 function outputSpec(input: DispatchBrief): OutputSpec {

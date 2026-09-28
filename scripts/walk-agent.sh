@@ -21,6 +21,8 @@ TOKEN="walk-agent-service-token"
 NAME="walk-agent-$(date +%s)"
 MODEL="${FLOOR_WALK_MODEL:-claude-sonnet-4-6}"
 WAIT_SECONDS="${FLOOR_WALK_WAIT_SECONDS:-600}"
+# More for the definition's config, as JSON: a skill registry, MCP servers. See docs/entities/agent-definition.md.
+CONFIG="$(jq -c '{max_turns: 10} + .' <<<"${FLOOR_WALK_CONFIG:-{\}}")"
 LOGS="$(mktemp -d)"
 PIDS=()
 
@@ -65,7 +67,7 @@ PIDS+=($!)
 say "putting an agent definition, a station and a line: write -> done"
 api -X POST "${BASE}/agent-definitions" -d @- >/dev/null <<JSON
 {"id": "${NAME}", "settings": {
-  "model": "${MODEL}", "image": "node:22-bookworm", "timeoutMinutes": 8, "config": {"max_turns": 10},
+  "model": "${MODEL}", "image": "node:22-bookworm", "timeoutMinutes": 8, "config": ${CONFIG},
   "prompt": "Write exactly one short sentence about {topic} into the file {note_path}. Do nothing else. When the file is written, end your reply with this line on its own: LORE_NODE_RESULT: success"
 }}
 JSON

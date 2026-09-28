@@ -103,8 +103,9 @@ GET    /skills/settings.json             // the agent's settings, fetched by the
 POST   /conversations/:visitId           // body: the archive (gzip); saved as a blob, noted on the visit. Visit token
 GET    /conversations/:visitId           // the archive that visit saved; for a service, or the visit continuing it
 
-> **Not built yet.** `/skills/:name.tar.gz`. A definition may name skills,
-> and the pod will ask for them here and find nothing.
+The floor's `/skills` is the registry of last resort: it keeps an agent
+alive and serves no skills. A definition that names skills names where they
+are, in `config.skills_source`.
 
 ## Stations - the registry a line node points at
 

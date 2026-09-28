@@ -1,5 +1,6 @@
 // zod mirrors of packages/store's definition body types (docs/entities/*.md), for POST/PUT validation.
 import { z } from "zod";
+import { agentConfigSchema } from "./agent-config.js";
 
 const itemKind = z.enum(["value", "file", "git"]);
 
@@ -64,7 +65,7 @@ const agentSettings = z.object({
   image: z.string(),
   timeoutMinutes: z.number().int().positive(),
   tags: z.array(z.string()).optional(),
-  config: z.record(z.string(), z.unknown()).optional(),
+  config: agentConfigSchema.optional(),
 });
 
 export const agentDefinitionBodySchema = z.object({

@@ -1,9 +1,11 @@
 // What a running visit's executor calls (docs/api_sketch.md, "Station runs"): its structured brief, its event sink, its git credential. A visit token reaches only its own visit.
 import type { ResponseToolkit, Server } from "@hapi/hapi";
 import { Refusal, type AgentSettings, type DispatchBrief } from "@floor/store";
+import { agentConfigSchema, executorSettings } from "../agent-config.js";
 import type { Deps } from "../deps.js";
 import { Sink } from "../engine/sink.js";
 import { HTTP_NO_CONTENT } from "../http-status.js";
+import { issuesOf } from "../parse.js";
 import { conflict, notFound, unconfigured } from "../problem.js";
 import { forOwnVisit, isUuid } from "./own-visit.js";
 import { mintVisitToken } from "../visit-token.js";
@@ -25,7 +27,13 @@ async function brief(deps: Deps, visitId: string, toolkit: ResponseToolkit) {
   if (!found) return notFound(toolkit, `no station run "${visitId}" to dispatch`);
   if (found.visit.report) return conflict(toolkit, `station run "${visitId}" is already done`);
 
-  return briefResponse(deps, found);
+  try {
+    return briefResponse(deps, found);
+  } catch (error) {
+    if (!(error instanceof Refusal)) throw error;
+
+    return conflict(toolkit, error.message);
+  }
 }
 
 function briefResponse(deps: Deps, found: DispatchBrief) {
@@ -46,37 +54,19 @@ function briefResponse(deps: Deps, found: DispatchBrief) {
   };
 }
 
-// What the subsystem wants beyond model, prompt and image lives in the definition's `config`, under the names docs/entities/agent-definition.md gives them, which are lore's own.
+// A definition's config was checked when it was put; one that no longer reads is refused here, by name, and never half-applied.
 function dispatchSettings(settings: AgentSettings) {
-  const config = settings.config ?? {};
+  const config = agentConfigSchema.safeParse(settings.config ?? {});
 
-  return {
-    model: settings.model,
-    prompt: settings.prompt,
-    image: settings.image,
-    disallowedTools: textsOf(config.disallowed_tools),
-    skills: textsOf(config.skills),
-    env: textMapOf(config.env),
-    permissionMode: config.permission_mode === "auto" || config.permission_mode === "bypass" ? config.permission_mode : undefined,
-    maxTurns: typeof config.max_turns === "number" ? config.max_turns : undefined,
-  };
+  if (!config.success) throw new Refusal(`the agent definition's config cannot be read: ${issuesOf(config.error).join("; ")}`);
+
+  return { model: settings.model, prompt: settings.prompt, image: settings.image, ...executorSettings(config.data) };
 }
 
 function modelSecretKeyOf(settings: AgentSettings | null): string | undefined {
   const named = settings?.config?.model_secret_key;
 
   return typeof named === "string" ? named : undefined;
-}
-
-function textsOf(value: unknown): string[] | undefined {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : undefined;
-}
-
-function textMapOf(value: unknown): Record<string, string> | undefined {
-  if (typeof value !== "object" || value === null) return undefined;
-  const texts = Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string");
-
-  return Object.fromEntries(texts);
 }
 
 async function takeEvent(sink: Sink, posted: { visitId: string; body: unknown }, toolkit: ResponseToolkit) {

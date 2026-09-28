@@ -27,8 +27,10 @@ const REVIEW_STATION: StationBody = {
   ],
 };
 
+const LORE_MCP = { name: "lore", transport: "http", url: "http://gateway.test/mcp", headers_secret: "lore-mcp-auth" };
+
 const REVIEWER = {
-  settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", timeoutMinutes: 20, config: { skills: ["review"], disallowed_tools: ["Bash(npm:*)"], env: { LOG: "1" }, permission_mode: "auto", max_turns: 12 } },
+  settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", timeoutMinutes: 20, config: { skills: ["review"], disallowed_tools: ["Bash(npm:*)"], env: { LOG: "1" }, permission_mode: "auto", max_turns: 12, skills_source: "http://registry.test/skills", mcp_servers: [LORE_MCP] } },
 };
 
 interface Brief {
@@ -105,6 +107,15 @@ describe("GET /station-runs/:id/brief", () => {
       settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", skills: ["review"], disallowedTools: ["Bash(npm:*)"], env: { LOG: "1" }, permissionMode: "auto", maxTurns: 12 },
       needs: [{ name: "pr_url", kind: "value", value: "https://pr/412" }],
       conversation: { mode: "new", save: true },
+    });
+  });
+
+  it("passes the definition's MCP servers and skill registry to the executor", async () => {
+    const { brief } = await reviewDispatched();
+
+    expect(brief.settings).toMatchObject({
+      skillsSource: "http://registry.test/skills",
+      mcpServers: [{ name: "lore", transport: "http", url: "http://gateway.test/mcp", headersSecret: "lore-mcp-auth" }],
     });
   });
 

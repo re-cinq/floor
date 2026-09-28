@@ -113,3 +113,42 @@ describe("DELETE /assembly-lines/:id", () => {
     expect(response.statusCode).toBe(409);
   });
 });
+
+describe("POST /agent-definitions", () => {
+  const SETTINGS = { prompt: "p", image: "img:1", timeoutMinutes: 5 };
+
+  async function putWithConfig(config: Record<string, unknown>) {
+    return injectJson<{ errors?: string[] }>(server(), { method: "POST", url: "/agent-definitions", headers: authHeaders(), payload: { id: "reviewer", settings: { ...SETTINGS, config } } });
+  }
+
+  it("takes an MCP server reached by url", async () => {
+    const response = await putWithConfig({ mcp_servers: [{ name: "lore", transport: "http", url: "http://gateway.test/mcp", headers_secret: "lore-mcp-auth" }] });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("takes an MCP server the pod starts as a process", async () => {
+    const response = await putWithConfig({ mcp_servers: [{ name: "files", transport: "stdio", command: "npx", args: ["-y", "server-filesystem"] }] });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("refuses an http MCP server with no url, naming it", async () => {
+    const response = await putWithConfig({ mcp_servers: [{ name: "lore", transport: "http" }] });
+
+    expect(response.result.errors).toEqual(["settings.config.mcp_servers.0: a stdio server needs a command, any other a url"]);
+  });
+
+  it("refuses a permission mode the subsystem does not have", async () => {
+    const response = await putWithConfig({ permission_mode: "yolo" });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("keeps a config key it has no use for", async () => {
+    const response = await putWithConfig({ pod_resources: { memory: "2Gi" } });
+
+    expect(response.statusCode).toBe(201);
+  });
+});
+

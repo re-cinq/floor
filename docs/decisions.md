@@ -88,9 +88,18 @@ the secret and the floor the model. What was missing is that a cluster may
 hold something other than the usual API key. `FLOOR_MODEL_SECRET_KEYS` says
 so, per model family.
 
-**What reads `config`.** `skills`, `disallowed_tools`, `env`,
-`permission_mode`, `max_turns` and `model_secret_key`, under the names lore
-uses, so a converted definition needs no renaming.
+**Skills and MCP servers are declared on the agent definition, by url.**
+They shape the agent, so they sit with its model and prompt, and the station
+contract is unchanged. The cost is that a url is true of one environment.
+Lore's cluster agent owns both addresses and its definitions name none; the
+same split can be added here later, with definitions naming a server and
+the cluster saying where it is, without breaking one written this way.
+
+**What reads `config`.** `skills`, `skills_source`, `mcp_servers`,
+`disallowed_tools`, `env`, `permission_mode`, `max_turns` and
+`model_secret_key`, under the names lore uses, so a converted definition
+needs no renaming. They are checked when a definition is put, so a mistake
+is refused then and not found by a pod.
 
 ## The API
 

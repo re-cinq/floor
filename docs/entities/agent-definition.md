@@ -28,13 +28,38 @@ configured to do it.
 | `settings.timeout_minutes` | the work budget of a visit |
 | `settings.image` | the execution image |
 | `settings.tags` | which cluster agents may run it; a claimer must offer all of them |
-| `settings.config` | open object passed through to the subsystem. Read today: `skills`, `disallowed_tools`, `env`, `permission_mode` (`bypass` when absent), `max_turns`, `model_secret_key`. Not built yet: `pod_resources`, `command`, `workdir` |
+| `settings.config` | open object, checked when the definition is put. Read today, under lore's names: `skills`, `skills_source`, `mcp_servers`, `disallowed_tools`, `env`, `permission_mode` (`bypass` when absent), `max_turns`, `model_secret_key`. Anything else is kept and unused. Not built yet: `pod_resources`, `command`, `workdir` |
 | `variants` | `host/owner/name` → partial settings merged over the defaults, per field, and per key inside `config` |
 
 The model's API key is not here. The floor names a model; the cluster agent
 owns the secret for that model family, in its own cluster. A definition
 with no `model` gets no secret at all, since the family is read from the
 model's name.
+
+## Skills and MCP servers
+
+Both are the agent's, so both are declared here, in `config`, and a repo's
+variant may replace either.
+
+```yaml
+config:
+  skills: [lore-context]
+  skills_source: http://lore-mcp-gateway.lore-api.svc.cluster.local:8080/skills
+  mcp_servers:
+    - { name: lore, transport: http, url: "http://lore-mcp-gateway.lore-api.svc.cluster.local:8080/mcp", headers_secret: lore-mcp-auth }
+    - { name: files, transport: stdio, command: npx, args: ["-y", "@modelcontextprotocol/server-filesystem"] }
+```
+
+- **`skills_source`** is where the pod fetches each named skill, and the
+  agent's `settings.json`, hooks included. With none, the floor's own
+  `/skills` is used, which serves empty settings and no skills.
+- **`headers_secret`** names a key in the cluster's `agent-secrets`, holding
+  the header whole: `Authorization: Bearer <token>`. The pod's reference to
+  it is not optional. A key that is not there is a pod that never starts.
+- **A url is a fact about one environment.** The address above is a
+  cluster's; on a laptop the same gateway is at `host.minikube.internal`.
+  A variant is keyed by repo, not by environment, so a definition naming a
+  url works in one place.
 
 ## Example, from lore
 
