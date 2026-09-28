@@ -37,9 +37,9 @@ FLOOR_SERVICE_TOKEN=dev FLOOR_VISIT_TOKEN_SECRET=dev npm start -w @floor/api
 
 ## Testing
 
-Real Postgres, real hapi server via `server.inject()` (`test-server.ts` builds one server per test file, migrated once, truncated between tests). Same container as the rest of the workspace:
+Real Postgres, real hapi server via `server.inject()` (`test-server.ts` builds one server per test file, migrated once, truncated between tests). Same container as the rest of the workspace, in its own `floor_test` database (`FLOOR_TEST_DATABASE_URL` overrides it), so a suite never truncates the tables of a floor you have running:
 
 ```
 npm run db:up
-FLOOR_DATABASE_URL=... npm test -w @floor/api
+npm test -w @floor/api
 ```

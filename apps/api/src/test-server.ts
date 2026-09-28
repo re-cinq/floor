@@ -1,7 +1,7 @@
 // Shared fixture for the route test files: one real server over one real Postgres instance, migrated once.
 import { afterAll, beforeAll, beforeEach } from "vitest";
 import type { Server, ServerInjectOptions } from "@hapi/hapi";
-import { createPool, migrate, type PgPool } from "@floor/store";
+import { openTestPool, testDatabaseUrl, type PgPool } from "@floor/store";
 import type { Config } from "./config.js";
 import { buildDeps, type Deps } from "./deps.js";
 import { buildLoop, type FloorLoop } from "./engine/loop.js";
@@ -11,15 +11,12 @@ export const SERVICE_TOKEN = "test-service-token";
 export const VISIT_TOKEN_SECRET = "test-visit-token-secret";
 const FIXED_NOW = new Date("2026-01-01T00:00:00Z");
 
-const connectionString =
-  process.env.FLOOR_DATABASE_URL ?? "postgres://postgres:floor@localhost:5433/floor";
-
 /** Not the process's own key, so a suite never contends with a floor running against the same database. */
 const TEST_LEASE_KEY = 0x74657374n;
 
 const TEST_CONFIG: Config = {
   port: 0,
-  databaseUrl: connectionString,
+  databaseUrl: testDatabaseUrl(),
   serviceToken: SERVICE_TOKEN,
   visitTokenSecret: VISIT_TOKEN_SECRET,
   baseUrl: "http://localhost:0",
@@ -59,8 +56,7 @@ export function setupTestServer(): TestServer {
   let loop: FloorLoop;
 
   beforeAll(async () => {
-    pool = createPool(connectionString);
-    await migrate(pool);
+    pool = await openTestPool();
     deps = buildDeps(pool, TEST_CONFIG, () => FIXED_NOW);
     loop = buildLoop(deps, "floor-test");
     server = await buildServer(deps, () => loop.holdsLease());

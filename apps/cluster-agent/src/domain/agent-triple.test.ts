@@ -156,6 +156,13 @@ describe("buildAgentTriple", () => {
     ]);
   });
 
+  it("names the floor as where the pod fetches the agent's settings, though the visit has no skills", () => {
+    const { agentDefinition } = buildAgentTriple(brief({}));
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.skills_source).toBe("http://host.minikube.internal:8080/skills");
+  });
+
   it("lets the agent use its tools unasked, a pod having nobody to ask", () => {
     const { agentDefinition } = buildAgentTriple(brief({}));
 
@@ -221,13 +228,13 @@ describe("buildAgentTriple", () => {
     expect(station.spec?.deadlineMinutes).toBe(45);
   });
 
-  it("keeps no run history, since a triple is minted per visit and is noise the moment it reports", () => {
+  it("keeps the finished Agent until the visit's abort deletes it, since a limit of 0 makes the controller run the job twice", () => {
     const { station } = buildAgentTriple(brief());
 
     expect({
       succeeded: station.spec?.successfulRunsHistoryLimit,
       failed: station.spec?.failedRunsHistoryLimit,
-    }).toEqual({ succeeded: 0, failed: 0 });
+    }).toEqual({ succeeded: 1, failed: 1 });
   });
 
   it("carries the visit id onto the Agent as its correlation id", () => {

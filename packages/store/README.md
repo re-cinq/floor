@@ -96,7 +96,8 @@ npm run db:up      # from the repo root; floor-postgres on :5433
 npm test -w @floor/store
 ```
 
-`FLOOR_DATABASE_URL` overrides the default
-`postgres://postgres:floor@localhost:5433/floor`. Migrations run
-automatically at the start of the test suite (`beforeAll`); `events` is
-truncated between tests.
+The suites run in their own database, `floor_test`, created on first use:
+every suite truncates its tables between tests, which on the database a
+floor is running against would delete its runs from under it.
+`FLOOR_TEST_DATABASE_URL` overrides the default
+`postgres://postgres:floor@localhost:5433/floor_test`.

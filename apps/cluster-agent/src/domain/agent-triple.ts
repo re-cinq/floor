@@ -93,6 +93,8 @@ function agentResources(name: string, input: DispatchBrief): AgentResources {
       token_secret: need.tokenSecret,
     })),
     skills: input.settings.skills,
+    // Always set, skills or none: the subsystem fetches the agent's settings.json from here, and starts Claude pointing at it.
+    skills_source: `${input.floorBaseUrl}/skills`,
     conversation: conversationRef(input),
   };
 }
@@ -158,9 +160,9 @@ function buildStation(name: string, input: DispatchBrief): Station {
     spec: {
       agentDefRef: name,
       deadlineMinutes: input.deadlineMinutes,
-      // A triple is minted per visit, so a run of this Station is always exactly one Agent; history beyond that run is noise the moment the visit reports.
-      successfulRunsHistoryLimit: 0,
-      failedRunsHistoryLimit: 0,
+      // Never 0. At 0 the controller deletes a finished Agent at once, then reconciles the copy still in its cache and runs the job a second time. The triple is deleted when the visit's abort is claimed.
+      successfulRunsHistoryLimit: 1,
+      failedRunsHistoryLimit: 1,
       template: { spec: { containers: [{ name: "agent", image: input.settings.image }] } },
     },
   };

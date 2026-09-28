@@ -1,9 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createPool, migrate, type PgPool } from "./pg.js";
+import type { PgPool } from "./pg.js";
+import { openTestPool } from "./test-database.js";
 import { EventStore, backoffMs, type FloorEvent } from "./events.js";
-
-const connectionString =
-  process.env.FLOOR_DATABASE_URL ?? "postgres://postgres:floor@localhost:5433/floor";
 
 const FIXED_NOW = new Date("2026-01-01T00:00:00Z");
 
@@ -11,8 +9,7 @@ let pool: PgPool;
 let idCounter = 0;
 
 beforeAll(async () => {
-  pool = createPool(connectionString);
-  await migrate(pool);
+  pool = await openTestPool();
 });
 
 beforeEach(async () => {

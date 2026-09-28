@@ -1,13 +1,11 @@
 // Shared Postgres-backed fixture for the AssemblyRunStore test files, so the pool lifecycle and the review line never drift into two copies.
 import { afterAll, beforeAll, beforeEach } from "vitest";
-import { createPool, migrate, type PgPool } from "./pg.js";
+import type { PgPool } from "./pg.js";
+import { openTestPool } from "./test-database.js";
 import { AssemblyRunStore } from "./assembly-run-store.js";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import type { AgentDefinitionBody, Item, LineBody, StationBody } from "./types.js";
-
-export const connectionString =
-  process.env.FLOOR_DATABASE_URL ?? "postgres://postgres:floor@localhost:5433/floor";
 
 export const FIXED_NOW = new Date("2026-01-01T00:00:00Z");
 
@@ -89,8 +87,7 @@ function registerPoolLifecycle(): () => PgPool {
   let pool: PgPool;
 
   beforeAll(async () => {
-    pool = createPool(connectionString);
-    await migrate(pool);
+    pool = await openTestPool();
   });
 
   beforeEach(async () => {
