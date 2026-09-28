@@ -1,0 +1,134 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createPool, migrate, type PgPool } from "./pg.js";
+import { DefinitionsStore } from "./definitions.js";
+
+const connectionString =
+  process.env.FLOOR_DATABASE_URL ?? "postgres://postgres:floor@localhost:5433/floor";
+
+let pool: PgPool;
+
+beforeAll(async () => {
+  pool = createPool(connectionString);
+  await migrate(pool);
+});
+
+beforeEach(async () => {
+  await pool.query("truncate definitions");
+});
+
+afterAll(async () => {
+  await pool.end();
+});
+
+function store(): DefinitionsStore {
+  return new DefinitionsStore({ connection: pool });
+}
+
+describe("DefinitionsStore.put", () => {
+  it("returns created:true for a new body", async () => {
+    const result = await store().put("station", "review", { kind: "agent" });
+
+    expect(result.created).toBe(true);
+  });
+
+  it("returns the same hash for the same body put twice", async () => {
+    const first = await store().put("station", "review", { kind: "agent" });
+    const second = await store().put("station", "review", { kind: "agent" });
+
+    expect(second.hash).toBe(first.hash);
+  });
+
+  it("returns created:false the second time an identical body is put", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    const second = await store().put("station", "review", { kind: "agent" });
+
+    expect(second.created).toBe(false);
+  });
+
+  it("returns a different hash for a changed body", async () => {
+    const first = await store().put("station", "review", { kind: "agent" });
+    const second = await store().put("station", "review", { kind: "service" });
+
+    expect(second.hash).not.toBe(first.hash);
+  });
+
+  it("keeps kinds separate, so a line and a station may share an id", async () => {
+    const line = await store().put("line", "review", { entry: "a" });
+    const station = await store().put("station", "review", { kind: "agent" });
+
+    expect(line.hash).not.toBe(station.hash);
+  });
+});
+
+describe("DefinitionsStore.latest", () => {
+  it("returns null for an id that was never put", async () => {
+    expect(await store().latest("station", "missing")).toBeNull();
+  });
+
+  it("returns the most recently put version", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    await store().put("station", "review", { kind: "service" });
+
+    const latest = await store().latest<{ kind: string }>("station", "review");
+
+    expect(latest?.body.kind).toBe("service");
+  });
+
+  it("never returns an archived version", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    await store().archive("station", "review");
+
+    expect(await store().latest("station", "review")).toBeNull();
+  });
+});
+
+describe("DefinitionsStore.byHash", () => {
+  it("returns the exact version named, even after a newer one exists", async () => {
+    const first = await store().put("station", "review", { kind: "agent" });
+
+    await store().put("station", "review", { kind: "service" });
+
+    const pinned = await store().byHash<{ kind: string }>("station", "review", first.hash);
+
+    expect(pinned?.body.kind).toBe("agent");
+  });
+
+  it("returns null for a hash that was never put", async () => {
+    expect(await store().byHash("station", "review", "sha256-nonexistent")).toBeNull();
+  });
+});
+
+describe("DefinitionsStore.byHashOnly", () => {
+  it("finds the version by hash alone, with no id given", async () => {
+    const put = await store().put("station", "review", { kind: "agent" });
+
+    const found = await store().byHashOnly<{ kind: string }>("station", put.hash);
+
+    expect(found?.body.kind).toBe("agent");
+  });
+
+  it("returns null for a hash that was never put", async () => {
+    expect(await store().byHashOnly("station", "sha256-nonexistent")).toBeNull();
+  });
+});
+
+describe("DefinitionsStore.versions", () => {
+  it("returns every version, newest first", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    await store().put("station", "review", { kind: "service" });
+
+    const versions = await store().versions<{ kind: string }>("station", "review");
+
+    expect(versions.map((version) => version.body.kind)).toEqual(["service", "agent"]);
+  });
+});
+
+describe("DefinitionsStore.archive", () => {
+  it("leaves an archived version reachable by its exact hash", async () => {
+    const put = await store().put("station", "review", { kind: "agent" });
+
+    await store().archive("station", "review");
+
+    expect(await store().byHash("station", "review", put.hash)).not.toBeNull();
+  });
+});

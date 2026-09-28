@@ -66,8 +66,8 @@ export default tseslint.config(
     rules: {
       // The pure replay in transition.ts needs a state and an accounting object alongside its visit and graph.
       "max-params": ["error", { max: 4 }],
-      // `on`, `to` and `id` are short, ubiquitous field names (WalkEdge.on/to matches lore; `id` is standard), not vague ones.
-      "id-length": ["error", { min: 3, exceptions: ["on", "to", "id"] }],
+      // `on`/`to` match lore's WalkEdge; `id` is standard; `by` is the Item's own provenance field (docs/assembly_run_storage.md). Short, not vague.
+      "id-length": ["error", { min: 3, exceptions: ["on", "to", "id", "by"] }],
     },
   },
 

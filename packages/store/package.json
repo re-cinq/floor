@@ -21,7 +21,8 @@
     "migrate": "node dist/migrate-cli.js"
   },
   "dependencies": {
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "@floor/assembly-lines": "*"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

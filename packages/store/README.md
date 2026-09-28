@@ -1,11 +1,11 @@
 # @floor/store
 
-The events queue and the six-table Postgres schema behind the whole plan
-(see [docs/assembly_run_storage.md](../../docs/assembly_run_storage.md),
-"Events: the queue and the loop" and "Tables"). This package is new — lore
-has no counterpart to port from; its event bus is a separate service
-(`event-router`) with a subscriber/delivery model this plan replaces with
-one table and a tag filter.
+The events queue, the definitions store, and the `AssemblyRunStore` itself —
+the whole storage layer the plan describes (see
+[docs/assembly_run_storage.md](../../docs/assembly_run_storage.md)). This
+package is new — lore has no counterpart to port from; its event bus is a
+separate service (`event-router`) with a subscriber/delivery model this plan
+replaces with one table and a tag filter.
 
 ## What is here
 
@@ -18,18 +18,30 @@ one table and a tag filter.
   `schema_migrations` table tracking applied filenames; no framework).
 - `events.ts` — `EventStore`: `enqueue` (idempotent on `dedupeKey`), `claim`
   (a batch under `FOR UPDATE SKIP LOCKED`, filtered by name and, for
-  `station_run.dispatch`/`abort`, by tag subset), `ack`, `fail` (exponential
-  backoff, dead-letter past 8 attempts or immediately when told the failure
-  is permanent), `dropQueued` (for `cancel`), `listByRun`.
+  `station_run.dispatch`/`abort`, by tag subset), `ack`, `fail`/`deadLetter`
+  (exponential backoff, or immediate dead-letter), `dropQueued` (for
+  `cancel`), `listByRun`.
+- `definitions.ts` — `DefinitionsStore`: `put` (idempotent by content hash),
+  `latest`, `byHash`, `byHashOnly` (hash alone, no id — a visit only ever
+  records a station's hash), `versions`, `archive`.
+- `resolve.ts`, `bag.ts`, `walk-graph.ts` — pure helpers: need resolution
+  against the bag, the bag fold itself (start items plus each done visit's
+  produced items), and the walk kernel's graph built from stored line/station
+  definitions.
+- `rows.ts`, `sql.ts`, `open-visit.ts` — the row mapping, the mutation/query
+  SQL, and resolution-at-open (station, agent definition and repo variant,
+  needs, conversation continuation, failure context, deadline, dispatch
+  tags) behind the store.
+- `assembly-run-store.ts` — `AssemblyRunStore`: `start`, `get`, `list`,
+  `cancel`, `bag`, `next`, `settle`, `openVisit`, `report`, `visits`,
+  `visit`. Every follow-up event is written in the same transaction as the
+  row that caused it (docs/assembly_run_storage.md, "Every follow-up event
+  is written in the transaction that caused it").
 
 ## Not yet here
 
-The `AssemblyRunStore` itself (start/openVisit/report/bag/next/settle) —
-the storage doc's other half, everything that isn't the queue. That is the
-next layer, and it is built on this one: every operation it exposes writes
-its follow-up event in the same transaction (docs/assembly_run_storage.md,
-"Every follow-up event is written in the transaction that caused it"), which
-is why the queue had to exist first.
+The blob store (the `blobs` table exists in the migration; no read/write
+API over it yet) and the Floor's HTTP API itself.
 
 ## Testing
 
