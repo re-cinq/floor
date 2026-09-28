@@ -1,0 +1,28 @@
+{
+  "name": "@floor/station",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The service station SDK (docs/entities/station.md, \"service\"): defineStation(name, handle) claims the station's dispatches from the floor's queue, hands each to one function as a brief, and posts what it returns as the visit's report. A station needs only a way out to the floor; the floor never calls it.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc --watch -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

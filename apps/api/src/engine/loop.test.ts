@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { setupTestServer } from "../test-server.js";
+import { outcomeOnceSettled, setupTestServer } from "../test-server.js";
 import { MARKER_LINE } from "./lines.fixtures.js";
 import { FloorLoop } from "./loop.js";
 
@@ -7,7 +7,6 @@ const { deps, loop } = setupTestServer();
 
 const CONTENDED_KEY = 0x636f6e74n;
 const POLL_MS = 20;
-const MAX_POLLS = 250;
 
 async function startMarkers(): Promise<string> {
   await deps().definitions.put("line", "markers", MARKER_LINE);
@@ -26,17 +25,6 @@ function contender(calls: string[]): FloorLoop {
     pollMs: POLL_MS,
     sweepMs: 0,
   });
-}
-
-async function outcomeOnceSettled(runId: string): Promise<string | null> {
-  for (let poll = 0; poll < MAX_POLLS; poll++) {
-    const run = await deps().runs.get(runId);
-
-    if (run?.outcome) return run.outcome;
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-  }
-
-  return null;
 }
 
 describe("FloorLoop.pass", () => {
@@ -80,7 +68,7 @@ describe("FloorLoop.start", () => {
     loop().start();
     const runId = await startMarkers();
 
-    const outcome = await outcomeOnceSettled(runId);
+    const outcome = await outcomeOnceSettled(deps(), runId);
 
     await loop().stop();
 

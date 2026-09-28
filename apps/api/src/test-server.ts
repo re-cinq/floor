@@ -74,3 +74,18 @@ export function setupTestServer(): TestServer {
 
   return { server: () => server, loop: () => loop, deps: () => deps, pool: () => pool };
 }
+
+const MAX_POLLS = 250;
+const POLL_MS = 20;
+
+/** For a test of something left running: the run's outcome once it has one, null if it never gets one. */
+export async function outcomeOnceSettled(deps: Deps, runId: string): Promise<string | null> {
+  for (let poll = 0; poll < MAX_POLLS; poll++) {
+    const run = await deps.runs.get(runId);
+
+    if (run?.outcome) return run.outcome;
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+  }
+
+  return null;
+}

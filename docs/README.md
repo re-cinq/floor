@@ -22,6 +22,7 @@ something designed and not yet written, it starts with **Not built yet**;
 whoever builds it removes the mark. Nothing unmarked should be false.
 
 - [Decisions](decisions.md): the calls made while building, which are neither design nor bug
+- `npm start`: the floor on this machine, reloading on save; see [Development loop](dev_loop.md)
 - `scripts/walk.sh` and `scripts/walk-agent.sh`: a run end to end over HTTP, through a service station and through a real agent pod
 
 Definitions are written here as authored YAML, in `snake_case`. The API

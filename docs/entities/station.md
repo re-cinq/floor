@@ -102,25 +102,25 @@ Writing an agent station is writing the YAML above and a prompt.
 
 ### service
 
-> **Not built yet.** The SDK. A service station works today by calling the
-> API itself: claim, read the visit, post the report, ack. `scripts/walk.sh`
-> does exactly that with curl.
-
 A station that sits next to its data, so no pod and no clone.
 
 ```ts
 import { defineStation } from "@floor/station";
 
-defineStation("close-issue", async (brief) => {
+defineStation("close-issue", async (brief, tools) => {
   await issues.close(brief.needs.issue_number);
+  await tools.produce("summary", `closed ${brief.needs.issue_number}`);
   return { outcome: "success" };
 });
 ```
 
-The SDK claims `station_run.dispatch` events tagged `station:close-issue`,
-fetches file needs, calls the function, uploads file produces, records any
-model calls as `llm_call`, and posts the report, retrying until the
-deadline. The service needs only a way out to the floor; the floor never
+The SDK claims `station_run.dispatch` events tagged `station:close-issue`
+and calls the function with the brief and four tools: `read` fetches a file
+need, `produce` uploads a file the station produces, `modelCall` records a
+model call as `llm_call`, and `signal` is aborted at the deadline. It posts
+what the function returns as the report; a function that throws has failed
+its visit. When the floor cannot be reached the dispatch goes back to the
+queue. The service needs only a way out to the floor; the floor never
 calls it.
 
 Lore's `merge_step`, `escalation_step`, `issues`, `comment-triage` and the

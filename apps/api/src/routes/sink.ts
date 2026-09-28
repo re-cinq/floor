@@ -43,6 +43,7 @@ function briefResponse(deps: Deps, found: DispatchBrief) {
 
   return {
     visitId: found.visit.id,
+    iteration: found.visit.iteration,
     floorBaseUrl: deps.config.baseUrl,
     token: mintVisitToken(found.visit.id, deadline, deps.config.visitTokenSecret),
     deadlineMinutes: Math.max(1, Math.ceil((deadline.getTime() - now.getTime()) / MS_PER_MINUTE)),

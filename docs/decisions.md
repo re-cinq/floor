@@ -101,6 +101,20 @@ the cluster saying where it is, without breaking one written this way.
 needs no renaming. They are checked when a definition is put, so a mistake
 is refused then and not found by a pod.
 
+## Service stations
+
+**A function that throws has failed its visit; a floor out of reach has
+failed nothing.** The SDK reports the first as `failed` with what was
+thrown. The second hands the dispatch back to the queue, since the visit
+itself may be fine.
+
+**A service does nothing on abort.** It holds nothing between visits. The
+SDK acks the event so it does not sit in the queue.
+
+**Files go through tools, values through the return.** `tools.produce`
+uploads at once and the SDK names the file in the report, so a station
+never handles a blob hash.
+
 ## The API
 
 **Bodies are `camelCase`.** The plan wrote `dedupe_key` and `not_before`.
