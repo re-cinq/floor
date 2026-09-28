@@ -5,7 +5,12 @@ import type { PgPool } from "@floor/store";
 
 const SCHEMA_VERSION = 1;
 
-export function registerHealthRoutes(server: Server, pool: PgPool): void {
+export interface Readiness {
+  pool: PgPool;
+  holdsLease: () => boolean;
+}
+
+export function registerHealthRoutes(server: Server, readiness: Readiness): void {
   server.route({
     method: "GET",
     path: "/healthz",
@@ -18,7 +23,8 @@ export function registerHealthRoutes(server: Server, pool: PgPool): void {
     path: "/readyz",
     options: { auth: false },
     handler: async () => {
-      if (!(await canReachDatabase(pool))) throw Boom.serverUnavailable("database unreachable");
+      if (!readiness.holdsLease()) throw Boom.serverUnavailable("another instance holds the floor's lease");
+      if (!(await canReachDatabase(readiness.pool))) throw Boom.serverUnavailable("database unreachable");
 
       return { status: "ready" };
     },

@@ -1,5 +1,6 @@
 // The queue (docs/api_sketch.md, "Events"): the feed workers poll and claim, and the one write path a visit token is trusted with.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
+import { z } from "zod";
 import type { Deps } from "../deps.js";
 import type { Credentials } from "../auth.js";
 import { HTTP_CREATED, HTTP_NO_CONTENT } from "../http-status.js";
@@ -41,9 +42,20 @@ async function enqueue(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const guarded = guardVisitPost(credentials, parsed.value);
 
   if (guarded) return forbidden(toolkit, guarded);
-  const event = await deps.events.enqueue(parsed.value);
+  const runId = parsed.value.runId ?? (await runOfReportedVisit(deps, parsed.value));
+  const event = await deps.events.enqueue({ ...parsed.value, runId });
 
   return toolkit.response(event).code(HTTP_CREATED);
+}
+
+// A report names its visit, not its run; stamping the run keeps it in that run's own trail of events.
+async function runOfReportedVisit(deps: Deps, event: { name: string; payload: Record<string, unknown> }): Promise<string | undefined> {
+  const visitId = z.uuid().safeParse(event.payload.visitId);
+
+  if (event.name !== "station_run.reported" || !visitId.success) return undefined;
+  const visit = await deps.runs.visit(visitId.data);
+
+  return visit?.runId;
 }
 
 async function claim(deps: Deps, request: Request, toolkit: ResponseToolkit) {

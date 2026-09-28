@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LineBody, StationBody } from "@floor/store";
 import { setupTestServer } from "../test-server.js";
+import { MARKER_LINE } from "./lines.fixtures.js";
 import { Dispatcher } from "./dispatcher.js";
 
 const { deps } = setupTestServer();
@@ -8,17 +9,6 @@ const { deps } = setupTestServer();
 const MISSING_RUN = "0b0e7d3c-6f1a-4a52-9d3e-2f6f1c1e9a01";
 const MISSING_VISIT = "5c2a9b1e-3d4f-4c6a-8b7e-9f0a1b2c3d4e";
 const MAX_TICKS = 20;
-
-const MARKER_LINE: LineBody = {
-  entry: "first",
-  exit: "done",
-  args: {},
-  nodes: [{ id: "first" }, { id: "second" }, { id: "done" }],
-  edges: [
-    { from: "first", to: "second", on: "always" },
-    { from: "second", to: "done", on: "always" },
-  ],
-};
 
 const WORK_LINE: LineBody = {
   entry: "work",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { injectJson, setupTestServer } from "../test-server.js";
 
-const { server } = setupTestServer();
+const { server, loop } = setupTestServer();
 
 describe("GET /healthz", () => {
   it("is reachable with no bearer token", async () => {
@@ -12,7 +12,15 @@ describe("GET /healthz", () => {
 });
 
 describe("GET /readyz", () => {
-  it("reports ready once the pool can reach the database", async () => {
+  it("is not ready while this instance does not hold the floor's lease", async () => {
+    const response = await injectJson(server(), { method: "GET", url: "/readyz" });
+
+    expect(response.statusCode).toBe(503);
+  });
+
+  it("reports ready once it holds the lease and can reach the database", async () => {
+    await loop().pass();
+
     const response = await injectJson(server(), { method: "GET", url: "/readyz" });
 
     expect(response.result).toEqual({ status: "ready" });

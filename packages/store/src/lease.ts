@@ -2,6 +2,8 @@
 import type { Pool, PoolClient } from "pg";
 
 export interface Lease {
+  /** False once released, or once the connection holding the lock is gone: Postgres drops the lock with the session, and tells nobody. */
+  isHeld(): Promise<boolean>;
   release(): Promise<void>;
 }
 
@@ -20,17 +22,43 @@ export async function acquireLease(pool: Pool, key: bigint): Promise<Lease | nul
 }
 
 class AdvisoryLease implements Lease {
-  private released = false;
+  private gone = false;
 
   constructor(
     private readonly client: PoolClient,
     private readonly key: bigint,
-  ) {}
+  ) {
+    client.on("error", this.lose);
+  }
+
+  // The connection is dead, so it is destroyed rather than handed back to the pool for someone else to trip over.
+  private readonly lose = (): void => {
+    if (this.gone) return;
+
+    this.gone = true;
+    this.client.off("error", this.lose);
+    this.client.release(new Error("the lease's connection is gone"));
+  };
+
+  async isHeld(): Promise<boolean> {
+    if (this.gone) return false;
+
+    try {
+      await this.client.query("select 1");
+
+      return true;
+    } catch {
+      this.lose();
+
+      return false;
+    }
+  }
 
   async release(): Promise<void> {
-    if (this.released) return;
+    if (this.gone) return;
 
-    this.released = true;
+    this.gone = true;
+    this.client.off("error", this.lose);
     await this.client.query("select pg_advisory_unlock($1)", [this.key]);
     this.client.release();
   }

@@ -13,19 +13,25 @@ The Floor's HTTP API (docs/api_sketch.md): a thin hapi layer over `@floor/store`
 - **Events** (`routes/events.ts`): the queue surface — get, post (a visit token may only post `station_run.reported`, for its own visit), `/events/claim` (workers, by tag, restricted to `station_run.dispatch`/`abort`), ack, fail.
 - **The dispatcher** (`engine/route.ts`, `engine/dispatcher.ts`): the body of the floor's own loop. `tick()` claims every event that is not a worker's and turns each into one store call: a node's start event opens its visit (at the walk's iteration, or by hand when a person or an outside system posted it), `station_run.reported` writes the report. Any other event is from outside: if it names a run (by `runId`, or by `subjectKey` and `repo`), that run's waiting nodes take it as their answer; then every line declaring it under `start.on` is started. A `Refusal` from the store dead-letters the event, and fails the run when the node it could not open would otherwise leave the run waiting forever; any other error is retried with backoff.
 - **The sweeper** (`engine/sweep.ts`): `sweep()` fails every visit past its deadline (`outcome: "failed"`, `error: "timeout"` — a human visit has no deadline, so it never sweeps) and every `station_run.dispatch` no worker claimed in 30 minutes (fails its visit naming the unoffered tags, then dead-letters the event). A `Refusal` from the store means someone else already reported the visit; the sweep skips it rather than throwing.
+- **The loop** (`engine/loop.ts`): runs the dispatcher and the sweeper on the one instance holding the floor's lease, a Postgres advisory lock. Each pass checks the lease is still alive first, since Postgres drops it silently with the connection; a pass that throws is logged and tried again. `stop()` waits for the pass in flight and releases the lease, so another instance takes over at once. `/readyz` is 503 on an instance that does not hold it.
 - **Validation** (`schemas.ts`, `parse.ts`): zod mirrors of `@floor/store`'s definition bodies; `parseBody` collects every error, not just the first.
 - **Errors** (`problem.ts`): RFC 9457 `application/problem+json`.
 
 ## Not yet here
 
-Nothing runs the dispatcher or the sweeper yet: the process does not take the single-instance lease or tick either on a timer, so over HTTP a started run still waits and a deadline still passes unswept. Also: the richer machine-facing `/station-runs/:id/brief` and `/station-runs/:id/sink` the cluster agent's `floor-client.ts` expects, `/station-runs/:id/git-credential`, `/station-runs/:id/records`, schedules, and costs.
+The richer machine-facing `/station-runs/:id/brief` and `/station-runs/:id/sink` the cluster agent's `floor-client.ts` expects, `/station-runs/:id/git-credential`, `/station-runs/:id/records`, schedules, and costs.
 
 ## Running
 
 ```
 npm run db:up
-FLOOR_SERVICE_TOKEN=dev FLOOR_VISIT_TOKEN_SECRET=dev npm run dev -w @floor/api
+npm run build
+FLOOR_SERVICE_TOKEN=dev FLOOR_VISIT_TOKEN_SECRET=dev npm start -w @floor/api
 ```
+
+`FLOOR_POLL_MS` (default 500) is how long the loop rests when the queue is empty; `FLOOR_SWEEP_MS` (default 30000) is how often it looks for overdue visits.
+
+`scripts/walk.sh` boots the floor and walks one run end to end over HTTP: it puts a service station and a line, starts a run, claims the dispatch as that station's worker, reports, and waits for the run to settle.
 
 ## Testing
 

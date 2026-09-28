@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mintVisitToken } from "../visit-token.js";
 import { VISIT_TOKEN_SECRET, authHeaders, injectJson, setupTestServer } from "../test-server.js";
 
-const { server } = setupTestServer();
+const { server, deps } = setupTestServer();
 const FUTURE_DEADLINE = new Date("2026-01-01T01:00:00Z");
 
 async function enqueueDispatch(tags: string[]): Promise<string> {
@@ -137,5 +137,23 @@ describe("visit-token-restricted posts", () => {
     });
 
     expect(response.statusCode).toBe(403);
+  });
+});
+
+describe("POST /events with station_run.reported", () => {
+  it("stamps the run of the visit it reports on, so the report shows in that run's events", async () => {
+    await deps().definitions.put("line", "line", { entry: "wait", exit: "done", args: {}, nodes: [{ id: "wait", station: "wait" }, { id: "done" }], edges: [] });
+    await deps().definitions.put("station", "wait", { kind: "human", outcomes: ["success"], needs: [], produces: [] });
+    const { run } = await deps().runs.start({ lineId: "line", repo: "r", startItems: {} });
+    const { visit } = await deps().runs.openVisit(run.id, "wait", 1);
+
+    const response = await injectJson<{ runId: string }>(server(), {
+      method: "POST",
+      url: "/events",
+      headers: authHeaders(),
+      payload: { name: "station_run.reported", payload: { visitId: visit.id, report: { outcome: "success" } } },
+    });
+
+    expect(response.result.runId).toBe(run.id);
   });
 });

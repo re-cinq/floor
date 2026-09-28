@@ -6,7 +6,13 @@ export interface Config {
   serviceToken: string;
   visitTokenSecret: string;
   baseUrl: string;
+  leaseKey: bigint;
+  pollMs: number;
+  sweepMs: number;
 }
+
+/** "floor" in ASCII; every instance on one database contends for the same key. */
+export const FLOOR_LEASE_KEY = 0x666c6f6f72n;
 
 export function loadConfig(env: NodeJS.ProcessEnv): Config {
   return {
@@ -15,6 +21,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     serviceToken: enforceEnv(env, "FLOOR_SERVICE_TOKEN"),
     visitTokenSecret: enforceEnv(env, "FLOOR_VISIT_TOKEN_SECRET"),
     baseUrl: env.FLOOR_BASE_URL ?? "http://localhost:8080",
+    leaseKey: FLOOR_LEASE_KEY,
+    pollMs: Number(env.FLOOR_POLL_MS ?? "500"),
+    sweepMs: Number(env.FLOOR_SWEEP_MS ?? "30000"),
   };
 }
 

@@ -28,7 +28,9 @@ replaces with one table and a tag filter.
 - `lease.ts` — `acquireLease`/`Lease`: a Postgres advisory lock
   (`pg_try_advisory_lock`) held on a dedicated client for the lease's
   lifetime, since the lock is session-scoped and a pooled `pool.query`
-  would drop it on the next checkout.
+  would drop it on the next checkout. `isHeld()` says whether that
+  connection is still there; once it is not, the client is destroyed rather
+  than handed back to the pool.
 - `definitions.ts` — `DefinitionsStore`: `put` (idempotent by content hash),
   `latest`, `byHash`, `byHashOnly` (hash alone, no id — a visit only ever
   records a station's hash), `versions`, `archive`.

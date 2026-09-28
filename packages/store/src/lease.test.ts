@@ -63,4 +63,29 @@ describe("acquireLease", () => {
 
     await expect(lease!.release()).resolves.toBeUndefined();
   });
+
+  it("is held until released", async () => {
+    const lease = await acquireLease(poolA, leaseKey());
+
+    expect(await lease!.isHeld()).toBe(true);
+
+    await lease!.release();
+  });
+
+  it("is no longer held once released", async () => {
+    const lease = await acquireLease(poolA, leaseKey());
+
+    await lease!.release();
+
+    expect(await lease!.isHeld()).toBe(false);
+  });
+
+  it("is no longer held once its connection is killed, and another pool can take the key", async () => {
+    const key = leaseKey();
+    const lease = await acquireLease(poolA, key);
+
+    await poolB.query("select pg_terminate_backend(pid) from pg_locks where locktype = 'advisory' and objid = $1::bigint::oid", [key % 4294967296n]);
+
+    expect(await lease!.isHeld()).toBe(false);
+  });
 });
