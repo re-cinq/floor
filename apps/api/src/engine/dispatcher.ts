@@ -1,5 +1,5 @@
-// The floor's own loop body (docs/assembly_run_storage.md, "Events: the queue and the loop"): claim every event that is not a worker's, turn it into one store call, ack it.
-import { Refusal, type AssemblyRunStore, type EventStore, type FloorEvent } from "@floor/store";
+// The floor's own loop body (docs/assembly_run_storage.md, "Events: the queue and the loop"): claim every event that is not a worker's, turn it into store calls, ack it.
+import { Refusal, type AssemblyRunStore, type EventStore, type FloorEvent, type OutsideEvent, type OutsideEvents, type Run } from "@floor/store";
 import { WORKER_EVENT_NAMES } from "../worker-events.js";
 import { routeEvent, type Route } from "./route.js";
 
@@ -8,11 +8,19 @@ const DEFAULT_BATCH_SIZE = 20;
 export interface DispatcherDeps {
   runs: AssemblyRunStore;
   events: EventStore;
+  outside: OutsideEvents;
   claimedBy: string;
   batchSize?: number;
 }
 
 type RunEvent = Extract<Route, { kind: "run-event" }>;
+
+interface NodeStart {
+  runId: string;
+  nodeId: string;
+  iteration?: number;
+  requestedBy: string;
+}
 
 export class Dispatcher {
   constructor(private readonly deps: DispatcherDeps) {}
@@ -43,17 +51,48 @@ export class Dispatcher {
 
   private async apply(event: FloorEvent, route: Route): Promise<void> {
     if (route.kind === "invalid") throw new Refusal(route.reason);
-    if (route.kind === "report") await this.deps.runs.report(route.visitId, route.report, route.worker);
-    if (route.kind === "run-event") await this.startNode(event.name, route);
+    if (route.kind === "report") return this.report(route);
+    const outside = outsideEvent(event);
+
+    if (route.kind === "run-event" && (await this.startedNode(outside, route))) return;
+
+    await this.deps.outside.startLines(outside);
   }
 
-  private async startNode(eventName: string, start: RunEvent): Promise<void> {
-    const nodeId = await this.deps.runs.nodeStartedBy(start.runId, eventName);
+  private async report(route: Extract<Route, { kind: "report" }>): Promise<void> {
+    await this.deps.runs.report(route.visitId, route.report, route.worker);
+  }
 
-    if (!nodeId) return;
+  /** True when the event was a node's start in the run it names. When it was not, the run's waiting nodes get to take it as their answer. */
+  private async startedNode(event: OutsideEvent, start: RunEvent): Promise<boolean> {
+    const run = await this.runNamedBy(start);
 
+    if (!run) return false;
+    const nodeId = await this.deps.runs.nodeStartedBy(run.id, event.name);
+
+    if (!nodeId) {
+      await this.deps.outside.answer(run, event);
+
+      return false;
+    }
+
+    await this.openOrFailRun({ runId: run.id, nodeId, iteration: start.iteration, requestedBy: start.requestedBy ?? event.name });
+
+    return true;
+  }
+
+  // A run id that finds nothing is a mistake worth keeping; a subject that finds nothing is only a run that is not open.
+  private async runNamedBy(start: RunEvent): Promise<Run | null> {
+    const run = await this.deps.outside.runFor(start.run);
+
+    if (!run && "runId" in start.run) throw new Refusal(`no run "${start.run.runId}"`);
+
+    return run;
+  }
+
+  private async openOrFailRun(start: NodeStart): Promise<void> {
     try {
-      await this.open(nodeId, eventName, start);
+      await this.open(start);
     } catch (error) {
       await this.failRunThatCannotGoOn(start.runId, error);
       throw error;
@@ -61,14 +100,14 @@ export class Dispatcher {
   }
 
   // The walk posts an iteration; a person or an outside system does not, and that is what makes it a start by hand.
-  private async open(nodeId: string, eventName: string, start: RunEvent): Promise<void> {
+  private async open(start: NodeStart): Promise<void> {
     if (start.iteration) {
-      await this.deps.runs.openVisit(start.runId, nodeId, start.iteration);
+      await this.deps.runs.openVisit(start.runId, start.nodeId, start.iteration);
 
       return;
     }
 
-    await this.deps.runs.openVisitByHand(start.runId, nodeId, start.requestedBy ?? eventName);
+    await this.deps.runs.openVisitByHand(start.runId, start.nodeId, start.requestedBy);
   }
 
   // A node the store refuses to open would leave its run with nothing open and nothing queued, waiting forever.
@@ -90,4 +129,11 @@ export class Dispatcher {
 
     await this.deps.events.fail(event.id, message);
   }
+}
+
+function outsideEvent(event: FloorEvent): OutsideEvent {
+  const payload = event.payload;
+  const isRecord = typeof payload === "object" && payload !== null && !Array.isArray(payload);
+
+  return { name: event.name, payload: isRecord ? (payload as Record<string, unknown>) : {} };
 }

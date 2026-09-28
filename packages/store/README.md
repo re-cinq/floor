@@ -46,6 +46,15 @@ replaces with one table and a tag filter.
 - `start-events.ts`, `refusal.ts` — a node's start event name (its line's own
   `start:`, or `node.<id>.start`), and `Refusal`: the error for a request the
   store will never accept, as opposed to one worth retrying.
+- `template.ts` — the one template engine: `{name}` over own, scalar fields
+  only, single-pass, refused past 4 KB. Its tests are named after the attack
+  each one stops.
+- `event-match.ts`, `outside-events.ts` — events from outside the walk.
+  `OutsideEvents.startLines` starts every line whose latest version declares
+  the event under `start.on` (`when` is equality, `args` are templates over
+  the payload); `answer` writes the outcome a waiting node's `reports`
+  declares for it; `runFor` finds the run by id, or by subject and repo. A
+  line never starts on an internal event of its own runs.
 - `blobs.ts` — `BlobsStore`: `put` (content-addressed by sha256, idempotent,
   refuses over the 64 MB cap rather than truncating), `get`,
   `reapUnreferenced` (deletes and returns every hash no start item, produced

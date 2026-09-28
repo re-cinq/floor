@@ -81,6 +81,21 @@ export class DefinitionsStore {
     return rows.map((row) => toRow<Body>(row));
   }
 
+  /** Lines whose latest, non-archived version declares this event under `start.on`; an older version that did starts nothing. */
+  async linesStartedBy<Body>(eventName: string): Promise<DefinitionRow<Body>[]> {
+    const { rows } = await this.deps.connection.query(
+      `select * from (
+         select distinct on (id) * from definitions
+         where kind = 'line' and archived_at is null
+         order by id, created_at desc
+       ) latest
+       where jsonb_exists(latest.body->'start'->'on', $1)`,
+      [eventName],
+    );
+
+    return rows.map((row) => toRow<Body>(row));
+  }
+
   async versions<Body>(kind: DefinitionKind, id: string): Promise<DefinitionRow<Body>[]> {
     const { rows } = await this.deps.connection.query(
       `select * from definitions where kind = $1 and id = $2 order by created_at desc`,

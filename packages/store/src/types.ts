@@ -57,15 +57,18 @@ export interface LineArgSpec {
   subject?: boolean;
 }
 
+/** What a `when` compares a payload field against: equality on its text form, nothing more. */
+export type WhenValue = string | number | boolean;
+
 export interface LineStart {
   on: string[];
-  when?: Record<string, string>;
+  when?: Record<string, WhenValue>;
   args: Record<string, string>;
 }
 
 export interface LineNodeReport {
   on: string;
-  when?: Record<string, string>;
+  when?: Record<string, WhenValue>;
   outcome: string;
 }
 

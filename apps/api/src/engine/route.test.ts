@@ -20,17 +20,29 @@ describe("routeEvent", () => {
   it("routes a walk-posted node start with its iteration", () => {
     const route = routeEvent({ name: "node.review.start", payload: { runId: RUN_ID, nodeId: "review", iteration: 2 } });
 
-    expect(route).toEqual({ kind: "run-event", runId: RUN_ID, iteration: 2 });
+    expect(route).toEqual({ kind: "run-event", run: { runId: RUN_ID }, iteration: 2 });
   });
 
   it("routes a start posted by a person with who asked and no iteration", () => {
     const route = routeEvent({ name: "manual.plan.validate", payload: { runId: RUN_ID, requestedBy: "ana" } });
 
-    expect(route).toEqual({ kind: "run-event", runId: RUN_ID, requestedBy: "ana" });
+    expect(route).toEqual({ kind: "run-event", run: { runId: RUN_ID }, requestedBy: "ana" });
   });
 
   it("refuses a run id that is not a uuid", () => {
     const route = routeEvent({ name: "node.review.start", payload: { runId: "42" } });
+
+    expect(route.kind).toBe("invalid");
+  });
+
+  it("routes an event naming a subject and its repo to the run holding it", () => {
+    const route = routeEvent({ name: "github.pull_request.closed", payload: { subjectKey: "pr_url:u", repo: "r", merged: true } });
+
+    expect(route).toEqual({ kind: "run-event", run: { subjectKey: "pr_url:u", repo: "r" } });
+  });
+
+  it("refuses a subject with no repo to look for it on", () => {
+    const route = routeEvent({ name: "github.pull_request.closed", payload: { subjectKey: "pr_url:u" } });
 
     expect(route.kind).toBe("invalid");
   });

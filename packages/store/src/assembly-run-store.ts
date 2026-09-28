@@ -102,7 +102,7 @@ export class AssemblyRunStore {
     const inserted = await insertRun(client, prepared.input, prepared.lineHash, prepared.subjectKey);
 
     if (inserted) {
-      await this.announceStart(client, inserted.id, prepared.entry);
+      await this.announceStart(client, inserted, prepared.entry);
 
       return { run: inserted, joined: false };
     }
@@ -112,11 +112,11 @@ export class AssemblyRunStore {
     return { run: existing!, joined: true };
   }
 
-  private async announceStart(client: PoolClient, runId: string, entry: LineNode): Promise<void> {
+  private async announceStart(client: PoolClient, run: Run, entry: LineNode): Promise<void> {
     const events = this.eventsOn(client);
 
-    await events.enqueue({ name: "internal.run.started", payload: { runId }, runId });
-    await events.enqueue({ name: startEventName(entry), payload: { runId, nodeId: entry.id, iteration: 1 }, runId });
+    await events.enqueue({ name: "internal.run.started", payload: aboutRun(run), runId: run.id });
+    await events.enqueue({ name: startEventName(entry), payload: { runId: run.id, nodeId: entry.id, iteration: 1 }, runId: run.id });
   }
 
   async get(runId: string): Promise<Run | null> {
@@ -146,7 +146,7 @@ export class AssemblyRunStore {
 
     await events.dropQueued(stop.runId);
     await this.abortOpenVisits(client, events, stop.runId);
-    await events.enqueue({ name: "internal.run.settled", payload: { runId: stop.runId, outcome: stop.outcome }, runId: stop.runId });
+    await events.enqueue({ name: "internal.run.settled", payload: aboutRun(run), runId: run.id });
 
     return run;
   }
@@ -212,11 +212,7 @@ export class AssemblyRunStore {
     return withTransaction(this.deps.pool, async (client) => {
       const settled = await settleRun(client, settle);
 
-      await this.eventsOn(client).enqueue({
-        name: "internal.run.settled",
-        payload: { runId, outcome: settle.outcome },
-        runId,
-      });
+      await this.eventsOn(client).enqueue({ name: "internal.run.settled", payload: aboutRun(settled), runId });
 
       return settled;
     });
@@ -294,8 +290,9 @@ export class AssemblyRunStore {
     if (transition.kind === "finish" || transition.kind === "fail") {
       const settle = settleInputFor(runId, transition, this.now());
 
-      await settleRun(client, settle);
-      await events.enqueue({ name: "internal.run.settled", payload: { runId, outcome: settle.outcome }, runId });
+      const settled = await settleRun(client, settle);
+
+      await events.enqueue({ name: "internal.run.settled", payload: aboutRun(settled), runId });
     }
   }
 
@@ -308,6 +305,11 @@ export class AssemblyRunStore {
 
     return rows[0] ? toVisit(rows[0]) : null;
   }
+}
+
+// What an internal event says about its run: enough for a line started by it to know whose run this was, and where.
+function aboutRun(run: Run): Record<string, unknown> {
+  return { runId: run.id, lineId: run.lineId, repo: run.repo, subjectKey: run.subjectKey, outcome: run.outcome, reason: run.reason };
 }
 
 interface PreparedStart {

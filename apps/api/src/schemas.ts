@@ -5,13 +5,15 @@ const itemKind = z.enum(["value", "file", "git"]);
 
 const lineArgSpec = z.object({ kind: itemKind, subject: z.boolean().optional() });
 
+const whenValue = z.union([z.string(), z.number(), z.boolean()]);
+
 const lineStart = z.object({
   on: z.array(z.string()),
-  when: z.record(z.string(), z.string()).optional(),
+  when: z.record(z.string(), whenValue).optional(),
   args: z.record(z.string(), z.string()),
 });
 
-const lineNodeReport = z.object({ on: z.string(), when: z.record(z.string(), z.string()).optional(), outcome: z.string() });
+const lineNodeReport = z.object({ on: z.string(), when: z.record(z.string(), whenValue).optional(), outcome: z.string() });
 
 const lineNode = z.object({
   id: z.string(),

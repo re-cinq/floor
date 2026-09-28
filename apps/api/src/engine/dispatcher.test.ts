@@ -45,7 +45,7 @@ async function tickUntilIdle(): Promise<void> {
 }
 
 function dispatcher(): Dispatcher {
-  return new Dispatcher({ runs: deps().runs, events: deps().events, claimedBy: "floor-test" });
+  return new Dispatcher({ runs: deps().runs, events: deps().events, outside: deps().outside, claimedBy: "floor-test" });
 }
 
 async function startLine(line: LineBody, workStation: StationBody = WORK_STATION): Promise<string> {
@@ -191,5 +191,92 @@ describe("Dispatcher: events it cannot act on", () => {
     const run = await deps().runs.get(runId);
 
     expect(run!.outcome).toBe("cancelled");
+  });
+});
+
+describe("Dispatcher: events from outside", () => {
+  const OPENED = "github.pull_request.opened";
+  const CLOSED = "github.pull_request.closed";
+  const REPO = "github.com/re-cinq/lore";
+
+  const WAITS_FOR_MERGE = { id: "merged", station: "pr-merged", reports: [{ on: CLOSED, when: { merged: true }, outcome: "success" }] };
+
+  const MERGE_LINE: LineBody = {
+    entry: "merged",
+    exit: "done",
+    start: { on: [OPENED], args: { pr_url: "{pull_request_url}" } },
+    args: { pr_url: { kind: "value", subject: true } },
+    nodes: [WAITS_FOR_MERGE, { id: "done" }],
+    edges: [{ from: "merged", to: "done", on: "success" }],
+  };
+
+  const NOTIFY_LINE: LineBody = {
+    ...MARKER_LINE,
+    start: { on: ["internal.run.settled"], args: { settled_run: "{runId}" } },
+    args: { settled_run: { kind: "value" } },
+  };
+
+  async function pullRequestOpened() {
+    await deps().definitions.put("line", "merge", MERGE_LINE);
+    await deps().definitions.put("station", "pr-merged", { kind: "human", outcomes: ["success"], needs: [], produces: [] });
+    await postedThenHandled(OPENED, { repo: REPO, pull_request_url: "https://pr/412" });
+
+    return deps().runs.list({ lineId: "merge" }, { limit: 10 });
+  }
+
+  async function pullRequestMerged() {
+    await deps().definitions.put("line", "notify", NOTIFY_LINE);
+    await pullRequestOpened();
+    await postedThenHandled(CLOSED, { subjectKey: "pr_url:https://pr/412", repo: REPO, merged: true });
+
+    return deps().runs.list({ repo: REPO }, { limit: 10 });
+  }
+
+  it("starts the line that declares the event", async () => {
+    const runs = await pullRequestOpened();
+
+    expect(runs.items).toMatchObject([{ lineId: "merge", subjectKey: "pr_url:https://pr/412", outcome: null }]);
+  });
+
+  it("opens the started run's entry node in the same pass over the queue", async () => {
+    const runs = await pullRequestOpened();
+    const [merge] = runs.items;
+    const visits = await deps().runs.visits(merge!.id);
+
+    expect(visits).toMatchObject([{ nodeId: "merged", report: null }]);
+  });
+
+  it("answers the waiting node, found by the run's subject, and the run settles", async () => {
+    const runs = await pullRequestMerged();
+    const merge = runs.items.find((run) => run.lineId === "merge");
+
+    expect(merge!.outcome).toBe("success");
+  });
+
+  it("starts a line on another's settling, and walks it to its end", async () => {
+    const runs = await pullRequestMerged();
+    const notify = runs.items.find((run) => run.lineId === "notify");
+
+    expect(notify).toMatchObject({ outcome: "success", startItems: { settled_run: { kind: "value" } } });
+  });
+
+  it("starts the notify line once, not again on its own settling", async () => {
+    const runs = await pullRequestMerged();
+
+    expect(runs.items.filter((run) => run.lineId === "notify")).toHaveLength(1);
+  });
+
+  it("acks an event naming a subject no open run holds", async () => {
+    const handled = await postedThenHandled(CLOSED, { subjectKey: "pr_url:https://pr/999", repo: REPO, merged: true });
+
+    expect(handled.ackedAt).not.toBeNull();
+  });
+
+  it("dead-letters an event whose payload cannot fill a line's start mapping", async () => {
+    await deps().definitions.put("line", "merge", MERGE_LINE);
+
+    const handled = await postedThenHandled(OPENED, { repo: REPO });
+
+    expect(handled.lastError).toContain('line "merge"');
   });
 });

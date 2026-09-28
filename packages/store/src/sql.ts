@@ -24,7 +24,7 @@ export async function insertRun(
   return rows[0] ? toRun(rows[0]) : null;
 }
 
-export async function openRunBySubject(client: PoolClient, repo: string, subjectKey: string): Promise<Run | null> {
+export async function openRunBySubject(client: Queryable, repo: string, subjectKey: string): Promise<Run | null> {
   const { rows } = await client.query(
     `select * from assembly_runs where repo = $1 and subject_key = $2 and finished_at is null`,
     [repo, subjectKey],

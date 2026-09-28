@@ -8,6 +8,8 @@ export {
 } from "./events.js";
 export { acquireLease, type Lease } from "./lease.js";
 export { Refusal, enforce } from "./refusal.js";
+export { renderTemplate } from "./template.js";
+export { OutsideEvents, type OutsideEvent, type OutsideEventsDeps, type RunRef } from "./outside-events.js";
 export {
   DefinitionsStore,
   type DefinitionKind,
@@ -44,6 +46,7 @@ export type {
   LineEdge,
   LineStart,
   LineNodeReport,
+  WhenValue,
   StationKind,
   StationBody,
   NeedSpec,
