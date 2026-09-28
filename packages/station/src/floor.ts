@@ -54,9 +54,9 @@ export class Floor {
     return (await accepted(response)).json() as Promise<VisitBrief>;
   }
 
+  // The brief gives a file's address as a pod would reach it. A station reaches the floor its own way, so only the path is taken from it.
   async read(url: string, visitToken: string): Promise<Buffer> {
-    const headers = { authorization: `Bearer ${visitToken}` };
-    const response = await accepted(await fetch(url, { headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }));
+    const response = await accepted(await this.request(new URL(url).pathname, {}, visitToken));
 
     return Buffer.from(await response.arrayBuffer());
   }

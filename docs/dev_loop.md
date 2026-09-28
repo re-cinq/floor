@@ -61,6 +61,7 @@ The floor's token is `floor-dev-token` unless `.env.local` sets
 | `npm run minikube-claude-auth` | gives the agents a Claude credential: an API key, or your own subscription through `claude setup-token`. Run again when a token expires |
 | `scripts/walk.sh` | boots a floor of its own and walks a run through a service station, over HTTP |
 | `scripts/walk-agent.sh` | boots a floor and a cluster agent of its own and walks a run through a real agent pod |
+| `scripts/walk-code-review.sh` | converts lore's `code-review` from a lore checkout and walks it: a pull request opens, a pod reviews a public branch, a station takes the review |
 
 Setup pins a kubeconfig to the minikube context, so neither it nor the
 cluster agent can act on whatever cluster `kubectl` points at. The test

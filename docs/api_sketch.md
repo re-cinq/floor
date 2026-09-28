@@ -195,10 +195,13 @@ services without changing this API.
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled` |
 | agent context | none required | whatever the definition names | lore MCP gateway |
 
-> **Not built yet.** The converter.
-
-**The converter is a deliverable.** It reads each lore line and emits this
-floor's lines, stations and agent definitions:
+**The converter is a deliverable**, `@floor/lore-converter`. It reads each
+lore line and emits this floor's lines, stations and agent definitions.
+Every one of lore's lines converts into a line this floor accepts. One,
+`code-review`, runs as it did in lore. For the others the converter says
+what is left: mostly what starts them, which is in lore's code and not in
+its files, and what their service stations read and write.
+`scripts/walk-code-review.sh` runs the converted line through a real pod.
 
 | lore | becomes |
 |---|---|
@@ -208,6 +211,7 @@ floor's lines, stations and agent definitions:
 | terminal `retrospective` | a node with no station |
 | `job_ref` nodes | `service` stations named after the job |
 | recipe `inputs`, `watch` | `file` needs and produces |
+| what an agent prints for the next step to read | a `file` produce, `from: output` |
 | `route: {args.x}` | human station route over declared needs |
 | Floor hook `stampLinePr` | a service node `open-pr` after the push node |
 | Floor hook `maybeMarkPrReady` | a service node `mark-ready` before a human PR node |
@@ -216,5 +220,4 @@ floor's lines, stations and agent definitions:
 | every `assemblyRuns.start` call site (PR opened, merged, cron, triage) | `start.on` on the line |
 | single-CR task types | a one-node line |
 
-All seventeen lore lines convert. The ones whose stations read lore's
-database run only inside lore.
+The lines whose stations read lore's database run only inside lore.

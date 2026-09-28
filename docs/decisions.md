@@ -101,6 +101,23 @@ the cluster saying where it is, without breaking one written this way.
 needs no renaming. They are checked when a definition is put, so a mistake
 is refused then and not found by a pod.
 
+## Converting lore
+
+**Prompts are kept as lore wrote them.** So the floor bends where they
+need it: the repo is cloned at `target`, where they look for it, and what
+an agent prints can be handed on as a file, `from: output`, since they
+answer in their output and lore's floor parsed that in a hook.
+
+**A hook becomes a station, and its failure ends the run as an error.**
+Lore posted a review from code that ran after the review node. Here that is
+`post-review`, a station with no edge for `failed`: a review nobody could
+post is not a run that went well.
+
+**What a line's file does not say is written down by hand**, in the
+converter's `known-lines.ts`: what starts a line, what it is given, what
+lore's floor did around it. Reading that out of lore's code by machine
+would be guessing.
+
 ## Service stations
 
 **A function that throws has failed its visit; a floor out of reach has
@@ -110,6 +127,10 @@ itself may be fine.
 
 **A service does nothing on abort.** It holds nothing between visits. The
 SDK acks the event so it does not sit in the queue.
+
+**A station reads files from the floor it talks to.** The brief gives a
+file's address as a pod reaches it, which on a laptop is a name the host
+cannot resolve. The SDK takes the path and uses its own address.
 
 **Files go through tools, values through the return.** `tools.produce`
 uploads at once and the SDK names the file in the report, so a station

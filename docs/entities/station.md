@@ -46,6 +46,11 @@ produces:
 `path` is relative to the pod's workspace, `/workspace`, and matters only
 to the agent kind. The prompt gets each one as `{<name>_path}`, in full.
 
+A file an agent produces is one it wrote at `path`, or, with
+`from: output` in place of a path, everything it said last. The second is
+for a prompt that answers in its output, which the next station then reads
+as a file.
+
 > **Not built yet.** `must_change` is accepted and ignored. `route` is
 > stored and never rendered.
 

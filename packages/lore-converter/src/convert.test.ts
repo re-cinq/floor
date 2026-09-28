@@ -84,12 +84,12 @@ describe("convertLine: lore's code-review", () => {
     expect(nodeNamed(codeReview(), "post-review")).toEqual({ id: "post-review", station: "post-review", bind: { review_output: "review_output" } });
   });
 
-  it("routes the review through that station, and keeps the retry with its budget", () => {
+  it("routes the review through that station, which has nowhere to go when it fails", () => {
     expect(lineOf(codeReview()).edges).toEqual([
       { from: "review", to: "review", on: "failed", iterationMax: 1 },
       { from: "review", to: "post-review", on: "success" },
       { from: "review", to: "post-review", on: "changes_requested" },
-      { from: "post-review", to: "done", on: "always" },
+      { from: "post-review", to: "done", on: "success" },
     ]);
   });
 

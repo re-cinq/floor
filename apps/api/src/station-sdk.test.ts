@@ -96,6 +96,20 @@ describe("defineStation, against a running floor", () => {
     expect(bag.closed_by).toEqual({ kind: "value", ref: "bender", by: visit.id });
   });
 
+  it("reads a file need from the floor it talks to, though the brief names the address a pod would use", async () => {
+    const read: string[] = [];
+
+    deps().config.baseUrl = "http://host.minikube.internal:1";
+    await worked(async (brief, tools) => {
+      read.push((await tools.read("spec")).toString());
+
+      return { outcome: "success" };
+    });
+    deps().config.baseUrl = floorUrl;
+
+    expect(read).toEqual(["close it kindly"]);
+  });
+
   it("reads a file need through its tools", async () => {
     const read: string[] = [];
 

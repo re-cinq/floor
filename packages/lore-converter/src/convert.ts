@@ -71,11 +71,11 @@ function hookNode(hook: HookStation): LineNode {
   return { id: hook.nodeId, station: hook.stationId, bind: Object.fromEntries(bind) };
 }
 
-// The hook's node takes the edges the node it follows had for these outcomes, and hands on to where they led.
+// The hook's node takes the edges the node it follows had for these outcomes, and hands on to where they led, when it succeeds. It has no edge for failing: a review nobody could post is not a run that went well, and the run ends as an error saying so.
 function withHook(edges: LineEdge[], hook: HookStation): LineEdge[] {
   const taken = edges.filter((edge) => edge.from === hook.after && hook.outcomes.includes(edge.on));
   const kept = edges.filter((edge) => !taken.includes(edge));
-  const onward = [...new Set(taken.map((edge) => edge.to))].map((to): LineEdge => ({ from: hook.nodeId, to, on: "always" }));
+  const onward = [...new Set(taken.map((edge) => edge.to))].map((to): LineEdge => ({ from: hook.nodeId, to, on: "success" }));
 
   return [...kept, ...taken.map((edge) => ({ ...edge, to: hook.nodeId })), ...onward];
 }
