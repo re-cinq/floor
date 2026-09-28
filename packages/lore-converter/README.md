@@ -1,0 +1,39 @@
+# @floor/lore-converter
+
+Reads a lore assembly line and the recipes its nodes name, and writes what this floor runs in its place: a line, its stations, its agent definitions. It reads a lore checkout and changes nothing in it.
+
+```
+node packages/lore-converter/dist/cli.js --lore ~/workspace/lore --line code-review
+node packages/lore-converter/dist/cli.js --lore ~/workspace/lore --all
+node packages/lore-converter/dist/cli.js --lore ~/workspace/lore --line code-review --put http://localhost:8180
+```
+
+`--all` is a report: for each line, what it became and what is left for a person to decide.
+
+## What becomes what
+
+| in lore | here |
+|---|---|
+| an `agent` node's `prompt_ref` and `model` | an agent definition, one per distinct pair; the prompt is kept as written |
+| the recipe's front matter | the definition's settings: `timeout_minutes`, `model`, and in `config` its `disallowed_tools` and `test_policy` |
+| an `agent` node | an agent station. It needs the repo at `target`, where lore's prompts look, and a value for each `{name}` the prompt asks for |
+| what the agent prints | a file the station produces, `<node>_output`, `from: output`. Lore's prompts answer in their output |
+| `repo_workdir: false` | the repo is cloned with `access: read` |
+| `continues: { key: args.x }` | `conversation: continue`, `conversationKey: x` |
+| `by_hand: true` | the node's start event is `manual.<line>.<node>` |
+| the terminal `retrospective` | a node with no station |
+| a review node a person works | a human station; its `route`'s `{args.x}` is `{x}` |
+| any other node | a service station, named after its job |
+| `iteration_max` | `iterationMax` |
+
+## What is not in lore's files
+
+A line's file does not say what starts it, what it is given, or what lore's floor did in code around it. `known-lines.ts` holds that, one line at a time, each read by hand from lore's code. A line with no entry there still converts, with the default arguments and no start event, and says so in its notes.
+
+Today it holds `code-review`: started by a pull request opening, and with a `post-review` station where lore's floor posted the review from a hook.
+
+A service station converts with no needs and no produces. What a lore job read and wrote is in its code. Each is noted.
+
+## Checked
+
+Every converted line is run through the floor's own `validateLine`, against the stations it comes with. What the floor would refuse is a note.

@@ -10,9 +10,9 @@
   ],
   "scripts": {
     "start": "bash scripts/dev.sh",
-    "build": "npm run build -w @floor/assembly-lines && npm run build -w @floor/store && npm run build -w @floor/station && npm run build -w @floor/api && npm run build -w @floor/cluster-agent",
-    "test": "npm run test -w @floor/assembly-lines && npm run test -w @floor/store && npm run test -w @floor/station && npm run test -w @floor/api && npm run test -w @floor/cluster-agent",
-    "typecheck": "npm run typecheck -w @floor/assembly-lines && npm run typecheck -w @floor/store && npm run typecheck -w @floor/station && npm run typecheck -w @floor/api && npm run typecheck -w @floor/cluster-agent",
+    "build": "npm run build -w @floor/assembly-lines && npm run build -w @floor/store && npm run build -w @floor/station && npm run build -w @floor/lore-converter && npm run build -w @floor/api && npm run build -w @floor/cluster-agent",
+    "test": "npm run test -w @floor/assembly-lines && npm run test -w @floor/store && npm run test -w @floor/station && npm run test -w @floor/lore-converter && npm run test -w @floor/api && npm run test -w @floor/cluster-agent",
+    "typecheck": "npm run typecheck -w @floor/assembly-lines && npm run typecheck -w @floor/store && npm run typecheck -w @floor/station && npm run typecheck -w @floor/lore-converter && npm run typecheck -w @floor/api && npm run typecheck -w @floor/cluster-agent",
     "db:up": "docker start floor-postgres 2>/dev/null || docker run --name floor-postgres -e POSTGRES_PASSWORD=floor -e POSTGRES_DB=floor -p 5433:5432 -d pgvector/pgvector:pg16",
     "db:down": "docker rm -f floor-postgres",
     "db:migrate": "npm run build -w @floor/store && FLOOR_DATABASE_URL=${FLOOR_DATABASE_URL:-postgres://postgres:floor@localhost:5433/floor} npm run migrate -w @floor/store",
