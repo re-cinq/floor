@@ -10,6 +10,10 @@ lint/template/install/upgrade regardless of which components are enabled.
 {{- end -}}
 {{- end -}}
 
+{{- if and .Values.api.enabled (gt (int .Values.api.replicas) 1) -}}
+{{ fail "api.replicas must be 1: only the replica holding the floor's lease passes /readyz, so a second is never ready, and an install or a rollout waits on it forever" }}
+{{- end -}}
+
 {{- if and .Values.api.enabled (not .Values.api.baseUrl) -}}
 {{ fail "api.baseUrl is required when api.enabled is true" }}
 {{- end -}}

@@ -32,6 +32,9 @@ async function main(): Promise<void> {
     idleMs: millisecondsOf(process.env.FLOOR_CLAIM_IDLE_MS),
     maxIdleMs: millisecondsOf(process.env.FLOOR_CLAIM_MAX_IDLE_MS),
     sleep,
+    onError: (error) => {
+      console.error("[cluster-agent] the floor could not be reached; trying again:", error instanceof Error ? error.message : error);
+    },
   });
 }
 

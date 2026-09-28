@@ -267,3 +267,39 @@ describe("runClaimLoop: idle backoff", () => {
     expect(sleeps[1]).toBeGreaterThanOrEqual(sleeps[0]!);
   });
 });
+
+async function unreachableFloorScenario() {
+  let ticks = 0;
+  const survived: unknown[] = [];
+  const claim = vi.fn(() => Promise.reject(new Error("connect ECONNREFUSED")));
+
+  await runClaimLoop({
+    floor: fakeFloor({ claim }),
+    resources: fakeResources(),
+    secrets: fakeSecrets(),
+    tags: [],
+    sleep: async () => {
+      ticks += 1;
+    },
+    running: () => ticks < 2,
+    onError: (error) => survived.push(error),
+  });
+
+  const calls = claim.mock.calls;
+
+  return { claims: calls.length, survived };
+}
+
+describe("runClaimLoop: a floor out of reach", () => {
+  it("keeps claiming, where it used to end the agent", async () => {
+    const { claims } = await unreachableFloorScenario();
+
+    expect(claims).toBe(2);
+  });
+
+  it("says what it survived", async () => {
+    const { survived } = await unreachableFloorScenario();
+
+    expect(survived).toEqual([new Error("connect ECONNREFUSED"), new Error("connect ECONNREFUSED")]);
+  });
+});

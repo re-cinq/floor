@@ -7,6 +7,9 @@ metadata:
     {{- include "floor.api.selectorLabels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.api.replicas }}
+  # The new pod cannot be ready while the old one holds the lease, so the old one goes first.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "floor.api.selectorLabels" . | nindent 6 }}
@@ -49,8 +52,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.api.existingSecret }}
                   key: visitTokenSecret
-          # Only the replica holding the floor's Postgres lease passes /readyz; the Service
-          # routes to that one pod, and the others sit ready-but-unrouted until it fails over.
+          # /readyz is the floor's lease on Postgres, and that it can reach it.
           livenessProbe:
             httpGet:
               path: /healthz

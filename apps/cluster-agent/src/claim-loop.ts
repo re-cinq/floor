@@ -22,6 +22,8 @@ export interface ClaimLoopDeps {
   maxIdleMs?: number;
   sleep: (delayMs: number) => Promise<void>;
   running?: () => boolean;
+  /** Told of what the loop survives: a floor it could not reach. */
+  onError?: (error: unknown) => void;
 }
 
 export type ClaimTickOutcome =
@@ -67,9 +69,20 @@ async function claimTick(
   secretName: string,
   claimLimit: number,
 ): Promise<ClaimTickOutcome[]> {
-  const events = await deps.floor.claim(deps.tags, claimLimit);
+  const events = await claimed(deps, claimLimit);
 
   return Promise.all(events.map((event) => handle(deps, secretName, event)));
+}
+
+// A floor out of reach is a tick that found nothing, not the end of the agent: it starts before the floor on a fresh install, and outlives every restart of it.
+async function claimed(deps: ClaimLoopDeps, claimLimit: number): Promise<ClaimedEvent[]> {
+  try {
+    return await deps.floor.claim(deps.tags, claimLimit);
+  } catch (error) {
+    deps.onError?.(error);
+
+    return [];
+  }
 }
 
 async function handle(

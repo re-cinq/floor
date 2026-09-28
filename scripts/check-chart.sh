@@ -51,6 +51,11 @@ assert_refusal "clusterAgent.enabled without clusterAgent.floorUrl, api disabled
   --set version=t --set postgres.existingSecret=s --set postgres.secretKey=k \
   --set api.enabled=false --set clusterAgent.enabled=true
 
+assert_refusal "a second api replica, which would never be ready" \
+  "api.replicas must be 1" \
+  --set version=t --set postgres.existingSecret=s --set postgres.secretKey=k \
+  --set api.baseUrl=http://floor --set api.existingSecret=a --set api.replicas=2
+
 assert_refusal "unsupported subsystem.version" \
   "subsystem.version" \
   --set version=t --set postgres.existingSecret=s --set postgres.secretKey=k \

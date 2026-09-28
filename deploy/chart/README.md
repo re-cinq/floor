@@ -99,3 +99,13 @@ always lint (and install) with a complete values file.
 
 Install anything into a cluster, push an image, or touch `apps/` or `packages/` — build the image
 from the repo root's `Dockerfile` and push it yourself, then point `version` at that tag.
+
+## Verified on a cluster
+
+Installed into a scratch namespace on minikube, from an image built from this repo's Dockerfile, with Postgres outside the cluster. A run went through a real agent pod with the API, the cluster agent and the subsystem's controller all in-cluster, and the visit's resources were deleted afterwards. The cluster agent ran under the chart's Role, which `kubectl auth can-i --list` shows as exactly: `create` and `delete` on the three agent resources, `get` and `update` on the secret `agent-secrets`.
+
+What that found, and what the chart does about it:
+
+- **One API replica, replaced, never rolled.** `/readyz` is the floor's lease, which one instance holds. A second replica is never ready, so `helm install --wait` waited on it until it timed out, and a rolling update would have waited for a new pod that cannot be ready while the old one lives. The chart refuses `api.replicas` above 1 and uses `strategy: Recreate`: an upgrade is a few seconds with no floor, during which workers find nothing to claim and try again.
+- **CRDs are Helm's to create, never to change.** They are in `crds/`, so Helm installs them when the cluster has none, whatever `subsystem.enabled` says, and never upgrades or deletes them. `--skip-crds` leaves the cluster alone entirely.
+- **A password may hold any character.** The connection string is built with the user and password percent-encoded.

@@ -145,6 +145,20 @@ is, is read from the image, not from where it was found.
 **The floor's port on a laptop is 8180.** 8080 is lore's floor, and running
 the two side by side is the point.
 
+**One chart, one image, one version.** Both apps are built into one image
+and the chart picks which to run. `version` is the tag of that image, so
+the API and the cluster agent cannot be deployed at different versions of
+the brief they exchange.
+
+**One API replica, replaced and not rolled.** `/readyz` is the lease, so a
+second replica is never ready and a rolling update never finishes. The
+chart refuses more than one. The other way out, every replica serving and
+one running the loop, changes what `/readyz` means and is not decided.
+
+**The cluster agent outlives the floor.** A claim that cannot reach the
+floor is a tick that found nothing. It used to end the process, which on a
+fresh install starts before the floor does.
+
 **Tests have their own database.** Every suite truncates its tables. On the
 database a floor was running against, that deleted a visit's clean-up event
 between two runs.
