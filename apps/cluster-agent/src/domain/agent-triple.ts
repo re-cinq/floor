@@ -13,7 +13,8 @@ import type { ValueNeed, FileNeed, GitNeedResolved, Produce } from "./need.js";
 export type DispatchNeed = ValueNeed | FileNeed | GitNeedResolved;
 export type DispatchProduce = Produce;
 
-export type Conversation = { mode: "new" } | { mode: "continue"; sessionRef: string };
+/** `sessionRef` is the earlier visit's id: what the subsystem resumes, and fetches the archive by. `save` on a new conversation is the first round of a station that continues. */
+export type Conversation = { mode: "new"; save?: boolean } | { mode: "continue"; sessionRef: string };
 
 export interface DispatchSettings {
   model?: string;
@@ -87,7 +88,7 @@ function agentResources(name: string, input: DispatchBrief): AgentResources {
       token_secret: need.tokenSecret,
     })),
     skills: input.settings.skills,
-    conversation: conversationRef(name, input),
+    conversation: conversationRef(input),
   };
 }
 
@@ -126,13 +127,16 @@ function modelSecret(input: DispatchBrief): { name: string; ref: string }[] | un
   return [{ name: input.modelSecretKey, ref: input.modelSecretKey }];
 }
 
-function conversationRef(name: string, input: DispatchBrief): ConversationRef | undefined {
-  if (input.conversation.mode === "new") return undefined;
+// The pin is the visit id, not the resource name: the subsystem hands it to the agent as its session id, which must be a uuid.
+function conversationRef(input: DispatchBrief): ConversationRef | undefined {
+  const conversation = input.conversation;
+
+  if (conversation.mode === "new" && !conversation.save) return undefined;
 
   return {
-    source: `${input.floorBaseUrl}/api/conversations`,
-    id: input.conversation.sessionRef,
-    pin: name,
+    source: `${input.floorBaseUrl}/conversations`,
+    id: conversation.mode === "continue" ? conversation.sessionRef : undefined,
+    pin: input.visitId,
     headers_secret: input.tokenSecretKey,
   };
 }
@@ -172,7 +176,7 @@ function buildAgent(name: string, input: DispatchBrief): Agent {
       targetRepo: gitNeed ? repoOwnerName(gitNeed.repoUrl) : undefined,
       branch: gitNeed?.ref,
       parameters: Object.fromEntries(valueNeeds.map((need) => [need.name, need.value])),
-      files: fileNeeds.map((need) => ({ path: need.path, url: need.url, headers_secret: need.headersSecret })),
+      files: fileNeeds.map((need) => ({ path: need.path, url: need.url, headers_secret: input.tokenSecretKey })),
     },
   };
 }

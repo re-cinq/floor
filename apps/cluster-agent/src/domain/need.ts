@@ -11,7 +11,6 @@ export interface FileNeed {
   kind: "file";
   path: string;
   url: string;
-  headersSecret?: string;
 }
 
 /** The wire shape a `DispatchBriefResponse` carries: the Floor states intent (`access`), not a credential. */

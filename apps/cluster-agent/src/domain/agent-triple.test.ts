@@ -90,7 +90,6 @@ describe("buildAgentTriple", () => {
             kind: "file",
             path: "spec.md",
             url: "http://host.minikube.internal:8080/blobs/44aa",
-            headersSecret: "visit-abc-123-token",
           },
         ],
       }),
@@ -164,16 +163,28 @@ describe("buildAgentTriple", () => {
     expect(resources?.conversation).toBeUndefined();
   });
 
-  it("restores the previous session and pins this run's own state to continue", () => {
+  it("restores the earlier visit's session and saves this one under the visit's own id", () => {
     const { agentDefinition } = buildAgentTriple(
-      brief({ conversation: { mode: "continue", sessionRef: "sha256-deadbeef" } }),
+      brief({ conversation: { mode: "continue", sessionRef: "earlier-visit" } }),
     );
     const resources = agentDefinition.spec?.resources;
 
     expect(resources?.conversation).toEqual({
-      source: "http://host.minikube.internal:8080/api/conversations",
-      id: "sha256-deadbeef",
-      pin: "floor-abc-123",
+      source: "http://host.minikube.internal:8080/conversations",
+      id: "earlier-visit",
+      pin: "abc-123",
+      headers_secret: "visit-abc-123-token",
+    });
+  });
+
+  it("saves the first round of a station that continues, with nothing to restore", () => {
+    const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new", save: true } }));
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.conversation).toEqual({
+      source: "http://host.minikube.internal:8080/conversations",
+      id: undefined,
+      pin: "abc-123",
       headers_secret: "visit-abc-123-token",
     });
   });

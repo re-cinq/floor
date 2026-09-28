@@ -47,10 +47,21 @@ exceptions called out in its file header:
    way lore's catalog does. A `git` need's branch+sha and a `continue`
    conversation's session id are per-visit, so a shared, long-lived
    AgentDefinition would always be one visit stale on at least one of them.
-2. **The `conversation` field's exact wire contract is a best-effort read**
-   of the subsystem's reference, not a verified one — see the comment on
-   `conversationRef` before relying on `conversation: continue` against a
-   real cluster.
+2. **The conversation contract is the subsystem's own**, read from its
+   source: it restores with `GET {source}/{id}` and saves with
+   `POST {source}/{pin}`, and hands `pin` to the agent as its session id,
+   which must be a uuid. So `source` is the floor's `/conversations`, `pin`
+   is the visit id, and `id` is the id of the earlier visit being continued.
+   A station that continues saves its first round too, or its second would
+   have nothing to restore.
+3. **A `headers_secret` holds a header, not a token.** The subsystem reads
+   the secret as `Name: value` lines and silently drops a line with no
+   colon, so the visit token is written as `Authorization: Bearer <token>`.
+   The same secret authorises the sink, file downloads, file uploads and the
+   conversation archive.
+4. **The model's secret is this agent's to name** when the brief names none:
+   `ANTHROPIC_API_KEY` for a `claude` model, and so on
+   (`domain/model-secret.ts`).
 
 `claim-loop.ts` also widens `station_run.abort` beyond what
 `docs/assembly_run_storage.md` states (there, only `cancel` triggers it): it

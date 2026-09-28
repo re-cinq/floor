@@ -6,6 +6,7 @@ import { buildAgentTriple, type DispatchNeed } from "./domain/agent-triple.js";
 import type { GitNeedResolved } from "./domain/need.js";
 import type { ClaimedEvent, DispatchBriefResponse, FloorClient } from "./floor-client.js";
 import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js";
+import { modelSecretKeyFor } from "./domain/model-secret.js";
 
 export interface ClaimLoopDeps {
   floor: FloorClient;
@@ -31,6 +32,11 @@ const DEFAULT_SECRET_NAME = "agent-secrets";
 
 export function tokenSecretKey(visitId: string): string {
   return `visit-${visitId}-token`;
+}
+
+/** The subsystem reads a `headers_secret` as a block of `Name: value` lines; a bare token has no colon, and is dropped without a word. */
+export function authorizationHeader(token: string): string {
+  return `Authorization: Bearer ${token}`;
 }
 
 export function gitCredentialSecretKey(visitId: string, needName: string): string {
@@ -94,14 +100,14 @@ async function dispatch(
 ): Promise<ClaimTickOutcome> {
   const brief = await deps.floor.brief(visitId);
 
-  await deps.secrets.setKey(secretName, tokenSecretKey(visitId), brief.token);
+  await deps.secrets.setKey(secretName, tokenSecretKey(visitId), authorizationHeader(brief.token));
   const needs = await resolveNeeds(deps, secretName, visitId, brief);
 
   const triple = buildAgentTriple({
     visitId,
     floorBaseUrl: brief.floorBaseUrl,
     tokenSecretKey: tokenSecretKey(visitId),
-    modelSecretKey: brief.modelSecretKey,
+    modelSecretKey: brief.modelSecretKey ?? modelSecretKeyFor(brief.settings.model),
     secretName,
     deadlineMinutes: brief.deadlineMinutes,
     settings: brief.settings,

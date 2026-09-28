@@ -99,10 +99,10 @@ const writeGitNeed = {
 };
 
 describe("runClaimLoop: dispatch", () => {
-  it("writes the visit token into the named secret", async () => {
+  it("writes the visit token into the named secret as the header the subsystem will send", async () => {
     const scenario = await dispatchScenario(dispatchBrief);
 
-    expect(scenario.secrets.setKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"), "visit-token-abc");
+    expect(scenario.secrets.setKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"), "Authorization: Bearer visit-token-abc");
   });
 
   it("applies exactly one triple", async () => {

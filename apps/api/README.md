@@ -21,7 +21,7 @@ The Floor's HTTP API (docs/api_sketch.md): a thin hapi layer over `@floor/store`
 
 ## Not yet here
 
-The richer machine-facing `/station-runs/:id/brief` and `/station-runs/:id/sink` the cluster agent's `floor-client.ts` expects, `/station-runs/:id/git-credential`, schedules, and costs.
+A git credential provider, schedules, and costs. `GET /blobs/:hash` does not yet check that the caller's visit needs that blob, and nothing schedules the blob reaper.
 
 ## Running
 

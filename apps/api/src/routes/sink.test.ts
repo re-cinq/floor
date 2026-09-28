@@ -37,7 +37,7 @@ interface Brief {
   deadlineMinutes: number;
   settings: Record<string, unknown>;
   needs: unknown[];
-  conversation: { mode: string; sessionRef?: string };
+  conversation: { mode: string; sessionRef?: string; save?: boolean };
 }
 
 function bearer(token: string): Record<string, string> {
@@ -104,7 +104,7 @@ describe("GET /station-runs/:id/brief", () => {
       deadlineMinutes: 50,
       settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", skills: ["review"], env: { LOG: "1" } },
       needs: [{ name: "pr_url", kind: "value", value: "https://pr/412" }],
-      conversation: { mode: "new" },
+      conversation: { mode: "new", save: true },
     });
   });
 

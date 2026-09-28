@@ -88,7 +88,7 @@ describe("DispatchBriefs.briefFor", () => {
       settings: { image: "img:1", timeoutMinutes: 20 },
       needs: expect.arrayContaining([{ name: "workspace", kind: "git", path: "workspace", repoUrl: "https://github.com/re-cinq/lore", ref: "9e1f", access: "read" }]),
       produces: [{ name: "review_verdict", kind: "value" }, { name: "review_findings", kind: "file" }],
-      conversation: { mode: "new" },
+      conversation: { mode: "new", save: false },
     });
   });
 

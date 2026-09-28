@@ -10,8 +10,8 @@ export type DispatchNeed =
   | { name: string; kind: "file"; path: string; url: string }
   | { name: string; kind: "git"; path: string; repoUrl: string; ref: string; access: "read" | "write" };
 
-/** `visitId` names the earlier visit whose conversation this one continues: the id the subsystem resumes, and fetches the archive by. */
-export type DispatchConversation = { mode: "new" } | { mode: "continue"; visitId: string };
+/** `visitId` names the earlier visit whose conversation this one continues: the id the subsystem resumes, and fetches the archive by. `save` is for the first round of a station that continues: nothing to restore yet, but the next round will want this one. */
+export type DispatchConversation = { mode: "new"; save: boolean } | { mode: "continue"; visitId: string };
 
 export interface DispatchBrief {
   visit: Visit;
@@ -90,7 +90,7 @@ export class DispatchBriefs {
     enforce(station, `station "${visit.stationHash}" is gone`);
     const needs = dispatchNeeds({ station: station.body, bind: await this.bindOf(visit), bag: await this.deps.runs.bag(visit.runId), frozen: visit.brief.needs, baseUrl });
 
-    return { visit, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation: await this.conversationOf(visit) };
+    return { visit, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation: await this.conversationOf(visit, station.body) };
   }
 
   private async bindOf(visit: Visit): Promise<Record<string, string> | undefined> {
@@ -102,11 +102,10 @@ export class DispatchBriefs {
     return nodes.find((node) => node.id === visit.nodeId)?.bind;
   }
 
-  private async conversationOf(visit: Visit): Promise<DispatchConversation> {
-    if (!visit.resumedFrom) return { mode: "new" };
-    const earlier = await this.visitSavedAs(visit.resumedFrom);
+  private async conversationOf(visit: Visit, station: StationBody): Promise<DispatchConversation> {
+    const earlier = visit.resumedFrom ? await this.visitSavedAs(visit.resumedFrom) : null;
 
-    return earlier ? { mode: "continue", visitId: earlier } : { mode: "new" };
+    return earlier ? { mode: "continue", visitId: earlier } : { mode: "new", save: station.conversation === "continue" };
   }
 
   /** The visit whose report carries this conversation archive. */
