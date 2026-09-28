@@ -56,17 +56,20 @@ export class Sink {
 
   private async reportOf(visit: Visit, ended: Ended): Promise<Report> {
     const result = await this.resultOf(visit.id);
-    const sessionRef = await this.sessionOf(visit.id);
+    const failed = ended.failed || Boolean(result?.failed);
+    const report = failed ? { outcome: "failed", error: failureOf(ended, result) } : await this.verdictOf(visit, result?.text ?? "");
 
-    if (ended.failed || result?.failed) return withSession({ outcome: "failed", error: failureOf(ended, result) }, sessionRef);
+    return withSession(report, await this.sessionOf(visit.id));
+  }
+
+  private async verdictOf(visit: Visit, said: string): Promise<Report> {
     const station = await this.deps.definitions.byHashOnly<StationBody>("station", visit.stationHash ?? "");
 
     enforce(station, `visit "${visit.id}" has no station to read outcomes from`);
-    const said = result?.text ?? "";
     const verdict = readAgentVerdict(said, station.body.outcomes);
     const produced = { ...declaredValues(station.body, verdict.produced), ...(await this.allFilesOf(visit.id, station.body, said)) };
 
-    return withSession({ outcome: verdict.outcome, produced, error: verdict.error }, sessionRef);
+    return { outcome: verdict.outcome, produced, error: verdict.error };
   }
 
   private async allFilesOf(visitId: string, station: StationBody, said: string): Promise<Record<string, string>> {
