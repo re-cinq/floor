@@ -1,7 +1,8 @@
 // The mutations and list query behind the store: one statement each, plus the compare-and-set report write.
 
 import type { PoolClient } from "pg";
-import { toRun, toVisit, type StationRunRow } from "./rows.js";
+import { Refusal, enforce } from "./refusal.js";
+import { toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
 import type { Report, Run, Visit } from "./types.js";
 import type { OpenContext } from "./open-visit.js";
 import type { Page, RunFilter, StartRunInput } from "./assembly-run-store.js";
@@ -47,7 +48,7 @@ export async function settleRun(client: PoolClient, settle: SettleInput): Promis
     [settle.runId, settle.outcome, settle.reason, settle.now],
   );
 
-  if (!rows[0]) throw new Error(`run "${settle.runId}" is already finished`);
+  enforce(rows[0], `run "${settle.runId}" is already finished`);
 
   return toRun(rows[0]);
 }
@@ -117,7 +118,7 @@ export async function writeReport(client: PoolClient, write: WriteReportInput): 
     [write.visitId, JSON.stringify(write.report), write.worker ?? null, write.now],
   );
 
-  if (!rows[0]) throw new Error(`no visit "${write.visitId}"`);
+  enforce(rows[0], `no visit "${write.visitId}"`);
   const stored = rows[0] as StationRunRow;
 
   requireEqualReport(write.visitId, stored.report as Report, write.report);
@@ -128,7 +129,7 @@ export async function writeReport(client: PoolClient, write: WriteReportInput): 
 // Structural, not JSON.stringify: Postgres's jsonb does not preserve key insertion order, so two semantically equal reports can round-trip with their keys in a different order.
 function requireEqualReport(visitId: string, stored: Report, attempted: Report): void {
   if (deepEqual(stored, attempted)) return;
-  throw new Error(`visit "${visitId}" already has a different report`);
+  throw new Refusal(`visit "${visitId}" already has a different report`);
 }
 
 function deepEqual(left: unknown, right: unknown): boolean {
@@ -166,4 +167,29 @@ function addCondition(conditions: string[], values: unknown[], template: string,
   if (value === undefined) return;
   values.push(value);
   conditions.push(template.replace("$%", `$${values.length}`));
+}
+
+/** A start from outside closes the run's open human visits first, so the kernel's replay never sees a person's node left open behind the one a person just started. No walk advance: the visit opened next is what moves the run. */
+export async function closeOpenHumanVisits(client: PoolClient, runId: string, now: Date): Promise<void> {
+  await client.query(
+    `update station_runs set report = '{"outcome":"cancelled"}'::jsonb, finished_at = $2
+     where assembly_run_id = $1 and report is null
+       and station_hash in (select hash from definitions where kind = 'station' and body->>'kind' = 'human')`,
+    [runId, now],
+  );
+}
+
+export interface NodeVisitCount {
+  openVisit: Visit | null;
+  highestIteration: number;
+}
+
+export async function nodeVisitCount(client: Queryable, runId: string, nodeId: string): Promise<NodeVisitCount> {
+  const { rows } = await client.query(
+    `select * from station_runs where assembly_run_id = $1 and node_id = $2 order by iteration desc`,
+    [runId, nodeId],
+  );
+  const visits = rows.map(toVisit);
+
+  return { openVisit: visits.find((visit) => visit.report === null) ?? null, highestIteration: visits.at(0)?.iteration ?? 0 };
 }

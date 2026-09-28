@@ -2,7 +2,9 @@
 
 import type { Pool } from "pg";
 import { DefinitionsStore } from "./definitions.js";
+import { Refusal, enforce } from "./refusal.js";
 import type { Queryable } from "./rows.js";
+import { requireNode } from "./start-events.js";
 import { mergeAgentSettings, previousErrorNeed, previousFailuresNeed, resolveNeeds } from "./resolve.js";
 import type {
   AgentDefinitionBody,
@@ -48,6 +50,12 @@ export interface OpenVisitDeps {
   bag(runId: string): Promise<Record<string, Item>>;
 }
 
+interface ResolvedStation {
+  id: string;
+  hash: string;
+  body: StationBody;
+}
+
 export class OpenVisitResolver {
   constructor(private readonly deps: OpenVisitDeps) {}
 
@@ -65,7 +73,7 @@ export class OpenVisitResolver {
     const { needs: resolvedNeeds, missing } = resolveNeeds(station.body.needs, node.bind, bag);
 
     if (missing.length > 0) {
-      throw new Error(`node "${node.id}": missing required need(s) ${missing.join(", ")}`);
+      throw new Refusal(`node "${node.id}": missing required need(s) ${missing.join(", ")}`);
     }
 
     return this.finishStationContext(request, station, resolvedNeeds);
@@ -73,7 +81,7 @@ export class OpenVisitResolver {
 
   private async finishStationContext(
     request: OpenRequest,
-    station: { hash: string; body: StationBody },
+    station: ResolvedStation,
     resolvedNeeds: Record<string, string>,
   ): Promise<OpenContext> {
     const { run, nodeId, iteration } = request;
@@ -93,19 +101,19 @@ export class OpenVisitResolver {
       agentSettings: fields.body,
       resumedFrom,
       deadline: deadlineFor(station.body.kind, settings, this.deps.now()),
-      dispatchTags: dispatchTagsFor(station.body, settings),
+      dispatchTags: dispatchTagsFor(station, settings),
     };
   }
 
-  private async stationRef(ref: string): Promise<{ hash: string; body: StationBody }> {
+  private async stationRef(ref: string): Promise<ResolvedStation> {
     const [id, hash] = ref.split("@");
     const row = hash
       ? await this.deps.definitions.byHash<StationBody>("station", id!, hash)
       : await this.deps.definitions.latest<StationBody>("station", id!);
 
-    if (!row) throw new Error(`no station "${ref}"`);
+    enforce(row, `no station "${ref}"`);
 
-    return { hash: row.hash, body: row.body };
+    return { id: row.id, hash: row.hash, body: row.body };
   }
 
   private async resolveAgentSettings(
@@ -113,10 +121,10 @@ export class OpenVisitResolver {
     repo: string,
   ): Promise<{ hash: string; body: AgentSettings } | null> {
     if (station.kind !== "agent") return null;
-    if (!station.agentDefinition) throw new Error(`agent station has no agent_definition`);
+    enforce(station.agentDefinition, `agent station has no agent_definition`);
     const row = await this.deps.definitions.latest<AgentDefinitionBody>("agent_definition", station.agentDefinition);
 
-    if (!row) throw new Error(`no agent definition "${station.agentDefinition}"`);
+    enforce(row, `no agent definition "${station.agentDefinition}"`);
     const variants = row.body.variants;
     const merged = mergeAgentSettings(row.body.settings, variants?.[repo]);
 
@@ -248,17 +256,10 @@ function deadlineFor(kind: StationBody["kind"], settings: { body: AgentSettings 
   return new Date(now.getTime() + (QUEUE_WAIT_MINUTES + timeoutMinutes) * MS_PER_MINUTE);
 }
 
-function dispatchTagsFor(station: StationBody, settings: { body: AgentSettings } | null): string[] {
-  if (station.kind === "agent") return ["kind:agent", ...(settings?.body.tags ?? [])];
-  if (station.kind === "service") return [`station:${station.agentDefinition ?? ""}`];
+function dispatchTagsFor(station: ResolvedStation, settings: { body: AgentSettings } | null): string[] {
+  if (station.body.kind === "agent") return ["kind:agent", ...(settings?.body.tags ?? [])];
+  if (station.body.kind === "service") return [`station:${station.id}`];
 
   return [];
 }
 
-function requireNode(line: LineBody, nodeId: string): LineNode {
-  const node = line.nodes.find((candidate) => candidate.id === nodeId);
-
-  if (!node) throw new Error(`no node "${nodeId}" in this line`);
-
-  return node;
-}

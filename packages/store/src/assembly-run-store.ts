@@ -7,18 +7,22 @@ import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
 import { foldBag } from "./bag.js";
 import { deriveSubjectKey } from "./resolve.js";
+import { Refusal, enforce } from "./refusal.js";
+import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
 import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable } from "./rows.js";
 import {
+  closeOpenHumanVisits,
   insertRun,
   insertVisit,
   listQuery,
+  nodeVisitCount,
   openRunBySubject,
   openVisitRows,
   settleRun,
   writeReport,
 } from "./sql.js";
-import type { Item, LineBody, Report, Run, Visit } from "./types.js";
+import type { Item, LineBody, LineNode, Report, Run, Visit } from "./types.js";
 
 export interface StartRunInput {
   lineId: string;
@@ -85,10 +89,8 @@ export class AssemblyRunStore {
   async start(input: StartRunInput): Promise<StartResult> {
     const line = await this.definitions.latest<LineBody>("line", input.lineId);
 
-    if (!line) throw new Error(`no line named "${input.lineId}"`);
-    const entry = input.entry ?? line.body.entry;
-
-    requireNode(line.body, entry);
+    enforce(line, `no line named "${input.lineId}"`);
+    const entry = requireNode(line.body, input.entry ?? line.body.entry);
     const subjectKey = deriveSubjectKey(line.body, input.startItems);
 
     return withTransaction(this.deps.pool, (client) =>
@@ -110,11 +112,11 @@ export class AssemblyRunStore {
     return { run: existing!, joined: true };
   }
 
-  private async announceStart(client: PoolClient, runId: string, entry: string): Promise<void> {
+  private async announceStart(client: PoolClient, runId: string, entry: LineNode): Promise<void> {
     const events = this.eventsOn(client);
 
     await events.enqueue({ name: "internal.run.started", payload: { runId }, runId });
-    await events.enqueue({ name: `node.${entry}.start`, payload: { runId, nodeId: entry }, runId });
+    await events.enqueue({ name: startEventName(entry), payload: { runId, nodeId: entry.id, iteration: 1 }, runId });
   }
 
   async get(runId: string): Promise<Run | null> {
@@ -130,15 +132,21 @@ export class AssemblyRunStore {
   }
 
   async cancel(runId: string, reason: string): Promise<Run> {
-    return withTransaction(this.deps.pool, (client) => this.cancelInTransaction(client, runId, reason));
+    return withTransaction(this.deps.pool, (client) => this.stopInTransaction(client, { runId, outcome: "cancelled", reason }));
   }
 
-  private async cancelInTransaction(client: PoolClient, runId: string, reason: string): Promise<Run> {
-    const run = await settleRun(client, { runId, outcome: "cancelled", reason, now: this.now() });
+  /** Ends a run that cannot go on (a node that can never open, for instance), the same way cancel does but as `error`. */
+  async fail(runId: string, reason: string): Promise<Run> {
+    return withTransaction(this.deps.pool, (client) => this.stopInTransaction(client, { runId, outcome: "error", reason }));
+  }
+
+  private async stopInTransaction(client: PoolClient, stop: { runId: string; outcome: string; reason: string }): Promise<Run> {
+    const run = await settleRun(client, { ...stop, now: this.now() });
     const events = this.eventsOn(client);
 
-    await events.dropQueued(runId);
-    await this.abortOpenVisits(client, events, runId);
+    await events.dropQueued(stop.runId);
+    await this.abortOpenVisits(client, events, stop.runId);
+    await events.enqueue({ name: "internal.run.settled", payload: { runId: stop.runId, outcome: stop.outcome }, runId: stop.runId });
 
     return run;
   }
@@ -159,27 +167,42 @@ export class AssemblyRunStore {
   async bag(runId: string): Promise<Record<string, Item>> {
     const run = await this.get(runId);
 
-    if (!run) throw new Error(`no run "${runId}"`);
+    enforce(run, `no run "${runId}"`);
     const visits = await this.visits(runId);
 
     return foldBag(this.definitions, run.startItems, visits);
   }
 
   async next(runId: string): Promise<Transition> {
-    return this.nextWith(this.deps.pool, runId);
+    const { transition } = await this.walkWith(this.deps.pool, runId);
+
+    return transition;
   }
 
-  private async nextWith(connection: Queryable, runId: string): Promise<Transition> {
+  private async lineOf(connection: Queryable, runId: string): Promise<{ run: Run; line: LineBody }> {
     const run = await getWith(connection, runId);
 
-    if (!run) throw new Error(`no run "${runId}"`);
+    enforce(run, `no run "${runId}"`);
     const line = await this.definitions.byHash<LineBody>("line", run.lineId, run.lineHash);
 
-    if (!line) throw new Error(`line "${run.lineId}"@${run.lineHash} is gone`);
-    const graph = await buildWalkGraph(this.definitions, run.lineId, line.body);
+    enforce(line, `line "${run.lineId}"@${run.lineHash} is gone`);
+
+    return { run, line: line.body };
+  }
+
+  private async walkWith(connection: Queryable, runId: string): Promise<{ line: LineBody; transition: Transition }> {
+    const { run, line } = await this.lineOf(connection, runId);
+    const graph = await buildWalkGraph(this.definitions, run.lineId, line);
     const visits = (await visitsWith(connection, runId)).map(toNodeVisit);
 
-    return getNextTransition(graph, visits);
+    return { line, transition: getNextTransition(graph, visits) };
+  }
+
+  /** The node this event starts in this run's line, by its own start name or the default `node.<id>.start`; null when the event starts no node here. */
+  async nodeStartedBy(runId: string, eventName: string): Promise<string | null> {
+    const { line } = await this.lineOf(this.deps.pool, runId);
+
+    return nodeStartedBy(line, eventName)?.id ?? null;
   }
 
   async settle(runId: string): Promise<Run> {
@@ -200,16 +223,13 @@ export class AssemblyRunStore {
   }
 
   async openVisit(runId: string, nodeId: string, iteration: number, requestedBy?: string): Promise<OpenVisitResult> {
-    const run = await this.get(runId);
+    const { run, line } = await this.lineOf(this.deps.pool, runId);
 
-    if (!run) throw new Error(`no run "${runId}"`);
-    if (run.finishedAt) throw new Error(`run "${runId}" is already finished`);
-    const line = await this.definitions.byHash<LineBody>("line", run.lineId, run.lineHash);
-
-    if (!line) throw new Error(`line "${run.lineId}"@${run.lineHash} is gone`);
-    const context = await this.openVisitResolver.resolve({ run, line: line.body, nodeId, iteration, requestedBy });
+    enforce(!run.finishedAt, `run "${runId}" is already finished`);
+    const context = await this.openVisitResolver.resolve({ run, line, nodeId, iteration, requestedBy });
 
     return withTransaction(this.deps.pool, async (client) => {
+      if (requestedBy) await closeOpenHumanVisits(client, run.id, this.now());
       const inserted = await insertVisit(client, run.id, context);
 
       if (!inserted.created) return inserted;
@@ -217,6 +237,15 @@ export class AssemblyRunStore {
 
       return { visit, created: true };
     });
+  }
+
+  /** A start from outside the walk: the node's already-open visit if it has one (so a redelivered start opens nothing twice), otherwise its next iteration. */
+  async openVisitByHand(runId: string, nodeId: string, requestedBy: string): Promise<OpenVisitResult> {
+    const { openVisit, highestIteration } = await nodeVisitCount(this.deps.pool, runId, nodeId);
+
+    if (openVisit) return { visit: openVisit, created: false };
+
+    return this.openVisit(runId, nodeId, highestIteration + 1, requestedBy);
   }
 
   private async dispatchOpened(client: PoolClient, runId: string, visit: Visit, context: OpenContext): Promise<Visit> {
@@ -247,12 +276,12 @@ export class AssemblyRunStore {
   }
 
   private async advance(client: PoolClient, runId: string): Promise<void> {
-    const transition = await this.nextWith(client, runId);
+    const { line, transition } = await this.walkWith(client, runId);
     const events = this.eventsOn(client);
 
     if (transition.kind === "launch") {
       await events.enqueue({
-        name: `node.${transition.nodeId}.start`,
+        name: startEventName(requireNode(line, transition.nodeId)),
         payload: { runId, nodeId: transition.nodeId, iteration: transition.iteration },
         runId,
       });
@@ -282,13 +311,13 @@ export class AssemblyRunStore {
 interface PreparedStart {
   input: StartRunInput;
   lineHash: string;
-  entry: string;
+  entry: LineNode;
   subjectKey: string | null;
 }
 
 function settleInputFor(runId: string, transition: Transition, now: Date): { runId: string; outcome: string; reason: string | null; now: Date } {
   if (transition.kind !== "finish" && transition.kind !== "fail") {
-    throw new Error(`run "${runId}" is not finished`);
+    throw new Refusal(`run "${runId}" is not finished`);
   }
 
   const outcome = transition.kind === "finish" ? "success" : transition.outcome;
@@ -297,11 +326,4 @@ function settleInputFor(runId: string, transition: Transition, now: Date): { run
   return { runId, outcome, reason, now };
 }
 
-function requireNode(line: LineBody, nodeId: string): LineBody["nodes"][number] {
-  const node = line.nodes.find((candidate) => candidate.id === nodeId);
-
-  if (!node) throw new Error(`no node "${nodeId}" in this line`);
-
-  return node;
-}
 

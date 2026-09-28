@@ -7,6 +7,7 @@ export {
   type EventStoreDeps,
 } from "./events.js";
 export { acquireLease, type Lease } from "./lease.js";
+export { Refusal, enforce } from "./refusal.js";
 export {
   DefinitionsStore,
   type DefinitionKind,
