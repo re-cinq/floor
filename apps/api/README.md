@@ -11,12 +11,13 @@ The Floor's HTTP API (docs/api_sketch.md): a thin hapi layer over `@floor/store`
 - **Station runs** (`routes/station-runs.ts`): `/station-runs` list (run required; node/open filtered in memory) and get. Read-only — a report arrives as an event.
 - **Blobs** (`routes/blobs.ts`): `/blobs/:hash` get, `/blobs` post (raw bytes, capped at `BlobsStore`'s limit).
 - **Events** (`routes/events.ts`): the queue surface — get, post (a visit token may only post `station_run.reported`, for its own visit), `/events/claim` (workers, by tag, restricted to `station_run.dispatch`/`abort`), ack, fail.
+- **The dispatcher** (`engine/route.ts`, `engine/dispatcher.ts`): the body of the floor's own loop. `tick()` claims every event that is not a worker's and turns each into one store call: a node's start event opens its visit (at the walk's iteration, or by hand when a person or an outside system posted it), `station_run.reported` writes the report. A `Refusal` from the store dead-letters the event, and fails the run when the node it could not open would otherwise leave the run waiting forever; any other error is retried with backoff.
 - **Validation** (`schemas.ts`, `parse.ts`): zod mirrors of `@floor/store`'s definition bodies; `parseBody` collects every error, not just the first.
 - **Errors** (`problem.ts`): RFC 9457 `application/problem+json`.
 
 ## Not yet here
 
-The engine loop that turns `node.<id>.start`, `station_run.reported`, `internal.*` and `schedule.*.tick` events into `AssemblyRunStore` calls under the single-instance lease (docs/assembly_run_storage.md, "the floor's loop") — without it, `start` creates a run but nothing opens its entry visit yet. Also: the richer machine-facing `/station-runs/:id/brief` and `/station-runs/:id/sink` the cluster agent's `floor-client.ts` expects, `/station-runs/:id/git-credential`, `/station-runs/:id/records`, schedules, and costs.
+Nothing runs the dispatcher yet: the process does not take the single-instance lease or tick on a timer, so over HTTP a started run still waits. Lines started by an event (`start.on`) and human nodes answered by one (`reports`) are not matched yet, and nothing sweeps deadlines. Also: the richer machine-facing `/station-runs/:id/brief` and `/station-runs/:id/sink` the cluster agent's `floor-client.ts` expects, `/station-runs/:id/git-credential`, `/station-runs/:id/records`, schedules, and costs.
 
 ## Running
 

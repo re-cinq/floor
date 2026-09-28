@@ -11,6 +11,6 @@ export function parseBody<T>(schema: ZodType<T>, payload: unknown): ParseResult<
   return { success: false, errors: issuesOf(result.error) };
 }
 
-function issuesOf(error: ZodError): string[] {
+export function issuesOf(error: ZodError): string[] {
   return error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
 }

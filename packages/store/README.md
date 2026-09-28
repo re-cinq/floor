@@ -39,10 +39,13 @@ replaces with one table and a tag filter.
   needs, conversation continuation, failure context, deadline, dispatch
   tags) behind the store.
 - `assembly-run-store.ts` — `AssemblyRunStore`: `start`, `get`, `list`,
-  `cancel`, `bag`, `next`, `settle`, `openVisit`, `report`, `visits`,
-  `visit`. Every follow-up event is written in the same transaction as the
+  `cancel`, `fail`, `bag`, `next`, `settle`, `openVisit`, `openVisitByHand`,
+  `nodeStartedBy`, `report`, `visits`, `visit`. Every follow-up event is written in the same transaction as the
   row that caused it (docs/assembly_run_storage.md, "Every follow-up event
   is written in the transaction that caused it").
+- `start-events.ts`, `refusal.ts` — a node's start event name (its line's own
+  `start:`, or `node.<id>.start`), and `Refusal`: the error for a request the
+  store will never accept, as opposed to one worth retrying.
 - `blobs.ts` — `BlobsStore`: `put` (content-addressed by sha256, idempotent,
   refuses over the 64 MB cap rather than truncating), `get`,
   `reapUnreferenced` (deletes and returns every hash no start item, produced

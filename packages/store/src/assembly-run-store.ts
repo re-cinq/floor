@@ -190,12 +190,12 @@ export class AssemblyRunStore {
     return { run, line: line.body };
   }
 
-  private async walkWith(connection: Queryable, runId: string): Promise<{ line: LineBody; transition: Transition }> {
+  private async walkWith(connection: Queryable, runId: string): Promise<{ run: Run; line: LineBody; transition: Transition }> {
     const { run, line } = await this.lineOf(connection, runId);
     const graph = await buildWalkGraph(this.definitions, run.lineId, line);
     const visits = (await visitsWith(connection, runId)).map(toNodeVisit);
 
-    return { line, transition: getNextTransition(graph, visits) };
+    return { run, line, transition: getNextTransition(graph, visits) };
   }
 
   /** The node this event starts in this run's line, by its own start name or the default `node.<id>.start`; null when the event starts no node here. */
@@ -276,8 +276,10 @@ export class AssemblyRunStore {
   }
 
   private async advance(client: PoolClient, runId: string): Promise<void> {
-    const { line, transition } = await this.walkWith(client, runId);
+    const { run, line, transition } = await this.walkWith(client, runId);
     const events = this.eventsOn(client);
+
+    if (run.finishedAt) return;
 
     if (transition.kind === "launch") {
       await events.enqueue({

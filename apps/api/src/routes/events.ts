@@ -6,8 +6,9 @@ import { HTTP_CREATED, HTTP_NO_CONTENT } from "../http-status.js";
 import { parseBody } from "../parse.js";
 import { badRequest, forbidden, notFound } from "../problem.js";
 import { claimEventsSchema, enqueueEventSchema, failEventSchema } from "../schemas.js";
+import { WORKER_EVENT_NAMES } from "../worker-events.js";
 
-const WORKER_EVENT_NAMES = ["station_run.dispatch", "station_run.abort"];
+
 
 export function registerEventRoutes(server: Server, deps: Deps): void {
   server.route({ method: "GET", path: "/events", handler: (request, toolkit) => listByRun(deps, request, toolkit) });

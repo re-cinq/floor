@@ -150,3 +150,28 @@ describe("AssemblyRunStore.cancel", () => {
     expect(await eventNames(runId)).toContain("internal.run.settled");
   });
 });
+
+describe("AssemblyRunStore.report on a run already ended", () => {
+  async function reportedAfterCancel() {
+    const runId = await runWaitingOnAuthor();
+    const [authorVisit] = await store().visits(runId);
+
+    await store().cancel(runId, "not needed");
+    const visit = await store().report(authorVisit!.id, { outcome: "success" });
+
+    return { runId, visit };
+  }
+
+  it("still records the late report", async () => {
+    const { visit } = await reportedAfterCancel();
+
+    expect(visit.report).toEqual({ outcome: "success" });
+  });
+
+  it("keeps the run's outcome", async () => {
+    const { runId } = await reportedAfterCancel();
+    const run = await store().get(runId);
+
+    expect(run!.outcome).toBe("cancelled");
+  });
+});
