@@ -10,3 +10,4 @@ export {
 } from "./transition.js";
 
 export { definitionHash } from "./definition-hash.js";
+export { readAgentVerdict, type AgentVerdict } from "./agent-verdict.js";
