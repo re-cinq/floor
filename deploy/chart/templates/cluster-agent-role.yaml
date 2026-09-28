@@ -1,0 +1,16 @@
+{{- if .Values.clusterAgent.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "floor.clusterAgent.fullname" . }}
+  labels:
+    {{- include "floor.clusterAgent.selectorLabels" . | nindent 4 }}
+rules:
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["agents", "stations", "agentdefinitions"]
+    verbs: ["create", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["agent-secrets"]
+    verbs: ["get", "update"]
+{{- end }}

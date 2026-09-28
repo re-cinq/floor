@@ -1,0 +1,71 @@
+{{- if .Values.api.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "floor.api.fullname" . }}
+  labels:
+    {{- include "floor.api.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      {{- include "floor.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "floor.api.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "floor.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: {{ include "floor.image" . }}
+          command: ["node", "apps/api/dist/index.js"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: FLOOR_BASE_URL
+              value: {{ .Values.api.baseUrl | quote }}
+            - name: FLOOR_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "floor.postgres.secretName" . }}
+                  key: {{ include "floor.postgres.secretKey" . }}
+            - name: FLOOR_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.existingSecret }}
+                  key: serviceToken
+            - name: FLOOR_VISIT_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.existingSecret }}
+                  key: visitTokenSecret
+          # Only the replica holding the floor's Postgres lease passes /readyz; the Service
+          # routes to that one pod, and the others sit ready-but-unrouted until it fails over.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+{{- end }}

@@ -1,0 +1,64 @@
+{{- if .Values.clusterAgent.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "floor.clusterAgent.fullname" . }}
+  labels:
+    {{- include "floor.clusterAgent.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "floor.clusterAgent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "floor.clusterAgent.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "floor.clusterAgent.fullname" . }}
+      {{- include "floor.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cluster-agent
+          image: {{ include "floor.image" . }}
+          command: ["node", "apps/cluster-agent/dist/index.js"]
+          ports:
+            - name: health
+              containerPort: 8080
+          env:
+            - name: FLOOR_API_URL
+              value: {{ include "floor.clusterAgent.floorUrl" . | quote }}
+            - name: FLOOR_CLUSTER_AGENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.existingSecret }}
+                  key: serviceToken
+            - name: FLOOR_CLUSTER_AGENT_TAGS
+              value: {{ .Values.clusterAgent.tags | quote }}
+            - name: FLOOR_AGENTS_NAMESPACE
+              value: {{ .Release.Namespace }}
+            - name: FLOOR_KUBE_IN_CLUSTER
+              value: "1"
+            - name: FLOOR_MODEL_SECRET_KEYS
+              value: {{ .Values.clusterAgent.modelSecretKeys | quote }}
+            - name: FLOOR_HEALTH_PORT
+              value: "8080"
+          # Liveness only: no readiness probe, so an apiserver blip does not take the agent out
+          # of rotation (there is only ever one replica; nothing to route around it to anyway).
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+{{- end }}

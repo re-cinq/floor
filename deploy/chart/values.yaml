@@ -1,0 +1,52 @@
+# The image tag for both apps. One value, never one per app: the api and cluster-agent images
+# are always built and released together from this repo's own Dockerfile.
+version: ""
+
+image:
+  repository: ghcr.io/re-cinq/floor
+
+# Pulled by every Deployment this chart renders (api, cluster agent, and the subsystem controller
+# when enabled). A list of { name: <secret-name> }, as Kubernetes expects.
+imagePullSecrets: []
+
+api:
+  enabled: true
+  replicas: 2
+  # The address pods reach floor at (FLOOR_BASE_URL) — required when api.enabled.
+  baseUrl: ""
+  # A Secret holding keys "serviceToken" and "visitTokenSecret". Read by the api Deployment
+  # (FLOOR_SERVICE_TOKEN, FLOOR_VISIT_TOKEN_SECRET) and by the cluster agent, which authenticates
+  # to the api with the same service token (FLOOR_CLUSTER_AGENT_TOKEN).
+  existingSecret: ""
+
+clusterAgent:
+  enabled: true
+  # Defaults to the in-cluster api Service when api.enabled; required when api.enabled is false.
+  floorUrl: ""
+  tags: "kind:agent"
+  # "claude=CLAUDE_CODE_OAUTH_TOKEN,gemini=GEMINI_API_KEY" — overrides which secret key in
+  # agent-secrets holds each model family's credential. Optional; the agent has its own defaults.
+  modelSecretKeys: ""
+
+postgres:
+  # Either set existingSecret + secretKey (a Secret holding a full connection string under that
+  # key), or the host/port/database/user/password below, from which the chart builds one.
+  existingSecret: ""
+  secretKey: ""
+  host: ""
+  port: 5432
+  database: ""
+  user: ""
+  password: ""
+
+# The ai-agent-subsystem's controller (deploy/agent-subsystem/controller.yaml) and its CRDs. Off
+# by default: a floor can share a subsystem another install already put on the cluster.
+subsystem:
+  enabled: false
+  version: v0.11.6
+  # The only versions this chart knows how to deploy today; add to this list as the chart is
+  # updated for a newer vendored controller.yaml.
+  supportedVersions:
+    - v0.11.6
+  controllerImage: ghcr.io/re-cinq/ai-agent-controller
+  agentImage: ghcr.io/re-cinq/ai-agent

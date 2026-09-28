@@ -1,0 +1,6 @@
+apiVersion: v2
+name: floor
+description: The floor's own API and cluster agent, one chart for both. Postgres is external and never deployed by this chart.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

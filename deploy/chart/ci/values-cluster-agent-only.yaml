@@ -1,0 +1,13 @@
+# helm template floor . -f ci/values-cluster-agent-only.yaml — cluster agent only, api off.
+version: "test"
+
+api:
+  enabled: false
+
+clusterAgent:
+  enabled: true
+  floorUrl: http://floor.example.com
+
+postgres:
+  existingSecret: floor-postgres-secret
+  secretKey: connectionString

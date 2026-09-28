@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/coverage
+.git
+.github
+.vscode
+.env
+.env.*
+*.log
+npm-debug.log*
+deploy
+scripts
+docs
+.claude
