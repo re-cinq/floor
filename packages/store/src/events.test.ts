@@ -90,14 +90,18 @@ async function claimOneScenario(): Promise<FloorEvent[]> {
 }
 
 async function concurrentClaimScenario(): Promise<[FloorEvent[], FloorEvent[]]> {
-  for (let index = 0; index < 5; index++) {
-    await store().enqueue({ name: "node.review.start", payload: { index } });
-  }
+  await enqueueFiveReviewStarts();
 
   return Promise.all([
     store().claim({ names: ["node.review.start"], limit: 3, claimedBy: "agent-a" }),
     store().claim({ names: ["node.review.start"], limit: 3, claimedBy: "agent-b" }),
   ]);
+}
+
+async function enqueueFiveReviewStarts(): Promise<void> {
+  for (let index = 0; index < 5; index++) {
+    await store().enqueue({ name: "node.review.start", payload: { index } });
+  }
 }
 
 async function reclaimScenario(): Promise<FloorEvent[]> {
@@ -211,6 +215,59 @@ describe("EventStore.claim", () => {
     });
 
     expect(claimed).toHaveLength(0);
+  });
+});
+
+async function concurrentClaimExceptScenario(): Promise<[FloorEvent[], FloorEvent[]]> {
+  await enqueueFiveReviewStarts();
+
+  return Promise.all([
+    store().claimExcept({ excludedNames: ["station_run.dispatch", "station_run.abort"], limit: 3, claimedBy: "agent-a" }),
+    store().claimExcept({ excludedNames: ["station_run.dispatch", "station_run.abort"], limit: 3, claimedBy: "agent-b" }),
+  ]);
+}
+
+async function claimExceptScenario(name: string): Promise<FloorEvent[]> {
+  await store().enqueue({ name, payload: {} });
+
+  return store().claimExcept({
+    excludedNames: ["station_run.dispatch", "station_run.abort"],
+    limit: 10,
+    claimedBy: "floor-1",
+  });
+}
+
+describe("EventStore.claimExcept", () => {
+  it("never returns an excluded name", async () => {
+    await store().enqueue({ name: "station_run.dispatch", payload: {}, tags: ["kind:agent"] });
+    await store().enqueue({ name: "station_run.abort", payload: {} });
+
+    const claimed = await store().claimExcept({
+      excludedNames: ["station_run.dispatch", "station_run.abort"],
+      limit: 10,
+      claimedBy: "floor-1",
+    });
+
+    expect(claimed).toHaveLength(0);
+  });
+
+  it("returns an event whose name is not excluded", async () => {
+    const claimed = await claimExceptScenario("node.review.start");
+
+    expect(claimed.map((event) => event.name)).toEqual(["node.review.start"]);
+  });
+
+  it("returns internal.run.started, another non-excluded name", async () => {
+    const claimed = await claimExceptScenario("internal.run.started");
+
+    expect(claimed.map((event) => event.name)).toEqual(["internal.run.started"]);
+  });
+
+  it("never claims the same row twice at once, even under concurrent callers (FOR UPDATE SKIP LOCKED)", async () => {
+    const [firstBatch, secondBatch] = await concurrentClaimExceptScenario();
+    const claimedIds = [...firstBatch, ...secondBatch].map((event) => event.id);
+
+    expect(new Set(claimedIds).size).toBe(claimedIds.length);
   });
 });
 

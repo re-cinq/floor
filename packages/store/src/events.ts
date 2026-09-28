@@ -78,13 +78,39 @@ export class EventStore {
 
   /** A batch of due, unclaimed (or staled-out) events, filtered to the given names and, when `tags` is given, to events whose own tags are all offered by the caller. */
   async claim(input: { names: string[]; tags?: string[]; limit: number; claimedBy: string }): Promise<FloorEvent[]> {
+    return this.claimWhere({
+      nameFilter: "name = any($1::text[])",
+      nameFilterValue: input.names,
+      tags: input.tags,
+      limit: input.limit,
+      claimedBy: input.claimedBy,
+    });
+  }
+
+  /** Like `claim`, but takes every due, unclaimed (or staled-out) event whose name is not one of the excluded ones. No tag filter. */
+  async claimExcept(input: { excludedNames: string[]; limit: number; claimedBy: string }): Promise<FloorEvent[]> {
+    return this.claimWhere({
+      nameFilter: "name <> all($1::text[])",
+      nameFilterValue: input.excludedNames,
+      limit: input.limit,
+      claimedBy: input.claimedBy,
+    });
+  }
+
+  private async claimWhere(input: {
+    nameFilter: string;
+    nameFilterValue: string[];
+    tags?: string[];
+    limit: number;
+    claimedBy: string;
+  }): Promise<FloorEvent[]> {
     const now = this.now();
     const staleBefore = new Date(now.getTime() - CLAIM_STALE_MS);
 
     const { rows } = await this.deps.connection.query(
       `with candidate as (
          select id from events
-         where name = any($1::text[])
+         where ${input.nameFilter}
            and not_before <= $2
            and acked_at is null and dead_at is null and dropped_at is null
            and (claimed_at is null or claimed_at < $3)
@@ -96,7 +122,7 @@ export class EventStore {
        update events set claimed_at = $2, claimed_by = $5
        from candidate where events.id = candidate.id
        returning events.*`,
-      [input.names, now, staleBefore, input.limit, input.claimedBy, input.tags ?? null],
+      [input.nameFilterValue, now, staleBefore, input.limit, input.claimedBy, input.tags ?? null],
     );
 
     return rows.map(toEvent);

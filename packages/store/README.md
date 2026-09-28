@@ -18,9 +18,15 @@ replaces with one table and a tag filter.
   `schema_migrations` table tracking applied filenames; no framework).
 - `events.ts` — `EventStore`: `enqueue` (idempotent on `dedupeKey`), `claim`
   (a batch under `FOR UPDATE SKIP LOCKED`, filtered by name and, for
-  `station_run.dispatch`/`abort`, by tag subset), `ack`, `fail`/`deadLetter`
+  `station_run.dispatch`/`abort`, by tag subset), `claimExcept` (the same
+  batch semantics, but every name other than the excluded ones, no tag
+  filter — the floor's own loop's claim), `ack`, `fail`/`deadLetter`
   (exponential backoff, or immediate dead-letter), `dropQueued` (for
   `cancel`), `listByRun`.
+- `lease.ts` — `acquireLease`/`Lease`: a Postgres advisory lock
+  (`pg_try_advisory_lock`) held on a dedicated client for the lease's
+  lifetime, since the lock is session-scoped and a pooled `pool.query`
+  would drop it on the next checkout.
 - `definitions.ts` — `DefinitionsStore`: `put` (idempotent by content hash),
   `latest`, `byHash`, `byHashOnly` (hash alone, no id — a visit only ever
   records a station's hash), `versions`, `archive`.

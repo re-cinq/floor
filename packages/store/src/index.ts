@@ -6,6 +6,7 @@ export {
   type FloorEvent,
   type EventStoreDeps,
 } from "./events.js";
+export { acquireLease, type Lease } from "./lease.js";
 export {
   DefinitionsStore,
   type DefinitionKind,
