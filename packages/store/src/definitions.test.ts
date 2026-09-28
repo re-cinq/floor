@@ -1,27 +1,15 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createPool, migrate, type PgPool } from "./pg.js";
+import { beforeEach, describe, expect, it } from "vitest";
 import { DefinitionsStore } from "./definitions.js";
+import { setupTestPool } from "./pg-test-pool.js";
 
-const connectionString =
-  process.env.FLOOR_DATABASE_URL ?? "postgres://postgres:floor@localhost:5433/floor";
-
-let pool: PgPool;
-
-beforeAll(async () => {
-  pool = createPool(connectionString);
-  await migrate(pool);
-});
+const pool = setupTestPool();
 
 beforeEach(async () => {
-  await pool.query("truncate definitions");
-});
-
-afterAll(async () => {
-  await pool.end();
+  await pool().query("truncate definitions");
 });
 
 function store(): DefinitionsStore {
-  return new DefinitionsStore({ connection: pool });
+  return new DefinitionsStore({ connection: pool() });
 }
 
 describe("DefinitionsStore.put", () => {

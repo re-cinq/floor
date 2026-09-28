@@ -1,0 +1,77 @@
+// Content-addressed bytes behind every `file` item (docs/api_sketch.md, "Blobs"): a Postgres bytea store, sha256 the primary key.
+
+import { createHash } from "node:crypto";
+import type { Pool, PoolClient } from "pg";
+
+const BYTES_PER_KIB = 1024;
+const KIB_PER_MIB = 1024;
+const MAX_BLOB_MIB = 64;
+export const MAX_BLOB_BYTES = MAX_BLOB_MIB * KIB_PER_MIB * BYTES_PER_KIB;
+
+export interface Blob {
+  hash: string;
+  bytes: Buffer;
+  size: number;
+  contentType: string | null;
+  createdAt: Date;
+}
+
+export interface BlobsStoreDeps {
+  connection: Pool | PoolClient;
+}
+
+export class BlobsStore {
+  constructor(private readonly deps: BlobsStoreDeps) {}
+
+  /** Idempotent on content: the same bytes always hash the same, so a repeated write is a no-op. Rejects over the size cap rather than truncating. */
+  async put(bytes: Buffer, contentType?: string): Promise<{ hash: string; size: number }> {
+    if (bytes.length > MAX_BLOB_BYTES) throw new Error(`blob of ${bytes.length} bytes exceeds the ${MAX_BLOB_BYTES}-byte cap`);
+    const hash = `sha256-${createHash("sha256").update(bytes).digest("hex")}`;
+
+    await this.deps.connection.query(
+      `insert into blobs (hash, bytes, size, content_type) values ($1, $2, $3, $4) on conflict (hash) do nothing`,
+      [hash, bytes, bytes.length, contentType ?? null],
+    );
+
+    return { hash, size: bytes.length };
+  }
+
+  async get(hash: string): Promise<Blob | null> {
+    const { rows } = await this.deps.connection.query(`select * from blobs where hash = $1`, [hash]);
+
+    return rows[0] ? toBlob(rows[0]) : null;
+  }
+
+  /** A blob is reaped when nothing references its hash: no start item, no produced item, no session_ref, across every run. */
+  async reapUnreferenced(): Promise<string[]> {
+    const { rows } = await this.deps.connection.query(
+      `delete from blobs where hash not in (
+         select value ->> 'ref' from assembly_runs, jsonb_each(start_items) as t(key, value) where value ->> 'ref' is not null
+         union
+         select value ->> 'sha' from assembly_runs, jsonb_each(start_items) as t(key, value) where value ->> 'sha' is not null
+         union
+         select value #>> '{}' from station_runs, jsonb_each(coalesce(report -> 'produced', '{}'::jsonb)) as t(key, value)
+         union
+         select session_ref from station_runs where session_ref is not null
+       )
+       returning hash`,
+    );
+
+    return rows.map((row: { hash: string }) => row.hash);
+  }
+}
+
+// snake_case mirrors Postgres's own column names verbatim, a third-party shape rather than ours to rename.
+/* eslint-disable @typescript-eslint/naming-convention */
+interface BlobRowRaw {
+  hash: string;
+  bytes: Buffer;
+  size: string;
+  content_type: string | null;
+  created_at: Date;
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
+function toBlob(row: BlobRowRaw): Blob {
+  return { hash: row.hash, bytes: row.bytes, size: Number(row.size), contentType: row.content_type, createdAt: row.created_at };
+}

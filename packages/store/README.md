@@ -37,11 +37,14 @@ replaces with one table and a tag filter.
   `visit`. Every follow-up event is written in the same transaction as the
   row that caused it (docs/assembly_run_storage.md, "Every follow-up event
   is written in the transaction that caused it").
+- `blobs.ts` — `BlobsStore`: `put` (content-addressed by sha256, idempotent,
+  refuses over the 64 MB cap rather than truncating), `get`,
+  `reapUnreferenced` (deletes and returns every hash no start item, produced
+  item or `sessionRef` still names).
 
 ## Not yet here
 
-The blob store (the `blobs` table exists in the migration; no read/write
-API over it yet) and the Floor's HTTP API itself.
+The Floor's HTTP API itself.
 
 ## Testing
 

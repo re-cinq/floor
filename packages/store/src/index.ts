@@ -14,6 +14,12 @@ export {
   type DefinitionsStoreDeps,
 } from "./definitions.js";
 export {
+  BlobsStore,
+  MAX_BLOB_BYTES,
+  type Blob,
+  type BlobsStoreDeps,
+} from "./blobs.js";
+export {
   AssemblyRunStore,
   type StartRunInput,
   type StartResult,
