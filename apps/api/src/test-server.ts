@@ -67,7 +67,7 @@ export function setupTestServer(): TestServer {
   });
 
   beforeEach(async () => {
-    await pool.query("truncate definitions, assembly_runs, station_runs, events, blobs restart identity cascade");
+    await pool.query("truncate definitions, assembly_runs, station_runs, station_run_records, events, blobs restart identity cascade");
   });
 
   afterAll(async () => {

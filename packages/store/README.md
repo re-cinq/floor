@@ -65,6 +65,13 @@ replaces with one table and a tag filter.
   refuses over the 64 MB cap rather than truncating), `get`,
   `reapUnreferenced` (deletes and returns every hash no start item, produced
   item or `sessionRef` still names).
+- `records.ts` — `RecordsStore`: a visit's own `log`/`turn`/`llm_call`
+  trail over `station_run_records`. `append` assigns each record the next
+  `seq` for its own (visit, kind), one insert per kind inside one
+  transaction, an advisory lock (`pg_advisory_xact_lock` on the visit)
+  serializing concurrent appends; refuses a body over 64 KB with a
+  `Refusal`, never truncating. `list` pages forward by `seq`
+  (`{ after, limit }` in, `{ items, nextCursor }` out).
 
 ## Not yet here
 

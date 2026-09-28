@@ -5,6 +5,7 @@ import {
   DefinitionsStore,
   EventStore,
   OutsideEvents,
+  RecordsStore,
   type PgPool,
 } from "@floor/store";
 import type { Config } from "./config.js";
@@ -17,6 +18,7 @@ export interface Deps {
   definitions: DefinitionsStore;
   events: EventStore;
   blobs: BlobsStore;
+  records: RecordsStore;
   outside: OutsideEvents;
 }
 
@@ -33,5 +35,6 @@ export function buildDeps(pool: PgPool, config: Config, now: () => Date = () => 
     outside: new OutsideEvents({ pool, runs, definitions }),
     events: new EventStore({ connection: pool, now }),
     blobs: new BlobsStore({ connection: pool }),
+    records: new RecordsStore({ pool }),
   };
 }

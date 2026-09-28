@@ -93,3 +93,9 @@ export const enqueueEventSchema = z.object({
 export const claimEventsSchema = z.object({ tags: z.array(z.string()), limit: z.number().int().positive() });
 
 export const failEventSchema = z.object({ error: z.string(), permanent: z.boolean() });
+
+export const recordKindSchema = z.enum(["log", "turn", "llm_call"]);
+
+export const createRecordsSchema = z.object({
+  records: z.array(z.object({ kind: recordKindSchema, body: z.unknown(), occurredAt: coercedDate })).min(1),
+});

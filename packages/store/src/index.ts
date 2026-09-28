@@ -24,6 +24,15 @@ export {
   type BlobsStoreDeps,
 } from "./blobs.js";
 export {
+  RecordsStore,
+  type RecordKind,
+  type RecordInput,
+  type StationRunRecord,
+  type ListRecordsOptions,
+  type RecordsPage,
+  type RecordsStoreDeps,
+} from "./records.js";
+export {
   AssemblyRunStore,
   type StartRunInput,
   type StartResult,

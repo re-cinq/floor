@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { LineBody, StationBody, Visit } from "@floor/store";
 import { setupTestServer } from "../test-server.js";
+import { SERVICE_STATION } from "../test-fixtures.js";
 import { Sweeper } from "./sweep.js";
 
 const { deps } = setupTestServer();
 
-const SERVICE_STATION: StationBody = { kind: "service", outcomes: ["success"], needs: [], produces: [] };
 const HUMAN_STATION: StationBody = { kind: "human", outcomes: ["success"], needs: [], produces: [] };
 
 const WORK_LINE: LineBody = {
