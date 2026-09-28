@@ -43,6 +43,15 @@ app.kubernetes.io/component: api
 app.kubernetes.io/component: cluster-agent
 {{- end -}}
 
+{{- define "floor.github.fullname" -}}
+{{ include "floor.fullname" . }}-github
+{{- end -}}
+
+{{- define "floor.github.selectorLabels" -}}
+{{ include "floor.selectorLabels" . }}
+app.kubernetes.io/component: github
+{{- end -}}
+
 {{/*
 The one image both apps ship from, tagged by the one shared .Values.version.
 */}}

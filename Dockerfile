@@ -1,9 +1,10 @@
-# Builds both floor apps (apps/api, apps/cluster-agent) from one image. Which one a container
-# runs is chosen at deploy time by overriding `command` — see deploy/chart.
+# Builds all of the floor's apps (apps/api, apps/cluster-agent, apps/github) from one image. Which
+# one a container runs is chosen at deploy time by overriding `command` — see deploy/chart.
 #
 #   docker build -t floor .
 #   docker run floor node apps/api/dist/index.js
 #   docker run floor node apps/cluster-agent/dist/index.js
+#   docker run floor node apps/github/dist/index.js
 
 FROM node:22-slim AS build
 WORKDIR /app
@@ -14,6 +15,7 @@ COPY packages/station/package.json packages/station/package.json
 COPY packages/store/package.json packages/store/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY apps/cluster-agent/package.json apps/cluster-agent/package.json
+COPY apps/github/package.json apps/github/package.json
 RUN npm ci
 
 COPY packages packages
@@ -29,6 +31,7 @@ COPY packages/station/package.json packages/station/package.json
 COPY packages/store/package.json packages/store/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY apps/cluster-agent/package.json apps/cluster-agent/package.json
+COPY apps/github/package.json apps/github/package.json
 RUN npm ci --omit=dev
 
 FROM node:22-slim AS runtime
@@ -46,6 +49,8 @@ COPY --from=build --chown=node:node /app/apps/api/package.json apps/api/package.
 COPY --from=build --chown=node:node /app/apps/api/dist apps/api/dist
 COPY --from=build --chown=node:node /app/apps/cluster-agent/package.json apps/cluster-agent/package.json
 COPY --from=build --chown=node:node /app/apps/cluster-agent/dist apps/cluster-agent/dist
+COPY --from=build --chown=node:node /app/apps/github/package.json apps/github/package.json
+COPY --from=build --chown=node:node /app/apps/github/dist apps/github/dist
 
 USER node
 EXPOSE 8080

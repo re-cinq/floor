@@ -49,6 +49,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.api.existingSecret }}
                   key: visitTokenSecret
+            {{- if .Values.api.reapMs }}
+            - name: FLOOR_REAP_MS
+              value: {{ .Values.api.reapMs | quote }}
+            {{- end }}
           # Ready is "can reach Postgres". Which replica runs the loop is the lease's business.
           livenessProbe:
             httpGet:

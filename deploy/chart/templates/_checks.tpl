@@ -18,6 +18,10 @@ lint/template/install/upgrade regardless of which components are enabled.
 {{ fail "clusterAgent.floorUrl is required when clusterAgent.enabled is true and api.enabled is false" }}
 {{- end -}}
 
+{{- if and .Values.github.enabled (not .Values.github.existingSecret) -}}
+{{ fail "github.existingSecret is required when github.enabled is true" }}
+{{- end -}}
+
 {{- if .Values.subsystem.enabled -}}
 {{- if not (has .Values.subsystem.version .Values.subsystem.supportedVersions) -}}
 {{ fail (printf "subsystem.version %q is not supported; supported versions: %s" .Values.subsystem.version (join ", " .Values.subsystem.supportedVersions)) }}

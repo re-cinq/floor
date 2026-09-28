@@ -20,6 +20,8 @@ api:
   # (FLOOR_SERVICE_TOKEN, FLOOR_VISIT_TOKEN_SECRET) and by the cluster agent, which authenticates
   # to the api with the same service token (FLOOR_CLUSTER_AGENT_TOKEN).
   existingSecret: ""
+  # FLOOR_REAP_MS — optional override of the api's own default reap interval.
+  reapMs: ""
 
 clusterAgent:
   enabled: true
@@ -29,6 +31,18 @@ clusterAgent:
   # "claude=CLAUDE_CODE_OAUTH_TOKEN,gemini=GEMINI_API_KEY" — overrides which secret key in
   # agent-secrets holds each model family's credential. Optional; the agent has its own defaults.
   modelSecretKeys: ""
+
+# The floor's GitHub receiver and post-review station (apps/github). Off by default: a floor with
+# no GitHub in its lines does not run it.
+github:
+  enabled: false
+  # A Secret that may hold webhookSecret, token, appId and appPrivateKey; each key is optional,
+  # matching what apps/github itself treats as optional. Required when github.enabled is true.
+  existingSecret: ""
+  # GITHUB_API_URL — a GitHub Enterprise server. Empty uses apps/github's own default (github.com).
+  apiUrl: ""
+  service:
+    port: 8280
 
 postgres:
   # Either set existingSecret + secretKey (a Secret holding a full connection string under that

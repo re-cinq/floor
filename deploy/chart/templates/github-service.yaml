@@ -1,0 +1,15 @@
+{{- if .Values.github.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "floor.github.fullname" . }}
+  labels:
+    {{- include "floor.github.selectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "floor.github.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.github.service.port }}
+      targetPort: http
+{{- end }}

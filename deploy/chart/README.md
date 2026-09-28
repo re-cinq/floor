@@ -1,8 +1,9 @@
 # floor
 
-One chart for both of the floor's apps — the API (`apps/api`) and the cluster agent
-(`apps/cluster-agent`) — built from the one image at the repo root's `Dockerfile`. Postgres is
-external: this chart never deploys it, only points its apps at one.
+One chart for all of the floor's apps — the API (`apps/api`), the cluster agent
+(`apps/cluster-agent`) and the GitHub receiver/post-review station (`apps/github`) — built from the
+one image at the repo root's `Dockerfile`. Postgres is external: this chart never deploys it, only
+points its apps at one.
 
 ## Install
 
@@ -33,8 +34,16 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   `/readyz` (a single-active-leader pattern via a Postgres advisory lock), so the Service always
   routes to exactly one pod; the rest sit ready-but-unrouted until it fails over.
 - `api.baseUrl` — required when `api.enabled`.
+- `api.reapMs` — optional override of `FLOOR_REAP_MS`; empty uses the api's own default.
 - `clusterAgent.floorUrl` — defaults to the in-cluster api Service when `api.enabled`; required
   when it is not.
+- `github.enabled` — default `false`, unlike the other two: turn it on to also deploy the GitHub
+  receiver and post-review station. `github.existingSecret` is then required, and may hold
+  `webhookSecret`, `token`, `appId` and `appPrivateKey` — each key optional, matching what
+  `apps/github` itself treats as optional (it needs at least one of `webhookSecret` or a token
+  source to do anything, but the chart only requires the Secret to exist). No Ingress is
+  rendered for it — exposing the receiver is the installer's choice. `github.apiUrl` points it at
+  a GitHub Enterprise server; empty uses github.com.
 - `postgres.*` — either `existingSecret` + `secretKey` (a Secret already holding a full connection
   string), or `host`/`port`/`database`/`user`/`password`, from which the chart builds one. One or
   the other is required unconditionally: the migration Job always runs, whether or not this
@@ -84,9 +93,9 @@ scripts/check-chart.sh
 ```
 
 Runs `helm lint` and `helm template` against a minimal values file for each of: both apps, API
-only, cluster agent only (`ci/values-*.yaml`); asserts each of the four install-time refusals
-actually fires; and checks that no rendered ConfigMap, nor any default in `values.yaml`, carries a
-password, token, or secret.
+only, cluster agent only, github enabled (`ci/values-*.yaml`); asserts each of the five
+install-time refusals actually fires; and checks that no rendered ConfigMap, nor any default in
+`values.yaml`, carries a password, token, or secret.
 
 Note: `helm lint` against the chart's own bare defaults (no `-f`) is not meaningful here and isn't
 part of this check — the defaults are deliberately incomplete (`api.baseUrl`, `postgres.*` are all
