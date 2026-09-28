@@ -525,9 +525,10 @@ A Postgres `bytea` blob store is the default (decided 2026-09-25); lore uses
 an object bucket behind the same port. A blob is reaped when no visit
 references its hash and no run is open.
 
-> **Not built yet.** The reaper exists and nothing runs it. When something
-> does, it must leave alone what a visit still running has uploaded: those
-> blobs are named by nothing until the visit reports.
+The loop reaps once an hour, and only blobs more than a day old. What a
+visit still running has uploaded is named by nothing until it reports; a day
+is longer than any visit lasts. A file a line seeds into its runs is named
+by the line, and kept.
 
 ## Mapping from lore's columns
 

@@ -186,9 +186,13 @@ fresh install starts before the floor does.
 database a floor was running against, that deleted a visit's clean-up event
 between two runs.
 
+**A blob is reaped by age as well as by name.** The plan reaped a blob
+"when no visit references its hash and no run is open", which on a busy
+floor is never. It is reaped when nothing names it and it is more than a
+day old.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is
   lost after the start. A run has no dedupe key.
 - A pod killed from outside posts nothing; its visit fails at its deadline.
-- Any authenticated caller can read any blob by its hash.

@@ -63,6 +63,34 @@ describe("FloorLoop.pass", () => {
   });
 });
 
+describe("FloorLoop.pass: the reaper", () => {
+  const OLD = new Date("2025-12-01T00:00:00Z");
+
+  async function storedLongAgo(contents: string): Promise<string> {
+    const { hash } = await deps().blobs.put(Buffer.from(contents));
+
+    await deps().pool.query("update blobs set created_at = $2 where hash = $1", [hash, OLD]);
+
+    return hash;
+  }
+
+  it("deletes a blob nothing names, once it is more than a day old", async () => {
+    const orphan = await storedLongAgo("orphan");
+
+    await loop().pass();
+
+    expect(await deps().blobs.get(orphan)).toBeNull();
+  });
+
+  it("leaves a blob stored today, which a visit still running may yet name", async () => {
+    const { hash } = await deps().blobs.put(Buffer.from("fresh"));
+
+    await loop().pass();
+
+    expect(await deps().blobs.get(hash)).not.toBeNull();
+  });
+});
+
 describe("FloorLoop.start", () => {
   it("settles a run started while it is running, with nobody calling pass", async () => {
     loop().start();

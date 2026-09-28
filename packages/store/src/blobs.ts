@@ -58,19 +58,24 @@ export class BlobsStore {
     return rows[0] ? toBlob(rows[0]) : null;
   }
 
-  /** A blob is reaped when nothing references its hash: no start item, no produced item, no session_ref, across every run. */
-  async reapUnreferenced(): Promise<string[]> {
+  /** Deletes every blob nothing names, stored before `storedBefore`. The age is what protects a visit still running: what it has uploaded is named by nothing until it reports, and it reports before its deadline. */
+  async reapUnreferenced(storedBefore: Date): Promise<string[]> {
     const { rows } = await this.deps.connection.query(
-      `delete from blobs where hash not in (
-         select value ->> 'ref' from assembly_runs, jsonb_each(start_items) as t(key, value) where value ->> 'ref' is not null
+      `with named as (
+         select value ->> 'ref' as hash from assembly_runs, jsonb_each(start_items) as item(key, value)
          union
-         select value ->> 'sha' from assembly_runs, jsonb_each(start_items) as t(key, value) where value ->> 'sha' is not null
+         select value #>> '{}' from station_runs, jsonb_each(coalesce(report -> 'produced', '{}'::jsonb)) as produced(key, value)
          union
-         select value #>> '{}' from station_runs, jsonb_each(coalesce(report -> 'produced', '{}'::jsonb)) as t(key, value)
+         select session_ref from station_runs
          union
-         select session_ref from station_runs where session_ref is not null
+         select body ->> 'ref' from station_run_records where kind in ('produced', 'session')
+         union
+         select value from definitions, jsonb_each_text(coalesce(body -> 'files', '{}'::jsonb)) as file(key, value) where kind = 'line'
        )
+       delete from blobs
+       where created_at < $1 and not exists (select 1 from named where named.hash = blobs.hash)
        returning hash`,
+      [storedBefore],
     );
 
     return rows.map((row: { hash: string }) => row.hash);

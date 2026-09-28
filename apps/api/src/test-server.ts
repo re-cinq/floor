@@ -23,6 +23,7 @@ const TEST_CONFIG: Config = {
   leaseKey: TEST_LEASE_KEY,
   pollMs: 10,
   sweepMs: 0,
+  reapMs: 0,
 };
 
 export interface TestServer {

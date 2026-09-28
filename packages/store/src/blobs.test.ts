@@ -5,8 +5,11 @@ import { setupTestPool } from "./pg-test-pool.js";
 const pool = setupTestPool();
 
 beforeEach(async () => {
-  await pool().query("truncate blobs, assembly_runs, station_runs restart identity cascade");
+  await pool().query("truncate blobs, definitions, assembly_runs, station_runs, station_run_records restart identity cascade");
 });
+
+const LATER = new Date("2100-01-01T00:00:00Z");
+const EARLIER = new Date("2000-01-01T00:00:00Z");
 
 function store(): BlobsStore {
   return new BlobsStore({ connection: pool() });
@@ -59,7 +62,7 @@ describe("BlobsStore.reapUnreferenced", () => {
       [JSON.stringify({ finding: { kind: "file", ref: hash, by: "start" } })],
     );
 
-    const reaped = await store().reapUnreferenced();
+    const reaped = await store().reapUnreferenced(LATER);
 
     expect(reaped).not.toContain(hash);
   });
@@ -78,7 +81,7 @@ describe("BlobsStore.reapUnreferenced", () => {
       [runId, JSON.stringify({ outcome: "success", produced: { finding: hash } })],
     );
 
-    const reaped = await store().reapUnreferenced();
+    const reaped = await store().reapUnreferenced(LATER);
 
     expect(reaped).not.toContain(hash);
   });
@@ -86,7 +89,7 @@ describe("BlobsStore.reapUnreferenced", () => {
   it("reaps a blob nothing references", async () => {
     const { hash } = await store().put(Buffer.from("orphan"));
 
-    const reaped = await store().reapUnreferenced();
+    const reaped = await store().reapUnreferenced(LATER);
 
     expect(reaped).toContain(hash);
   });
@@ -94,8 +97,33 @@ describe("BlobsStore.reapUnreferenced", () => {
   it("removes a reaped blob from the store", async () => {
     const { hash } = await store().put(Buffer.from("orphan"));
 
-    await store().reapUnreferenced();
+    await store().reapUnreferenced(LATER);
 
     expect(await store().get(hash)).toBeNull();
+  });
+
+  it("leaves a blob stored too recently, which a visit still running may yet name", async () => {
+    const { hash } = await store().put(Buffer.from("just uploaded"));
+
+    expect(await store().reapUnreferenced(EARLIER)).not.toContain(hash);
+  });
+
+  it("keeps a file a line seeds into its runs", async () => {
+    const { hash } = await store().put(Buffer.from("template"));
+
+    await pool().query(`insert into definitions (kind, id, hash, body) values ('line', 'l', 'h', $1::jsonb)`, [JSON.stringify({ files: { template: hash } })]);
+
+    expect(await store().reapUnreferenced(LATER)).not.toContain(hash);
+  });
+
+  it("keeps a file a visit still running has uploaded and not yet reported", async () => {
+    const { hash } = await store().put(Buffer.from("uploaded"));
+
+    await pool().query(
+      `insert into station_run_records (station_run_id, kind, seq, body, at) values (gen_random_uuid(), 'produced', 1, $1::jsonb, now())`,
+      [JSON.stringify({ name: "note", ref: hash })],
+    );
+
+    expect(await store().reapUnreferenced(LATER)).not.toContain(hash);
   });
 });

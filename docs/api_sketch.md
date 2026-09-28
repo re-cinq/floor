@@ -140,8 +140,8 @@ GET    /costs                            // service token only. filter required:
 
 ## Blobs - content-addressed bytes behind every `file` item
 
-GET    /blobs/:hash                      // not built yet: 404 unless the caller's token covers this hash.
-                                         // Today any authenticated caller may read any blob
+GET    /blobs/:hash                      // 404 unless the caller's token covers this hash: a service reads any, a
+                                         // visit the files it was given and the ones it has uploaded
 POST   /blobs                            // body bytes; returns the sha256; 413 above the cap
 
 ## Events - the queue that drives everything
