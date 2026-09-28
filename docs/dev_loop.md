@@ -27,30 +27,45 @@ sink resolve there in dev. That is one setting, the floor's public base URL.
 Service stations and the cluster agent only call out to the floor, so they
 need no address of their own.
 
-## What there is today
+## One command
+
+```
+npm start
+```
+
+In order: starts Postgres, installs the ai-agent-subsystem into minikube if
+that has not been done, builds once, then starts a compiler and a process
+for each app, both watching. `Ctrl-C` stops the host processes and leaves
+Postgres and minikube up, so the next start is fast. Each step can be run
+again.
+
+A save reaches the running floor in under a second. A change in a package
+restarts every app made of it. A restart gives the lease up and takes it
+again, so the loop is never left without an owner.
+
+| setting | what it does |
+|---|---|
+| `PORT` | the API's port, `8180` when unset: `8080` is lore's floor, and the two run side by side |
+| `FLOOR_AGENTS=0` | no cluster agent and no minikube, for work that never reaches an agent |
+| `FLOOR_SETUP=1` | runs the minikube setup again |
+
+The floor's token is `floor-dev-token` unless `.env.local` sets
+`FLOOR_SERVICE_TOKEN`.
+
+## The other commands
 
 | command | what it does |
 |---|---|
 | `npm run db:up` | Postgres in a container, on :5433 |
 | `npm run minikube-setup` | installs the ai-agent-subsystem into minikube, in the floor's own namespace `floor-agents`, beside any other install; runs the next command |
 | `npm run minikube-claude-auth` | gives the agents a Claude credential: an API key, or your own subscription through `claude setup-token`. Run again when a token expires |
-| `scripts/walk.sh` | boots the floor and walks a run through a service station, over HTTP |
-| `scripts/walk-agent.sh` | boots the floor and the cluster agent and walks a run through a real agent pod |
+| `scripts/walk.sh` | boots a floor of its own and walks a run through a service station, over HTTP |
+| `scripts/walk-agent.sh` | boots a floor and a cluster agent of its own and walks a run through a real agent pod |
 
 Setup pins a kubeconfig to the minikube context, so neither it nor the
 cluster agent can act on whatever cluster `kubectl` points at. The test
 suites run in their own database, `floor_test`: they truncate their tables,
 which would delete a running floor's runs from under it.
-
-## One command
-
-> **Not built yet.** `npm start`, and the watch pairs. Today the floor and
-> the cluster agent are built once and started by the walk scripts.
-
-`npm start` does, in order: start Postgres, run migrations, start minikube
-if it is not running, install the ai-agent-subsystem, build once, then start
-the watch pairs. `Ctrl-C` stops the host processes and leaves minikube and
-Postgres up, so the next start is fast. Each step is idempotent.
 
 ## Alternatives considered
 

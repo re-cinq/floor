@@ -128,6 +128,9 @@ without touching it. The cluster-wide CRDs are applied only when missing.
 Upstream's `deploy/` at the v0.11.6 tag still pins v0.11.3. What a digest
 is, is read from the image, not from where it was found.
 
+**The floor's port on a laptop is 8180.** 8080 is lore's floor, and running
+the two side by side is the point.
+
 **Tests have their own database.** Every suite truncates its tables. On the
 database a floor was running against, that deleted a visit's clean-up event
 between two runs.

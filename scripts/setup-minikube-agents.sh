@@ -18,7 +18,7 @@ set -euo pipefail
 
 MANIFESTS="${ROOT}/deploy/agent-subsystem"
 COPY_FROM="${FLOOR_COPY_SECRETS_FROM:-}"
-FLOOR_PORT="${PORT:-8080}"
+FLOOR_PORT="${PORT:-8180}"
 
 # The pair the subsystem released as v0.11.6; they move together, never one without the other.
 # Check what a digest really is before trusting a label: the subsystem's own deploy/ at the

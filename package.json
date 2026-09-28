@@ -9,6 +9,7 @@
     "apps/*"
   ],
   "scripts": {
+    "start": "bash scripts/dev.sh",
     "build": "npm run build -w @floor/assembly-lines && npm run build -w @floor/store && npm run build -w @floor/api && npm run build -w @floor/cluster-agent",
     "test": "npm run test -w @floor/assembly-lines && npm run test -w @floor/store && npm run test -w @floor/api && npm run test -w @floor/cluster-agent",
     "typecheck": "npm run typecheck -w @floor/assembly-lines && npm run typecheck -w @floor/store && npm run typecheck -w @floor/api && npm run typecheck -w @floor/cluster-agent",
