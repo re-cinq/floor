@@ -46,7 +46,7 @@ function briefResponse(deps: Deps, found: DispatchBrief) {
   };
 }
 
-// What the subsystem wants beyond model, prompt and image lives in the definition's `config`, under these names.
+// What the subsystem wants beyond model, prompt and image lives in the definition's `config`, under the names docs/entities/agent-definition.md gives them, which are lore's own.
 function dispatchSettings(settings: AgentSettings) {
   const config = settings.config ?? {};
 
@@ -54,16 +54,16 @@ function dispatchSettings(settings: AgentSettings) {
     model: settings.model,
     prompt: settings.prompt,
     image: settings.image,
-    disallowedTools: textsOf(config.disallowedTools),
+    disallowedTools: textsOf(config.disallowed_tools),
     skills: textsOf(config.skills),
     env: textMapOf(config.env),
-    permissionMode: config.permissionMode === "auto" || config.permissionMode === "bypass" ? config.permissionMode : undefined,
-    maxTurns: typeof config.maxTurns === "number" ? config.maxTurns : undefined,
+    permissionMode: config.permission_mode === "auto" || config.permission_mode === "bypass" ? config.permission_mode : undefined,
+    maxTurns: typeof config.max_turns === "number" ? config.max_turns : undefined,
   };
 }
 
 function modelSecretKeyOf(settings: AgentSettings | null): string | undefined {
-  const named = settings?.config?.modelSecretKey;
+  const named = settings?.config?.model_secret_key;
 
   return typeof named === "string" ? named : undefined;
 }

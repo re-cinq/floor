@@ -65,7 +65,7 @@ PIDS+=($!)
 say "putting an agent definition, a station and a line: write -> done"
 api -X POST "${BASE}/agent-definitions" -d @- >/dev/null <<JSON
 {"id": "${NAME}", "settings": {
-  "model": "${MODEL}", "image": "node:22-bookworm", "timeoutMinutes": 8, "config": {"maxTurns": 10},
+  "model": "${MODEL}", "image": "node:22-bookworm", "timeoutMinutes": 8, "config": {"max_turns": 10},
   "prompt": "Write exactly one short sentence about {topic} into the file {note_path}. Do nothing else. When the file is written, end your reply with this line on its own: LORE_NODE_RESULT: success"
 }}
 JSON
