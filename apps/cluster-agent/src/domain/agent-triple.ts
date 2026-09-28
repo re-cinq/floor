@@ -24,6 +24,9 @@ export interface DispatchSettings {
   disallowedTools?: string[];
   skills?: string[];
   env?: Record<string, string>;
+  /** `bypass` unless the definition says otherwise: a pod has nobody to answer a permission prompt, so `auto` there means every tool is refused. */
+  permissionMode?: "auto" | "bypass";
+  maxTurns?: number;
 }
 
 export interface DispatchBrief {
@@ -70,6 +73,8 @@ function buildAgentDefinition(name: string, input: DispatchBrief): AgentDefiniti
       model: input.settings.model,
       prompt: input.settings.prompt,
       disallowed_tools: input.settings.disallowedTools,
+      permission_mode: input.settings.permissionMode ?? "bypass",
+      max_turns: input.settings.maxTurns,
       resources: agentResources(name, input),
       output: outputSpec(input),
     },

@@ -156,6 +156,18 @@ describe("buildAgentTriple", () => {
     ]);
   });
 
+  it("lets the agent use its tools unasked, a pod having nobody to ask", () => {
+    const { agentDefinition } = buildAgentTriple(brief({}));
+
+    expect(agentDefinition.spec?.permission_mode).toBe("bypass");
+  });
+
+  it("keeps the permission mode and turn limit the definition sets", () => {
+    const { agentDefinition } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i", permissionMode: "auto", maxTurns: 12 } }));
+
+    expect(agentDefinition.spec).toMatchObject({ permission_mode: "auto", max_turns: 12 });
+  });
+
   it("omits conversation entirely on a fresh visit", () => {
     const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new" } }));
     const resources = agentDefinition.spec?.resources;

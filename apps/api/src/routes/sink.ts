@@ -57,6 +57,8 @@ function dispatchSettings(settings: AgentSettings) {
     disallowedTools: textsOf(config.disallowedTools),
     skills: textsOf(config.skills),
     env: textMapOf(config.env),
+    permissionMode: config.permissionMode === "auto" || config.permissionMode === "bypass" ? config.permissionMode : undefined,
+    maxTurns: typeof config.maxTurns === "number" ? config.maxTurns : undefined,
   };
 }
 
