@@ -100,6 +100,36 @@ describe("DefinitionsStore.byHashOnly", () => {
   });
 });
 
+describe("DefinitionsStore.listLatest", () => {
+  it("returns the latest version of every id, one row each", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    await store().put("station", "review", { kind: "service" });
+    await store().put("station", "triage", { kind: "human" });
+
+    const latest = await store().listLatest<{ kind: string }>("station");
+
+    expect(latest.map((row) => ({ id: row.id, kind: row.body.kind }))).toEqual(
+      expect.arrayContaining([{ id: "review", kind: "service" }, { id: "triage", kind: "human" }]),
+    );
+  });
+
+  it("narrows to one id when given", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    await store().put("station", "triage", { kind: "human" });
+
+    const latest = await store().listLatest<{ kind: string }>("station", "review");
+
+    expect(latest.map((row) => row.id)).toEqual(["review"]);
+  });
+
+  it("excludes an archived id", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    await store().archive("station", "review");
+
+    expect(await store().listLatest("station")).toEqual([]);
+  });
+});
+
 describe("DefinitionsStore.versions", () => {
   it("returns every version, newest first", async () => {
     await store().put("station", "review", { kind: "agent" });

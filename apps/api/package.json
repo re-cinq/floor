@@ -1,0 +1,29 @@
+{
+  "name": "@floor/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Floor's HTTP API (docs/api_sketch.md) and its own event loop: the single-instance-leased process that turns node.<id>.start, station_run.reported, internal.*, schedule ticks and start.on events into AssemblyRunStore calls. Holds no provider client; every worker (the cluster agent, a service station) pulls its own work from the queue this process serves over /events/claim.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc --watch -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hapi/hapi": "21.4.10",
+    "@hapi/boom": "^10.0.1",
+    "@floor/store": "*",
+    "@floor/assembly-lines": "*",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

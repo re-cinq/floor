@@ -1,0 +1,141 @@
+import { describe, expect, it } from "vitest";
+import { mintVisitToken } from "../visit-token.js";
+import { VISIT_TOKEN_SECRET, authHeaders, injectJson, setupTestServer } from "../test-server.js";
+
+const { server } = setupTestServer();
+const FUTURE_DEADLINE = new Date("2026-01-01T01:00:00Z");
+
+async function enqueueDispatch(tags: string[]): Promise<string> {
+  const response = await injectJson<{ id: string }>(server(), {
+    method: "POST",
+    url: "/events",
+    headers: authHeaders(),
+    payload: { name: "station_run.dispatch", payload: { visitId: "v1" }, tags },
+  });
+
+  return response.result.id;
+}
+
+describe("POST /events", () => {
+  it("enqueues and returns 201", async () => {
+    const response = await injectJson(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "manual.tick", payload: {} } });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("returns 400 for an invalid body", async () => {
+    const response = await injectJson(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { payload: {} } });
+
+    expect(response.statusCode).toBe(400);
+  });
+});
+
+describe("GET /events", () => {
+  it("requires the run filter", async () => {
+    const response = await injectJson(server(), { method: "GET", url: "/events", headers: authHeaders() });
+
+    expect(response.statusCode).toBe(400);
+  });
+});
+
+describe("POST /events/claim", () => {
+  it("returns a dispatch event whose tags the caller offers", async () => {
+    await enqueueDispatch(["kind:agent"]);
+
+    const response = await injectJson<{ name: string }[]>(server(), { method: "POST", url: "/events/claim", headers: authHeaders(), payload: { tags: ["kind:agent"], limit: 10 } });
+
+    expect(response.result.map((event) => event.name)).toEqual(["station_run.dispatch"]);
+  });
+
+  it("returns 204 when nothing matches", async () => {
+    const response = await injectJson(server(), { method: "POST", url: "/events/claim", headers: authHeaders(), payload: { tags: ["kind:service"], limit: 10 } });
+
+    expect(response.statusCode).toBe(204);
+  });
+
+  it("does not return an unrelated event name", async () => {
+    await injectJson(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "manual.tick", payload: {} } });
+
+    const response = await injectJson(server(), { method: "POST", url: "/events/claim", headers: authHeaders(), payload: { tags: [], limit: 10 } });
+
+    expect(response.statusCode).toBe(204);
+  });
+});
+
+describe("POST /events/:id/ack", () => {
+  it("acks the claimed event", async () => {
+    const id = await enqueueDispatch([]);
+    await injectJson(server(), { method: "POST", url: "/events/claim", headers: authHeaders(), payload: { tags: [], limit: 10 } });
+
+    const response = await injectJson(server(), { method: "POST", url: `/events/${id}/ack`, headers: authHeaders() });
+
+    expect(response.statusCode).toBe(204);
+  });
+});
+
+describe("POST /events/:id/fail", () => {
+  it("requeues on a non-permanent failure", async () => {
+    const id = await enqueueDispatch([]);
+
+    const response = await injectJson(server(), { method: "POST", url: `/events/${id}/fail`, headers: authHeaders(), payload: { error: "boom", permanent: false } });
+    const event = await injectJson<{ deadAt: string | null }>(server(), { method: "GET", url: `/events/${id}`, headers: authHeaders() });
+
+    expect({ statusCode: response.statusCode, deadAt: event.result.deadAt }).toEqual({ statusCode: 204, deadAt: null });
+  });
+
+  it("dead-letters immediately when told the failure is permanent", async () => {
+    const id = await enqueueDispatch([]);
+
+    await injectJson(server(), { method: "POST", url: `/events/${id}/fail`, headers: authHeaders(), payload: { error: "boom", permanent: true } });
+    const event = await injectJson<{ deadAt: string | null }>(server(), { method: "GET", url: `/events/${id}`, headers: authHeaders() });
+
+    expect(event.result.deadAt).not.toBeNull();
+  });
+});
+
+describe("visit-token-restricted posts", () => {
+  it("refuses an unknown bearer token", async () => {
+    const response = await injectJson(server(), { method: "POST", url: "/events", headers: { authorization: "Bearer not-a-real-token" }, payload: { name: "manual.tick", payload: {} } });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  function visitAuth(visitId: string): Record<string, string> {
+    const token = mintVisitToken(visitId, FUTURE_DEADLINE, VISIT_TOKEN_SECRET);
+
+    return { authorization: `Bearer ${token}` };
+  }
+
+  it("lets a visit token post station_run.reported for its own visit", async () => {
+    const response = await injectJson(server(), {
+      method: "POST",
+      url: "/events",
+      headers: visitAuth("visit-1"),
+      payload: { name: "station_run.reported", payload: { visitId: "visit-1" } },
+    });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("refuses a visit token posting for a different visit", async () => {
+    const response = await injectJson(server(), {
+      method: "POST",
+      url: "/events",
+      headers: visitAuth("visit-1"),
+      payload: { name: "station_run.reported", payload: { visitId: "visit-2" } },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("refuses a visit token posting any other event name", async () => {
+    const response = await injectJson(server(), {
+      method: "POST",
+      url: "/events",
+      headers: visitAuth("visit-1"),
+      payload: { name: "manual.tick", payload: {} },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+});

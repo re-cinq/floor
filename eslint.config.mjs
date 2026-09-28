@@ -68,6 +68,8 @@ export default tseslint.config(
       "max-params": ["error", { max: 4 }],
       // `on`/`to` match lore's WalkEdge; `id` is standard; `by` is the Item's own provenance field (docs/assembly_run_storage.md). Short, not vague.
       "id-length": ["error", { min: 3, exceptions: ["on", "to", "id", "by"] }],
+      // RFC 9457's own name for the status, not a boolean negated at the use site.
+      "re-lint/no-negative-names": ["error", { allow: ["notFound"] }],
     },
   },
 

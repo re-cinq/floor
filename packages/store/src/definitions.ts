@@ -69,6 +69,18 @@ export class DefinitionsStore {
     return rows[0] ? toRow(rows[0]) : null;
   }
 
+  /** The latest, non-archived version of every id of this kind, optionally narrowed to one id. */
+  async listLatest<Body>(kind: DefinitionKind, id?: string): Promise<DefinitionRow<Body>[]> {
+    const { rows } = await this.deps.connection.query(
+      `select distinct on (id) * from definitions
+       where kind = $1 and archived_at is null and ($2::text is null or id = $2)
+       order by id, created_at desc`,
+      [kind, id ?? null],
+    );
+
+    return rows.map((row) => toRow<Body>(row));
+  }
+
   async versions<Body>(kind: DefinitionKind, id: string): Promise<DefinitionRow<Body>[]> {
     const { rows } = await this.deps.connection.query(
       `select * from definitions where kind = $1 and id = $2 order by created_at desc`,
