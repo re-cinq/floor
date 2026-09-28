@@ -118,6 +118,21 @@ converter's `known-lines.ts`: what starts a line, what it is given, what
 lore's floor did around it. Reading that out of lore's code by machine
 would be guessing.
 
+## GitHub
+
+**GitHub's client is a third app, and optional.** The floor holds no
+provider client, and checking a webhook's signature or posting a review is
+provider knowledge. `@floor/github` is where it lives. A floor with no
+GitHub in its lines runs the two apps it always did.
+
+**The receiver flattens.** A line's templates read top-level fields, so the
+receiver lifts what a line may want out of GitHub's nesting and names it
+plainly. The alternative, templates that reach into nested payloads, puts a
+path language into every line.
+
+**A review is always a comment.** Never an approval or a request for
+changes, whatever the agent's verdict, as in lore. A person decides.
+
 ## Service stations
 
 **A function that throws has failed its visit; a floor out of reach has

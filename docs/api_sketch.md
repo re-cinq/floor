@@ -190,6 +190,7 @@ services without changing this API.
 | station contract | outcome vocabulary, `(run, node, iteration)`, `LORE_NODE_RESULT:` / `REVIEW_RESULT:` in agent output | same | same |
 | agent pods | the ai-agent-subsystem: an `Agent` resource per visit | one cluster agent on minikube | cluster agents per cluster, claiming by tag |
 | events queue | names, `dedupe_key`, `not_before`, claim/ack | own table | proxy to event-router |
+| GitHub's events | `github.<event>.<action>`, fields lifted to the top | `@floor/github`'s receiver | lore's own webhook handler, posting the same events |
 | git credentials | visit token → repo-scoped short-lived token | not built yet; a GitHub App configured on a `git-credential` service station | lore's `POST /api/github-credentials` |
 | agent output | `LORE_NODE_RESULT:`, then `REVIEW_RESULT:`, then success | lore's parser, ported; outcomes are the station's own | same |
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled` |

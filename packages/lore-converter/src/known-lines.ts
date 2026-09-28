@@ -36,7 +36,10 @@ const POST_REVIEW: HookStation = {
       { name: "review_output", kind: "file" },
       { name: "pr_url", kind: "value" },
     ],
-    produces: [{ name: "review_summary", kind: "value" }],
+    produces: [
+      { name: "review_summary", kind: "value" },
+      { name: "review_url", kind: "value" },
+    ],
   },
   bind: { review_output: "{node}_output" },
 };

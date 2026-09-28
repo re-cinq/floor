@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Walks lore's code-review line, converted, through this floor: a pull request opens, an agent in a
-# real pod reviews the branch, a service station takes the review, the run settles. Needs a lore
+# Walks lore's code-review line, converted, through this floor: GitHub's webhook for a pull request
+# opening arrives signed at the receiver, an agent in a real pod reviews the branch, a service
+# station takes the review, the run settles. Needs a lore
 # checkout to read (LORE_DIR) and `npm run minikube-setup` to have run. It reviews a public
 # repository and posts nothing to it. Spends a little of the Claude credential in the cluster.
 set -euo pipefail
@@ -22,6 +23,8 @@ LORE_DIR="${LORE_DIR:-${HOME}/workspace/lore}"
 PORT="${PORT:-8099}"
 BASE="http://localhost:${PORT}"
 TOKEN="walk-review-service-token"
+WEBHOOK_SECRET="walk-review-webhook-secret"
+RECEIVER="http://localhost:$((PORT + 2))/webhooks/github"
 MODEL="${FLOOR_WALK_MODEL:-claude-sonnet-4-6}"
 REPOSITORY="${FLOOR_WALK_REPOSITORY:-github.com/octocat/Spoon-Knife}"
 BRANCH="${FLOOR_WALK_BRANCH:-change-the-title}"
@@ -44,6 +47,7 @@ what_went_wrong() {
   say "the floor's log"; tail -30 "${LOGS}/api.log" || true
   say "the cluster agent's log"; tail -30 "${LOGS}/cluster-agent.log" || true
   say "the post-review station's log"; tail -30 "${LOGS}/post-review.log" || true
+  say "the webhook receiver's log"; tail -30 "${LOGS}/github.log" || true
   say "agents and pods in ${FLOOR_AGENTS_NAMESPACE}"
   kubectl -n "${FLOOR_AGENTS_NAMESPACE}" get agents,pods 2>&1 || true
 }
@@ -51,7 +55,7 @@ what_went_wrong() {
 npm run --silent db:up >/dev/null
 npm run --silent build >/dev/null
 
-say "starting the floor, the cluster agent, and the post-review station"
+say "starting the floor, the cluster agent, the webhook receiver, and the post-review station"
 PORT="${PORT}" FLOOR_BASE_URL="http://host.minikube.internal:${PORT}" FLOOR_SERVICE_TOKEN="${TOKEN}" \
   FLOOR_VISIT_TOKEN_SECRET="walk-review-secret" FLOOR_POLL_MS=200 \
   node apps/api/dist/index.js >"${LOGS}/api.log" 2>&1 &
@@ -67,18 +71,31 @@ FLOOR_API_URL="${BASE}" FLOOR_CLUSTER_AGENT_TOKEN="${TOKEN}" FLOOR_HEALTH_PORT="
 PIDS+=($!)
 FLOOR_API_URL="${BASE}" FLOOR_SERVICE_TOKEN="${TOKEN}" node scripts/stations/post-review.mjs >"${LOGS}/post-review.log" 2>&1 &
 PIDS+=($!)
+# The receiver alone: with no GitHub credential, @floor/github starts no station of its own.
+FLOOR_API_URL="${BASE}" FLOOR_SERVICE_TOKEN="${TOKEN}" PORT="$((PORT + 2))" GITHUB_WEBHOOK_SECRET="${WEBHOOK_SECRET}" \
+  env -u GITHUB_TOKEN -u GITHUB_APP_ID node apps/github/dist/index.js >"${LOGS}/github.log" 2>&1 &
+PIDS+=($!)
 
 say "converting lore's code-review from ${LORE_DIR}, and putting it to the floor"
 FLOOR_SERVICE_TOKEN="${TOKEN}" node packages/lore-converter/dist/cli.js \
   --lore "${LORE_DIR}" --line code-review --model "${MODEL}" --put "${BASE}" \
   | jq -r '"line \(.line.id): nodes \([.line.body.nodes[].id] | join(" -> ")); stations \([.stations[].id] | join(", ")); agent definition \(.agentDefinitions[0].id)"'
 
-say "a pull request opens: ${REPOSITORY}, branch ${BRANCH}"
-api -X POST "${BASE}/events" -d @- >/dev/null <<JSON
-{"name": "github.pull_request.opened", "payload": {
-  "repository": "${REPOSITORY}", "head_ref": "${BRANCH}", "pull_request_url": "${PULL_REQUEST}",
-  "title": "Review the change on branch ${BRANCH}", "draft": false}}
-JSON
+say "GitHub delivers: a pull request opened on ${REPOSITORY}, branch ${BRANCH}"
+WEBHOOK="$(jq -cn --arg repository "${REPOSITORY#github.com/}" --arg branch "${BRANCH}" --arg url "${PULL_REQUEST}" '{
+  action: "opened", number: 1,
+  repository: {full_name: $repository}, sender: {login: "walk-code-review.sh"},
+  pull_request: {html_url: $url, title: "Review the change on branch \($branch)", draft: false, merged: false,
+                 head: {ref: $branch, sha: ""}, base: {ref: "main"}}}')"
+SIGNATURE="sha256=$(printf '%s' "${WEBHOOK}" | openssl dgst -sha256 -hmac "${WEBHOOK_SECRET}" | sed 's/^.* //')"
+for _ in $(seq 1 50); do
+  STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${RECEIVER}" -H "x-github-event: pull_request" \
+    -H "x-github-delivery: walk-$(date +%s)" -H "x-hub-signature-256: ${SIGNATURE}" -d "${WEBHOOK}" || true)"
+  [ "${STATUS}" = "202" ] && break
+  sleep 0.2
+done
+[ "${STATUS}" = "202" ] || { what_went_wrong; fail "the receiver answered ${STATUS} to the webhook"; }
+echo "the receiver took it: ${STATUS}"
 
 RUN=""
 for _ in $(seq 1 50); do
