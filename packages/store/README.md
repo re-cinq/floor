@@ -22,7 +22,9 @@ replaces with one table and a tag filter.
   batch semantics, but every name other than the excluded ones, no tag
   filter — the floor's own loop's claim), `ack`, `fail`/`deadLetter`
   (exponential backoff, or immediate dead-letter), `dropQueued` (for
-  `cancel`), `listByRun`.
+  `cancel`), `listByRun`, `unclaimedDispatches` (every `station_run.dispatch`
+  no worker has claimed in 30 minutes — a sweep's cue that no worker offers
+  its tags).
 - `lease.ts` — `acquireLease`/`Lease`: a Postgres advisory lock
   (`pg_try_advisory_lock`) held on a dedicated client for the lease's
   lifetime, since the lock is session-scoped and a pooled `pool.query`
@@ -40,7 +42,9 @@ replaces with one table and a tag filter.
   tags) behind the store.
 - `assembly-run-store.ts` — `AssemblyRunStore`: `start`, `get`, `list`,
   `cancel`, `fail`, `bag`, `next`, `settle`, `openVisit`, `openVisitByHand`,
-  `nodeStartedBy`, `report`, `visits`, `visit`. Every follow-up event is written in the same transaction as the
+  `nodeStartedBy`, `report`, `visits`, `visit`, `overdueVisits` (every open
+  visit whose deadline has passed — a human visit's deadline is null, so it
+  never matches). Every follow-up event is written in the same transaction as the
   row that caused it (docs/assembly_run_storage.md, "Every follow-up event
   is written in the transaction that caused it").
 - `start-events.ts`, `refusal.ts` — a node's start event name (its line's own

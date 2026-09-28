@@ -38,6 +38,8 @@ const MAX_BACKOFF_MINUTES = 10;
 const MAX_BACKOFF_MS = MAX_BACKOFF_MINUTES * MS_PER_MINUTE;
 const CLAIM_STALE_MINUTES = 5;
 const CLAIM_STALE_MS = CLAIM_STALE_MINUTES * MS_PER_MINUTE;
+const UNCLAIMED_DISPATCH_MINUTES = 30;
+const UNCLAIMED_DISPATCH_MS = UNCLAIMED_DISPATCH_MINUTES * MS_PER_MINUTE;
 
 /** min(base * 2^attempts, max). */
 export function backoffMs(attempts: number, base = BASE_BACKOFF_MS, max = MAX_BACKOFF_MS): number {
@@ -167,6 +169,21 @@ export class EventStore {
        where run_id = $1 and acked_at is null and dead_at is null and dropped_at is null and claimed_at is null`,
       [runId],
     );
+  }
+
+  /** Every station_run.dispatch no worker has ever claimed, aged past UNCLAIMED_DISPATCH_MINUTES: a sweep's cue that no worker offers its tags. */
+  async unclaimedDispatches(now: Date): Promise<FloorEvent[]> {
+    const before = new Date(now.getTime() - UNCLAIMED_DISPATCH_MS);
+
+    const { rows } = await this.deps.connection.query(
+      `select * from events
+       where name = 'station_run.dispatch'
+         and claimed_at is null and acked_at is null and dead_at is null and dropped_at is null
+         and created_at < $1`,
+      [before],
+    );
+
+    return rows.map(toEvent);
   }
 
   async get(id: string): Promise<FloorEvent | null> {

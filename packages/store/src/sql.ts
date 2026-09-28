@@ -179,6 +179,13 @@ export async function closeOpenHumanVisits(client: PoolClient, runId: string, no
   );
 }
 
+/** Every open visit whose deadline has passed; a human visit's deadline is null, so it never matches. */
+export async function overdueVisitRows(client: Queryable, now: Date): Promise<Visit[]> {
+  const { rows } = await client.query(`select * from station_runs where report is null and deadline < $1`, [now]);
+
+  return rows.map(toVisit);
+}
+
 export interface NodeVisitCount {
   openVisit: Visit | null;
   highestIteration: number;

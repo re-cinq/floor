@@ -19,6 +19,7 @@ import {
   nodeVisitCount,
   openRunBySubject,
   openVisitRows,
+  overdueVisitRows,
   settleRun,
   writeReport,
 } from "./sql.js";
@@ -298,6 +299,11 @@ export class AssemblyRunStore {
 
   async visits(runId: string): Promise<Visit[]> {
     return visitsWith(this.deps.pool, runId);
+  }
+
+  /** Every open visit whose deadline has passed, for a sweep to fail as a timeout. A human visit never has a deadline, so it never sweeps. */
+  async overdueVisits(now: Date): Promise<Visit[]> {
+    return overdueVisitRows(this.deps.pool, now);
   }
 
   async visit(visitId: string): Promise<Visit | null> {
