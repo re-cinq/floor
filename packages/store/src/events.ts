@@ -1,6 +1,7 @@
 // The queue every worker pulls from: the floor's own loop claims every name except station_run.dispatch/abort, a cluster agent claims only those, by tag.
 
 import type { Pool, PoolClient } from "pg";
+import { addCondition } from "./rows.js";
 
 export interface EnqueueInput {
   name: string;
@@ -200,6 +201,40 @@ export class EventStore {
 
     return rows.map(toEvent);
   }
+
+  /** Forward pages by id, oldest first, filtered by any of after/name/runId/visitId. */
+  async feed(filter: EventsFeedFilter): Promise<EventsFeedPage> {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+
+    addCondition(conditions, values, "id > $%::bigint", filter.after);
+    addCondition(conditions, values, "name = $%", filter.name);
+    addCondition(conditions, values, "run_id = $%", filter.runId);
+    addCondition(conditions, values, "payload->>'visitId' = $%", filter.visitId);
+    values.push(filter.limit);
+    const where = conditions.length > 0 ? `where ${conditions.join(" and ")}` : "";
+
+    const { rows } = await this.deps.connection.query(
+      `select * from events ${where} order by id asc limit $${values.length}`,
+      values,
+    );
+    const matchedEvents = rows.map(toEvent);
+
+    return { items: matchedEvents, nextCursor: matchedEvents.length === filter.limit ? matchedEvents.at(-1)!.id : null };
+  }
+}
+
+export interface EventsFeedFilter {
+  after?: string;
+  name?: string;
+  runId?: string;
+  visitId?: string;
+  limit: number;
+}
+
+export interface EventsFeedPage {
+  items: FloorEvent[];
+  nextCursor: string | null;
 }
 
 // snake_case here mirrors Postgres's own column names verbatim, a third-party shape (the plugin's own naming-convention exemption case) rather than ours to rename.

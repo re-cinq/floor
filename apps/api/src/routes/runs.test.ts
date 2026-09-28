@@ -92,6 +92,29 @@ describe("GET /assembly-runs/:id", () => {
   });
 });
 
+describe("POST /assembly-lines/:id/start with a line file", () => {
+  it("seeds the line's file into the started run's bag", async () => {
+    const blob = await injectJson<{ hash: string }>(server(), { method: "POST", url: "/blobs", headers: authHeaders(), payload: Buffer.from("plan text") });
+    const line = {
+      id: "with-file",
+      entry: "review",
+      exit: "done",
+      args: {},
+      files: { plan: blob.result.hash },
+      nodes: [{ id: "review" }, { id: "done" }],
+      edges: [{ from: "review", to: "done", on: "success" }],
+    };
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: line });
+    const started = await injectJson<StartResult>(server(), { method: "POST", url: "/assembly-lines/with-file/start", headers: authHeaders(), payload: { repo: "r", startItems: {} } });
+    const { run } = started.result;
+
+    const response = await injectJson<{ bag: Record<string, { kind: string; ref: string; by: string }> }>(server(), { method: "GET", url: `/assembly-runs/${run.id}`, headers: authHeaders() });
+    const { bag } = response.result;
+
+    expect(bag.plan).toEqual({ kind: "file", ref: blob.result.hash, by: "line" });
+  });
+});
+
 describe("POST /assembly-runs/:id/cancel", () => {
   it("settles the run as cancelled", async () => {
     const runId = await startedRunId("https://pr/1");

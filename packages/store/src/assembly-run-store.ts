@@ -6,12 +6,13 @@ import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
 import { foldBag } from "./bag.js";
-import { deriveSubjectKey } from "./resolve.js";
+import { deriveSubjectKey, foldLineFiles } from "./resolve.js";
 import { Refusal, enforce } from "./refusal.js";
 import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
 import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable } from "./rows.js";
 import {
+  blobHashesExist,
   claimedDispatchTags,
   closeOpenHumanVisits,
   insertRun,
@@ -93,11 +94,22 @@ export class AssemblyRunStore {
 
     enforce(line, `no line named "${input.lineId}"`);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
-    const subjectKey = deriveSubjectKey(line.body, input.startItems);
+    await this.enforceFilesExist(line.body.files);
+    const startItems = foldLineFiles(line.body.files, input.startItems);
+    const subjectKey = deriveSubjectKey(line.body, startItems);
 
     return withTransaction(this.deps.pool, (client) =>
-      this.startInTransaction(client, { input, lineHash: line.hash, entry, subjectKey }),
+      this.startInTransaction(client, { input: { ...input, startItems }, lineHash: line.hash, entry, subjectKey }),
     );
+  }
+
+  private async enforceFilesExist(files: Record<string, string> | undefined): Promise<void> {
+    if (!files || Object.keys(files).length === 0) return;
+    const existing = await blobHashesExist(this.deps.pool, Object.values(files));
+
+    for (const [name, hash] of Object.entries(files)) {
+      enforce(existing.has(hash), `file "${name}" names blob "${hash}", which does not exist`);
+    }
   }
 
   private async startInTransaction(client: PoolClient, prepared: PreparedStart): Promise<StartResult> {

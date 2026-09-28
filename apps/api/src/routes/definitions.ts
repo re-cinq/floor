@@ -1,7 +1,8 @@
 // Assembly lines, stations and agent definitions (docs/api_sketch.md): the same shape of CRUD three times over, one call per kind.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { z, type ZodType } from "zod";
-import type { DefinitionKind } from "@floor/store";
+import type { DefinitionKind, LineBody, StationBody } from "@floor/store";
+import { validateLine } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { HTTP_CREATED, HTTP_NO_CONTENT } from "../http-status.js";
 import { parseBody } from "../parse.js";
@@ -14,10 +15,17 @@ interface KindRoutes<Body> {
   kind: DefinitionKind;
   bodySchema: ZodType<Body>;
   guardArchive?: (deps: Deps, id: string) => Promise<string | null>;
+  semanticValidate?: (deps: Deps, body: Body) => Promise<string[]>;
 }
 
 export function registerDefinitionRoutes(server: Server, deps: Deps): void {
-  registerKindRoutes(server, deps, { base: "assembly-lines", kind: "line", bodySchema: lineBodySchema, guardArchive: guardOpenRuns });
+  registerKindRoutes(server, deps, {
+    base: "assembly-lines",
+    kind: "line",
+    bodySchema: lineBodySchema,
+    guardArchive: guardOpenRuns,
+    semanticValidate: validateLineBody,
+  });
   registerKindRoutes(server, deps, { base: "stations", kind: "station", bodySchema: stationBodySchema });
   registerKindRoutes(server, deps, { base: "agent-definitions", kind: "agent_definition", bodySchema: agentDefinitionBodySchema });
   registerStartRoute(server, deps);
@@ -31,9 +39,15 @@ function registerKindRoutes<Body>(server: Server, deps: Deps, routes: KindRoutes
   server.route({ method: "GET", path: `/${base}/{id}`, handler: (request, toolkit) => getLatest(deps, kind, request, toolkit) });
   server.route({ method: "GET", path: `/${base}/{id}/versions`, handler: (request) => listVersions(deps, kind, request) });
   server.route({ method: "GET", path: `/${base}/{id}/versions/{hash}`, handler: (request, toolkit) => getVersion(deps, kind, request, toolkit) });
-  server.route({ method: "POST", path: `/${base}`, handler: createHandler(deps, kind, idSchema) });
-  server.route({ method: "PUT", path: `/${base}/{id}`, handler: putVersionHandler(deps, kind, bodySchema) });
+  server.route({ method: "POST", path: `/${base}`, handler: createHandler(deps, routes, idSchema) });
+  server.route({ method: "PUT", path: `/${base}/{id}`, handler: putVersionHandler(deps, routes) });
   server.route({ method: "DELETE", path: `/${base}/{id}`, handler: archiveHandler(deps, kind, routes.guardArchive) });
+}
+
+async function validateLineBody(deps: Deps, body: LineBody): Promise<string[]> {
+  const stations = await deps.definitions.listLatest<StationBody>("station");
+
+  return validateLine(body, { stations: new Set(stations.map((row) => row.id)) });
 }
 
 async function listLatest(deps: Deps, kind: DefinitionKind, request: Request) {
@@ -58,22 +72,32 @@ async function getVersion(deps: Deps, kind: DefinitionKind, request: Request, to
   return row ?? notFound(toolkit, `no ${kind} "${request.params.id}" at "${request.params.hash}"`);
 }
 
-function createHandler<Body>(deps: Deps, kind: DefinitionKind, idSchema: ZodType<{ id: string } & Body>) {
+function createHandler<Body>(deps: Deps, routes: KindRoutes<Body>, idSchema: ZodType<{ id: string } & Body>) {
+  const { kind } = routes;
+
   return async (request: Request, toolkit: ResponseToolkit) => {
     const parsed = parseBody(idSchema, request.payload);
 
     if (!parsed.success) return badRequest(toolkit, `invalid ${kind} body`, parsed.errors);
     const { id, ...body } = parsed.value;
+    const problems = await routes.semanticValidate?.(deps, body as Body);
+
+    if (problems && problems.length > 0) return badRequest(toolkit, `invalid ${kind} body`, problems);
 
     return toolkit.response(await deps.definitions.put(kind, id, body)).code(HTTP_CREATED);
   };
 }
 
-function putVersionHandler<Body>(deps: Deps, kind: DefinitionKind, bodySchema: ZodType<Body>) {
+function putVersionHandler<Body>(deps: Deps, routes: KindRoutes<Body>) {
+  const { kind, bodySchema } = routes;
+
   return async (request: Request, toolkit: ResponseToolkit) => {
     const parsed = parseBody(bodySchema, request.payload);
 
     if (!parsed.success) return badRequest(toolkit, `invalid ${kind} body`, parsed.errors);
+    const problems = await routes.semanticValidate?.(deps, parsed.value);
+
+    if (problems && problems.length > 0) return badRequest(toolkit, `invalid ${kind} body`, problems);
 
     return deps.definitions.put(kind, request.params.id as string, parsed.value);
   };

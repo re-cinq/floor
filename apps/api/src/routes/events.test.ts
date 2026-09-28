@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mintVisitToken } from "../visit-token.js";
 import { VISIT_TOKEN_SECRET, authHeaders, injectJson, setupTestServer } from "../test-server.js";
 
-const { server, deps } = setupTestServer();
+const { server, deps, pool } = setupTestServer();
 const FUTURE_DEADLINE = new Date("2026-01-01T01:00:00Z");
 
 async function enqueueDispatch(tags: string[]): Promise<string> {
@@ -31,10 +31,65 @@ describe("POST /events", () => {
 });
 
 describe("GET /events", () => {
-  it("requires the run filter", async () => {
+  it("requires at least one filter", async () => {
     const response = await injectJson(server(), { method: "GET", url: "/events", headers: authHeaders() });
 
     expect(response.statusCode).toBe(400);
+  });
+
+  it("filters by run alone", async () => {
+    const runId = "00000000-0000-4000-8000-000000000001";
+    const posted = await injectJson<{ id: string }>(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "node.review.start", payload: {}, runId } });
+
+    const response = await injectJson<{ items: { id: string }[] }>(server(), { method: "GET", url: `/events?run=${runId}`, headers: authHeaders() });
+    const matchedEvents = response.result.items;
+
+    expect(matchedEvents.map((event) => event.id)).toEqual([posted.result.id]);
+  });
+
+  it("filters by name alone", async () => {
+    await injectJson(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "manual.tick", payload: {} } });
+
+    const response = await injectJson<{ items: { name: string }[] }>(server(), { method: "GET", url: "/events?name=manual.tick", headers: authHeaders() });
+    const matchedEvents = response.result.items;
+
+    expect(matchedEvents.map((event) => event.name)).toEqual(["manual.tick"]);
+  });
+
+  it("filters by since alone, excluding what came before the cursor", async () => {
+    const first = await injectJson<{ id: string }>(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "manual.tick", payload: {} } });
+    await injectJson(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "manual.tick", payload: {} } });
+
+    const response = await injectJson<{ items: unknown[] }>(server(), { method: "GET", url: `/events?since=${first.result.id}`, headers: authHeaders() });
+
+    expect(response.result.items).toHaveLength(1);
+  });
+
+  it("filters by station-run alone", async () => {
+    await injectJson(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "station_run.reported", payload: { visitId: "v9" } } });
+
+    const response = await injectJson<{ items: { name: string }[] }>(server(), { method: "GET", url: "/events?station-run=v9", headers: authHeaders() });
+    const matchedEvents = response.result.items;
+
+    expect(matchedEvents.map((event) => event.name)).toEqual(["station_run.reported"]);
+  });
+
+  it("combines run and name filters", async () => {
+    const runId = "00000000-0000-4000-8000-000000000002";
+    await enqueueDispatch([]);
+    await injectJson(server(), { method: "POST", url: "/events", headers: authHeaders(), payload: { name: "manual.tick", payload: {} } });
+
+    const response = await injectJson<{ items: { name: string }[] }>(server(), { method: "GET", url: `/events?run=${runId}&name=manual.tick`, headers: authHeaders() });
+
+    expect(response.result.items).toEqual([]);
+  });
+
+  it("caps the limit at 200", async () => {
+    await pool().query(`insert into events (name, payload) select 'node.review.start', '{}'::jsonb from generate_series(1, 201)`);
+
+    const response = await injectJson<{ items: unknown[] }>(server(), { method: "GET", url: "/events?since=0&limit=9999", headers: authHeaders() });
+
+    expect(response.result.items).toHaveLength(200);
   });
 });
 

@@ -12,6 +12,15 @@ const STATION_BODY = {
   produces: [],
 };
 
+const MARKER_LINE_BODY = {
+  id: "code-review",
+  entry: "review",
+  exit: "done",
+  args: {},
+  nodes: [{ id: "review" }, { id: "done" }],
+  edges: [{ from: "review", to: "done", on: "success" }],
+};
+
 interface PutResult {
   hash: string;
   created: boolean;
@@ -95,22 +104,63 @@ describe("DELETE /stations/:id", () => {
 });
 
 describe("DELETE /assembly-lines/:id", () => {
-  const LINE_BODY = {
-    id: "code-review",
-    entry: "review",
-    exit: "done",
-    args: {},
-    nodes: [{ id: "review" }, { id: "done" }],
-    edges: [{ from: "review", to: "done", on: "success" }],
-  };
-
   it("refuses to archive a line with an open run", async () => {
-    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: LINE_BODY });
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: MARKER_LINE_BODY });
     await injectJson(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { repo: "r", startItems: {} } });
 
     const response = await injectJson(server(), { method: "DELETE", url: "/assembly-lines/code-review", headers: authHeaders() });
 
     expect(response.statusCode).toBe(409);
+  });
+});
+
+describe("POST /assembly-lines semantic validation", () => {
+  const STATION_ID = "review";
+
+  async function putStation(): Promise<void> {
+    await injectJson(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: STATION_BODY });
+  }
+
+  it("returns 400 with every problem for a line naming an unknown station", async () => {
+    const line = {
+      id: "code-review",
+      entry: "review",
+      exit: "done",
+      args: {},
+      nodes: [{ id: "review", station: "missing" }, { id: "done" }],
+      edges: [{ from: "review", to: "done", on: "success" }],
+    };
+
+    const response = await injectJson<{ errors?: string[] }>(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: line });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({ statusCode: 400, errors: [`node "review" names unknown station "missing"`] });
+  });
+
+  it("accepts a line naming a station that was put first", async () => {
+    await putStation();
+    const line = {
+      id: "code-review",
+      entry: STATION_ID,
+      exit: "done",
+      args: {},
+      nodes: [{ id: STATION_ID, station: STATION_ID }, { id: "done" }],
+      edges: [{ from: STATION_ID, to: "done", on: "success" }],
+    };
+
+    const response = await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: line });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("PUT /assembly-lines/:id returns 400 with every problem", async () => {
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: MARKER_LINE_BODY });
+    const { id, ...rest } = MARKER_LINE_BODY;
+    void id;
+    const line = { ...rest, entry: "missing" };
+
+    const response = await injectJson<{ errors?: string[] }>(server(), { method: "PUT", url: "/assembly-lines/code-review", headers: authHeaders(), payload: line });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({ statusCode: 400, errors: [`entry "missing" is not a node`] });
   });
 });
 

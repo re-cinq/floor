@@ -5,10 +5,14 @@ export {
   type EnqueueInput,
   type FloorEvent,
   type EventStoreDeps,
+  type EventsFeedFilter,
+  type EventsFeedPage,
 } from "./events.js";
 export { acquireLease, type Lease } from "./lease.js";
 export { openTestPool, testDatabaseUrl } from "./test-database.js";
 export { Refusal, enforce } from "./refusal.js";
+export { validateLine, type KnownDefinitions } from "./line-validation.js";
+export { CostsStore, type CostsFilter, type CostsGroupBy, type CostsRow, type CostsStoreDeps } from "./costs.js";
 export { renderTemplate } from "./template.js";
 export {
   DispatchBriefs,

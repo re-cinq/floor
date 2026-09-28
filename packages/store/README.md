@@ -22,9 +22,10 @@ replaces with one table and a tag filter.
   batch semantics, but every name other than the excluded ones, no tag
   filter — the floor's own loop's claim), `ack`, `fail`/`deadLetter`
   (exponential backoff, or immediate dead-letter), `dropQueued` (for
-  `cancel`), `listByRun`, `unclaimedDispatches` (every `station_run.dispatch`
-  no worker has claimed in 30 minutes — a sweep's cue that no worker offers
-  its tags).
+  `cancel`), `listByRun`, `feed` (the polled feed: pages forward by id,
+  filtered by any of `after`/`name`/`runId`/`visitId`), `unclaimedDispatches`
+  (every `station_run.dispatch` no worker has claimed in 30 minutes — a
+  sweep's cue that no worker offers its tags).
 - `lease.ts` — `acquireLease`/`Lease`: a Postgres advisory lock
   (`pg_try_advisory_lock`) held on a dedicated client for the lease's
   lifetime, since the lock is session-scoped and a pooled `pool.query`
@@ -35,13 +36,16 @@ replaces with one table and a tag filter.
   `latest`, `byHash`, `byHashOnly` (hash alone, no id — a visit only ever
   records a station's hash), `versions`, `archive`.
 - `resolve.ts`, `bag.ts`, `walk-graph.ts` — pure helpers: need resolution
-  against the bag, the bag fold itself (start items plus each done visit's
-  produced items), and the walk kernel's graph built from stored line/station
-  definitions.
+  against the bag, `foldLineFiles` (a line's own `files` turned into `file`
+  items `by: "line"`, seeded into `start` before the caller's own start
+  items, which win on a name clash), the bag fold itself (start items plus
+  each done visit's produced items), and the walk kernel's graph built from
+  stored line/station definitions.
 - `rows.ts`, `sql.ts`, `open-visit.ts` — the row mapping, the mutation/query
-  SQL, and resolution-at-open (station, agent definition and repo variant,
-  needs, conversation continuation, failure context, deadline, dispatch
-  tags) behind the store.
+  SQL (including `blobHashesExist`, checked against a line's `files` before
+  a run starts on them), and resolution-at-open (station, agent definition
+  and repo variant, needs, conversation continuation, failure context,
+  deadline, dispatch tags) behind the store.
 - `assembly-run-store.ts` — `AssemblyRunStore`: `start`, `get`, `list`,
   `cancel`, `fail`, `bag`, `next`, `settle`, `openVisit`, `openVisitByHand`,
   `nodeStartedBy`, `report`, `visits`, `visit`, `overdueVisits` (every open
@@ -58,6 +62,11 @@ replaces with one table and a tag filter.
 - `template.ts` — the one template engine: `{name}` over own, scalar fields
   only, single-pass, refused past 4 KB. Its tests are named after the attack
   each one stops.
+- `line-validation.ts` — `validateLine`: every semantic problem in a line
+  body, not the first — entry, exit and edge endpoints name real nodes, node
+  ids are unique, every node but the exit has an outgoing edge, `start.args`
+  names a declared argument, at most one argument is `subject`, and every
+  node's station (its `@hash` pin stripped) is a known one.
 - `event-match.ts`, `outside-events.ts` — events from outside the walk.
   `OutsideEvents.startLines` starts every line whose latest version declares
   the event under `start.on` (`when` is equality, `args` are templates over
@@ -79,6 +88,12 @@ replaces with one table and a tag filter.
   serializing concurrent appends; refuses a body over 64 KB with a
   `Refusal`, never truncating. `list` pages forward by `seq`
   (`{ after, limit }` in, `{ items, nextCursor }` out).
+- `costs.ts` — `CostsStore.summary`: cost and tokens in/out summed in SQL
+  over `llm_call` records, joined to `station_runs`/`assembly_runs`/
+  `definitions` for repo, line, station and model, grouped by day, line,
+  station or model, and filtered by any of repo/line/station/since/until.
+  A visit counts as missing cost when it has an agent definition hash and a
+  report but no `llm_call` record with a numeric `costUsd`.
 
 ## Not yet here
 

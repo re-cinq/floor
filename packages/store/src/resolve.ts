@@ -80,6 +80,16 @@ export function mergeAgentSettings(base: AgentSettings, variant: Partial<AgentSe
   };
 }
 
+/** A line's declared files, each turned into a `file` item `by: "line"`; a start item the caller gave under the same name wins. */
+export function foldLineFiles(files: Record<string, string> | undefined, startItems: Record<string, Item>): Record<string, Item> {
+  if (!files) return startItems;
+  const seeded = Object.fromEntries(
+    Object.entries(files).map(([name, hash]): [string, Item] => [name, { kind: "file", ref: hash, by: "line" }]),
+  );
+
+  return { ...seeded, ...startItems };
+}
+
 /** The last failed visit's error, capped, for the `previous_error` built-in need. */
 export function previousErrorNeed(lastFailedError: string | null | undefined): string | undefined {
   if (!lastFailedError) return undefined;

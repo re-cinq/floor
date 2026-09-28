@@ -2,7 +2,7 @@
 
 import type { PoolClient } from "pg";
 import { Refusal, enforce } from "./refusal.js";
-import { toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
+import { addCondition, toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
 import type { Report, Run, Visit } from "./types.js";
 import type { OpenContext } from "./open-visit.js";
 import type { Page, RunFilter, StartRunInput } from "./assembly-run-store.js";
@@ -163,10 +163,12 @@ export function listQuery(filter: RunFilter, page: Page): { text: string; values
   return { text: `select * from assembly_runs ${where} order by id desc limit $${values.length}`, values };
 }
 
-function addCondition(conditions: string[], values: unknown[], template: string, value: unknown): void {
-  if (value === undefined) return;
-  values.push(value);
-  conditions.push(template.replace("$%", `$${values.length}`));
+/** Which of these hashes the blobs table actually holds, for a line's `files` to be checked against before a run starts on them. */
+export async function blobHashesExist(client: Queryable, hashes: string[]): Promise<Set<string>> {
+  if (hashes.length === 0) return new Set();
+  const { rows } = await client.query(`select hash from blobs where hash = any($1::text[])`, [hashes]);
+
+  return new Set(rows.map((row: { hash: string }) => row.hash));
 }
 
 /** A start from outside closes the run's open human visits first, so the kernel's replay never sees a person's node left open behind the one a person just started. No walk advance: the visit opened next is what moves the run. */

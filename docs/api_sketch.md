@@ -23,15 +23,16 @@ each entity has its own page under [entities/](entities/).
   write returns 409 and names the resource holding it in `detail`.
 - **Pagination.** Every list takes `limit` (default 50, max 200) and an
   opaque `cursor`. Lists are ordered newest first on `(created_at, id)`.
-  Lists marked *filter required* return 400 without one. *Built for runs
-  and records; the other lists return everything.*
+  Lists marked *filter required* return 400 without one. *Built for runs,
+  records and the events feed; the other lists return everything.*
 - **Creates are idempotent by their natural key**, not by a header. A run by
   its subject, a definition and a blob by their content hash, an event by
   its `dedupe_key`. Repeating a create returns what already exists.
 - **Type safety.** Definitions, run arguments and event payloads are typed
-  schemas. A failing POST returns 400 with every error, not the first. *The
-  shape of a definition is checked. What it refers to is not yet: an edge to
-  a node that does not exist is found when a run reaches it.*
+  schemas. A failing POST returns 400 with every error, not the first. An
+  assembly line is also checked for what it refers to: entry, exit and every
+  edge name a real node, every node but the exit has an outgoing edge, and
+  every node's station is a known one.
 - **Field names.** Request and response bodies are `camelCase`: `runId`,
   `dedupeKey`, `availableAt`, `startItems`.
 - **Tenancy is the database.** One floor serves one tenant. Lore gives each
@@ -134,10 +135,7 @@ DELETE /agent-definitions/:id            // archives. Not built yet: 409 while a
 
 ## Costs - collected by the floor for every visit
 
-> **Not built yet.** Each visit's cost is recorded as an `llm_call` record;
-> nothing sums them.
-
-GET    /costs                            // filter required: repo, line, station, since, until; group by day | line | station | model
+GET    /costs                            // service token only. filter required: repo, line, station, since, until; group required: day | line | station | model
                                          // returns cost, tokens in and out, visit count, and visits with missing cost
 
 ## Blobs - content-addressed bytes behind every `file` item
@@ -148,8 +146,8 @@ POST   /blobs                            // body bytes; returns the sha256; 413 
 
 ## Events - the queue that drives everything
 
-GET    /events                           // run required. Not built yet: since (cursor), name, station-run, which
-                                         // make it the feed: poll it, no SSE
+GET    /events                           // at least one of since (cursor), name, run, station-run required.
+                                         // Poll it, no SSE
 GET    /events/:id
 POST   /events                           // body: name, payload, optional dedupeKey, availableAt, runId. A payload
                                          // naming a run does so by `runId`, or by `subjectKey` and `repo`.

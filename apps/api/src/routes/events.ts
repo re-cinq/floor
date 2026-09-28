@@ -11,8 +11,11 @@ import { WORKER_EVENT_NAMES } from "../worker-events.js";
 
 
 
+const DEFAULT_FEED_LIMIT = 50;
+const MAX_FEED_LIMIT = 200;
+
 export function registerEventRoutes(server: Server, deps: Deps): void {
-  server.route({ method: "GET", path: "/events", handler: (request, toolkit) => listByRun(deps, request, toolkit) });
+  server.route({ method: "GET", path: "/events", handler: (request, toolkit) => feed(deps, request, toolkit) });
   server.route({ method: "GET", path: "/events/{id}", handler: (request, toolkit) => getOne(deps, request, toolkit) });
   server.route({ method: "POST", path: "/events", handler: (request, toolkit) => enqueue(deps, request, toolkit) });
   server.route({ method: "POST", path: "/events/claim", handler: (request, toolkit) => claim(deps, request, toolkit) });
@@ -20,12 +23,23 @@ export function registerEventRoutes(server: Server, deps: Deps): void {
   server.route({ method: "POST", path: "/events/{id}/fail", handler: (request, toolkit) => fail(deps, request, toolkit) });
 }
 
-async function listByRun(deps: Deps, request: Request, toolkit: ResponseToolkit) {
+async function feed(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const query = request.query as Record<string, string | undefined>;
+  const filter = { after: query.since, name: query.name, runId: query.run, visitId: query["station-run"], limit: feedLimitOf(query.limit) };
 
-  if (!query.run) return badRequest(toolkit, "filter required: run (since, name and station-run are not yet supported)");
+  if (!hasFeedFilter(filter)) return badRequest(toolkit, "at least one filter is required: since, name, run, or station-run");
 
-  return { items: await deps.events.listByRun(query.run) };
+  return deps.events.feed(filter);
+}
+
+function hasFeedFilter(filter: { after?: string; name?: string; runId?: string; visitId?: string }): boolean {
+  return [filter.after, filter.name, filter.runId, filter.visitId].some((value) => value !== undefined);
+}
+
+function feedLimitOf(value: string | undefined): number {
+  const parsed = value ? Number(value) : DEFAULT_FEED_LIMIT;
+
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MAX_FEED_LIMIT) : DEFAULT_FEED_LIMIT;
 }
 
 async function getOne(deps: Deps, request: Request, toolkit: ResponseToolkit) {

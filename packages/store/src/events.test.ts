@@ -1,35 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { PgPool } from "./pg.js";
-import { openTestPool } from "./test-database.js";
-import { EventStore, backoffMs, type FloorEvent } from "./events.js";
+import { describe, expect, it } from "vitest";
+import { backoffMs, type FloorEvent } from "./events.js";
+import { FIXED_NOW, setupEventsFixture } from "./events.fixtures.js";
 
-const FIXED_NOW = new Date("2026-01-01T00:00:00Z");
-
-let pool: PgPool;
-let idCounter = 0;
-
-beforeAll(async () => {
-  pool = await openTestPool();
-});
-
-beforeEach(async () => {
-  await pool.query("truncate events restart identity");
-  idCounter = 0;
-});
-
-afterAll(async () => {
-  await pool.end();
-});
-
-function store(now: () => Date = () => FIXED_NOW): EventStore {
-  return new EventStore({ connection: pool, now });
-}
-
-function fakeRunId(): string {
-  idCounter += 1;
-
-  return `00000000-0000-4000-8000-${String(idCounter).padStart(12, "0")}`;
-}
+const { pool, store, fakeRunId } = setupEventsFixture();
 
 describe("backoffMs", () => {
   it("doubles per attempt", () => {
@@ -65,7 +38,7 @@ describe("EventStore.enqueue", () => {
     await store().enqueue({ name: "assembly_run.start", payload: {}, dedupeKey: "run:r1:start" });
     await store().enqueue({ name: "assembly_run.start", payload: {}, dedupeKey: "run:r1:start" });
 
-    const { rows } = await pool.query("select count(*) from events where dedupe_key = $1", ["run:r1:start"]);
+    const { rows } = await pool().query("select count(*) from events where dedupe_key = $1", ["run:r1:start"]);
 
     expect(Number(rows[0].count)).toBe(1);
   });
@@ -354,7 +327,7 @@ describe("EventStore.dropQueued", () => {
     await store().claim({ names: ["node.review.start"], limit: 10, claimedBy: "worker-1" });
     await store().dropQueued(runId);
 
-    const result = await pool.query("select dropped_at from events where run_id = $1", [runId]);
+    const result = await pool().query("select dropped_at from events where run_id = $1", [runId]);
     const row = result.rows[0];
 
     expect(row.dropped_at).toBeNull();

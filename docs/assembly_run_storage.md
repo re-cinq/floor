@@ -157,9 +157,13 @@ stops that.
 If an open run already holds the subject, `start` returns that run. `entry`
 starts at a node other than the line's entry; the node must exist.
 
-> **Not built yet.** A line's `files` are accepted and ignored, start
-> arguments are not checked against the line's `args`, and a start cannot
-> name a line version: it takes the latest.
+A line's `files` (name to blob hash) are seeded into the run's bag at
+start, each as a `file` item `by: "line"`; a start item the caller gave
+under the same name wins. A named hash the blobs table does not hold
+refuses the start, naming the file.
+
+> **Not built yet.** Start arguments are not checked against the line's
+> `args`, and a start cannot name a line version: it takes the latest.
 
 ## Routing: the kernel decides, events carry
 
@@ -433,7 +437,8 @@ The floor collects every cost itself.
   visit. *Not built yet.*
 - **Crashes still cost.** Records are written during the visit.
 - **Rollups are queries.** Visit, run and aggregate cost are sums over
-  records. *Not built yet: the cost is recorded, nothing sums it.*
+  records, in SQL: `CostsStore.summary`, grouped by day, line, station or
+  model, over `GET /costs`.
 
 ## Concurrency
 

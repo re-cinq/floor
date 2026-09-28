@@ -91,6 +91,13 @@ export async function visitsWith(connection: Queryable, runId: string): Promise<
   return rows.map(toVisit);
 }
 
+/** Appends `template` (its `$%` replaced with the next placeholder) to `conditions` and its value to `values`, unless the value is undefined. */
+export function addCondition(conditions: string[], values: unknown[], template: string, value: unknown): void {
+  if (value === undefined) return;
+  values.push(value);
+  conditions.push(template.replace("$%", `$${values.length}`));
+}
+
 export async function withTransaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
 
