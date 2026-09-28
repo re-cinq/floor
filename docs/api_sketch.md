@@ -164,15 +164,13 @@ POST   /events/:id/fail                  // body: error, permanent; requeues wit
 
 ## Schedules - predefined events on a cadence
 
-> **Not built yet.** None of it. The loop would carry a tick like any other
-> event; nothing posts one.
-
 A schedule is a name, a cron and an event payload, and holds exactly one
 pending event. Acking its tick enqueues the next occurrence. A line that
-declares `start.on: schedule.<name>.tick` is what the tick starts.
+declares `start.on: schedule.<name>.tick` is what the tick starts. Service
+token only.
 
 GET    /schedules
-GET    /schedules/:id                    // includes the pending event's not_before
+GET    /schedules/:id                    // includes the pending event's availableAt
 POST   /schedules                        // enqueues the first occurrence
 PUT    /schedules/:id                    // updates the one pending event
 DELETE /schedules/:id                    // drops the one pending event

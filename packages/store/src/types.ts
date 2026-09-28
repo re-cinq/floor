@@ -150,3 +150,10 @@ export interface AgentDefinitionBody {
   /** `host/owner/name` -> a partial bundle merged over `settings`. */
   variants?: Record<string, Partial<AgentSettings>>;
 }
+
+export interface ScheduleBody {
+  cron: string;
+  /** Defaults to UTC. */
+  timezone?: string;
+  payload: Record<string, unknown>;
+}

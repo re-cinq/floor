@@ -187,6 +187,28 @@ export class EventStore {
     return rows.map(toEvent);
   }
 
+  /** Drops every unresolved event of this name; a claimed one is left for its worker to fail or ack. */
+  async dropByName(name: string): Promise<void> {
+    await this.deps.connection.query(
+      `update events set dropped_at = now()
+       where name = $1 and acked_at is null and dead_at is null and dropped_at is null and claimed_at is null`,
+      [name],
+    );
+  }
+
+  /** The one unresolved event of this name due furthest out: a schedule's own cadence event, distinct from an extra triggered one due now. */
+  async pendingByName(name: string): Promise<FloorEvent | null> {
+    const { rows } = await this.deps.connection.query(
+      `select * from events
+       where name = $1 and acked_at is null and dead_at is null and dropped_at is null
+       order by not_before desc, id desc
+       limit 1`,
+      [name],
+    );
+
+    return rows[0] ? toEvent(rows[0]) : null;
+  }
+
   async get(id: string): Promise<FloorEvent | null> {
     const { rows } = await this.deps.connection.query(`select * from events where id = $1`, [id]);
 

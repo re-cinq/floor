@@ -11,6 +11,7 @@ import { registerSinkRoutes } from "./routes/sink.js";
 import { registerConversationRoutes } from "./routes/conversations.js";
 import { registerSkillRoutes } from "./routes/skills.js";
 import { registerCostsRoutes } from "./routes/costs.js";
+import { registerScheduleRoutes } from "./routes/schedules.js";
 
 export async function buildServer(deps: Deps, holdsLease: () => boolean): Promise<Hapi.Server> {
   const server = Hapi.server({ port: deps.config.port, host: "0.0.0.0" });
@@ -26,6 +27,7 @@ export async function buildServer(deps: Deps, holdsLease: () => boolean): Promis
   registerConversationRoutes(server, deps);
   registerSkillRoutes(server);
   registerCostsRoutes(server, deps);
+  registerScheduleRoutes(server, deps);
 
   await server.initialize();
 

@@ -123,7 +123,7 @@ function isDue(last: Date | null, now: Date, everyMs: number): boolean {
 export function buildLoop(deps: Deps, claimedBy: string): FloorLoop {
   return new FloorLoop({
     pool: deps.pool,
-    dispatcher: new Dispatcher({ runs: deps.runs, events: deps.events, outside: deps.outside, claimedBy }),
+    dispatcher: new Dispatcher({ runs: deps.runs, events: deps.events, outside: deps.outside, schedules: deps.schedules, claimedBy }),
     sweeper: new Sweeper({ runs: deps.runs, events: deps.events, now: deps.now }),
     reaper: reaperOf(deps),
     now: deps.now,

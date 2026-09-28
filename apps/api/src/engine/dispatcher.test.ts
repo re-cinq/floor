@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LineBody, StationBody } from "@floor/store";
+import type { LineBody, ScheduleBody, StationBody } from "@floor/store";
 import { setupTestServer } from "../test-server.js";
 import { MARKER_LINE } from "./lines.fixtures.js";
 import { Dispatcher } from "./dispatcher.js";
@@ -35,7 +35,13 @@ async function tickUntilIdle(): Promise<void> {
 }
 
 function dispatcher(): Dispatcher {
-  return new Dispatcher({ runs: deps().runs, events: deps().events, outside: deps().outside, claimedBy: "floor-test" });
+  return new Dispatcher({
+    runs: deps().runs,
+    events: deps().events,
+    outside: deps().outside,
+    schedules: deps().schedules,
+    claimedBy: "floor-test",
+  });
 }
 
 async function startLine(line: LineBody, workStation: StationBody = WORK_STATION): Promise<string> {
@@ -268,5 +274,46 @@ describe("Dispatcher: events from outside", () => {
     const handled = await postedThenHandled(OPENED, { repo: REPO });
 
     expect(handled.lastError).toContain('line "merge"');
+  });
+});
+
+describe("Dispatcher: schedule ticks", () => {
+  const SCHEDULE_BODY: ScheduleBody = { cron: "0 0 * * *", payload: { repo: "r" } };
+
+  const TICK_LINE: LineBody = {
+    ...MARKER_LINE,
+    start: { on: ["schedule.nightly.tick"], args: {} },
+  };
+
+  it("starts a line declaring start.on: schedule.<name>.tick when the tick is handled", async () => {
+    await deps().definitions.put("line", "on-nightly", TICK_LINE);
+    await deps().schedules.put("nightly", SCHEDULE_BODY);
+    await deps().schedules.trigger("nightly");
+
+    await tickUntilIdle();
+    const runs = await deps().runs.list({ lineId: "on-nightly" }, { limit: 10 });
+
+    expect(runs.items).toHaveLength(1);
+  });
+
+  it("enqueues no further tick for a schedule archived before an in-flight tick of its is handled", async () => {
+    await deps().schedules.put("nightly", SCHEDULE_BODY);
+    const pending = (await deps().schedules.pending("nightly"))!;
+    const inFlightAt = new Date(pending.availableAt.getTime() + 1000);
+
+    await deps().definitions.archive("schedule", "nightly");
+    await deps().events.enqueue({
+      name: "schedule.nightly.tick",
+      payload: { scheduledFor: inFlightAt.toISOString() },
+      availableAt: deps().now(),
+      dedupeKey: "schedule:nightly:in-flight",
+    });
+
+    await tickUntilIdle();
+    const { rows } = await deps().pool.query(
+      "select count(*) from events where name = 'schedule.nightly.tick' and acked_at is null",
+    );
+
+    expect(Number(rows[0].count)).toBe(1);
   });
 });

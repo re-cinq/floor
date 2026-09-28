@@ -23,6 +23,7 @@ export {
   type DispatchNeed,
 } from "./dispatch-brief.js";
 export { OutsideEvents, type OutsideEvent, type OutsideEventsDeps, type RunRef } from "./outside-events.js";
+export { SchedulesStore, isValidCron, type SchedulesStoreDeps } from "./schedules.js";
 export {
   DefinitionsStore,
   type DefinitionKind,
@@ -76,4 +77,5 @@ export type {
   ProduceSpec,
   AgentSettings,
   AgentDefinitionBody,
+  ScheduleBody,
 } from "./types.js";

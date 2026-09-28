@@ -1,14 +1,25 @@
 // The floor's own loop body (docs/assembly_run_storage.md, "Events: the queue and the loop"): claim every event that is not a worker's, turn it into store calls, ack it.
-import { Refusal, type AssemblyRunStore, type EventStore, type FloorEvent, type OutsideEvent, type OutsideEvents, type Run } from "@floor/store";
+import {
+  Refusal,
+  type AssemblyRunStore,
+  type EventStore,
+  type FloorEvent,
+  type OutsideEvent,
+  type OutsideEvents,
+  type Run,
+  type SchedulesStore,
+} from "@floor/store";
 import { WORKER_EVENT_NAMES } from "../worker-events.js";
 import { routeEvent, type Route } from "./route.js";
 
 const DEFAULT_BATCH_SIZE = 20;
+const TICK_NAME = /^schedule\.(.+)\.tick$/;
 
 export interface DispatcherDeps {
   runs: AssemblyRunStore;
   events: EventStore;
   outside: OutsideEvents;
+  schedules: SchedulesStore;
   claimedBy: string;
   batchSize?: number;
 }
@@ -57,6 +68,16 @@ export class Dispatcher {
     if (route.kind === "run-event" && (await this.startedNode(outside, route))) return;
 
     await this.deps.outside.startLines(outside);
+    await this.advanceScheduleIfTick(event);
+  }
+
+  // A schedule that was archived between posting this tick and handling it enqueues nothing further.
+  private async advanceScheduleIfTick(event: FloorEvent): Promise<void> {
+    const name = TICK_NAME.exec(event.name)?.[1];
+
+    if (!name) return;
+
+    await this.deps.schedules.enqueueNext(name, scheduledForOf(event));
   }
 
   private async report(route: Extract<Route, { kind: "report" }>): Promise<void> {
@@ -136,4 +157,8 @@ function outsideEvent(event: FloorEvent): OutsideEvent {
   const isRecord = typeof payload === "object" && payload !== null && !Array.isArray(payload);
 
   return { name: event.name, payload: isRecord ? (payload as Record<string, unknown>) : {} };
+}
+
+function scheduledForOf(event: FloorEvent): Date {
+  return new Date((event.payload as { scheduledFor: string }).scheduledFor);
 }

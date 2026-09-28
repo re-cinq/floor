@@ -1,5 +1,6 @@
 // zod mirrors of packages/store's definition body types (docs/entities/*.md), for POST/PUT validation.
 import { z } from "zod";
+import { isValidCron } from "@floor/store";
 import { agentConfigSchema } from "./agent-config.js";
 
 const itemKind = z.enum(["value", "file", "git"]);
@@ -96,6 +97,12 @@ export const enqueueEventSchema = z.object({
 export const claimEventsSchema = z.object({ tags: z.array(z.string()), limit: z.number().int().positive() });
 
 export const failEventSchema = z.object({ error: z.string(), permanent: z.boolean() });
+
+export const scheduleBodySchema = z.object({
+  cron: z.string().refine(isValidCron, { message: "invalid cron expression" }),
+  timezone: z.string().optional(),
+  payload: z.record(z.string(), z.unknown()),
+});
 
 export const recordKindSchema = z.enum(["log", "turn", "llm_call"]);
 
