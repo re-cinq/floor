@@ -13,6 +13,7 @@ export function validateLine(line: LineBody, known: KnownDefinitions): string[] 
     ...startArgChecks(line),
     ...subjectArgChecks(line),
     ...stationChecks(line, known),
+    ...reportChecks(line),
   ];
 }
 
@@ -85,6 +86,13 @@ function stationChecks(line: LineBody, known: KnownDefinitions): string[] {
 
     return known.stations.has(bareStation) ? [] : [`node "${node.id}" names unknown station "${bareStation}"`];
   });
+}
+
+// A marker reports success the moment it opens, so an event has nothing of its to answer.
+function reportChecks(line: LineBody): string[] {
+  const markersWithReports = line.nodes.filter((node) => !node.station && (node.reports ?? []).length > 0);
+
+  return markersWithReports.map((node) => `node "${node.id}" declares reports but names no station to wait at`);
 }
 
 function hasStation(node: LineNode): node is LineNode & { station: string } {

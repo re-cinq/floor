@@ -111,6 +111,18 @@ describe("validateLine", () => {
     expect(validateLine(line, { stations: new Set(["reviewer"]) })).toEqual([]);
   });
 
+  it("reports on a marker, which never waits", () => {
+    const line: LineBody = {
+      entry: "start",
+      exit: "done",
+      args: {},
+      nodes: [{ id: "start", reports: [{ on: "github.pull_request.closed", outcome: "success" }] }, { id: "done" }],
+      edges: [{ from: "start", to: "done", on: "always" }],
+    };
+
+    expect(validateLine(line, NO_STATIONS)).toEqual([`node "start" declares reports but names no station to wait at`]);
+  });
+
   it("collects every problem in one call, not just the first", () => {
     const line: LineBody = { entry: "missing-entry", exit: "missing-exit", args: {}, nodes: [{ id: "start" }], edges: [] };
 

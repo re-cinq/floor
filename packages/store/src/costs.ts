@@ -58,12 +58,17 @@ function whereClauseFor(filter: CostsFilter): { where: string; values: unknown[]
   return { where: conditions.length > 0 ? `where ${conditions.join(" and ")}` : "", values };
 }
 
+// Tokens in are everything the model read: Claude reports what it read from its cache, and what it wrote to it, apart from the rest, and on a second turn the rest is a handful.
 const LLM_TOTALS_CTE = `
   llm_totals as (
     select
       station_run_id,
       sum((body->>'costUsd')::numeric) filter (where body->>'costUsd' is not null) as cost_usd,
-      sum(coalesce((body->'usage'->>'input_tokens')::numeric, 0)) as tokens_in,
+      sum(
+        coalesce((body->'usage'->>'input_tokens')::numeric, 0)
+        + coalesce((body->'usage'->>'cache_creation_input_tokens')::numeric, 0)
+        + coalesce((body->'usage'->>'cache_read_input_tokens')::numeric, 0)
+      ) as tokens_in,
       sum(coalesce((body->'usage'->>'output_tokens')::numeric, 0)) as tokens_out,
       bool_or(body->>'costUsd' is not null) as has_cost
     from station_run_records

@@ -174,6 +174,17 @@ describe("CostsStore.summary", () => {
     expect({ tokensIn: row.tokensIn, tokensOut: row.tokensOut }).toEqual({ tokensIn: 100, tokensOut: 50 });
   });
 
+  it("counts what the model read from and wrote to its cache as tokens in", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const visitId = await openAgentVisit("code-review", "r", DAY_1);
+    const usage = { input_tokens: 10, cache_creation_input_tokens: 200, cache_read_input_tokens: 3000, output_tokens: 50 };
+
+    await records().append(visitId, [{ kind: "llm_call", body: { costUsd: 1, usage }, occurredAt: DAY_1 }]);
+    const rows = await costs().summary({ repo: "r" }, "line");
+
+    expect(rows[0]!.tokensIn).toBe(3210);
+  });
+
   it("filters by repo", async () => {
     await seedAgentLine("code-review", "claude-x");
     await recordCost(await openAgentVisit("code-review", "repo-a", DAY_1), 1, DAY_1);
