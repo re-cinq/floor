@@ -143,7 +143,10 @@ with the ConfigMap mounted read-only at `/pipelines`. The service token comes fr
   `crds/` convention: unconditionally, on `helm install`, and never removed by `helm uninstall` or
   reapplied by `helm upgrade`. This is a Helm limitation, not a bug in this chart —
   `subsystem.enabled` only gates the controller Deployment/RBAC (`templates/subsystem-controller.yaml`),
-  not the CRDs. Installing the CRDs unconditionally is intentional: the cluster agent creates
+  not the CRDs. **On a cluster that already has them**, installing them again is a
+  field-ownership conflict, since whoever installed them owns them: `deploy.yml` looks for
+  `agents.agents.re-cinq.com` first and passes `--skip-crds` when it is there. Install by hand
+  with the same flag on such a cluster. Installing the CRDs unconditionally is intentional: the cluster agent creates
   `Agent`/`Station`/`AgentDefinition` objects whether or not this same release also runs their
   controller (another install on the cluster may run it instead — see
   `scripts/setup-minikube-agents.sh`'s own comment to that effect).
