@@ -27,7 +27,7 @@ export function registerDefinitionRoutes(server: Server, deps: Deps): void {
     semanticValidate: validateLineBody,
   });
   registerKindRoutes(server, deps, { base: "stations", kind: "station", bodySchema: stationBodySchema });
-  registerKindRoutes(server, deps, { base: "agent-definitions", kind: "agent_definition", bodySchema: agentDefinitionBodySchema });
+  registerKindRoutes(server, deps, { base: "agent-definitions", kind: "agent_definition", bodySchema: agentDefinitionBodySchema, guardArchive: guardStationsNaming });
   registerStartRoute(server, deps);
 }
 
@@ -119,4 +119,11 @@ async function guardOpenRuns(deps: Deps, lineId: string): Promise<string | null>
   const { rowCount } = await deps.pool.query(`select 1 from assembly_runs where line_id = $1 and finished_at is null limit 1`, [lineId]);
 
   return rowCount ? `line "${lineId}" has open runs` : null;
+}
+
+async function guardStationsNaming(deps: Deps, agentDefinitionId: string): Promise<string | null> {
+  const stations = await deps.definitions.listLatest<StationBody>("station");
+  const holder = stations.find((station) => station.body.agentDefinition === agentDefinitionId);
+
+  return holder ? `agent definition "${agentDefinitionId}" is named by station "${holder.id}"` : null;
 }

@@ -192,7 +192,7 @@ GET    /agent-definitions/:id/versions
 GET    /agent-definitions/:id/versions/:hash
 POST   /agent-definitions
 PUT    /agent-definitions/:id            // new version
-DELETE /agent-definitions/:id            // archives. Not built yet: 409 while a station's latest version references it
+DELETE /agent-definitions/:id            // archives; 409 while a station's latest version references it
 
 ## Migrations - the pipeline files that ran
 
