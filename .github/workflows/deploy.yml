@@ -75,6 +75,7 @@ jobs:
           API_SECRET: ${{ vars.FLOOR_API_SECRET || 'floor-api' }}
           POSTGRES_SECRET: ${{ vars.FLOOR_POSTGRES_SECRET || 'floor-postgres' }}
           POSTGRES_SECRET_KEY: ${{ vars.FLOOR_POSTGRES_SECRET_KEY || 'connectionString' }}
+          PIPELINES_CONFIGMAP: ${{ vars.FLOOR_PIPELINES_CONFIGMAP }}
         run: |
           # Helm owns the custom resource definitions it installs. Where another install already
           # owns them, which on a shared cluster is lore's own agent subsystem, applying them
@@ -86,8 +87,18 @@ jobs:
             echo "the agent CRDs are on this cluster already: left to whoever installed them"
           fi
 
+          # The pipelines the floor is seeded with, as a ConfigMap the operator keeps. Named, not
+          # guessed: a stray ConfigMap must never start putting definitions into a floor. Each
+          # file runs once and the floor remembers which, so seeding on every deploy is a no-op
+          # until a file is added.
+          pipelines=()
+          if [ -n "${PIPELINES_CONFIGMAP}" ]; then
+            pipelines=(--set "pipelines.existingConfigMap=${PIPELINES_CONFIGMAP}")
+          fi
+
           helm upgrade --install floor deploy/chart \
             "${skip_crds[@]}" \
+            "${pipelines[@]}" \
             --namespace "${NAMESPACE}" --create-namespace \
             --set-string version="${VERSION}" \
             --set image.repository="${IMAGE}" \

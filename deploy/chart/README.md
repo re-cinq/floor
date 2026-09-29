@@ -223,7 +223,14 @@ own.
 | variable | `FLOOR_BASE_URL` | `api.baseUrl` — the address **pods** reach the api at |
 | variable | `FLOOR_NAMESPACE` | optional; `floor` when unset |
 | variable | `FLOOR_PULL_SECRET` | optional; `ghcr` when unset |
+| variable | `FLOOR_PIPELINES_CONFIGMAP` | optional; `pipelines.existingConfigMap`. Unset seeds nothing |
 | variable | `FLOOR_API_SECRET`, `FLOOR_POSTGRES_SECRET`, `FLOOR_POSTGRES_SECRET_KEY` | optional; the Secret names, defaulting to `floor-api`, `floor-postgres` and `connectionString` |
+
+**A Postgres must exist before the first deploy.** This chart never deploys one, and the
+migration Job is a `pre-install` hook, so a floor pointed at nothing fails before anything is
+installed. Either instance will do: its own, or a database of its own on one that is already
+there. Give it a database and a role of its own, never a database another service uses, since
+floor's schema has tables called `events`, `blobs` and `definitions`.
 
 Two things must already exist in the cluster, because the workflow creates neither: the two Secrets
 above (see [the tutorial](../../docs/tutorial.md)), and **an image pull secret for GHCR** if the
