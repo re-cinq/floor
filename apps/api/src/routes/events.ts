@@ -2,7 +2,7 @@
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { z } from "zod";
 import type { Deps } from "../deps.js";
-import type { Credentials } from "../auth.js";
+import { VISITS_TOO, type Credentials } from "../auth.js";
 import { HTTP_CREATED, HTTP_NO_CONTENT } from "../http-status.js";
 import { parseBody } from "../parse.js";
 import { badRequest, forbidden, notFound } from "../problem.js";
@@ -17,7 +17,7 @@ const MAX_FEED_LIMIT = 200;
 export function registerEventRoutes(server: Server, deps: Deps): void {
   server.route({ method: "GET", path: "/events", handler: (request, toolkit) => feed(deps, request, toolkit) });
   server.route({ method: "GET", path: "/events/{id}", handler: (request, toolkit) => getOne(deps, request, toolkit) });
-  server.route({ method: "POST", path: "/events", handler: (request, toolkit) => enqueue(deps, request, toolkit) });
+  server.route({ method: "POST", path: "/events", options: { auth: VISITS_TOO }, handler: (request, toolkit) => enqueue(deps, request, toolkit) });
   server.route({ method: "POST", path: "/events/claim", handler: (request, toolkit) => claim(deps, request, toolkit) });
   server.route({ method: "POST", path: "/events/{id}/ack", handler: (request, toolkit) => ack(deps, request, toolkit) });
   server.route({ method: "POST", path: "/events/{id}/fail", handler: (request, toolkit) => fail(deps, request, toolkit) });

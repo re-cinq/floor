@@ -1,19 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { LineBody, StationRunRecord } from "@floor/store";
+import type { StationRunRecord } from "@floor/store";
 import { mintVisitToken } from "../visit-token.js";
 import { authHeaders, injectJson, setupTestServer, VISIT_TOKEN_SECRET } from "../test-server.js";
-import { SERVICE_STATION } from "../test-fixtures.js";
+import { SERVICE_STATION, WORK_LINE } from "../test-fixtures.js";
 
 const { server, deps } = setupTestServer();
 const FUTURE_DEADLINE = new Date("2026-01-01T01:00:00Z");
-
-const WORK_LINE: LineBody = {
-  entry: "work",
-  exit: "done",
-  args: {},
-  nodes: [{ id: "work", station: "work" }, { id: "done" }],
-  edges: [{ from: "work", to: "done", on: "success" }],
-};
 
 function visitAuth(visitId: string): Record<string, string> {
   const token = mintVisitToken(visitId, FUTURE_DEADLINE, VISIT_TOKEN_SECRET);

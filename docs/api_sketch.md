@@ -19,6 +19,12 @@ each entity has its own page under [entities/](entities/).
   credential when a need declares write access. A human session on the
   visit's repo satisfies the same check for a human visit. *Human sessions
   are not built yet: a person acts through the service token.*
+- **A route is a service's alone unless it says otherwise.** A visit token
+  is held by an agent in a pod, so it reaches ten routes and no more: its
+  brief, its sink, its git credential, its records, its conversation, and
+  blobs, all under `/station-runs/:id`, `/conversations/:id` and `/blobs`,
+  and `POST /events` for its own report. Every other route answers it 403,
+  and a route added later is closed to it without being told to be.
 - **Errors.** RFC 9457 problem details, `application/problem+json`. A refused
   write returns 409 and names the resource holding it in `detail`.
 - **Pagination.** Every list takes `limit` (default 50, max 200) and an

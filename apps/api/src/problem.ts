@@ -1,5 +1,6 @@
 // RFC 9457 problem details (docs/api_sketch.md, "Errors"): every error response is application/problem+json.
-import type { ResponseToolkit } from "@hapi/hapi";
+import Boom from "@hapi/boom";
+import type { ResponseToolkit, Server } from "@hapi/hapi";
 import { HTTP_BAD_GATEWAY, HTTP_NOT_IMPLEMENTED } from "./http-status.js";
 
 export interface Problem {
@@ -14,6 +15,21 @@ export function problemResponse(toolkit: ResponseToolkit, problem: Problem): Ret
     .response({ type: "about:blank", title: problem.title, status: problem.status, detail: problem.detail, errors: problem.errors })
     .code(problem.status)
     .type("application/problem+json");
+}
+
+/** What hapi refuses by itself, a missing token or a route out of the caller's scope, is answered as a problem too. */
+export function registerProblemResponses(server: Server): void {
+  server.ext("onPreResponse", (request, toolkit) => {
+    const refused = request.response;
+
+    if (!Boom.isBoom(refused)) return toolkit.continue;
+    const { statusCode, payload, headers } = refused.output;
+    const problem = problemResponse(toolkit, { status: statusCode, title: payload.error, detail: payload.message });
+
+    Object.entries(headers).forEach(([name, held]) => problem.header(name, String(held)));
+
+    return problem;
+  });
 }
 
 export function notFound(toolkit: ResponseToolkit, detail: string): ReturnType<ResponseToolkit["response"]> {

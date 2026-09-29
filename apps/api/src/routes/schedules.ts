@@ -1,12 +1,11 @@
-// Schedules (docs/api_sketch.md, "Schedules"): a name, a cron and an event payload, service token only.
+// Schedules (docs/api_sketch.md, "Schedules"): a name, a cron and an event payload. A service's alone, as every route is that does not say otherwise.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { z } from "zod";
 import type { ScheduleBody } from "@floor/store";
-import type { Credentials } from "../auth.js";
 import type { Deps } from "../deps.js";
 import { HTTP_CREATED, HTTP_NO_CONTENT } from "../http-status.js";
 import { parseBody } from "../parse.js";
-import { badRequest, forbidden, notFound } from "../problem.js";
+import { badRequest, notFound } from "../problem.js";
 import { scheduleBodySchema } from "../schemas.js";
 
 const idSchema = z.intersection(z.object({ id: z.string() }), scheduleBodySchema);
@@ -25,9 +24,6 @@ async function listSchedules(deps: Deps) {
 }
 
 async function getSchedule(deps: Deps, request: Request, toolkit: ResponseToolkit) {
-  const refusal = serviceOnly(request, toolkit);
-
-  if (refusal) return refusal;
   const id = request.params.id as string;
   const row = await deps.definitions.latest<ScheduleBody>("schedule", id);
 
@@ -37,9 +33,6 @@ async function getSchedule(deps: Deps, request: Request, toolkit: ResponseToolki
 }
 
 async function createSchedule(deps: Deps, request: Request, toolkit: ResponseToolkit) {
-  const refusal = serviceOnly(request, toolkit);
-
-  if (refusal) return refusal;
   const parsed = parseBody(idSchema, request.payload);
 
   if (!parsed.success) return badRequest(toolkit, "invalid schedule body", parsed.errors);
@@ -49,9 +42,6 @@ async function createSchedule(deps: Deps, request: Request, toolkit: ResponseToo
 }
 
 async function putSchedule(deps: Deps, request: Request, toolkit: ResponseToolkit) {
-  const refusal = serviceOnly(request, toolkit);
-
-  if (refusal) return refusal;
   const parsed = parseBody(scheduleBodySchema, request.payload);
 
   if (!parsed.success) return badRequest(toolkit, "invalid schedule body", parsed.errors);
@@ -60,26 +50,14 @@ async function putSchedule(deps: Deps, request: Request, toolkit: ResponseToolki
 }
 
 async function deleteSchedule(deps: Deps, request: Request, toolkit: ResponseToolkit) {
-  const refusal = serviceOnly(request, toolkit);
-
-  if (refusal) return refusal;
   await deps.schedules.remove(request.params.id as string);
 
   return toolkit.response().code(HTTP_NO_CONTENT);
 }
 
 async function triggerSchedule(deps: Deps, request: Request, toolkit: ResponseToolkit) {
-  const refusal = serviceOnly(request, toolkit);
-
-  if (refusal) return refusal;
   const id = request.params.id as string;
   const event = await deps.schedules.trigger(id);
 
   return event ?? notFound(toolkit, `no schedule "${id}"`);
-}
-
-function serviceOnly(request: Request, toolkit: ResponseToolkit): ReturnType<ResponseToolkit["response"]> | null {
-  const credentials = request.auth.credentials as Credentials;
-
-  return credentials.kind === "service" ? null : forbidden(toolkit, "only a service token may manage schedules");
 }

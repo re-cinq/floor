@@ -1,9 +1,17 @@
 // Bearer auth (docs/api_sketch.md, "Auth"): the one configured service token, or a visit token scoped to the visit it names. Human sessions are not yet implemented.
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Server } from "@hapi/hapi";
 import Boom from "@hapi/boom";
 import { verifyVisitToken } from "./visit-token.js";
 
-export type Credentials = { kind: "service" } | { kind: "visit"; visitId: string };
+/** `scope` is what hapi reads to decide which routes a caller reaches; `kind` is what a handler reads to decide which visit. */
+export type Credentials = ({ kind: "service" } | { kind: "visit"; visitId: string }) & { scope: string[] };
+
+const SERVICE = "service";
+const VISIT = "visit";
+
+/** For a route a visit reaches with its own token. Every route that does not say this is a service's alone: a visit's token is held by an agent in a pod, and a route added tomorrow is closed to it without anyone remembering to close it. */
+export const VISITS_TOO = { scope: [SERVICE, VISIT] };
 
 export function registerAuth(server: Server, deps: { serviceToken: string; visitTokenSecret: string; now: () => Date }): void {
   server.auth.scheme("bearer", () => ({
@@ -20,14 +28,23 @@ export function registerAuth(server: Server, deps: { serviceToken: string; visit
     },
   }));
   server.auth.strategy("bearer", "bearer");
-  server.auth.default("bearer");
+  server.auth.default({ strategy: "bearer", scope: [SERVICE] });
 }
 
 function credentialsFor(token: string, deps: { serviceToken: string; visitTokenSecret: string; now: () => Date }): Credentials | null {
-  if (token === deps.serviceToken) return { kind: "service" };
+  if (isToken(token, deps.serviceToken)) return { kind: "service", scope: [SERVICE] };
   const verified = verifyVisitToken(token, deps.visitTokenSecret, deps.now());
 
-  return verified ? { kind: "visit", visitId: verified.visitId } : null;
+  return verified ? { kind: "visit", visitId: verified.visitId, scope: [VISIT] } : null;
+}
+
+// Compared as digests, so neither the token's length nor how much of it matched is told by how long this took.
+function isToken(given: string, expected: string): boolean {
+  return timingSafeEqual(digestOf(given), digestOf(expected));
+}
+
+function digestOf(token: string): Buffer {
+  return createHash("sha256").update(token).digest();
 }
 
 function bearerToken(header: string | undefined): string | null {

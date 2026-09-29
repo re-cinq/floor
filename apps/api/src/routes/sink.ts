@@ -2,6 +2,7 @@
 import type { ResponseToolkit, Server } from "@hapi/hapi";
 import { Refusal, enforce, type AgentSettings, type DispatchBrief } from "@floor/store";
 import { agentConfigSchema, executorSettings } from "../agent-config.js";
+import { VISITS_TOO } from "../auth.js";
 import { declaresWrite } from "../git-grant.js";
 import type { Deps } from "../deps.js";
 import { Sink } from "../engine/sink.js";
@@ -17,8 +18,8 @@ const UNDATED_TOKEN_MINUTES = 60;
 export function registerSinkRoutes(server: Server, deps: Deps): void {
   const sink = new Sink(deps);
 
-  server.route({ method: "GET", path: "/station-runs/{id}/brief", handler: forOwnVisit((visitId, request, toolkit) => brief(deps, visitId, toolkit)) });
-  server.route({ method: "POST", path: "/station-runs/{id}/sink", handler: forOwnVisit((visitId, request, toolkit) => takeEvent(sink, { visitId, body: request.payload }, toolkit)) });
+  server.route({ method: "GET", path: "/station-runs/{id}/brief", options: { auth: VISITS_TOO }, handler: forOwnVisit((visitId, request, toolkit) => brief(deps, visitId, toolkit)) });
+  server.route({ method: "POST", path: "/station-runs/{id}/sink", options: { auth: VISITS_TOO }, handler: forOwnVisit((visitId, request, toolkit) => takeEvent(sink, { visitId, body: request.payload }, toolkit)) });
 }
 
 async function brief(deps: Deps, visitId: string, toolkit: ResponseToolkit) {

@@ -1,7 +1,7 @@
 // Station runs (docs/api_sketch.md, "Station runs"): read-only except for a visit's own records; a report itself still arrives as an event.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import type { Deps } from "../deps.js";
-import { refusalForVisit, type Credentials } from "../auth.js";
+import { VISITS_TOO, refusalForVisit, type Credentials } from "../auth.js";
 import { HTTP_CREATED } from "../http-status.js";
 import { parseBody } from "../parse.js";
 import { badRequest, forbidden, notFound } from "../problem.js";
@@ -14,8 +14,8 @@ const MAX_LIMIT = 200;
 export function registerStationRunRoutes(server: Server, deps: Deps): void {
   server.route({ method: "GET", path: "/station-runs", handler: (request, toolkit) => list(deps, request, toolkit) });
   server.route({ method: "GET", path: "/station-runs/{id}", handler: (request, toolkit) => getOne(deps, request, toolkit) });
-  server.route({ method: "POST", path: "/station-runs/{id}/records", handler: (request, toolkit) => createRecords(deps, request, toolkit) });
-  server.route({ method: "GET", path: "/station-runs/{id}/records", handler: (request, toolkit) => listRecords(deps, request, toolkit) });
+  server.route({ method: "POST", path: "/station-runs/{id}/records", options: { auth: VISITS_TOO }, handler: (request, toolkit) => createRecords(deps, request, toolkit) });
+  server.route({ method: "GET", path: "/station-runs/{id}/records", options: { auth: VISITS_TOO }, handler: (request, toolkit) => listRecords(deps, request, toolkit) });
 }
 
 async function list(deps: Deps, request: Request, toolkit: ResponseToolkit) {

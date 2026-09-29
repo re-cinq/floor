@@ -1,26 +1,19 @@
-// Migrations (docs/api_sketch.md, "Migrations"): the pipeline files that ran. A file is remembered by its name and by the sha256 of what it held, so one that ran is never run again, and one changed since is told apart from the one that ran. Service token only.
+// Migrations (docs/api_sketch.md, "Migrations"): the pipeline files that ran. A file is remembered by its name and by the sha256 of what it held, so one that ran is never run again, and one changed since is told apart from the one that ran. A service's alone, as every route is that does not say otherwise.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { z } from "zod";
-import type { Credentials } from "../auth.js";
 import type { Deps } from "../deps.js";
 import { HTTP_CREATED } from "../http-status.js";
 import { parseBody } from "../parse.js";
-import { badRequest, conflict, forbidden, notFound } from "../problem.js";
+import { badRequest, conflict, notFound } from "../problem.js";
 
 const migrationBodySchema = z.object({ sha256: z.string().regex(/^[0-9a-f]{64}$/) });
 
 type MigrationBody = z.infer<typeof migrationBodySchema>;
 
 export function registerMigrationRoutes(server: Server, deps: Deps): void {
-  server.route({ method: "GET", path: "/migrations", handler: (request, toolkit) => asService(request, toolkit) ?? listed(deps) });
-  server.route({ method: "GET", path: "/migrations/{name}", handler: (request, toolkit) => asService(request, toolkit) ?? remembered(deps, request, toolkit) });
-  server.route({ method: "PUT", path: "/migrations/{name}", handler: (request, toolkit) => asService(request, toolkit) ?? ran(deps, request, toolkit) });
-}
-
-function asService(request: Request, toolkit: ResponseToolkit) {
-  const credentials = request.auth.credentials as Credentials;
-
-  return credentials.kind === "service" ? undefined : forbidden(toolkit, "only a service token may read or write migrations");
+  server.route({ method: "GET", path: "/migrations", handler: () => listed(deps) });
+  server.route({ method: "GET", path: "/migrations/{name}", handler: (request, toolkit) => remembered(deps, request, toolkit) });
+  server.route({ method: "PUT", path: "/migrations/{name}", handler: (request, toolkit) => ran(deps, request, toolkit) });
 }
 
 async function listed(deps: Deps) {

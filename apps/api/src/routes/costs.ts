@@ -1,9 +1,8 @@
-// Cost rollups (docs/api_sketch.md, "Costs"): a service-token-only read over CostsStore.summary.
+// Cost rollups (docs/api_sketch.md, "Costs"): a read over CostsStore.summary. A service's alone, as every route is that does not say otherwise.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import type { CostsFilter, CostsGroupBy } from "@floor/store";
-import type { Credentials } from "../auth.js";
 import type { Deps } from "../deps.js";
-import { badRequest, forbidden } from "../problem.js";
+import { badRequest } from "../problem.js";
 import { isUuid } from "./own-visit.js";
 
 const GROUP_BY_VALUES: CostsGroupBy[] = ["day", "line", "station", "model", "run"];
@@ -13,9 +12,6 @@ export function registerCostsRoutes(server: Server, deps: Deps): void {
 }
 
 async function summary(deps: Deps, request: Request, toolkit: ResponseToolkit) {
-  const credentials = request.auth.credentials as Credentials;
-
-  if (credentials.kind !== "service") return forbidden(toolkit, "only a service token may read costs");
   const query = request.query as Record<string, string | undefined>;
   const filter = filterFrom(query);
 

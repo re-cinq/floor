@@ -169,6 +169,15 @@ than two. Authored YAML stays `snake_case`; nothing converts it yet.
 **`not_before` is `availableAt`.** The lint rule against negative names
 flagged it, and the positive name says the same thing.
 
+**A visit's token reaches what a visit needs, and the floor says so in one
+place.** It reached nearly every route: the routes that checked who called
+were the ones somebody had thought to check. An agent in a pod holds that
+token, and with it could change a definition, start or cancel any run, and
+claim another worker's events. Now a route is a service's alone unless it
+is marked as open to visits, and ten are. A test walks every route the
+server has and asks each with a visit's token, so an eleventh is a failing
+test and not a surprise.
+
 **A visit's token is minted when its brief is asked for**, not stored at
 open. It is an HMAC over the visit and its deadline, so checking one costs
 no query and nothing has to be kept.

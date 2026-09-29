@@ -1,6 +1,7 @@
 // The git credential broker (docs/api_sketch.md, "Station runs"): a pod's credential helper trades its visit token for a token for one repository the visit was given, minted when git asks.
 import type { ResponseToolkit, Server } from "@hapi/hapi";
 import { z } from "zod";
+import { VISITS_TOO } from "../auth.js";
 import type { Deps } from "../deps.js";
 import { gitNeedFor, type GitNeed } from "../git-grant.js";
 import { askProvider } from "../git-provider.js";
@@ -21,6 +22,7 @@ export function registerGitCredentialRoutes(server: Server, deps: Deps): void {
   server.route({
     method: "POST",
     path: "/station-runs/{id}/git-credential",
+    options: { auth: VISITS_TOO },
     handler: forOwnVisit((visitId, request, toolkit) => gitCredential(deps, { visitId, body: request.payload }, toolkit)),
   });
 }

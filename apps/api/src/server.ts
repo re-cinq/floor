@@ -1,6 +1,7 @@
 import Hapi from "@hapi/hapi";
 import { registerAuth } from "./auth.js";
 import type { Deps } from "./deps.js";
+import { registerProblemResponses } from "./problem.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerDefinitionRoutes } from "./routes/definitions.js";
 import { registerRunRoutes } from "./routes/runs.js";
@@ -33,6 +34,7 @@ export async function buildServer(deps: Deps, holdsLease: () => boolean): Promis
   const server = Hapi.server({ port: deps.config.port, host: "0.0.0.0" });
 
   registerAuth(server, { serviceToken: deps.config.serviceToken, visitTokenSecret: deps.config.visitTokenSecret, now: deps.now });
+  registerProblemResponses(server);
   registerHealthRoutes(server, { pool: deps.pool, holdsLease });
   registerSkillRoutes(server);
   for (const register of ROUTES) register(server, deps);

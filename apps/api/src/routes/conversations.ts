@@ -1,18 +1,18 @@
 // Conversation archives, in the shape the ai-agent-subsystem speaks: it saves one with POST {source}/{pin} and restores one with GET {source}/{id}, both ids being visit ids. The bytes are a blob like any other.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { MAX_ARCHIVE_BYTES, Refusal } from "@floor/store";
-import type { Credentials } from "../auth.js";
+import { VISITS_TOO, type Credentials } from "../auth.js";
 import type { Deps } from "../deps.js";
 import { HTTP_CREATED } from "../http-status.js";
 import { badRequest, forbidden, notFound } from "../problem.js";
 import { forOwnVisit, isUuid } from "./own-visit.js";
 
 export function registerConversationRoutes(server: Server, deps: Deps): void {
-  server.route({ method: "GET", path: "/conversations/{id}", handler: (request, toolkit) => restore(deps, request, toolkit) });
+  server.route({ method: "GET", path: "/conversations/{id}", options: { auth: VISITS_TOO }, handler: (request, toolkit) => restore(deps, request, toolkit) });
   server.route({
     method: "POST",
     path: "/conversations/{id}",
-    options: { payload: { parse: false, maxBytes: MAX_ARCHIVE_BYTES } },
+    options: { auth: VISITS_TOO, payload: { parse: false, maxBytes: MAX_ARCHIVE_BYTES } },
     handler: forOwnVisit((visitId, request, toolkit) => save(deps, { visitId, archive: request.payload as Buffer }, toolkit)),
   });
 }

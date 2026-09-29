@@ -1,7 +1,7 @@
 // Content-addressed bytes (docs/api_sketch.md, "Blobs"). GET has no size limit beyond the store's own; POST caps at BlobsStore's MAX_BLOB_BYTES.
 import type { Server } from "@hapi/hapi";
 import { MAX_BLOB_BYTES } from "@floor/store";
-import type { Credentials } from "../auth.js";
+import { VISITS_TOO, type Credentials } from "../auth.js";
 import type { Deps } from "../deps.js";
 import { HTTP_CREATED } from "../http-status.js";
 import { badRequest, notFound } from "../problem.js";
@@ -10,6 +10,7 @@ export function registerBlobRoutes(server: Server, deps: Deps): void {
   server.route({
     method: "GET",
     path: "/blobs/{hash}",
+    options: { auth: VISITS_TOO },
     handler: async (request, toolkit) => {
       const hash = request.params.hash as string;
       const covered = await covers(deps, request.auth.credentials as Credentials, hash);
@@ -24,7 +25,7 @@ export function registerBlobRoutes(server: Server, deps: Deps): void {
   server.route({
     method: "POST",
     path: "/blobs",
-    options: { payload: { parse: false, maxBytes: MAX_BLOB_BYTES } },
+    options: { auth: VISITS_TOO, payload: { parse: false, maxBytes: MAX_BLOB_BYTES } },
     handler: async (request, toolkit) => {
       const raw = request.payload as Buffer;
 
