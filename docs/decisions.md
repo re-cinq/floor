@@ -340,6 +340,13 @@ between two runs.
 floor is never. It is reaped when nothing names it and it is more than a
 day old.
 
+**A settled run tells its value arguments.** `internal.run.started` and
+`internal.run.settled` carry `args`, the run's `value` start items by name.
+Whoever reacts to a run ending knows which task or pull request it was
+without asking the floor again. Values are small; files and repositories
+are left out, since a file's ref is a blob hash and its content may be
+large or private.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is

@@ -194,7 +194,9 @@ none, since nothing exists to let go of.
 notice, a check run, settling a task in lore. Each is a line that declares
 it as its start event. The floor has no hooks. Both internal events say
 whose run it was: `runId`, `lineId`, `repo`, `subjectKey`, `outcome`,
-`reason`.
+`reason`. They also carry `args`, the run's `value` start items as a flat
+map of name to value, such as `{ "task_id": "42" }`. File items and
+repository items are never in it.
 
 **A run that cannot go on is failed.** When the store refuses to open a
 node (a required need is not in the bag, its station is gone), the run is

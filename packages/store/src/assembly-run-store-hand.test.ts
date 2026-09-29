@@ -151,6 +151,24 @@ describe("AssemblyRunStore.cancel", () => {
   });
 });
 
+describe("AssemblyRunStore.cancel event payload", () => {
+  it("tells a settled run's value arguments, and none of its files", async () => {
+    await definitions().put("line", "plan", PLAN_LINE);
+    await definitions().put("station", "plan-author", AUTHOR_STATION);
+    const startItems = {
+      task_id: { kind: "value", ref: "42", by: "start" },
+      plan: { kind: "file", ref: "sha256-plan", by: "start" },
+    } as const;
+    const { run } = await store().start({ lineId: "plan", repo: "r", startItems });
+
+    await store().cancel(run.id, "not needed");
+    const settled = (await events().listByRun(run.id)).find((event) => event.name === "internal.run.settled");
+    const { args } = settled!.payload as { args: Record<string, string> };
+
+    expect(args).toEqual({ task_id: "42" });
+  });
+});
+
 describe("AssemblyRunStore.report on a run already ended", () => {
   async function reportedAfterCancel() {
     const runId = await runWaitingOnAuthor();
