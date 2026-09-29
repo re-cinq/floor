@@ -12,6 +12,12 @@ const HTTP_UNAUTHORIZED = 401;
 const HTTP_NOT_FOUND = 404;
 const HTTP_UNPROCESSABLE = 422;
 
+export interface Fixtures {
+  branch: string;
+  reviewBody: string | null;
+  reviewComments: unknown[];
+}
+
 export interface FakeGitHub {
   apiUrl: string;
   /** Every request taken, as `METHOD path`. */
@@ -19,6 +25,10 @@ export interface FakeGitHub {
   reviews: unknown[];
   /** What each token granted was narrowed to; null for one that was not. */
   grants: unknown[];
+  /** Issue comments: seeded to answer a GET, and appended to by a POST, as a real thread would be. */
+  issueComments: unknown[];
+  /** What a GET for a pull request, a review or its comments answers with. Tests set these before calling a station. */
+  fixtures: Fixtures;
   close(): Promise<void>;
 }
 
@@ -31,10 +41,12 @@ export async function startFakeGitHub(appPublicKey: string, tokenExpires: Date):
   const asked: string[] = [];
   const reviews: unknown[] = [];
   const grants: unknown[] = [];
+  const issueComments: unknown[] = [];
+  const fixtures: Fixtures = { branch: "main", reviewBody: null, reviewComments: [] };
   const server = createServer((request, response) => {
     void bodyOf(request).then((body) => {
       asked.push(`${request.method} ${request.url}`);
-      const answer = answerTo(request, body, { appPublicKey, tokenExpires, reviews, grants });
+      const answer = answerTo(request, body, { appPublicKey, tokenExpires, reviews, grants, issueComments, fixtures });
 
       response.writeHead(answer.status, { "content-type": "application/json" }).end(JSON.stringify(answer.body));
     });
@@ -42,7 +54,15 @@ export async function startFakeGitHub(appPublicKey: string, tokenExpires: Date):
 
   await new Promise<void>((resolve) => server.listen(0, resolve));
 
-  return { apiUrl: `http://localhost:${(server.address() as AddressInfo).port}`, asked, reviews, grants, close: () => closed(server) };
+  return {
+    apiUrl: `http://localhost:${(server.address() as AddressInfo).port}`,
+    asked,
+    reviews,
+    grants,
+    issueComments,
+    fixtures,
+    close: () => closed(server),
+  };
 }
 
 function closed(server: Server): Promise<void> {
@@ -54,17 +74,79 @@ interface Knows {
   tokenExpires: Date;
   reviews: unknown[];
   grants: unknown[];
+  issueComments: unknown[];
+  fixtures: Fixtures;
 }
 
+interface Asked {
+  path: string;
+  method: string;
+  bearer: string;
+  body: string;
+}
+
+const REVIEW_COMMENTS_PATH = /\/pulls\/\d+\/reviews\/\d+\/comments$/;
+const REVIEW_PATH = /\/pulls\/\d+\/reviews\/\d+$/;
+const PULL_PATH = /\/pulls\/\d+$/;
+const ISSUE_COMMENTS_PATH = /\/issues\/\d+\/comments$/;
+
 function answerTo(request: IncomingMessage, body: string, knows: Knows): Answer {
-  const path = request.url ?? "";
-  const bearer = (request.headers.authorization ?? "").replace("Bearer ", "");
+  const asked: Asked = {
+    path: request.url ?? "",
+    method: request.method ?? "GET",
+    bearer: (request.headers.authorization ?? "").replace("Bearer ", ""),
+    body,
+  };
 
-  if (path.endsWith("/installation")) return asApp(bearer, knows, { id: INSTALLATION_ID });
-  if (path === `/app/installations/${INSTALLATION_ID}/access_tokens`) return grant(bearer, body, knows);
-  if (path.endsWith("/reviews")) return review(bearer, body, knows);
+  return answerAuth(asked, knows) ?? answerFixture(asked, knows) ?? { status: HTTP_NOT_FOUND, body: { message: "Not Found" } };
+}
 
-  return { status: HTTP_NOT_FOUND, body: { message: "Not Found" } };
+function answerAuth(asked: Asked, knows: Knows): Answer | undefined {
+  if (asked.path.endsWith("/installation")) return asApp(asked.bearer, knows, { id: INSTALLATION_ID });
+  if (asked.path === `/app/installations/${INSTALLATION_ID}/access_tokens`) return grant(asked.bearer, asked.body, knows);
+  if (asked.path.endsWith("/reviews")) return review(asked.bearer, asked.body, knows);
+
+  return undefined;
+}
+
+function answerFixture(asked: Asked, knows: Knows): Answer | undefined {
+  if (REVIEW_COMMENTS_PATH.test(asked.path)) return reviewComments(asked.bearer, knows);
+  if (REVIEW_PATH.test(asked.path)) return fetchedReview(asked.bearer, knows);
+  if (PULL_PATH.test(asked.path)) return pullDetails(asked.bearer, knows);
+  if (ISSUE_COMMENTS_PATH.test(asked.path)) return issueCommentsAnswer(asked, knows);
+
+  return undefined;
+}
+
+function reviewComments(bearer: string, knows: Knows): Answer {
+  return authorized(bearer) ? { status: HTTP_OK, body: knows.fixtures.reviewComments } : unauthorized();
+}
+
+function fetchedReview(bearer: string, knows: Knows): Answer {
+  return authorized(bearer) ? { status: HTTP_OK, body: { body: knows.fixtures.reviewBody } } : unauthorized();
+}
+
+function pullDetails(bearer: string, knows: Knows): Answer {
+  return authorized(bearer) ? { status: HTTP_OK, body: { head: { ref: knows.fixtures.branch } } } : unauthorized();
+}
+
+function issueCommentsAnswer(asked: Asked, knows: Knows): Answer {
+  if (!authorized(asked.bearer)) return unauthorized();
+  if (asked.method !== "POST") return { status: HTTP_OK, body: knows.issueComments };
+  const number = knows.issueComments.length + 1;
+  const comment = { ...(JSON.parse(asked.body) as { body: string }), html_url: `https://github.com/re-cinq/floor/issues/12#issuecomment-${number}` };
+
+  knows.issueComments.push(comment);
+
+  return { status: HTTP_OK, body: comment };
+}
+
+function authorized(token: string): boolean {
+  return token === INSTALLATION_TOKEN || token === GIVEN_TOKEN;
+}
+
+function unauthorized(): Answer {
+  return { status: HTTP_UNAUTHORIZED, body: { message: "Bad credentials" } };
 }
 
 function grant(claim: string, body: string, knows: Knows): Answer {
@@ -88,7 +170,7 @@ function isAppClaim(claim: string, publicKey: string): boolean {
 }
 
 function review(token: string, body: string, knows: Knows): Answer {
-  if (token !== INSTALLATION_TOKEN && token !== GIVEN_TOKEN) return { status: HTTP_UNAUTHORIZED, body: { message: "Bad credentials" } };
+  if (!authorized(token)) return unauthorized();
   const posted = JSON.parse(body) as { comments: { line: number }[] };
 
   if (posted.comments.some((comment) => comment.line > LAST_LINE)) return { status: HTTP_UNPROCESSABLE, body: { message: "Line could not be resolved" } };

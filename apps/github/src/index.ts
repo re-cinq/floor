@@ -1,14 +1,17 @@
 import { defineStation } from "@floor/station";
 import { loadConfig, type Config } from "./config.js";
 import { floorPoster } from "./floor.js";
+import type { GitHubDeps } from "./github.js";
+import { postReplyStation } from "./post-reply.js";
 import { postReviewStation } from "./post-review.js";
+import { readReviewStation } from "./read-review.js";
 import { GIT_CREDENTIALS_PATH, gitCredentialRoute } from "./git-credentials.js";
 import { buildHttpServer, type Routes } from "./http.js";
 import { WEBHOOK_PATH, webhookRoute } from "./receiver.js";
 import { putRouter, reviewRouter } from "./review-router.js";
 
 const NOTHING_TO_RUN =
-  "nothing to run: set GITHUB_WEBHOOK_SECRET for the receiver, GITHUB_TOKEN or GITHUB_APP_ID with a key for the post-review station, GITHUB_REVIEW_ROUTER=1 for the review router, GITHUB_GIT_CREDENTIALS=1 for the git credential provider";
+  "nothing to run: set GITHUB_WEBHOOK_SECRET for the receiver, GITHUB_TOKEN or GITHUB_APP_ID with a key for the post-review, read-review and post-reply stations, GITHUB_REVIEW_ROUTER=1 for the review router, GITHUB_GIT_CREDENTIALS=1 for the git credential provider";
 
 async function main(): Promise<void> {
   const config = loadConfig(process.env);
@@ -49,10 +52,12 @@ function routesOf(config: Config): Routes {
 
 function startStation(config: Config): void {
   if (!config.tokenFor) return;
-  const handle = postReviewStation({ apiUrl: config.apiUrl, tokenFor: config.tokenFor });
+  const github: GitHubDeps = { apiUrl: config.apiUrl, tokenFor: config.tokenFor };
 
-  defineStation("post-review", handle, { floorUrl: config.floorUrl, token: config.floorToken, onError: said("post-review") });
-  console.log("[github] the post-review station is claiming");
+  defineStation("post-review", postReviewStation(github), { floorUrl: config.floorUrl, token: config.floorToken, onError: said("post-review") });
+  defineStation("read-review", readReviewStation(github), { floorUrl: config.floorUrl, token: config.floorToken, onError: said("read-review") });
+  defineStation("post-reply", postReplyStation(github), { floorUrl: config.floorUrl, token: config.floorToken, onError: said("post-reply") });
+  console.log("[github] the post-review, read-review and post-reply stations are claiming");
 }
 
 function said(part: string): (error: unknown) => void {

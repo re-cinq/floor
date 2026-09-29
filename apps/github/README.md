@@ -2,12 +2,14 @@
 
 The floor's GitHub side. Optional: a floor with no GitHub in its lines does not run it. The floor itself holds no provider client; this is where GitHub's is.
 
-One process, four parts. Each runs only when it has what it needs, so a deployment may be any of them alone.
+One process, six parts. Each runs only when it has what it needs, so a deployment may be any of them alone.
 
 | half | runs when | what it does |
 |---|---|---|
 | the webhook receiver | `GITHUB_WEBHOOK_SECRET` is set | takes GitHub's webhooks at `POST /webhooks/github` and posts each to the floor as an event |
 | the `post-review` station | `GITHUB_TOKEN`, or `GITHUB_APP_ID` with a key, is set | posts the review an agent printed to the pull request |
+| the `read-review` station | `GITHUB_TOKEN`, or `GITHUB_APP_ID` with a key, is set | reads a submitted review from GitHub and writes the reply agent's task |
+| the `post-reply` station | `GITHUB_TOKEN`, or `GITHUB_APP_ID` with a key, is set | posts the reply agent's answer as a comment on the pull request |
 | the review router | `GITHUB_REVIEW_ROUTER=1` | chooses, for a push to a pull request, the full review or the recheck |
 | the git credential provider | `GITHUB_GIT_CREDENTIALS=1`, with `GITHUB_APP_ID` and a key | mints a token for one repository when the floor asks at `POST /git-credentials` |
 
@@ -44,6 +46,14 @@ What lore's floor did in a hook, `postReviewFromNode`. It needs `review_output`,
 It reads the last fenced `REVIEW_FINDINGS` block the agent printed, which is lore's format. A finding with a path and a line is a comment on that line, written as a Conventional Comment with its suggestion; one without is said in the review's body. What it posts is always a comment, never an approval or a request for changes, whatever the verdict: suggestion-only, as lore's is.
 
 When GitHub refuses the review for where a comment is placed, most often a line the pull request does not touch, it is posted again with every finding in the body.
+
+## The read-review station
+
+What lore's floor did before it started the `code-review-reply` line. It needs `pr_url`, `review_id` and `intent`. It reads the review's body and its inline comments from GitHub, and the pull request's branch, then writes the reply agent's task: what was said, and whether to implement a fix or only answer.
+
+## The post-reply station
+
+What lore's floor did in a hook, `postReplyFromNode`. It needs `reply_output`, a file, and `pr_url`. It reads the last fenced `REVIEW_REPLY` block the agent printed and posts it as a plain comment on the pull request, never on a review thread: no thread replies and no thread resolving, lore's path for those is switched off here. The comment leads with a marker naming the visit, so a visit already replied to posts nothing again.
 
 ## The review router
 

@@ -1,21 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { Brief, Tools } from "@floor/station";
-import { GIVEN_TOKEN, LAST_LINE, startFakeGitHub, type FakeGitHub } from "./fake-github.js";
+import { describe, expect, it } from "vitest";
+import type { Brief } from "@floor/station";
+import { GIVEN_TOKEN, LAST_LINE } from "./fake-github.js";
 import { fixedToken } from "./github-auth.js";
 import { postReviewStation } from "./post-review.js";
+import { githubFixture, PULL_REQUEST, toolsReading } from "./test-support.js";
 
-const EXPIRES = new Date("2026-01-01T01:00:00Z");
-const PULL_REQUEST = "https://github.com/re-cinq/floor/pull/12";
-
-let github: FakeGitHub;
-
-beforeAll(async () => {
-  github = await startFakeGitHub("", EXPIRES);
-});
-
-afterAll(async () => {
-  await github.close();
-});
+const github = githubFixture();
 
 function printed(line: number): string {
   const review = { verdict: "changes_requested", summary: "One defect.", findings: [{ path: "src/foo.ts", line, label: "issue", subject: "guard the null" }] };
@@ -28,10 +18,6 @@ async function posted(said: string, prUrl = PULL_REQUEST) {
   const report = await station(visit(prUrl), toolsReading(said));
 
   return { report, review: github.reviews.at(-1) };
-}
-
-function toolsReading(said: string): Tools {
-  return { read: () => Promise.resolve(Buffer.from(said)), produce: () => Promise.resolve(), modelCall: () => Promise.resolve(), signal: AbortSignal.timeout(1000) };
 }
 
 function visit(prUrl: string): Brief {

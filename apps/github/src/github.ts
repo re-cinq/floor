@@ -1,5 +1,6 @@
-// GitHub, as the post-review station reaches it: one call, to post a review on a pull request.
+// GitHub, as the post-review, read-review and post-reply stations reach it.
 import type { Repository, TokenFor } from "./github-auth.js";
+import type { ReviewComment } from "./review-feedback.js";
 import type { ReviewRequest } from "./review.js";
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -45,3 +46,63 @@ interface PostedReview {
   html_url: string;
 }
 /* eslint-enable @typescript-eslint/naming-convention */
+
+export async function getPullRequest(deps: GitHubDeps, pull: PullRequest): Promise<{ branch: string }> {
+  const details = await githubJson<PullDetails>(deps, pull, `/pulls/${pull.number}`);
+
+  return { branch: details.head.ref };
+}
+
+export async function getReview(deps: GitHubDeps, pull: PullRequest, reviewId: string): Promise<{ body: string | null }> {
+  return githubJson(deps, pull, `/pulls/${pull.number}/reviews/${reviewId}`);
+}
+
+export async function getReviewComments(deps: GitHubDeps, pull: PullRequest, reviewId: string): Promise<ReviewComment[]> {
+  return githubJson(deps, pull, `/pulls/${pull.number}/reviews/${reviewId}/comments`);
+}
+
+export interface IssueComment {
+  body: string;
+  htmlUrl: string;
+}
+
+export async function listIssueComments(deps: GitHubDeps, pull: PullRequest): Promise<IssueComment[]> {
+  const comments = await githubJson<FetchedIssueComment[]>(deps, pull, `/issues/${pull.number}/comments`);
+
+  return comments.map(issueCommentOf);
+}
+
+export async function postIssueComment(deps: GitHubDeps, pull: PullRequest, body: string): Promise<IssueComment> {
+  const posted = await githubJson<FetchedIssueComment>(deps, pull, `/issues/${pull.number}/comments`, { method: "POST", body: { body } });
+
+  return issueCommentOf(posted);
+}
+
+interface PullDetails {
+  head: { ref: string };
+}
+
+// GitHub's own field name.
+/* eslint-disable @typescript-eslint/naming-convention */
+interface FetchedIssueComment {
+  body: string;
+  html_url: string;
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
+function issueCommentOf(comment: FetchedIssueComment): IssueComment {
+  return { body: comment.body, htmlUrl: comment.html_url };
+}
+
+async function githubJson<Answer>(deps: GitHubDeps, pull: PullRequest, path: string, init: { method?: string; body?: unknown } = {}): Promise<Answer> {
+  const response = await fetch(`${deps.apiUrl}/repos/${pull.owner}/${pull.name}${path}`, {
+    method: init.method ?? "GET",
+    headers: { authorization: `Bearer ${await deps.tokenFor(pull)}`, accept: "application/vnd.github+json", "content-type": "application/json" },
+    body: init.body ? JSON.stringify(init.body) : undefined,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+  if (!response.ok) throw new Error(`GitHub answered ${response.status} to ${init.method ?? "GET"} ${path}: ${await response.text()}`);
+
+  return (await response.json()) as Answer;
+}
