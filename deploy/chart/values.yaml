@@ -48,6 +48,10 @@ clusterAgent:
 # enforces NetworkPolicy; where it does not, it is accepted and does nothing.
 agentNetworkPolicy:
   enabled: true
+  # Where NodeLocal DNSCache answers, which is a link-local address on the node and not the
+  # cluster's DNS service. GKE and most others use 169.254.20.10. Empty allows only the cluster's
+  # DNS pods, which is right only for a cluster that does not run NodeLocal DNSCache.
+  nodeLocalDnsAddress: "169.254.20.10"
   # More places a pod may reach, as NetworkPolicy egress rules, added as they are written:
   # lore's MCP gateway and skills registry, a floor in another namespace or outside the cluster
   # (api.enabled false, or an api.baseUrl on a private address), a proxy.

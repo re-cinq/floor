@@ -31,6 +31,20 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
+    {{- with .Values.agentNetworkPolicy.nodeLocalDnsAddress }}
+    # NodeLocal DNSCache answers on a link-local address on the node itself, not on the
+    # cluster's DNS service, so the rule above never sees that traffic and the internet rule
+    # below deliberately excludes the whole link-local range. Without this a pod resolves
+    # nothing, which is how it was found: the agent could not look up the floor's own address.
+    - to:
+        - ipBlock:
+            cidr: {{ printf "%s/32" . | quote }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- end }}
     # The model's provider and the git forge. Private ranges are left out, and so is link-local,
     # where a cloud's metadata endpoint answers with the node's own credentials.
     - to:
