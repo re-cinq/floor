@@ -60,6 +60,9 @@ See [the map](../../README.md) for what sits either side of it.
   filtered by any of `after`/`name`/`runId`/`visitId`), `unclaimedDispatches`
   (every `station_run.dispatch` no worker has claimed in 30 minutes — a
   sweep's cue that no worker offers its tags).
+- `events-retention.ts` — `reapSettledRunEvents`: deletes the events of runs
+  settled before a cutoff (30 days, `EVENT_RETENTION_MS`), never an
+  `internal.*` event nor one of no run.
 - `lease.ts` — `acquireLease`/`Lease`: a Postgres advisory lock
   (`pg_try_advisory_lock`) held on a dedicated client for the lease's
   lifetime, since the lock is session-scoped and a pooled `pool.query`

@@ -443,9 +443,15 @@ The lease is checked before every pass: Postgres drops an advisory lock
 with its connection and tells nobody. A refusal from the store is never
 retried, the event is dead at once; anything else is.
 
-> **Not built yet.** **Retention.** Events of a run are kept while it is
-> open and 30 days after. `internal.*` events are the audit log and are
-> never deleted. Today nothing is deleted.
+**Retention.** The events of a run are kept while it is open and for 30
+days after it settles. The age counts from the run settling, never from
+the event: an old event of a run still open stays, and a run that settled
+yesterday keeps every event whatever its own age. Exempt, and never
+deleted: `internal.*` events, the audit log, and any event that belongs to
+no run (outside events, schedule ticks), whose dedupe key is what keeps a
+redelivery from firing twice. The floor's loop does it beside the blob
+reaping, on the instance holding the lease, every `FLOOR_REAP_MS`
+(default an hour).
 
 ## Costs
 

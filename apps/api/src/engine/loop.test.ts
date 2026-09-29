@@ -91,6 +91,44 @@ describe("FloorLoop.pass: the reaper", () => {
   });
 });
 
+describe("FloorLoop.pass: the event retention", () => {
+  const SETTLED_LONG_AGO = new Date("2025-01-01T00:00:00Z");
+  const SETTLED_YESTERDAY = new Date("2025-12-31T00:00:00Z");
+
+  async function settledRunWithEvents(finishedAt: Date): Promise<string> {
+    const runId = await startMarkers();
+
+    await loop().pass();
+    await deps().events.enqueue({ name: "github.pull_request.opened", payload: {}, runId, dedupeKey: `late:${runId}` });
+    await deps().pool.query("update assembly_runs set finished_at = $2 where id = $1", [runId, finishedAt]);
+
+    return runId;
+  }
+
+  async function namesOfRun(runId: string): Promise<string[]> {
+    const events = await deps().events.listByRun(runId);
+
+    return events.map((event) => event.name).sort();
+  }
+
+  it("deletes the events of a run settled over 30 days ago, and keeps its internal ones", async () => {
+    const runId = await settledRunWithEvents(SETTLED_LONG_AGO);
+
+    await loop().pass();
+
+    expect(await namesOfRun(runId)).toEqual(["internal.run.settled", "internal.run.started"]);
+  });
+
+  it("keeps every event of a run that settled yesterday", async () => {
+    const runId = await settledRunWithEvents(SETTLED_YESTERDAY);
+    const before = await namesOfRun(runId);
+
+    await loop().pass();
+
+    expect(await namesOfRun(runId)).toEqual(before);
+  });
+});
+
 describe("FloorLoop.start", () => {
   it("settles a run started while it is running, with nobody calling pass", async () => {
     loop().start();

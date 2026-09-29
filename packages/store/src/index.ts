@@ -8,6 +8,7 @@ export {
   type EventsFeedFilter,
   type EventsFeedPage,
 } from "./events.js";
+export { EVENT_RETENTION_MS, reapSettledRunEvents } from "./events-retention.js";
 export { acquireLease, type Lease } from "./lease.js";
 export { openTestPool, testDatabaseUrl } from "./test-database.js";
 export { Refusal, enforce } from "./refusal.js";

@@ -1,5 +1,5 @@
 // The floor's loop (docs/assembly_run_storage.md): it runs only on the instance holding the single-instance lease, and gives up the work the moment the lease is gone.
-import { acquireLease, type Lease, type PgPool } from "@floor/store";
+import { acquireLease, EVENT_RETENTION_MS, reapSettledRunEvents, type Lease, type PgPool } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { Dispatcher } from "./dispatcher.js";
 import { Sweeper } from "./sweep.js";
@@ -13,7 +13,7 @@ export interface LoopDeps {
   pool: PgPool;
   dispatcher: Pick<Dispatcher, "tick">;
   sweeper: Pick<Sweeper, "sweep">;
-  /** Absent in a loop that has no blobs to look after. */
+  /** Absent in a loop that has nothing to reap. */
   reaper?: Chore;
   now: () => Date;
   leaseKey: bigint;
@@ -136,10 +136,14 @@ export function buildLoop(deps: Deps, claimedBy: string): FloorLoop {
   });
 }
 
-// Blobs older than a day that nothing names. A day is longer than any visit's deadline, so nothing a visit still running has uploaded is old enough.
+// A day is longer than any visit's deadline, so no blob a running visit uploaded is old enough to reap; events go once their run settled the retention ago.
 function reaperOf(deps: Deps): Chore {
   return {
     everyMs: deps.config.reapMs,
-    run: () => deps.blobs.reapUnreferenced(new Date(deps.now().getTime() - REAP_AFTER_MS)),
+    run: () =>
+      Promise.all([
+        deps.blobs.reapUnreferenced(new Date(deps.now().getTime() - REAP_AFTER_MS)),
+        reapSettledRunEvents(deps.pool, new Date(deps.now().getTime() - EVENT_RETENTION_MS)),
+      ]),
   };
 }
