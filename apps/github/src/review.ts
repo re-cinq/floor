@@ -1,7 +1,8 @@
 // Pure: the review an agent printed, read, and written as GitHub takes it. The format is lore's: a fenced REVIEW_FINDINGS block of JSON. What is posted is suggestion-only, as lore's is: always a comment, never an approval or a request for changes, whatever the verdict.
 import { z } from "zod";
 
-const FINDINGS_BLOCK = /```REVIEW_FINDINGS\s*\n([\s\S]*?)```/g;
+// Ended by a fence on a line of its own. Inside JSON a line break is written `\n`, so no line of the block begins with one; a fence met mid-line is a finding speaking of code.
+const FINDINGS_BLOCK = /```REVIEW_FINDINGS\s*\n([\s\S]*?)\n```/g;
 
 const finding = z.object({
   path: z.string().optional(),

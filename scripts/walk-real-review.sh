@@ -40,6 +40,8 @@ set -a
 . "${PROCESS_ENV_FILE}"
 set +a
 export KUBECONFIG="${FLOOR_KUBECONFIG}"
+# In a terminal gh shows what it fetched in a pager, where this walk's reader never sees it.
+export GH_PAGER=cat
 
 LORE_DIR="${LORE_DIR:-${HOME}/workspace/lore}"
 [ -d "${LORE_DIR}/libs/assembly-lines" ] || fail "no lore checkout at ${LORE_DIR}; set LORE_DIR"

@@ -16,6 +16,26 @@ describe("parseReviewReply", () => {
     expect(parseReviewReply(block(body))).toBe(body);
   });
 
+  it("keeps the code an agent quotes inside its reply, and what it says after it", () => {
+    const body = "The call site now reads:\n\n```ts\nnew Error(describeRejection(error), {cause: error})\n```\n\nBehaviour is identical.";
+
+    expect(parseReviewReply(block(body))).toBe(body);
+  });
+
+  it("keeps two quotes in one reply", () => {
+    const body = "Before:\n```ts\nold()\n```\nAfter:\n```ts\nfresh()\n```";
+
+    expect(parseReviewReply(block(body))).toBe(body);
+  });
+
+  it("reads the last block of an agent that showed the format before using it", () => {
+    expect(parseReviewReply(`${block("an example")}\n\n${block("Fixed in a1b2c3d.")}`)).toBe("Fixed in a1b2c3d.");
+  });
+
+  it("returns null for a block the agent never closed", () => {
+    expect(parseReviewReply("```REVIEW_REPLY\nFixed in a1b2c3d.")).toBeNull();
+  });
+
   it("returns null when no reply block is present", () => {
     expect(parseReviewReply("REVIEW_RESULT:APPROVED")).toBeNull();
   });

@@ -14,6 +14,15 @@ function printed(review: unknown): string {
   return `I looked at the diff.\n\n\`\`\`REVIEW_FINDINGS\n${JSON.stringify(review)}\n\`\`\`\n\nREVIEW_RESULT:CHANGES_REQUESTED:one defect`;
 }
 
+describe("readReview, of a finding that speaks of code", () => {
+  it("reads a subject that names a fence, which is not the block's end", () => {
+    const findings = { verdict: "approved", summary: "Fine.", findings: [{ label: "nit", subject: "open the sample with ```ts so it is coloured" }] };
+    const read = readReview(`\`\`\`REVIEW_FINDINGS\n${JSON.stringify(findings)}\n\`\`\``);
+
+    expect(read).toMatchObject({ findings: [{ subject: "open the sample with ```ts so it is coloured" }] });
+  });
+});
+
 describe("readReview", () => {
   it("reads the block the agent printed", () => {
     expect(readReview(printed(REVIEW))).toEqual(REVIEW);
