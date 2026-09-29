@@ -6,6 +6,7 @@ import { HTTP_CREATED } from "../http-status.js";
 import { parseBody } from "../parse.js";
 import { badRequest, forbidden, notFound } from "../problem.js";
 import { createRecordsSchema, recordKindSchema } from "../schemas.js";
+import { isUuid } from "./own-visit.js";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -27,9 +28,22 @@ async function list(deps: Deps, request: Request, toolkit: ResponseToolkit) {
 }
 
 async function getOne(deps: Deps, request: Request, toolkit: ResponseToolkit) {
-  const visit = await deps.runs.visit(request.params.id as string);
+  const visitId = request.params.id as string;
+  const visit = isUuid(visitId) ? await deps.runs.visit(visitId) : null;
 
-  return visit ?? notFound(toolkit, `no station run "${request.params.id}"`);
+  if (!visit) return notFound(toolkit, `no station run "${visitId}"`);
+  const counted = await deps.records.latest(visitId, "llm_call");
+
+  return { ...visit, cost: counted ? costOf(counted.body) : null };
+}
+
+const SAID = ["text", "failed"];
+
+// What the agent counted and what it cost, without what it said: that is the visit's report, and its records.
+function costOf(counted: unknown): unknown {
+  const kept = Object.entries(counted as Record<string, unknown>).filter(([name]) => !SAID.includes(name));
+
+  return Object.fromEntries(kept);
 }
 
 async function createRecords(deps: Deps, request: Request, toolkit: ResponseToolkit) {

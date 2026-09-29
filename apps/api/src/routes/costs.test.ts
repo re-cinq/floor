@@ -57,7 +57,7 @@ describe("GET /costs", () => {
 
     const response = await injectJson<CostsResult>(server(), { method: "GET", url: "/costs?repo=r&group=line", headers: authHeaders() });
 
-    expect(response.result.items).toEqual([{ key: "code-review", costUsd: 3, tokensIn: 0, tokensOut: 0, visits: 1, visitsMissingCost: 0 }]);
+    expect(response.result.items).toEqual([{ key: "code-review", costUsd: 3, tokensIn: 0, tokensOut: 0, visits: 1, visitsMissingCost: 0, unpriced: [] }]);
   });
 
   it("returns what one run cost, asked for by its id", async () => {
@@ -77,6 +77,37 @@ describe("GET /costs", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("splits a visit's cost by the models that did the work, the one called on the side included", async () => {
+    const visitId = await openedVisit("r");
+    const models = { "claude-x": { input_tokens: 900, output_tokens: 400, cost_usd: 0.4 }, "claude-small": { input_tokens: 120, output_tokens: 30, cost_usd: 0.02 } };
+
+    await deps().records.append(visitId, [{ kind: "llm_call", body: { costUsd: 0.42, usage: {}, models }, occurredAt: OCCURRED_AT }]);
+    const response = await injectJson<CostsResult>(server(), { method: "GET", url: "/costs?repo=r&group=model", headers: authHeaders() });
+
+    expect(response.result.items).toMatchObject([
+      { key: "claude-small", costUsd: 0.02, tokensIn: 120, tokensOut: 30, visits: 1 },
+      { key: "claude-x", costUsd: 0.4, tokensIn: 900, tokensOut: 400, visits: 1 },
+    ]);
+  });
+
+  it("keeps a visit's cost whole, under the model its definition names, when its models say nothing of cost", async () => {
+    const visitId = await openedVisit("r");
+
+    await deps().records.append(visitId, [{ kind: "llm_call", body: { costUsd: 0.4, usage: { input_tokens: 900 }, models: { "claude-small": { input_tokens: 900 } } }, occurredAt: OCCURRED_AT }]);
+    const response = await injectJson<CostsResult>(server(), { method: "GET", url: "/costs?repo=r&group=model", headers: authHeaders() });
+
+    expect(response.result.items).toMatchObject([{ key: "claude-x", costUsd: 0.4, tokensIn: 900 }]);
+  });
+
+  it("names the models it had no price for", async () => {
+    const visitId = await openedVisit("r");
+
+    await deps().records.append(visitId, [{ kind: "llm_call", body: { costUsd: 0.4, usage: {}, unpriced: ["gemini-3-flash-preview"] }, occurredAt: OCCURRED_AT }]);
+    const response = await injectJson<CostsResult>(server(), { method: "GET", url: "/costs?repo=r&group=line", headers: authHeaders() });
+
+    expect(response.result.items).toMatchObject([{ key: "code-review", unpriced: ["gemini-3-flash-preview"] }]);
+  });
+
   it("groups by day", async () => {
     await reportedVisit("r", 3);
 
@@ -90,7 +121,7 @@ describe("GET /costs", () => {
 
     const response = await injectJson<CostsResult>(server(), { method: "GET", url: "/costs?repo=r&group=model", headers: authHeaders() });
 
-    expect(response.result.items).toEqual([{ key: "claude-x", costUsd: 3, tokensIn: 0, tokensOut: 0, visits: 1, visitsMissingCost: 0 }]);
+    expect(response.result.items).toEqual([{ key: "claude-x", costUsd: 3, tokensIn: 0, tokensOut: 0, visits: 1, visitsMissingCost: 0, unpriced: [] }]);
   });
 
   it("filters by line", async () => {

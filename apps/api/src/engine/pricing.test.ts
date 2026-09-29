@@ -12,33 +12,42 @@ describe("pricedBy", () => {
   });
 
   it("prices a million tokens read at $2 and a hundred thousand written at $12 a million as $3.20", () => {
-    expect(pricedBy(GEMINI, { usage: COUNTED })).toEqual({ costUsd: 3.2 });
+    expect(pricedBy(GEMINI, { usage: COUNTED })).toMatchObject({ costUsd: 3.2 });
   });
 
   it("prices each model at its own rate: the one the agent was given, and the one it called on the side", () => {
     const models = { "gemini-3.1-pro-preview": COUNTED, "gemini-3-flash-preview": { input_tokens: 200_000, output_tokens: 10_000 } };
 
-    expect(pricedBy(GEMINI, { usage: COUNTED, models })).toEqual({ costUsd: 3.33 });
+    expect(pricedBy(GEMINI, { usage: COUNTED, models })).toMatchObject({ costUsd: 3.33 });
+  });
+
+  it("keeps what each model cost beside what it counted", () => {
+    const models = { "gemini-3.1-pro-preview": COUNTED, "gemini-3-flash-preview": { input_tokens: 200_000, output_tokens: 10_000 } };
+
+    expect(pricedBy(GEMINI, { models }).models).toEqual({
+      "gemini-3.1-pro-preview": { ...COUNTED, cost_usd: 3.2 },
+      "gemini-3-flash-preview": { input_tokens: 200_000, output_tokens: 10_000, cost_usd: 0.13 },
+    });
   });
 
   it("prices what was read from the cache as any other reading, with no cache price stated", () => {
-    expect(pricedBy(GEMINI, { usage: { input_tokens: 0, cache_read_input_tokens: 1_000_000, output_tokens: 0 } })).toEqual({ costUsd: 2 });
+    expect(pricedBy(GEMINI, { usage: { input_tokens: 0, cache_read_input_tokens: 1_000_000, output_tokens: 0 } })).toMatchObject({ costUsd: 2 });
   });
 
   it("prices what was read from the cache at the cache's price, where one is stated", () => {
     const cheaper = { model: "gemini-3.1-pro-preview", prices: { "gemini-3.1-pro-preview": { ...PRO, cacheReadPerMillion: 0.2 } } };
 
-    expect(pricedBy(cheaper, { usage: { input_tokens: 0, cache_read_input_tokens: 1_000_000, output_tokens: 0 } })).toEqual({ costUsd: 0.2 });
+    expect(pricedBy(cheaper, { usage: { input_tokens: 0, cache_read_input_tokens: 1_000_000, output_tokens: 0 } })).toMatchObject({ costUsd: 0.2 });
   });
 
   it("names the model it could not price, and leaves its part out of the cost", () => {
     const models = { "gemini-3.1-pro-preview": COUNTED, "gemini-9-ultra": { input_tokens: 5, output_tokens: 5 } };
 
-    expect(pricedBy(GEMINI, { models })).toEqual({ costUsd: 3.2, unpriced: ["gemini-9-ultra"] });
+    expect(pricedBy(GEMINI, { models })).toMatchObject({ costUsd: 3.2, unpriced: ["gemini-9-ultra"], models: { "gemini-9-ultra": { input_tokens: 5, output_tokens: 5 } } });
   });
 
   it("gives no cost, and names the model, for a definition that states no prices", () => {
-    expect(pricedBy({ model: "gemini-3.1-pro-preview" }, { usage: COUNTED })).toEqual({ unpriced: ["gemini-3.1-pro-preview"] });
+    expect(pricedBy({ model: "gemini-3.1-pro-preview" }, { usage: COUNTED })).toEqual({ unpriced: ["gemini-3.1-pro-preview"], models: { "gemini-3.1-pro-preview": COUNTED } });
   });
 
   it("gives nothing for a visit that counted nothing", () => {

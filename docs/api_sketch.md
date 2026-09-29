@@ -83,7 +83,8 @@ arrives as an event: `station_run.reported`, posted to `/events` with the
 visit token.
 
 GET    /station-runs                     // run required; node and open narrow it. Not built yet: station, since
-GET    /station-runs/:id                 // the visit + outcome + worker + deadline. Not built yet: cost
+GET    /station-runs/:id                 // the visit + outcome + worker + deadline, and `cost`: what its agent counted and
+                                         // what that cost, model by model; null for a visit nothing was counted for
 GET    /station-runs/:id/brief           // for the executor: each need with its kind, path and access, the resolved
                                          // settings, and a freshly minted visit token. 409 once the visit is done
 POST   /station-runs/:id/git-credential  // { repo: "owner/name" }, visit token -> { username, password } for a repository
@@ -137,7 +138,9 @@ DELETE /agent-definitions/:id            // archives. Not built yet: 409 while a
 ## Costs - collected by the floor for every visit
 
 GET    /costs                            // service token only. filter required: run, repo, line, station, since, until; group required: day | line | station | model | run
-                                         // returns cost, tokens in and out, visit count, and visits with missing cost
+                                         // returns cost, tokens in and out, visit count, visits with missing cost, and the models
+                                         // that had no price. `model` is the model that did the work: the one an agent was given,
+                                         // and any it called on the side
 
 ## Blobs - content-addressed bytes behind every `file` item
 

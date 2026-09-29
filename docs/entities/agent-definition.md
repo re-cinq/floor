@@ -52,9 +52,9 @@ prices:
 - **An agent calls more than the model it was given**: a cheaper one to
   classify, or to compress what it has read. Each is priced at its own rate,
   so each wants its own line.
-- **A model with no price is named**, in the visit's `llm_call` record, as
-  `unpriced`, and its part is left out of the cost. A cost that is short
-  says so.
+- **A model with no price is named**, as `unpriced`, on the visit and in
+  every sum of `GET /costs` it is part of, and its part is left out of the
+  cost. A cost that is short says so.
 - **The cache is priced as any other reading** unless a cache price is
   stated.
 - **A visit is priced when it ends, at what its definition stated then.** A

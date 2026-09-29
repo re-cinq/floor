@@ -96,6 +96,35 @@ describe("POST /station-runs/{id}/records", () => {
   });
 });
 
+describe("GET /station-runs/{id}", () => {
+  const COUNTED = { costUsd: 0.42, durationMs: 9000, usage: { input_tokens: 900, output_tokens: 400 }, models: { "claude-x": { input_tokens: 900, output_tokens: 400, cost_usd: 0.42 } } };
+
+  async function visitRead(visitId: string) {
+    return injectJson<{ id: string; cost: unknown }>(server(), { method: "GET", url: `/station-runs/${visitId}`, headers: authHeaders() });
+  }
+
+  it("says what the visit's agent counted and what it cost", async () => {
+    const visitId = await openVisit();
+
+    await postRecords(visitId, [{ kind: "llm_call", body: { text: "LORE_NODE_RESULT: success", failed: false, ...COUNTED } }]);
+    const response = await visitRead(visitId);
+
+    expect(response.result.cost).toEqual(COUNTED);
+  });
+
+  it("says null for a visit no agent counted anything for", async () => {
+    const response = await visitRead(await openVisit());
+
+    expect(response.result.cost).toBeNull();
+  });
+
+  it("returns 404 for an id that is no visit's, before the database is asked", async () => {
+    const response = await visitRead("nonsense");
+
+    expect(response.statusCode).toBe(404);
+  });
+});
+
 describe("GET /station-runs/{id}/records", () => {
   it("requires the kind filter", async () => {
     const visitId = await openVisit();

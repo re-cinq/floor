@@ -13,6 +13,7 @@ export interface CostsFilter {
   until?: Date;
 }
 
+/** `model` is the model that did the work: the one an agent was given, and any it called on the side, each with what it read, wrote and cost. */
 export type CostsGroupBy = "day" | "line" | "station" | "model" | "run";
 
 export interface CostsRow {
@@ -20,8 +21,11 @@ export interface CostsRow {
   costUsd: number;
   tokensIn: number;
   tokensOut: number;
+  /** Grouped by model, a visit is counted under each model it called. */
   visits: number;
   visitsMissingCost: number;
+  /** The models that counted tokens in these visits and had no price stated, so their part is not in the cost. */
+  unpriced: string[];
 }
 
 export interface CostsStoreDeps {
@@ -33,20 +37,19 @@ export class CostsStore {
 
   async summary(filter: CostsFilter, groupBy: CostsGroupBy): Promise<CostsRow[]> {
     const { where, values } = whereClauseFor(filter);
-    const text = summarySql(where, GROUP_KEY_EXPR[groupBy]);
-    const { rows } = await this.deps.connection.query(text, values);
+    const { rows } = await this.deps.connection.query(summarySql(where, groupBy), values);
 
     return rows.map(toCostsRow);
   }
 }
 
-// The `visits` CTE's own output columns, not the joined tables' aliases, which are out of scope by the time the outer select runs.
+// The `visits` CTE's own output columns, not the joined tables' aliases, which are out of scope by the time the outer select runs. A visit that names no models did its work with the one its definition gave it.
 const GROUP_KEY_EXPR: Record<CostsGroupBy, string> = {
-  day: "to_char(date_trunc('day', opened_at), 'YYYY-MM-DD')",
-  line: "line_id",
-  station: "station_id",
-  model: "input->'agentSettings'->>'model'",
-  run: "run_id::text",
+  day: "to_char(date_trunc('day', sr.opened_at), 'YYYY-MM-DD')",
+  line: "ar.line_id",
+  station: "d.id",
+  model: "coalesce(lt.model, sr.input->'agentSettings'->>'model')",
+  run: "ar.id::text",
 };
 
 function whereClauseFor(filter: CostsFilter): { where: string; values: unknown[] } {
@@ -63,58 +66,86 @@ function whereClauseFor(filter: CostsFilter): { where: string; values: unknown[]
   return { where: conditions.length > 0 ? `where ${conditions.join(" and ")}` : "", values };
 }
 
-// Tokens in are everything the model read: Claude reports what it read from its cache, and what it wrote to it, apart from the rest, and on a second turn the rest is a handful.
-const LLM_TOTALS_CTE = `
-  llm_totals as (
+// Tokens in are everything the model read: what it read from its cache, and what it wrote to it, are counted apart from the rest, and on a second turn the rest is a handful.
+function tokensIn(counts: string): string {
+  return `coalesce((${counts}->>'input_tokens')::numeric, 0)
+        + coalesce((${counts}->>'cache_creation_input_tokens')::numeric, 0)
+        + coalesce((${counts}->>'cache_read_input_tokens')::numeric, 0)`;
+}
+
+function tokensOut(counts: string): string {
+  return `coalesce((${counts}->>'output_tokens')::numeric, 0)`;
+}
+
+/** One row a visit. */
+const BY_VISIT = `
+  totals as (
     select
       station_run_id,
+      null::text as model,
       sum((body->>'costUsd')::numeric) filter (where body->>'costUsd' is not null) as cost_usd,
-      sum(
-        coalesce((body->'usage'->>'input_tokens')::numeric, 0)
-        + coalesce((body->'usage'->>'cache_creation_input_tokens')::numeric, 0)
-        + coalesce((body->'usage'->>'cache_read_input_tokens')::numeric, 0)
-      ) as tokens_in,
-      sum(coalesce((body->'usage'->>'output_tokens')::numeric, 0)) as tokens_out,
-      bool_or(body->>'costUsd' is not null) as has_cost
+      sum(${tokensIn("body->'usage'")}) as tokens_in,
+      sum(${tokensOut("body->'usage'")}) as tokens_out
     from station_run_records
     where kind = 'llm_call'
     group by station_run_id
   )
 `;
 
-const VISITS_COLUMNS = `
-  sr.opened_at, sr.agent_definition_hash, sr.report, sr.input,
-  ar.id as run_id, ar.repo, ar.line_id, d.id as station_id,
-  lt.cost_usd, lt.tokens_in, lt.tokens_out, lt.has_cost
+// A record's models are taken one by one only when they account for its cost: where the record has a cost and no model has one, the cost is the record's, and splitting it would lose it.
+const NAMES_MODELS = `jsonb_typeof(body->'models') = 'object' and body->'models' <> '{}'::jsonb
+      and (body->>'costUsd' is null or jsonb_path_exists(body->'models', '$.*.cost_usd'))`;
+
+/** One row a visit and a model it called. A record that names no models is one row, its model left for the visit's definition to name. */
+const BY_MODEL = `
+  totals as (
+    select station_run_id, counted.key as model, (counted.value->>'cost_usd')::numeric as cost_usd,
+      ${tokensIn("counted.value")} as tokens_in, ${tokensOut("counted.value")} as tokens_out
+    from station_run_records, jsonb_each(body->'models') as counted
+    where kind = 'llm_call' and ${NAMES_MODELS}
+    union all
+    select station_run_id, null::text, (body->>'costUsd')::numeric,
+      ${tokensIn("body->'usage'")}, ${tokensOut("body->'usage'")}
+    from station_run_records
+    where kind = 'llm_call' and not coalesce(${NAMES_MODELS}, false)
+  )
 `;
 
-const VISITS_JOIN = `
-  from station_runs sr
-  join assembly_runs ar on ar.id = sr.assembly_run_id
-  left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
-  left join llm_totals lt on lt.station_run_id = sr.station_run_id
+const UNPRICED = `
+  unpriced as (
+    select station_run_id, named.model
+    from station_run_records, jsonb_array_elements_text(body->'unpriced') as named(model)
+    where kind = 'llm_call' and jsonb_typeof(body->'unpriced') = 'array'
+  )
 `;
 
 /** A millionth of a dollar. An agent reports its cost as a fraction a machine cannot write exactly, and a sum of those ends in noise. */
 const COST_DECIMALS = 6;
 
-const MISSING_COST_FILTER = "agent_definition_hash is not null and report is not null and not coalesce(has_cost, false)";
+const MISSING_COST = "agent_definition_hash is not null and report is not null and cost_usd is null";
 
-function summarySql(where: string, key: string): string {
+function summarySql(where: string, groupBy: CostsGroupBy): string {
   return `
-    with ${LLM_TOTALS_CTE},
+    with ${groupBy === "model" ? BY_MODEL : BY_VISIT}, ${UNPRICED},
     visits as (
-      select ${VISITS_COLUMNS}
-      ${VISITS_JOIN}
+      select ${GROUP_KEY_EXPR[groupBy]} as key, sr.station_run_id, sr.agent_definition_hash, sr.report, lt.cost_usd, lt.tokens_in, lt.tokens_out
+      from station_runs sr
+      join assembly_runs ar on ar.id = sr.assembly_run_id
+      left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
+      left join totals lt on lt.station_run_id = sr.station_run_id
       ${where}
     )
     select
-      ${key} as key,
+      key,
       round(coalesce(sum(cost_usd), 0), ${COST_DECIMALS}) as cost_usd,
       coalesce(sum(tokens_in), 0) as tokens_in,
       coalesce(sum(tokens_out), 0) as tokens_out,
-      count(*) as visits,
-      count(*) filter (where ${MISSING_COST_FILTER}) as visits_missing_cost
+      count(distinct station_run_id) as visits,
+      count(distinct station_run_id) filter (where ${MISSING_COST}) as visits_missing_cost,
+      array(
+        select distinct unpriced.model from unpriced join visits grouped using (station_run_id)
+        where grouped.key is not distinct from visits.key order by 1
+      ) as unpriced
     from visits
     group by key
     order by key
@@ -130,6 +161,7 @@ interface CostsRowRaw {
   tokens_out: string;
   visits: string;
   visits_missing_cost: string;
+  unpriced: string[];
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -141,5 +173,6 @@ function toCostsRow(row: CostsRowRaw): CostsRow {
     tokensOut: Number(row.tokens_out),
     visits: Number(row.visits),
     visitsMissingCost: Number(row.visits_missing_cost),
+    unpriced: row.unpriced,
   };
 }

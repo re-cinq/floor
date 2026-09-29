@@ -10,6 +10,8 @@ export interface Priced {
   costUsd?: number;
   /** The models that counted tokens and have no price stated, so their part of the cost is not in it. */
   unpriced?: string[];
+  /** Each model's counts, with what it cost beside them where a price was stated. */
+  models?: Record<string, ModelCounts>;
 }
 
 type Stated = Pick<AgentSettings, "model" | "prices"> | null;
@@ -21,13 +23,19 @@ export function pricedBy(stated: Stated, cost: ResultCost): Priced {
   const counted = Object.entries(cost.models ?? aloneOf(stated, cost.usage));
   const prices: Prices = stated?.prices ?? {};
 
-  return { ...costIn(counted, prices), ...unpricedIn(counted, prices) };
+  return { ...costIn(counted, prices), ...unpricedIn(counted, prices), ...(counted.length > 0 && { models: Object.fromEntries(counted.map((each) => costedAt(prices, each))) }) };
 }
 
 function costIn(counted: Counted, prices: Prices): Priced {
   const costs = counted.flatMap(([model, counts]) => costOf(prices[model], counts));
 
   return costs.length > 0 ? { costUsd: rounded(sumOf(costs)) } : {};
+}
+
+function costedAt(prices: Prices, [model, counts]: Counted[number]): Counted[number] {
+  const costs = costOf(prices[model], counts).map((cost) => ({ ...counts, cost_usd: rounded(cost) }));
+
+  return [model, costs.at(0) ?? counts];
 }
 
 function unpricedIn(counted: Counted, prices: Prices): Priced {
