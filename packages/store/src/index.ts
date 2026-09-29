@@ -77,6 +77,7 @@ export type {
   NeedSpec,
   ProduceSpec,
   AgentSettings,
+  ModelPrice,
   AgentDefinitionBody,
   ScheduleBody,
 } from "./types.js";

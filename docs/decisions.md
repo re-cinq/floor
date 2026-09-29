@@ -244,8 +244,20 @@ stream with a line that repeats its answer and gives its cost. Gemini ends
 with a status and its counts, and says its answer in pieces along the way.
 When the last line carries no words, the floor puts the answer together
 from the pieces. Without that a Gemini agent's verdict read as empty, which
-passes as success. Gemini gives tokens and no price, so its cost in money
-is unknown and its tokens are kept.
+passes as success.
+
+**The floor holds no price.** Gemini counts tokens and names no cost, so
+somebody has to multiply. lore keeps a table in its code, which goes stale
+and is changed by a release. Here an agent definition states what its models
+cost, beside their names. A visit is priced when it ends, at what its
+definition stated then, so a price that changes changes no visit already
+run. A model with no price stated is named and left out: a cost that is
+short says so.
+
+**An agent's counts are kept model by model.** An agent calls more than the
+model it was given, and each has its own rate. The floor first kept the
+totals alone, and could no longer tell a cheap model's tokens from a dear
+one's.
 
 **A laptop with a gcloud login reaches Gemini through a relay.** A pod is
 given variables, and a gcloud login is a file that opens a whole account and

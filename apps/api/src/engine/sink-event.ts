@@ -13,17 +13,34 @@ export interface ResultCost {
   turns?: number;
   durationMs?: number;
   usage?: unknown;
+  /** The same counts, model by model. An agent calls more than the model it was given: a cheaper one to classify, or to compress what it has read. Each is priced at its own rate. */
+  models?: Record<string, ModelCounts>;
 }
+
+/** Under the names `usage` goes by, whichever agent counted. */
+export type ModelCounts = Record<string, number>;
 
 const TIMEOUT_EXIT_CODE = 124;
 const PRODUCED_PREFIX = "produced.";
 
 /** Gemini counts what it read as `input` and `cached`, which together are its `input_tokens`. */
-const geminiStats = z.object({
+const geminiCounts = z.object({
   input: z.number().optional(),
   cached: z.number().optional(),
   output_tokens: z.number().optional(),
+});
+
+const geminiStats = geminiCounts.extend({
   duration_ms: z.number().optional(),
+  models: z.record(z.string(), geminiCounts).optional(),
+});
+
+const claudeCounts = z.object({
+  inputTokens: z.number().optional(),
+  outputTokens: z.number().optional(),
+  cacheReadInputTokens: z.number().optional(),
+  cacheCreationInputTokens: z.number().optional(),
+  costUSD: z.number().optional(),
 });
 
 // Claude ends with what it said and what it cost. Gemini ends with a status and its counts, and says what it said in messages along the way.
@@ -35,6 +52,7 @@ const resultLine = z.object({
   num_turns: z.number().optional(),
   duration_ms: z.number().optional(),
   usage: z.unknown().optional(),
+  modelUsage: z.record(z.string(), claudeCounts).optional(),
   status: z.string().optional(),
   error: z.object({ message: z.string() }).optional(),
   stats: geminiStats.optional(),
@@ -79,7 +97,29 @@ function readResult(payload: unknown): SinkEvent | null {
   const counted = countedBy(line.stats);
   const cost = { costUsd: line.total_cost_usd, turns: line.num_turns, durationMs: line.duration_ms ?? counted.durationMs, usage: line.usage ?? counted.usage };
 
-  return { kind: "result", text: saidAtTheEnd(line), failed: line.is_error ?? line.status === "error", cost };
+  return { kind: "result", text: saidAtTheEnd(line), failed: line.is_error ?? line.status === "error", cost: { ...cost, models: modelsOf(line) } };
+}
+
+function modelsOf(line: z.infer<typeof resultLine>): ResultCost["models"] {
+  const claude = Object.entries(line.modelUsage ?? {}).map(([model, counts]) => [model, claudeCounted(counts)]);
+  const gemini = Object.entries(line.stats?.models ?? {}).map(([model, counts]) => [model, geminiCounted(counts)]);
+  const counted = [...claude, ...gemini];
+
+  return counted.length > 0 ? (Object.fromEntries(counted) as ResultCost["models"]) : undefined;
+}
+
+// Claude prices each model itself, and says so.
+function claudeCounted(counts: z.infer<typeof claudeCounts>): ModelCounts {
+  const { inputTokens = 0, outputTokens = 0, cacheReadInputTokens = 0, cacheCreationInputTokens = 0 } = counts;
+  const tokens = { input_tokens: inputTokens, cache_read_input_tokens: cacheReadInputTokens, cache_creation_input_tokens: cacheCreationInputTokens, output_tokens: outputTokens };
+
+  return counts.costUSD === undefined ? tokens : { ...tokens, cost_usd: counts.costUSD };
+}
+
+function geminiCounted(counts: z.infer<typeof geminiCounts>): ModelCounts {
+  const { input = 0, cached = 0, output_tokens: written = 0 } = counts;
+
+  return { input_tokens: input, cache_read_input_tokens: cached, output_tokens: written };
 }
 
 function saidAtTheEnd(line: z.infer<typeof resultLine>): string {
@@ -91,9 +131,8 @@ function saidAtTheEnd(line: z.infer<typeof resultLine>): string {
 // Gemini's counts under the names Claude's go by, which are the names costs are read by.
 function countedBy(stats: z.infer<typeof geminiStats> | undefined): Pick<ResultCost, "durationMs" | "usage"> {
   if (!stats) return {};
-  const { input = 0, cached = 0, output_tokens: written = 0 } = stats;
 
-  return { durationMs: stats.duration_ms, usage: { input_tokens: input, cache_read_input_tokens: cached, output_tokens: written } };
+  return { durationMs: stats.duration_ms, usage: geminiCounted(stats) };
 }
 
 /** What the agent said, put together from the pieces it said it in: for an agent whose last line does not repeat it. */

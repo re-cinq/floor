@@ -62,6 +62,15 @@ export const stationBodySchema = z.object({
   route: z.string().optional(),
 });
 
+const perMillion = z.number().nonnegative();
+
+const modelPrice = z.object({
+  inputPerMillion: perMillion,
+  outputPerMillion: perMillion,
+  cacheReadPerMillion: perMillion.optional(),
+  cacheWritePerMillion: perMillion.optional(),
+});
+
 const agentSettings = z.object({
   model: z.string().optional(),
   prompt: z.string(),
@@ -69,6 +78,7 @@ const agentSettings = z.object({
   timeoutMinutes: z.number().int().positive(),
   tags: z.array(z.string()).optional(),
   config: agentConfigSchema.optional(),
+  prices: z.record(z.string(), modelPrice).optional(),
 });
 
 export const agentDefinitionBodySchema = z.object({

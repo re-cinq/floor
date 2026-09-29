@@ -23,7 +23,8 @@ const JUDGE: StationBody = {
   produces: [{ name: "judge_output", kind: "file", from: "output" }],
 };
 
-const GEMINI = { settings: { model: "gemini-3.1-pro-preview", prompt: "Judge it.", image: "img:1", timeoutMinutes: 20 } };
+const PRICES = { "gemini-3.1-pro-preview": { inputPerMillion: 2, outputPerMillion: 12, cacheReadPerMillion: 0.2 } };
+const GEMINI = { settings: { model: "gemini-3.1-pro-preview", prompt: "Judge it.", image: "img:1", timeoutMinutes: 20, prices: PRICES } };
 
 const SPOKEN = [
   { type: "init", model: "gemini-3.1-pro-preview" },
@@ -31,7 +32,17 @@ const SPOKEN = [
   { type: "message", role: "assistant", content: "One defect.\n", delta: true },
   { type: "tool_use", tool_name: "read_file", parameters: { file_path: "/workspace/a.ts" } },
   { type: "message", role: "assistant", content: "REVIEW_RESULT:CHANGES_REQUESTED:guard the null", delta: true },
-  { type: "result", status: "success", stats: { total_tokens: 1200, input_tokens: 1000, output_tokens: 200, cached: 300, input: 700, duration_ms: 9000, tool_calls: 1, models: {} } },
+  {
+    type: "result",
+    status: "success",
+    stats: {
+      input: 700_000,
+      cached: 300_000,
+      output_tokens: 210_000,
+      duration_ms: 9000,
+      models: { "gemini-3.1-pro-preview": { input: 600_000, cached: 300_000, output_tokens: 200_000 }, "gemini-3-flash-preview": { input: 100_000, cached: 0, output_tokens: 10_000 } },
+    },
+  },
   { kind: "lifecycle", phase: "agent", status: "succeeded", exitCode: 0 },
 ];
 
@@ -68,6 +79,17 @@ describe("POST /station-runs/:id/sink, from a Gemini agent", () => {
     const { visitId } = await geminiJudged();
     const cost = await deps().records.latest(visitId, "llm_call");
 
-    expect(cost!.body).toMatchObject({ durationMs: 9000, usage: { input_tokens: 700, cache_read_input_tokens: 300, output_tokens: 200 } });
+    expect(cost!.body).toMatchObject({
+      durationMs: 9000,
+      usage: { input_tokens: 700_000, cache_read_input_tokens: 300_000, output_tokens: 210_000 },
+      models: { "gemini-3-flash-preview": { input_tokens: 100_000, cache_read_input_tokens: 0, output_tokens: 10_000 } },
+    });
+  });
+
+  it("prices what Gemini counted at what the agent definition states: $3.66, and names the model it states no price for", async () => {
+    const { visitId } = await geminiJudged();
+    const cost = await deps().records.latest(visitId, "llm_call");
+
+    expect(cost!.body).toMatchObject({ costUsd: 3.66, unpriced: ["gemini-3-flash-preview"] });
   });
 });

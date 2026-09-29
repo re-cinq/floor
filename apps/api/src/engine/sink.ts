@@ -2,6 +2,7 @@
 import { readAgentVerdict } from "@floor/assembly-lines";
 import { enforce, type RecordKind, type Report, type StationBody, type Visit } from "@floor/store";
 import type { Deps } from "../deps.js";
+import { pricedBy } from "./pricing.js";
 import { peel, readSinkEvent, spokenIn, type SinkEvent } from "./sink-event.js";
 
 const MAX_ERROR_CHARS = 300;
@@ -32,7 +33,7 @@ export class Sink {
   }
 
   private async note(visit: Visit, event: SinkEvent, payload: unknown): Promise<void> {
-    await this.append(visit.id, recordKindOf(event), noteOf(event, payload));
+    await this.append(visit.id, recordKindOf(event), noteOf(visit, event, payload));
     if (event.kind !== "file" || !event.ref) return;
 
     if (await this.deps.blobs.get(event.ref)) await this.append(visit.id, "produced", { name: event.name, ref: event.ref });
@@ -128,9 +129,9 @@ function recordKindOf(event: SinkEvent): RecordKind {
   return event.kind === "result" ? "llm_call" : "log";
 }
 
-// The result line is kept whole for the record and summarised for the report that will be read from it.
-function noteOf(event: SinkEvent, payload: unknown): unknown {
-  return event.kind === "result" ? { text: event.text, failed: event.failed, ...event.cost } : payload;
+// The result line is kept whole for the record and summarised for the report that will be read from it. Its cost is what the agent said, or what its counts come to at the prices the visit's agent definition stated.
+function noteOf(visit: Visit, event: SinkEvent, payload: unknown): unknown {
+  return event.kind === "result" ? { text: event.text, failed: event.failed, ...event.cost, ...pricedBy(visit.agentSettings, event.cost) } : payload;
 }
 
 function declaredValues(station: StationBody, said: Record<string, string>): Record<string, string> {

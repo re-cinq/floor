@@ -30,7 +30,24 @@ describe("readSinkEvent", () => {
       kind: "result",
       text: "LORE_NODE_RESULT: success",
       failed: false,
-      cost: { costUsd: 0.42, turns: 7, durationMs: 9000, usage: undefined },
+      cost: { costUsd: 0.42, turns: 7, durationMs: 9000, usage: undefined, models: undefined },
+    });
+  });
+
+  it("keeps what each of Claude's models read, wrote and cost: the one it was given, and the one it called on the side", () => {
+    const modelUsage = {
+      "claude-sonnet-4-6": { inputTokens: 900, outputTokens: 400, cacheReadInputTokens: 5000, cacheCreationInputTokens: 300, costUSD: 0.4, contextWindow: 200000 },
+      "claude-haiku-4-5": { inputTokens: 120, outputTokens: 30, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: 0.02 },
+    };
+    const read = readSinkEvent(enveloped({ type: "result", result: "done", total_cost_usd: 0.42, modelUsage }));
+
+    expect(read).toMatchObject({
+      cost: {
+        models: {
+          "claude-sonnet-4-6": { input_tokens: 900, cache_read_input_tokens: 5000, cache_creation_input_tokens: 300, output_tokens: 400, cost_usd: 0.4 },
+          "claude-haiku-4-5": { input_tokens: 120, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, output_tokens: 30, cost_usd: 0.02 },
+        },
+      },
     });
   });
 
@@ -41,7 +58,24 @@ describe("readSinkEvent", () => {
       kind: "result",
       text: "",
       failed: false,
-      cost: { costUsd: undefined, turns: undefined, durationMs: 9000, usage: { input_tokens: 700, cache_read_input_tokens: 300, output_tokens: 200 } },
+      cost: { costUsd: undefined, turns: undefined, durationMs: 9000, usage: { input_tokens: 700, cache_read_input_tokens: 300, output_tokens: 200 }, models: undefined },
+    });
+  });
+
+  it("keeps what each of Gemini's models read and wrote: the one it was given, and the one it called on the side", () => {
+    const models = {
+      "gemini-3.1-pro-preview": { total_tokens: 1100, input_tokens: 900, output_tokens: 200, cached: 300, input: 600 },
+      "gemini-3-flash-preview": { total_tokens: 110, input_tokens: 100, output_tokens: 10, cached: 0, input: 100 },
+    };
+    const read = readSinkEvent(enveloped({ type: "result", status: "success", stats: { input: 700, cached: 300, output_tokens: 210, duration_ms: 9000, models } }));
+
+    expect(read).toMatchObject({
+      cost: {
+        models: {
+          "gemini-3.1-pro-preview": { input_tokens: 600, cache_read_input_tokens: 300, output_tokens: 200 },
+          "gemini-3-flash-preview": { input_tokens: 100, cache_read_input_tokens: 0, output_tokens: 10 },
+        },
+      },
     });
   });
 

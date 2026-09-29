@@ -69,14 +69,16 @@ function bagGet(bag: Record<string, Item>, key: string): Item | undefined {
   return (bag as Partial<Record<string, Item>>)[key];
 }
 
-/** The variant merged over the default, per field, and per key inside `config`. */
+/** The variant merged over the default, per field, per key inside `config`, and per model inside `prices`. */
 export function mergeAgentSettings(base: AgentSettings, variant: Partial<AgentSettings> | undefined): AgentSettings {
   if (!variant) return base;
+  const prices = { ...base.prices, ...variant.prices };
 
   return {
     ...base,
     ...variant,
     config: { ...base.config, ...variant.config },
+    ...(Object.keys(prices).length > 0 && { prices }),
   };
 }
 

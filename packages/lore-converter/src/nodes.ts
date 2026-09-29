@@ -14,6 +14,8 @@ export interface ConvertOptions {
   env?: Record<string, string>;
   /** The key in the cluster's `agent-secrets` holding the model's credential, where it is not the usual one. */
   modelSecretKey?: string;
+  /** Model -> its price. lore keeps its prices in code; here each agent definition states them. */
+  prices?: AgentDefinitionBody["settings"]["prices"];
 }
 
 export interface Named<Body> {
@@ -60,6 +62,7 @@ export function agentDefinitionOf(node: LoreNode, recipe: LoreRecipe, options: C
       timeoutMinutes: node.timeout_minutes ?? recipe.settings.timeout_minutes ?? DEFAULT_TIMEOUT_MINUTES,
       tags: node.required_tags,
       config: withoutUnset(configOf(recipe, options)),
+      ...(options.prices && { prices: options.prices }),
     },
   };
 }

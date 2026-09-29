@@ -136,6 +136,15 @@ export interface StationBody {
   route?: string;
 }
 
+/** What a model costs, in US dollars for a million tokens. */
+export interface ModelPrice {
+  inputPerMillion: number;
+  outputPerMillion: number;
+  /** For what was read from the cache, and written to it; the input price when not stated. */
+  cacheReadPerMillion?: number;
+  cacheWritePerMillion?: number;
+}
+
 export interface AgentSettings {
   model?: string;
   prompt: string;
@@ -143,6 +152,8 @@ export interface AgentSettings {
   timeoutMinutes: number;
   tags?: string[];
   config?: Record<string, unknown>;
+  /** Model -> its price, for an agent that counts tokens and names no cost: the model it is given, and any it calls on the side. The floor holds no price of its own. */
+  prices?: Record<string, ModelPrice>;
 }
 
 export interface AgentDefinitionBody {

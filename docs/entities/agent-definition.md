@@ -29,12 +29,36 @@ configured to do it.
 | `settings.image` | the execution image |
 | `settings.tags` | which cluster agents may run it; a claimer must offer all of them |
 | `settings.config` | open object, checked when the definition is put. Read today, under lore's names: `skills`, `skills_source`, `mcp_servers`, `disallowed_tools`, `env`, `permission_mode` (`bypass` when absent), `max_turns`, `model_secret_key`. Anything else is kept and unused. Not built yet: `pod_resources`, `command`, `workdir` |
-| `variants` | `host/owner/name` → partial settings merged over the defaults, per field, and per key inside `config` |
+| `settings.prices` | model → what it costs, in US dollars for a million tokens: `inputPerMillion`, `outputPerMillion`, and `cacheReadPerMillion`, `cacheWritePerMillion` where the cache is priced apart |
+| `variants` | `host/owner/name` → partial settings merged over the defaults, per field, per key inside `config`, and per model inside `prices` |
 
 The model's API key is not here. The floor names a model; the cluster agent
 owns the secret for that model family, in its own cluster. A definition
 with no `model` gets no secret at all, since the family is read from the
 model's name.
+
+## What a visit cost
+
+An agent that says what it cost is believed: Claude ends with a price. One
+that only counts is priced from `prices`: Gemini ends with tokens and no
+price. The floor holds no price of its own.
+
+```yaml
+prices:
+  gemini-3.1-pro-preview: { input_per_million: 2, output_per_million: 12, cache_read_per_million: 0.2 }
+  gemini-3-flash-preview: { input_per_million: 0.5, output_per_million: 3 }
+```
+
+- **An agent calls more than the model it was given**: a cheaper one to
+  classify, or to compress what it has read. Each is priced at its own rate,
+  so each wants its own line.
+- **A model with no price is named**, in the visit's `llm_call` record, as
+  `unpriced`, and its part is left out of the cost. A cost that is short
+  says so.
+- **The cache is priced as any other reading** unless a cache price is
+  stated.
+- **A visit is priced when it ends, at what its definition stated then.** A
+  price that changes later changes no visit already run.
 
 ## Skills and MCP servers
 

@@ -79,6 +79,13 @@ describe("convertLine: lore's code-review", () => {
     });
   });
 
+  it("states what the models cost on the agent definition, where the floor reads it", () => {
+    const prices = { "gemini-3.1-pro-preview": { inputPerMillion: 2, outputPerMillion: 12 } };
+    const [definition] = codeReview({ ...IMAGE, prices }).agentDefinitions;
+
+    expect(definition).toMatchObject({ body: { settings: { prices } } });
+  });
+
   it("keeps the prompt as lore wrote it", () => {
     expect(promptOf(codeReview())).toMatch(/^\{description\}\n\nThe PR branch[\s\S]*<one-line summary>$/);
   });

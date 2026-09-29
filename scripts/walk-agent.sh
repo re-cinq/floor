@@ -23,6 +23,8 @@ MODEL="${FLOOR_WALK_MODEL:-claude-sonnet-4-6}"
 WAIT_SECONDS="${FLOOR_WALK_WAIT_SECONDS:-600}"
 # More for the definition's config, as JSON: a skill registry, MCP servers. See docs/entities/agent-definition.md.
 CONFIG="$(jq -c '{max_turns: 10} + .' <<<"${FLOOR_WALK_CONFIG:-{\}}")"
+# What the models cost, as JSON, for an agent that counts tokens and names no cost: {"<model>": {"inputPerMillion": 2, "outputPerMillion": 12}}.
+PRICES="$(jq -c . <<<"${FLOOR_WALK_PRICES:-{\}}")"
 LOGS="$(mktemp -d)"
 PIDS=()
 
@@ -67,7 +69,7 @@ PIDS+=($!)
 say "putting an agent definition, a station and a line: write -> done"
 api -X POST "${BASE}/agent-definitions" -d @- >/dev/null <<JSON
 {"id": "${NAME}", "settings": {
-  "model": "${MODEL}", "image": "node:22-bookworm", "timeoutMinutes": 8, "config": ${CONFIG},
+  "model": "${MODEL}", "image": "node:22-bookworm", "timeoutMinutes": 8, "config": ${CONFIG}, "prices": ${PRICES},
   "prompt": "Write exactly one short sentence about {topic} into the file {note_path}. Do nothing else. When the file is written, end your reply with this line on its own: LORE_NODE_RESULT: success"
 }}
 JSON
@@ -106,7 +108,7 @@ say "the visit's report"
 api "${BASE}/station-runs/${VISIT}" | jq '{report, worker}'
 
 say "what the agent cost"
-api "${BASE}/station-runs/${VISIT}/records?kind=llm_call" | jq -c '.items[].body | {costUsd, turns, durationMs}'
+api "${BASE}/station-runs/${VISIT}/records?kind=llm_call" | jq -c '.items[].body | {costUsd, unpriced, turns, durationMs, models}'
 echo "turns recorded: $(api "${BASE}/station-runs/${VISIT}/records?kind=turn&limit=200" | jq '.items | length')"
 
 NOTE="$(api "${BASE}/assembly-runs/${RUN}" | jq -r '.bag.note.ref // empty')"
