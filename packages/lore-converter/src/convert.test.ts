@@ -71,6 +71,14 @@ describe("convertLine: lore's code-review", () => {
     });
   });
 
+  it("gives every agent's pod what the cluster needs it to have, beside what the recipe sets", () => {
+    const [definition] = codeReview({ ...IMAGE, env: { GOOGLE_VERTEX_BASE_URL: "http://relay.test:8282" }, modelSecretKey: "GOOGLE_API_KEY" }).agentDefinitions;
+
+    expect(definition).toMatchObject({
+      body: { settings: { config: { env: { LORE_TEST_POLICY: "none", GOOGLE_VERTEX_BASE_URL: "http://relay.test:8282" }, model_secret_key: "GOOGLE_API_KEY" } } },
+    });
+  });
+
   it("keeps the prompt as lore wrote it", () => {
     expect(promptOf(codeReview())).toMatch(/^\{description\}\n\nThe PR branch[\s\S]*<one-line summary>$/);
   });

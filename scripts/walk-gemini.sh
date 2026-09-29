@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# Walks one run through a real agent pod on a Gemini model, with your gcloud login and no API key.
-# A relay on this machine asks Vertex AI as you; the pod holds a key made for this walk, which
-# opens the relay and nothing else, and is taken back when the walk ends. Your login never leaves
-# this machine. Needs `gcloud auth application-default login` and `npm run minikube-setup`.
+# Walks on a Gemini model, with your gcloud login and no API key. A relay on this machine asks
+# Vertex AI as you; the pod holds a key made for this walk, which opens the relay and nothing else,
+# and is taken back when the walk ends. Your login never leaves this machine. Needs
+# `gcloud auth application-default login` and `npm run minikube-setup`.
 #
-#   GOOGLE_CLOUD_PROJECT=<project with Vertex AI> bash scripts/walk-gemini.sh
+#   bash scripts/walk-gemini.sh                       walk-agent.sh, on Gemini
+#   bash scripts/walk-gemini.sh <walk> [its words]    another walk, on Gemini: walk-real-review.sh
+#                                                     and the pull request, say
+#
+# GOOGLE_CLOUD_PROJECT names the project with Vertex AI; gcloud's own is used when it is not set.
 set -euo pipefail
 
 # shellcheck source=lib/minikube.sh
@@ -49,7 +53,12 @@ done
 grep -q "listening" "${RELAY_LOG}" || fail "the relay did not start: $(cat "${RELAY_LOG}")"
 hold_key
 
-FLOOR_WALK_MODEL="${MODEL}" FLOOR_WALK_CONFIG="$(jq -cn --arg key "${SECRET_KEY}" --arg relay "http://host.minikube.internal:${RELAY_PORT}" '{
-  model_secret_key: $key,
-  env: {GOOGLE_GENAI_USE_VERTEXAI: "true", GOOGLE_VERTEX_BASE_URL: $relay, GEMINI_CLI_TRUST_WORKSPACE: "true"}}')" \
-  bash scripts/walk-agent.sh
+# Said twice, for the two ways a walk makes its agent definition: walk-agent.sh writes its own, the others have the converter write it.
+REACHED="http://host.minikube.internal:${RELAY_PORT}"
+WALK="${1:-scripts/walk-agent.sh}"
+[ "$#" -eq 0 ] || shift
+
+FLOOR_WALK_MODEL="${MODEL}" \
+  FLOOR_WALK_CONFIG="$(jq -cn --arg key "${SECRET_KEY}" --arg relay "${REACHED}" '{model_secret_key: $key, env: {GOOGLE_GENAI_USE_VERTEXAI: "true", GOOGLE_VERTEX_BASE_URL: $relay}}')" \
+  FLOOR_WALK_CONVERT="--model-secret-key ${SECRET_KEY} --env GOOGLE_GENAI_USE_VERTEXAI=true --env GOOGLE_VERTEX_BASE_URL=${REACHED}" \
+  bash "${WALK}" "$@"

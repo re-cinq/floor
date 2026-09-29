@@ -16,6 +16,8 @@ const USAGE = `floor-convert-lore --lore <checkout> (--line <name> | --all) [opt
   --model <model>          replaces every node's model
   --skills-source <url>    where a pod fetches skills and the agent's settings
   --skill <name>           a skill every agent gets; may be given more than once
+  --env <NAME=value>       set on every agent's pod; may be given more than once
+  --model-secret-key <key> the key in the cluster's agent-secrets holding the model's credential
   --put <floor url>        puts the result to a floor, with FLOOR_SERVICE_TOKEN
   --all                    every line, as a report of what converts and what is left`;
 
@@ -27,6 +29,8 @@ const OPTIONS = {
   model: { type: "string" },
   "skills-source": { type: "string" },
   skill: { type: "string", multiple: true },
+  env: { type: "string", multiple: true },
+  "model-secret-key": { type: "string" },
   put: { type: "string" },
 } as const;
 
@@ -35,13 +39,21 @@ async function main(): Promise<void> {
   const lore = values.lore;
 
   if (!lore || (!values.line && !values.all)) throw new Error(USAGE);
-  const options = { image: values.image, model: values.model, skillsSource: values["skills-source"], skills: values.skill };
+  const given = { image: values.image, model: values.model, skillsSource: values["skills-source"], skills: values.skill };
+  const options = { ...given, env: envOf(values.env), modelSecretKey: values["model-secret-key"] };
   const names = values.line ? [values.line] : await lineNames(lore);
   const recipes = await recipesOf(lore);
   const conversions = await Promise.all(names.map(async (name) => convertLine(await lineOf(lore, name), recipes, options)));
 
   await putAll(conversions, values.put);
   console.log(values.all ? report(conversions) : JSON.stringify(conversions[0], null, 2));
+}
+
+// `NAME=value`, cut at the first `=`: a value may hold one, as an address with a query does.
+function envOf(listed: string[] | undefined): Record<string, string> | undefined {
+  const pairs = (listed ?? []).map((entry) => [entry.slice(0, entry.indexOf("=")), entry.slice(entry.indexOf("=") + 1)]);
+
+  return pairs.length > 0 ? Object.fromEntries(pairs) : undefined;
 }
 
 async function putAll(conversions: Conversion[], floorUrl: string | undefined): Promise<void> {

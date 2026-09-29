@@ -10,7 +10,7 @@ import type {
   Station,
 } from "@re-cinq/agent-contracts";
 import type { BriefNeed, GitNeed, FileNeed, Produce } from "./need.js";
-import { environmentOf } from "./git-identity.js";
+import { environmentOf } from "./pod-environment.js";
 import { promptParameters } from "./prompt-parameters.js";
 
 export type DispatchNeed = BriefNeed;
@@ -101,7 +101,7 @@ function buildAgentDefinition(name: string, input: DispatchBrief): AgentDefiniti
 
 function agentResources(name: string, input: DispatchBrief): AgentResources {
   return {
-    env: envList(environmentOf(input.needs, input.settings.env)),
+    env: envList(environmentOf({ needs: input.needs, model: input.settings.model, defined: input.settings.env })),
     secrets: modelSecret(input),
     repos: gitNeedsOf(input).map((need) => ({
       name: need.name,

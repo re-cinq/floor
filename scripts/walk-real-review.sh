@@ -77,10 +77,12 @@ what_went_wrong() {
   kubectl -n "${FLOOR_AGENTS_NAMESPACE}" get agents,pods 2>&1 || true
 }
 
-# Lore's line, converted, put to the floor.
+# Lore's line, converted, put to the floor. FLOOR_WALK_CONVERT is more for the converter, as it would be typed: what a cluster needs its agents to have.
 put_line() {
+  local more=()
+  read -r -a more <<<"${FLOOR_WALK_CONVERT:-}"
   FLOOR_SERVICE_TOKEN="${TOKEN}" node packages/lore-converter/dist/cli.js \
-    --lore "${LORE_DIR}" --line "$1" --model "${MODEL}" --put "${BASE}" \
+    --lore "${LORE_DIR}" --line "$1" --model "${MODEL}" --put "${BASE}" "${more[@]}" \
     | jq -r '"line \(.line.id): enters at \(.line.body.entry); nodes \([.line.body.nodes[].id] | join(", ")); stations \([.stations[].id] | join(", "))"'
 }
 

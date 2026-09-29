@@ -10,6 +10,10 @@ export interface ConvertOptions {
   skills?: string[];
   skillsSource?: string;
   mcpServers?: unknown[];
+  /** What every agent's pod is given beside what its recipe sets: where a cluster's model is reached, say. */
+  env?: Record<string, string>;
+  /** The key in the cluster's `agent-secrets` holding the model's credential, where it is not the usual one. */
+  modelSecretKey?: string;
 }
 
 export interface Named<Body> {
@@ -62,15 +66,21 @@ export function agentDefinitionOf(node: LoreNode, recipe: LoreRecipe, options: C
 
 // lore's own names, which the floor reads as they are.
 function configOf(recipe: LoreRecipe, options: ConvertOptions): Record<string, unknown> {
-  const policy = recipe.settings.test_policy;
-
   return {
     disallowed_tools: recipe.settings.disallowed_tools,
-    env: policy ? { LORE_TEST_POLICY: policy } : undefined,
+    env: envOf(recipe, options),
     skills: options.skills,
     skills_source: options.skillsSource,
     mcp_servers: options.mcpServers,
+    model_secret_key: options.modelSecretKey,
   };
+}
+
+function envOf(recipe: LoreRecipe, options: ConvertOptions): Record<string, string> | undefined {
+  const policy = recipe.settings.test_policy;
+  const given = { ...(policy && { LORE_TEST_POLICY: policy }), ...options.env };
+
+  return Object.keys(given).length > 0 ? given : undefined;
 }
 
 function withoutUnset(config: Record<string, unknown>): Record<string, unknown> {

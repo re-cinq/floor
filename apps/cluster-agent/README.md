@@ -93,9 +93,12 @@ subsystem's `git_credential` and `git_credential_url` parameters
 authenticates. The one secret key this agent writes for a visit is the
 visit's own token.
 
-A visit with write access to a repository commits as `Floor Agent`
-(`domain/git-identity.ts`): git's own `GIT_AUTHOR_*` and `GIT_COMMITTER_*`
-variables, set on the pod. What the agent definition's `env` sets wins.
+A pod is told what is true of every pod of its kind
+(`domain/pod-environment.ts`), so no agent definition has to say it. A visit
+with write access to a repository commits as `Floor Agent`: git's own
+`GIT_AUTHOR_*` and `GIT_COMMITTER_*` variables. A Gemini pod trusts its
+workspace, `GEMINI_CLI_TRUST_WORKSPACE`, without which Gemini's CLI stops
+with nobody to ask. What the agent definition's `env` sets wins.
 
 ## Not ported
 

@@ -12,9 +12,9 @@ const FLOOR_IDENTITY: Record<string, string> = {
   GIT_COMMITTER_EMAIL: ADDRESS,
 };
 
-/** The definition's environment, under the floor's identity for a visit that may write to a repository. What the definition sets wins. */
-export function environmentOf(needs: readonly BriefNeed[], defined: Record<string, string> | undefined): Record<string, string> | undefined {
+/** The floor's identity for a visit that may write to a repository, and nothing for one that only reads. */
+export function identityFor(needs: readonly BriefNeed[]): Record<string, string> {
   const writes = needs.some((need) => need.kind === "git" && need.access === "write");
 
-  return writes ? { ...FLOOR_IDENTITY, ...defined } : defined;
+  return writes ? FLOOR_IDENTITY : {};
 }
