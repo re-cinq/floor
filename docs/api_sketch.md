@@ -95,7 +95,8 @@ GET    /station-runs/:id/brief           // for the executor: each need with its
                                          // settings, and a freshly minted visit token. 409 once the visit is done
 POST   /station-runs/:id/git-credential  // { repo: "owner/name" }, visit token -> { username, password } for a repository
                                          // the visit has a git need for, read or write as the need declares. 403 for
-                                         // any other repository, 501 on a floor with no provider, 502 when it refuses
+                                         // any other repository, 501 on a floor with no provider, 502 when it refuses.
+                                         // The provider is asked with `FLOOR_GIT_CREDENTIAL_TOKEN`, never the service token
 
 The data plane, written with the visit token, never through the queue:
 
@@ -208,7 +209,7 @@ services without changing this API.
 | agent pods | the ai-agent-subsystem: an `Agent` resource per visit | one cluster agent on minikube | cluster agents per cluster, claiming by tag |
 | events queue | names, `dedupe_key`, `not_before`, claim/ack | own table | proxy to event-router |
 | GitHub's events | `github.<event>.<action>`, fields lifted to the top | lore's webhook handler, posting to `/events` | lore's own webhook handler, posting the same events |
-| git credentials | the subsystem's broker: git in the pod trades its run credential for a repo-scoped token, minted when it asks | the floor's own endpoint, asking the provider at `FLOOR_GIT_CREDENTIAL_URL` | lore's `POST /api/github-credentials` |
+| git credentials | the subsystem's broker: git in the pod trades its run credential for a repo-scoped token, minted when it asks | the floor's own endpoint, asking the provider at `FLOOR_GIT_CREDENTIAL_URL` with `FLOOR_GIT_CREDENTIAL_TOKEN` | lore's `POST /api/github-credentials` |
 | agent output | `LORE_NODE_RESULT:`, then `REVIEW_RESULT:`, then success | lore's parser, ported; outcomes are the station's own | same |
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled`, which carries the run's value arguments in `args`, `task_id` among them |
 | agent context | none required | whatever the definition names | lore MCP gateway |

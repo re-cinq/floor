@@ -56,6 +56,11 @@ spec:
             {{- with (include "floor.api.gitCredentialUrl" .) }}
             - name: FLOOR_GIT_CREDENTIAL_URL
               value: {{ . | quote }}
+            - name: FLOOR_GIT_CREDENTIAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.api.gitCredentialSecret.name | default $.Values.api.existingSecret }}
+                  key: {{ $.Values.api.gitCredentialSecret.key }}
             {{- end }}
           # Ready is "can reach Postgres". Which replica runs the loop is the lease's business.
           livenessProbe:

@@ -192,10 +192,15 @@ last thing a visit does.
 
 **The floor decides who may have a credential; a provider mints it.** The
 floor knows the visit, its needs and their access. It holds no GitHub
-client, so it asks the provider at `FLOOR_GIT_CREDENTIAL_URL`, as a service,
-over HTTP: `{ repoUrl, access }` in, `{ username, password }` out, answered
+client, so it asks the provider at `FLOOR_GIT_CREDENTIAL_URL`, over HTTP: `{ repoUrl, access }` in, `{ username, password }` out, answered
 inside twenty seconds. lore is that provider. A queue would not do: git waits
 thirty seconds for its answer.
+
+**The provider is asked with a token of its own.** The floor presents
+`FLOOR_GIT_CREDENTIAL_TOKEN`, never `FLOOR_SERVICE_TOKEN`. The service token
+opens the whole floor, and the provider is another system. A floor with a
+provider URL and no token for it refuses to start, so the gap shows at
+deploy and not on the first push.
 
 **A visit gets a credential only for a repository it has a `git` need for,**
 with the access that need declares, and only until it reports. A read need

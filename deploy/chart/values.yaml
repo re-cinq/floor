@@ -26,6 +26,12 @@ api:
   # The provider is a service outside this chart, which mints a credential for one repository when
   # asked. Empty means nothing does: a visit that would write to a repository is not dispatched.
   gitCredentialUrl: ""
+  # FLOOR_GIT_CREDENTIAL_TOKEN — the token the api presents to that provider. It is never the
+  # service token. Read from `key` of Secret `name`; an empty name falls back to existingSecret.
+  # Needed only when gitCredentialUrl is set.
+  gitCredentialSecret:
+    name: ""
+    key: gitCredentialToken
 
 clusterAgent:
   enabled: true

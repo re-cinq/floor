@@ -39,6 +39,10 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
 - `api.gitCredentialUrl` — where the api asks for a git credential for a visit's repository. The
   provider is a service outside this chart, lore's. Empty means nothing provides them, and a visit
   that would write to a repository is not dispatched.
+- `api.gitCredentialSecret` — the Secret holding the token the api presents to that provider
+  (`FLOOR_GIT_CREDENTIAL_TOKEN`), never the service token. `name` defaults to `api.existingSecret`;
+  `key` defaults to `gitCredentialToken`, so that Secret must hold that key. Needed only when
+  `api.gitCredentialUrl` is set: the api refuses to start with the URL and no token.
 - `postgres.*` — either `existingSecret` + `secretKey` (a Secret already holding a full connection
   string), or `host`/`port`/`database`/`user`/`password`, from which the chart builds one. One or
   the other is required unconditionally: the migration Job always runs, whether or not this

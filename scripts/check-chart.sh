@@ -35,6 +35,17 @@ if helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" | grep -qF F
   fail "FLOOR_GIT_CREDENTIAL_URL is set though no provider was given"
 fi
 
+say "the api presents its own token to the provider, from a Secret"
+helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" \
+  --set api.gitCredentialUrl=http://lore/git-credentials \
+  | grep -A4 'name: FLOOR_GIT_CREDENTIAL_TOKEN' | grep -qF secretKeyRef \
+  || fail "FLOOR_GIT_CREDENTIAL_TOKEN is not a secretKeyRef though a provider was given"
+
+say "the api carries no git credential token without a provider"
+if helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" | grep -qF FLOOR_GIT_CREDENTIAL_TOKEN; then
+  fail "FLOOR_GIT_CREDENTIAL_TOKEN is set though no provider was given"
+fi
+
 assert_refusal() {
   local name="$1"
   local expected="$2"

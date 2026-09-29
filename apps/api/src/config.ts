@@ -12,6 +12,8 @@ export interface Config {
   reapMs: number;
   /** Absent: no git credential is given, and a visit that would write to a repository is not dispatched. */
   gitCredentialUrl?: string;
+  /** What the floor presents to that provider; never the service token, which opens the whole floor. */
+  gitCredentialToken?: string;
 }
 
 const DEFAULT_PORT = 8080;
@@ -23,6 +25,8 @@ const DEFAULT_REAP_MS = 3_600_000;
 export const FLOOR_LEASE_KEY = 0x666c6f6f72n;
 
 export function loadConfig(env: NodeJS.ProcessEnv): Config {
+  const gitCredentialUrl = env.FLOOR_GIT_CREDENTIAL_URL || undefined;
+
   return {
     port: numberOf(env.PORT, DEFAULT_PORT),
     databaseUrl: env.FLOOR_DATABASE_URL ?? "postgres://postgres:floor@localhost:5433/floor",
@@ -33,7 +37,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     pollMs: numberOf(env.FLOOR_POLL_MS, DEFAULT_POLL_MS),
     sweepMs: numberOf(env.FLOOR_SWEEP_MS, DEFAULT_SWEEP_MS),
     reapMs: numberOf(env.FLOOR_REAP_MS, DEFAULT_REAP_MS),
-    gitCredentialUrl: env.FLOOR_GIT_CREDENTIAL_URL || undefined,
+    gitCredentialUrl,
+    gitCredentialToken: gitCredentialUrl ? enforceEnv(env, "FLOOR_GIT_CREDENTIAL_TOKEN") : undefined,
   };
 }
 

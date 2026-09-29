@@ -20,6 +20,7 @@ PORT="${PORT:-8099}"
 PROVIDER_PORT="$((PORT + 2))"
 BASE="http://localhost:${PORT}"
 TOKEN="walk-git-service-token"
+GIT_CREDENTIAL_TOKEN="walk-git-provider-token"
 NAME="walk-git-$(date +%s)"
 MODEL="${FLOOR_WALK_MODEL:-claude-sonnet-4-6}"
 REPOSITORY="${FLOOR_WALK_REPOSITORY:-github.com/octocat/Spoon-Knife}"
@@ -51,13 +52,14 @@ npm run --silent db:up >/dev/null
 npm run --silent build >/dev/null
 
 say "starting the stand-in git credential provider on :${PROVIDER_PORT}"
-PORT="${PROVIDER_PORT}" FLOOR_SERVICE_TOKEN="${TOKEN}" node scripts/stations/git-credentials.mjs >"${LOGS}/provider.log" 2>&1 &
+PORT="${PROVIDER_PORT}" FLOOR_GIT_CREDENTIAL_TOKEN="${GIT_CREDENTIAL_TOKEN}" node scripts/stations/git-credentials.mjs >"${LOGS}/provider.log" 2>&1 &
 PIDS+=($!)
 
 say "starting the floor on :${PORT}; pods will reach it at host.minikube.internal"
 PORT="${PORT}" FLOOR_BASE_URL="http://host.minikube.internal:${PORT}" FLOOR_SERVICE_TOKEN="${TOKEN}" \
   FLOOR_VISIT_TOKEN_SECRET="walk-git-secret" FLOOR_POLL_MS=200 \
   FLOOR_GIT_CREDENTIAL_URL="http://localhost:${PROVIDER_PORT}/git-credentials" \
+  FLOOR_GIT_CREDENTIAL_TOKEN="${GIT_CREDENTIAL_TOKEN}" \
   node apps/api/dist/index.js >"${LOGS}/api.log" 2>&1 &
 PIDS+=($!)
 

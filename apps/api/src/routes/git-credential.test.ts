@@ -4,8 +4,9 @@ import { fixDispatched } from "../git-fixtures.js";
 import { SERVICE_TOKEN, VISIT_TOKEN_SECRET, injectJson, setupTestServer } from "../test-server.js";
 import { mintVisitToken } from "../visit-token.js";
 
+const GIT_CREDENTIAL_TOKEN = "test-git-credential-token";
 const provider = await startFakeGitProvider();
-const { server, deps, loop } = setupTestServer({ gitCredentialUrl: provider.url });
+const { server, deps, loop } = setupTestServer({ gitCredentialUrl: provider.url, gitCredentialToken: GIT_CREDENTIAL_TOKEN });
 
 afterAll(async () => {
   await provider.close();
@@ -39,10 +40,18 @@ describe("POST /station-runs/:id/git-credential", () => {
     expect(response.result).toEqual({ username: "x-access-token", password: "ghs_write" });
   });
 
-  it("asks the provider as a service, for the clone url and the access the need declares", async () => {
+  it("asks the provider with the git credential token, for the clone url and the access the need declares", async () => {
     await ask();
 
-    expect(provider.asked.at(-1)).toEqual({ authorization: `Bearer ${SERVICE_TOKEN}`, repoUrl: "https://github.com/re-cinq/floor", access: "write" });
+    expect(provider.asked.at(-1)).toEqual({ authorization: `Bearer ${GIT_CREDENTIAL_TOKEN}`, repoUrl: "https://github.com/re-cinq/floor", access: "write" });
+  });
+
+  it("never shows the provider the floor's service token", async () => {
+    await ask();
+
+    const lastAsked = provider.asked.at(-1);
+
+    expect(lastAsked?.authorization).not.toContain(SERVICE_TOKEN);
   });
 
   it("other repository: refuses re-cinq/lore, which the visit was not given", async () => {

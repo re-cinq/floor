@@ -224,7 +224,7 @@ run settles, and `GET /assembly-runs/<id>` shows its outcome.
 | A dispatch sits unclaimed | Tags. The claimer must offer **every** tag on the dispatch; compare the agent definition's `settings.tags` against `clusterAgent.tags`. An unclaimed dispatch fails at 30 minutes. |
 | A visit failed with `timeout` | It passed its deadline — `now + queue wait + the agent definition's timeout`, set when the visit opened. |
 | An agent pod starts and dies | The model credential in `agent-secrets`, under the key that family reads. |
-| A visit cannot write to a repository | Floor mints no credentials. It asks the provider at `FLOOR_GIT_CREDENTIAL_URL`; with none configured it answers 501 and refuses the brief. See [decisions.md](decisions.md), "GitHub". |
+| A visit cannot write to a repository | Floor mints no credentials. It asks the provider at `FLOOR_GIT_CREDENTIAL_URL`, presenting `FLOOR_GIT_CREDENTIAL_TOKEN`, which the floor requires whenever the URL is set; with none configured it answers 501 and refuses the brief. See [decisions.md](decisions.md), "GitHub". |
 | An event keeps retrying | The queue backs off to ten minutes and dead-letters after eight attempts. `GET /events` is the feed. |
 
 Nothing in a run is stored as state: its status, its bag, its current node and its cost are all

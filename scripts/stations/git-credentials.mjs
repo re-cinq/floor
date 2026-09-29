@@ -5,13 +5,13 @@ const DEFAULT_PORT = 8281;
 const HTTP_OK = 200;
 const HTTP_UNAUTHORIZED = 401;
 const PORT = Number(process.env.PORT ?? DEFAULT_PORT);
-const SERVICE_TOKEN = process.env.FLOOR_SERVICE_TOKEN ?? "";
+const CALLER_TOKEN = process.env.FLOOR_GIT_CREDENTIAL_TOKEN ?? "";
 
 createServer(async (request, response) => {
   const chunks = [];
 
   for await (const chunk of request) chunks.push(chunk);
-  const known = request.headers.authorization === `Bearer ${SERVICE_TOKEN}`;
+  const known = request.headers.authorization === `Bearer ${CALLER_TOKEN}`;
   const asked = known ? JSON.parse(Buffer.concat(chunks).toString()) : {};
 
   console.log(known ? `[git-credentials] asked for ${asked.access} on ${asked.repoUrl}` : "[git-credentials] refused a caller that is not the floor");
