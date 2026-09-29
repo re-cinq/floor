@@ -2,7 +2,7 @@
 
 import type { Pool, PoolClient } from "pg";
 import { getNextTransition, type Transition } from "@floor/assembly-lines";
-import { DefinitionsStore, type DefinitionRow } from "./definitions.js";
+import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
 import { foldBag } from "./bag.js";
@@ -13,9 +13,9 @@ import { Refusal, enforce } from "./refusal.js";
 import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
 import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
+import { enforceFilesExist, lineToStart } from "./start-line.js";
 import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable, type VisitFilter } from "./rows.js";
 import {
-  blobHashesExist,
   claimedDispatchTags,
   closeOpenHumanVisits,
   currentNodeOf,
@@ -100,44 +100,17 @@ export class AssemblyRunStore {
   }
 
   async start(input: StartRunInput): Promise<StartResult> {
-    const line = await this.lineToStart(input);
+    const line = await lineToStart(this.definitions, input);
 
     enforceStartArgs(line.body.args, input.startItems);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
-    await this.enforceFilesExist(line.body.files);
+    await enforceFilesExist(this.deps.pool, line.body.files);
     const startItems = foldLineFiles(line.body.files, input.startItems);
     const subjectKey = deriveSubjectKey(line.body, startItems);
 
     return withTransaction(this.deps.pool, (client) =>
       this.startInTransaction(client, { input: { ...input, startItems }, lineHash: line.hash, entry, subjectKey }),
     );
-  }
-
-  private async lineToStart(input: StartRunInput): Promise<DefinitionRow<LineBody>> {
-    if (input.lineHash === undefined) {
-      const latest = await this.definitions.latest<LineBody>("line", input.lineId);
-
-      enforce(latest, `no line named "${input.lineId}"`);
-
-      return latest;
-    }
-
-    const pinned = await this.definitions.byHash<LineBody>("line", input.lineId, input.lineHash);
-
-    enforce(pinned, `"${input.lineHash}" is not a version of line "${input.lineId}"`);
-    // Archiving retires a line, and naming a version by hand must not walk around that.
-    enforce(!pinned.archivedAt, `line "${input.lineId}" is archived`);
-
-    return pinned;
-  }
-
-  private async enforceFilesExist(files: Record<string, string> | undefined): Promise<void> {
-    if (!files || Object.keys(files).length === 0) return;
-    const existing = await blobHashesExist(this.deps.pool, Object.values(files));
-
-    for (const [name, hash] of Object.entries(files)) {
-      enforce(existing.has(hash), `file "${name}" names blob "${hash}", which does not exist`);
-    }
   }
 
   private async startInTransaction(client: PoolClient, prepared: PreparedStart): Promise<StartResult> {
