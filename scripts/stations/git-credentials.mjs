@@ -1,4 +1,4 @@
-// A git credential provider, for a laptop: it says what it was asked and answers with a token that opens nothing. The real one is @floor/github's, and mints a GitHub App's.
+// A git credential provider, for a laptop: it says what it was asked and answers with a token that opens nothing. The real one is lore's, and mints a GitHub App's.
 import { createServer } from "node:http";
 
 const DEFAULT_PORT = 8281;

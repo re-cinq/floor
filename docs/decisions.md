@@ -164,7 +164,7 @@ never handles a blob hash.
 
 **Bodies are `camelCase`.** The plan wrote `dedupe_key` and `not_before`.
 Every type in the code is `camelCase`, and one spelling is fewer mistakes
-than two. Authored YAML stays `snake_case`; nothing converts it yet.
+than two. Authored YAML stays `snake_case`; `floor-pipeline` (`packages/pipeline`) converts it.
 
 **`not_before` is `availableAt`.** The lint rule against negative names
 flagged it, and the positive name says the same thing.

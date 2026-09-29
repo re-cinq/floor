@@ -1,15 +1,19 @@
 # Builds all of the floor's apps (apps/api, apps/cluster-agent) from one image. Which
 # one a container runs is chosen at deploy time by overriding `command` — see deploy/chart.
+# The image also holds the pipeline tool (packages/pipeline), which is not a service.
 #
 #   docker build -t floor .
 #   docker run floor node apps/api/dist/index.js
 #   docker run floor node apps/cluster-agent/dist/index.js
+#   docker run floor node packages/pipeline/dist/cli.js
 
 FROM node:22-slim AS build
 WORKDIR /app
 
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/assembly-lines/package.json packages/assembly-lines/package.json
+COPY packages/lore-converter/package.json packages/lore-converter/package.json
+COPY packages/pipeline/package.json packages/pipeline/package.json
 COPY packages/station/package.json packages/station/package.json
 COPY packages/store/package.json packages/store/package.json
 COPY apps/api/package.json apps/api/package.json
@@ -25,6 +29,8 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/assembly-lines/package.json packages/assembly-lines/package.json
+COPY packages/lore-converter/package.json packages/lore-converter/package.json
+COPY packages/pipeline/package.json packages/pipeline/package.json
 COPY packages/station/package.json packages/station/package.json
 COPY packages/store/package.json packages/store/package.json
 COPY apps/api/package.json apps/api/package.json
@@ -34,6 +40,8 @@ RUN npm ci --omit=dev
 FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+ARG FLOOR_BUILD_SHA=dev
+ENV FLOOR_BUILD_SHA=$FLOOR_BUILD_SHA
 
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json ./package.json
@@ -44,6 +52,8 @@ COPY --from=build --chown=node:node /app/packages/store/dist packages/store/dist
 COPY --from=build --chown=node:node /app/packages/store/migrations packages/store/migrations
 COPY --from=build --chown=node:node /app/packages/station/package.json packages/station/package.json
 COPY --from=build --chown=node:node /app/packages/station/dist packages/station/dist
+COPY --from=build --chown=node:node /app/packages/pipeline/package.json packages/pipeline/package.json
+COPY --from=build --chown=node:node /app/packages/pipeline/dist packages/pipeline/dist
 COPY --from=build --chown=node:node /app/apps/api/package.json apps/api/package.json
 COPY --from=build --chown=node:node /app/apps/api/dist apps/api/dist
 COPY --from=build --chown=node:node /app/apps/cluster-agent/package.json apps/cluster-agent/package.json

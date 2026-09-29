@@ -39,7 +39,7 @@ It is how lore's existing assembly lines get here at all. See [the map](../../RE
 
 A line's file does not say what starts it, what it is given, or what lore's floor did in code around it. `known-lines.ts` holds that, one line at a time, each read by hand from lore's code. A line with no entry there still converts, with the default arguments and no start event, and says so in its notes.
 
-Today it holds `code-review` and `code-review-recheck`. The first starts when a pull request opens, the second never by itself: a push goes to a review router station, which asks for one or the other. Both have a `post-review` station where lore's floor posted the review from a hook.
+Today it holds `code-review`, `code-review-recheck` and `code-review-reply`. The first starts when a pull request opens. The second never starts by itself: a push goes to a `review-router` station, which asks for one or the other. That station is not in this repository; lore is expected to run it. The third starts when a trusted person submits a review asking for changes. The first two have a `post-review` station where lore's floor posted the review from a hook, and the third has a `post-reply` one.
 
 A service station converts with no needs and no produces. What a lore job read and wrote is in its code. Each is noted.
 

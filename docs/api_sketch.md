@@ -219,7 +219,6 @@ Every one of lore's lines converts into a line this floor accepts. One,
 `code-review`, runs as it did in lore. For the others the converter says
 what is left: mostly what starts them, which is in lore's code and not in
 its files, and what their service stations read and write.
-`scripts/walk-code-review.sh` runs the converted line through a real pod.
 
 | lore | becomes |
 |---|---|
