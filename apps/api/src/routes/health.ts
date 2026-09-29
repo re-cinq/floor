@@ -3,7 +3,7 @@ import type { Server } from "@hapi/hapi";
 import Boom from "@hapi/boom";
 import type { PgPool } from "@floor/store";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export interface Readiness {
   pool: PgPool;

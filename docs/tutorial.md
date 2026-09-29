@@ -59,7 +59,7 @@ helm install floor deploy/chart \
 [ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem)'s controller — the thing that
 actually runs an agent pod. Leave it off only if another install on the cluster already runs it.
 
-A migration Job runs on install and on every upgrade; it creates the six tables. The chart
+A migration Job runs on install and on every upgrade; it creates the tables. The chart
 refuses an install with no `version` or no `api.existingSecret`, before anything is applied.
 
 **Check it:**

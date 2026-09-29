@@ -24,6 +24,21 @@ See [the map](../../README.md) for what sits either side of it.
   "Tables" section specifies. `station_runs.outcome`/`session_ref` are
   generated columns read out of the report's own JSON, so they can never
   disagree with it.
+- `migrations/0002_run_feed.sql` — `run_feed`, the run journal: everything
+  that happens in a run, numbered 1, 2, 3 per run with no gap. Four triggers
+  write it, on a record appended, a visit opened, a visit reported and a run
+  settled, so no code that writes can forget to. Each entry is numbered
+  under `pg_advisory_xact_lock(7233, hashtext(run))` and announced with
+  `pg_notify('floor_run_feed', {schema, run})`.
+- `run-journal.ts` — `RunJournal.since(runId, after, limit)`: the journal's
+  entries after a cursor, each with its visit and, for a record, the record,
+  joined in at read time. A `visit_opened` entry tells the visit as it was
+  opened, with no report. Null for a run that does not exist.
+- `run-notifier.ts` — `PgRunNotifier`: who is told when a run's journal
+  grows. One listening connection per process, outside the pool, named
+  `floor-run-listener`, opened by the first `subscribe`. A notice from
+  another schema is dropped. When the connection is lost it listens again
+  with backoff and calls every listener's `resync`. `close()` ends it.
 - `pg.ts` — one pool per process, and a plain migration runner (a
   `schema_migrations` table tracking applied filenames; no framework).
   `migrate` holds a Postgres advisory lock for its whole run

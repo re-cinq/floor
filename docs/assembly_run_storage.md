@@ -452,10 +452,51 @@ The floor collects every cost itself.
 - A report is a compare-and-set on `report is null`.
 - `(repo, subject_key)` is unique among open runs.
 - Nothing holds a lock across a network call.
+- A run's journal is numbered under a lock on the run, held until the
+  writing transaction ends. Two visits of one run writing at once are
+  numbered one after the other, and a number is never skipped.
+
+## The run journal
+
+A record's `seq` counts within one visit and one kind. A run had no single
+order, so nobody could ask "what happened in this run since I last looked".
+The journal is that order: table `run_feed`, one row for everything that
+happens in a run, numbered 1, 2, 3 per run with no gap.
+
+| entry | written when |
+|---|---|
+| `record` | a `log`, `turn` or `llm_call` record is appended to a visit of the run |
+| `visit_opened` | a visit is opened |
+| `visit_reported` | a visit's report is written |
+| `run_settled` | the run gets its `finished_at` |
+
+- **Postgres writes it, by trigger.** Records, visits and runs are written
+  in at least seven places. A trigger cannot be forgotten by the eighth.
+- **An entry points, it does not copy.** It holds the visit's id and the
+  record's key. The body is joined in when the journal is read, so nothing
+  is stored twice.
+- **A `session` record is left out.** It is the sink's own note of where a
+  conversation was saved.
+- **Every entry is announced.** The trigger calls `pg_notify` on channel
+  `floor_run_feed` with the schema and the run's id, and no body: a notice
+  holds 8000 bytes. Whoever hears it reads the journal from its own cursor.
+  The notice is sent when the transaction commits, so what it announces can
+  be read.
+- **A notice is the database's, the journal is the schema's.** Floors that
+  share a database, a schema each, hear each other's notices and drop them
+  by the schema they name.
+- **A run from before the journal has none.** It stays readable by
+  `/station-runs` and `/station-runs/:id/records`.
+
+`RunJournal.since(runId, after, limit)` reads it. `PgRunNotifier` listens,
+on one connection of its own per process, opened when the first viewer
+comes. When that connection is lost it listens again, waiting longer each
+time, and tells every viewer to read again from its cursor, since notices
+sent in between were missed.
 
 ## Tables
 
-Postgres. Six tables.
+Postgres. Seven tables.
 
 ```sql
 -- every definition. Content-hashed; a row never changes.
@@ -523,6 +564,20 @@ create table station_run_records (
   body           jsonb not null,
   at             timestamptz not null,
   primary key (station_run_id, kind, seq)
+);
+```
+
+```sql
+-- the run journal: everything that happens in a run, in one order. Written by triggers.
+create table run_feed (
+  run_id      uuid   not null references assembly_runs(id) on delete cascade,
+  seq         bigint not null,                      -- the cursor: 1, 2, 3 with no gap, per run
+  kind        text   not null,                      -- record | visit_opened | visit_reported | run_settled
+  visit_id    uuid,
+  record_kind text,
+  record_seq  int,
+  at          timestamptz not null default now(),
+  primary key (run_id, seq)
 );
 ```
 

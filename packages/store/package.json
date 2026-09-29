@@ -2,7 +2,7 @@
   "name": "@floor/store",
   "version": "0.1.0",
   "private": true,
-  "description": "The events queue and the six-table Postgres schema behind it (docs/assembly_run_storage.md, \"Events: the queue and the loop\"). Every worker pulls: enqueue writes a row, claim takes a batch under FOR UPDATE SKIP LOCKED filtered by tags, ack/fail close the loop with exponential backoff and dead-lettering after 8 attempts.",
+  "description": "The events queue and the Postgres schema behind it (docs/assembly_run_storage.md, \"Events: the queue and the loop\"). Every worker pulls: enqueue writes a row, claim takes a batch under FOR UPDATE SKIP LOCKED filtered by tags, ack/fail close the loop with exponential backoff and dead-lettering after 8 attempts.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -32,7 +32,7 @@ them is stored.
 flowchart TB
     subgraph inside["one process, linked in memory"]
         api["<b>apps/api</b><br/>HTTP routes, and the loop:<br/>route, dispatch, sweep"]
-        store["<b>packages/store</b><br/>six tables, the events queue"]
+        store["<b>packages/store</b><br/>seven tables, the events queue"]
         kernel["<b>packages/assembly-lines</b><br/>the walk kernel, pure"]
         api --> store --> kernel
     end
