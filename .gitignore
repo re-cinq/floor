@@ -5,3 +5,5 @@ dist/
 .floor-kubeconfig-minikube
 .floor-agents.env
 apps/github/coverage/
+.claude/settings.local.json
+.claude/worktrees/
