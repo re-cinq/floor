@@ -4,6 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import postgres from "pg";
+import { withAdvisoryLock } from "./lease.js";
 
 export type { Pool as PgPool, PoolClient } from "pg";
 
@@ -11,39 +12,41 @@ export function createPool(connectionString: string): postgres.Pool {
   return new postgres.Pool({ connectionString });
 }
 
+// Distinct from the floor lease key and the test lease key, so migrating never waits on a floor.
+const MIGRATION_LOCK_KEY = 0x6d696772n;
+
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
 export async function migrate(pool: postgres.Pool, dir: string = MIGRATIONS_DIR): Promise<string[]> {
-  await ensureMigrationsTable(pool);
+  return withAdvisoryLock(pool, MIGRATION_LOCK_KEY, (client) => applyPending(client, dir));
+}
+
+async function applyPending(client: postgres.PoolClient, dir: string): Promise<string[]> {
+  await client.query(
+    `create table if not exists schema_migrations (name text primary key, applied_at timestamptz not null default now())`,
+  );
 
   const files = (await readdir(dir)).filter((name) => name.endsWith(".sql")).sort();
   const applied: string[] = [];
 
   for (const file of files) {
-    if (await isApplied(pool, file)) continue;
+    if (await isApplied(client, file)) continue;
 
-    await applyMigration(pool, dir, file);
+    await applyMigration(client, dir, file);
     applied.push(file);
   }
 
   return applied;
 }
 
-async function ensureMigrationsTable(pool: postgres.Pool): Promise<void> {
-  await pool.query(
-    `create table if not exists schema_migrations (name text primary key, applied_at timestamptz not null default now())`,
-  );
-}
-
-async function isApplied(pool: postgres.Pool, file: string): Promise<boolean> {
-  const { rowCount } = await pool.query(`select 1 from schema_migrations where name = $1`, [file]);
+async function isApplied(client: postgres.PoolClient, file: string): Promise<boolean> {
+  const { rowCount } = await client.query(`select 1 from schema_migrations where name = $1`, [file]);
 
   return Boolean(rowCount);
 }
 
-async function applyMigration(pool: postgres.Pool, dir: string, file: string): Promise<void> {
+async function applyMigration(client: postgres.PoolClient, dir: string, file: string): Promise<void> {
   const sql = await readFile(join(dir, file), "utf8");
-  const client = await pool.connect();
 
   try {
     await client.query("begin");
@@ -53,7 +56,5 @@ async function applyMigration(pool: postgres.Pool, dir: string, file: string): P
   } catch (err) {
     await client.query("rollback");
     throw err;
-  } finally {
-    client.release();
   }
 }

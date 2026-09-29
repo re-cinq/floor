@@ -21,6 +21,23 @@ export async function acquireLease(pool: Pool, key: bigint): Promise<Lease | nul
   return new AdvisoryLease(client, key);
 }
 
+/** Blocks until the lock is free, so a second caller waits for the first and then finds nothing left to do. */
+export async function withAdvisoryLock<T>(pool: Pool, key: bigint, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("select pg_advisory_lock($1)", [key]);
+
+    try {
+      return await work(client);
+    } finally {
+      await client.query("select pg_advisory_unlock($1)", [key]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
 class AdvisoryLease implements Lease {
   private gone = false;
 
