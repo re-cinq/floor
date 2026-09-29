@@ -18,6 +18,7 @@
     "db:migrate": "npm run build -w @floor/store && FLOOR_DATABASE_URL=${FLOOR_DATABASE_URL:-postgres://postgres:floor@localhost:5433/floor} npm run migrate -w @floor/store",
     "minikube-setup": "bash scripts/setup-minikube-agents.sh",
     "minikube-claude-auth": "bash scripts/minikube-claude-auth.sh",
+    "minikube-gemini-auth": "bash scripts/minikube-gemini-auth.sh",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

@@ -205,6 +205,17 @@ converter adds the push to the prompt, after lore's own words, and gives the
 station write access. Only the pod holds the commit, so only the pod can
 push it.
 
+**A pod that may write commits as Floor Agent.** git refuses to commit for
+nobody, and a pod is nobody until it is told. The cluster agent sets git's
+own variables on every visit with write access to a repository, as lore
+does, and an agent definition's `env` may name someone else. The name is
+floor's and not lore's, so a commit is not taken for one lore made.
+
+**A review's inline comments are read from the pull request's list.**
+GitHub's list by review names the file and never the line. The pull
+request's own list names both, and each comment's review. A comment whose
+line has since changed keeps the line it was written on.
+
 **`code-review-reply` is started by a person's review, never a bot's.** The
 post-review station posts reviews that ask for changes. Without `sender_type`
 in the line's `when`, each of those would start a reply to itself.

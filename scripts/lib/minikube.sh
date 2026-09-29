@@ -6,7 +6,8 @@ NAMESPACE="${FLOOR_AGENTS_NAMESPACE:-floor-agents}"
 PROFILE="${MINIKUBE_PROFILE:-minikube}"
 ENV_FILE="${FLOOR_ENV_FILE:-${ROOT}/.env.local}"
 KUBECONFIG_FILE="${ROOT}/.floor-kubeconfig-minikube"
-PROCESS_ENV_FILE="${ROOT}/.floor-agents.env"
+# What `npm run minikube-setup` wrote, in the checkout that ran it. A git worktree has none of its own, and names that one.
+PROCESS_ENV_FILE="${FLOOR_PROCESS_ENV_FILE:-${ROOT}/.floor-agents.env}"
 
 log() { echo "[floor] $*"; }
 fail() { echo "[floor] ERROR: $*" >&2; exit 1; }

@@ -93,6 +93,10 @@ subsystem's `git_credential` and `git_credential_url` parameters
 authenticates. The one secret key this agent writes for a visit is the
 visit's own token.
 
+A visit with write access to a repository commits as `Floor Agent`
+(`domain/git-identity.ts`): git's own `GIT_AUTHOR_*` and `GIT_COMMITTER_*`
+variables, set on the pod. What the agent definition's `env` sets wins.
+
 ## Not ported
 
 Everything that watches Agent CRs for terminal status

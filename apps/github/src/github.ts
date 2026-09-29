@@ -61,8 +61,30 @@ export async function getReview(deps: GitHubDeps, pull: PullRequest, reviewId: s
   return githubJson(deps, pull, `/pulls/${pull.number}/reviews/${reviewId}`);
 }
 
+/** A review's inline comments, read from the pull request's own list, where each names its review. GitHub's list by review says which file and never which line. */
 export async function getReviewComments(deps: GitHubDeps, pull: PullRequest, reviewId: string): Promise<ReviewComment[]> {
-  return githubPages(deps, pull, `/pulls/${pull.number}/reviews/${reviewId}/comments`);
+  const comments = await githubPages<FetchedReviewComment>(deps, pull, `/pulls/${pull.number}/comments`);
+  const ofReview = comments.filter((comment) => String(comment.pull_request_review_id) === reviewId);
+
+  return ofReview.map(reviewCommentOf);
+}
+
+// GitHub's own field names.
+/* eslint-disable @typescript-eslint/naming-convention */
+interface FetchedReviewComment {
+  id: number;
+  path: string;
+  body: string;
+  pull_request_review_id: number | null;
+  /** Null once the line it was written on has changed. */
+  line?: number | null;
+  original_line?: number | null;
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
+// A comment on a line since changed keeps the line it was written on: that is where its reader will look.
+function reviewCommentOf(fetched: FetchedReviewComment): ReviewComment {
+  return { id: fetched.id, path: fetched.path, body: fetched.body, line: fetched.line ?? fetched.original_line ?? null };
 }
 
 /** Something said on a pull request, a comment or a review, and where it can be read. */

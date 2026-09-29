@@ -88,6 +88,8 @@ Against a stand-in for GitHub's API over real HTTP, `fake-github.ts`: it checks 
 
 `scripts/walk-real-review.sh <pull request>` is the one walk that reaches GitHub. It reviews the pull request it is given and posts the review, as the GitHub App in `FLOOR_GITHUB_ENV_FILE`. It posts a comment, never an approval, and pushes nothing. It has no default pull request.
 
+With `--then-fix` it goes on to lore's `code-review-reply`, acting on the review it just posted: an agent commits a fix and pushes it to the pull request's branch, and its reply is posted as a comment. Whatever listens to the repository hears that push. It then reads the branch and the comment back from GitHub, and fails if the branch did not move.
+
 `scripts/walk-git.sh` walks a run whose station writes to a repository through a real pod, with a stand-in for this provider: git in the pod asks the floor, and the floor asks the provider.
 
 `scripts/walk-code-review.sh` sends a signed webhook through the receiver and walks the run it starts, then a push, which the router sends to the recheck.
