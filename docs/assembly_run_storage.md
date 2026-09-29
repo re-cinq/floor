@@ -251,10 +251,26 @@ the floor report the visit `failed`, `error: unclaimed`, naming the tags no
 worker offers. A launch that fails is failed back to the queue and retried
 with backoff.
 
-> **Not built yet.** **Provider out of credit.** When a visit fails with
-> that error class, the floor pushes `not_before` on every pending agent
-> dispatch by five minutes. The gate is data in the queue, so a restart does
-> not forget it.
+**Provider out of credit.** When an agent visit reports an error that says
+the model provider is out of credit, the floor sets `not_before` to five
+minutes from now on every pending agent dispatch (`station_run.dispatch`
+tagged `kind:agent`), in the same transaction as the report. A dispatch a
+worker has already claimed is left alone, so is a service station's, and a
+`not_before` already later than that (a retry's backoff) stays where it is. A
+burst of such failures therefore holds the queue for five minutes past the
+last one, not for five minutes each. The gate is the rows' own `not_before`,
+so a restart does not forget it.
+
+The error is recognised by `packages/store/src/provider-credit.ts`, the one
+place to add a provider's wording. It matches, case-insensitively, anywhere in
+the report's `error`:
+
+| provider | wording matched |
+|---|---|
+| Anthropic API, Claude Code | `credit balance is too low` |
+| OpenAI | `exceeded your current quota`, `insufficient_quota` |
+| OpenRouter | `insufficient credits` |
+| Gemini | `prepayment credits are depleted` |
 
 ### The agent kind runs on the ai-agent-subsystem, with no code of ours in the pod
 

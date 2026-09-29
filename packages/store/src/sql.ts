@@ -227,3 +227,13 @@ export async function claimedDispatchTags(client: Queryable, visitId: string): P
 
   return rows[0] ? (rows[0].tags as string[]) : null;
 }
+
+/** Pending agent dispatches only: one a worker has claimed is being worked on, and a service station's has nothing to do with a model provider. Never pulls a later `not_before` earlier. */
+export async function deferPendingAgentDispatches(client: Queryable, heldUntil: Date): Promise<void> {
+  await client.query(
+    `update events set not_before = greatest(not_before, $1)
+     where name = 'station_run.dispatch' and tags @> array['kind:agent']
+       and claimed_at is null and acked_at is null and dead_at is null and dropped_at is null`,
+    [heldUntil],
+  );
+}

@@ -10,12 +10,14 @@ import { valueArgsOf } from "./run-args.js";
 import { deriveSubjectKey, foldLineFiles } from "./resolve.js";
 import { Refusal, enforce } from "./refusal.js";
 import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
+import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
 import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable } from "./rows.js";
 import {
   blobHashesExist,
   claimedDispatchTags,
   closeOpenHumanVisits,
+  deferPendingAgentDispatches,
   insertRun,
   insertVisit,
   listQuery,
@@ -285,9 +287,17 @@ export class AssemblyRunStore {
 
     await this.releaseWorker(client, visit);
     await this.noteMissingCost(client, visit);
+    await this.pauseAgentDispatchesWhenOutOfCredit(client, visit, report);
     await this.advance(client, visit.runId);
 
     return visit;
+  }
+
+  // docs/assembly_run_storage.md, "Dispatch": a provider out of credit fails every visit at once, so the queue waits. The gate is the rows' own not_before, which a restart keeps.
+  private async pauseAgentDispatchesWhenOutOfCredit(client: PoolClient, visit: Visit, report: Report): Promise<void> {
+    if (!visit.agentDefinitionHash || !isProviderOutOfCredit(report)) return;
+
+    await deferPendingAgentDispatches(client, new Date(this.now().getTime() + CREDIT_PAUSE_MS));
   }
 
   // docs/assembly_run_storage.md, "Costs": an agent visit that ends with nothing priced is an anomaly, never a failure of the visit. Deduplicated, so a replayed report raises it once.
