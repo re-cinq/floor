@@ -20,22 +20,29 @@ env:
   NODE_VERSION: "22"
 
 jobs:
+  # The workspaces are a fact npm already holds. A list written out here drifts the moment a package is added, which is exactly what happened the first time.
+  workspaces:
+    runs-on: ubuntu-latest
+    outputs:
+      names: ${{ steps.list.outputs.names }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: list
+        run: echo "names=$(npm query .workspace | jq -c '[.[].name]')" >> "$GITHUB_OUTPUT"
+
   test:
     # One job a workspace: a red suite must not mask the others, which is what the
     # root scripts' `&&` chaining does locally.
     name: test ${{ matrix.workspace }}
+    needs: workspaces
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        workspace:
-          - "@floor/assembly-lines"
-          - "@floor/store"
-          - "@re-cinq/floor-station"
-          - "@floor/lore-converter"
-          - "@re-cinq/floor-pipeline"
-          - "@floor/api"
-          - "@floor/cluster-agent"
+        workspace: ${{ fromJSON(needs.workspaces.outputs.names) }}
 
     services:
       # The store and api suites need a real Postgres: `FOR UPDATE SKIP LOCKED` has
