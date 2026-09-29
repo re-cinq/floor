@@ -198,6 +198,17 @@ pod: it belongs to a person and cannot be narrowed.
 brief is refused. The other way is an agent that works for an hour and then
 cannot push.
 
+**The agent pushes its own commit.** lore's `code-review-refine` prompt has
+the agent commit and never push, and nothing in lore pushes for it: not the
+floor, not the subsystem, not a hook. The fix stays in the pod. Here the
+converter adds the push to the prompt, after lore's own words, and gives the
+station write access. Only the pod holds the commit, so only the pod can
+push it.
+
+**`code-review-reply` is started by a person's review, never a bot's.** The
+post-review station posts reviews that ask for changes. Without `sender_type`
+in the line's `when`, each of those would start a reply to itself.
+
 **The visit token is in the Agent resource, in the clear.** The subsystem
 reads the broker's credential from the Agent's parameters and has no secret
 reference for it. The token opens one visit's files and one visit's

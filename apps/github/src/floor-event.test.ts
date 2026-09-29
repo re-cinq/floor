@@ -10,6 +10,7 @@ const OPENED = {
   repository: REPOSITORY,
   sender: SENDER,
   pull_request: {
+    number: 12,
     html_url: "https://github.com/re-cinq/floor/pull/12",
     title: "Add the sweeper",
     draft: false,
@@ -25,6 +26,14 @@ const COMMENTED = {
   sender: SENDER,
   issue: { number: 12, pull_request: { html_url: "https://github.com/re-cinq/floor/pull/12" } },
   comment: { id: 99, body: "please rename this", html_url: "https://github.com/re-cinq/floor/pull/12#issuecomment-99" },
+};
+
+const REVIEWED = {
+  action: "submitted",
+  repository: REPOSITORY,
+  sender: { login: "bogdan", type: "User" },
+  pull_request: OPENED.pull_request,
+  review: { id: 501, state: "changes_requested", body: null, html_url: "https://github.com/re-cinq/floor/pull/12#pullrequestreview-501" },
 };
 
 function eventOf(event: string, body: unknown) {
@@ -82,5 +91,28 @@ describe("floorEventOf", () => {
 
   it("is nothing for a body that was not JSON", () => {
     expect(eventOf("pull_request", null)).toBeNull();
+  });
+
+  it("tells a review as its pull request, with the review beside it", () => {
+    expect(eventOf("pull_request_review", REVIEWED)?.payload).toMatchObject({
+      pull_request_url: "https://github.com/re-cinq/floor/pull/12",
+      subjectKey: "pr_url:https://github.com/re-cinq/floor/pull/12",
+      number: 12,
+      head_ref: "sweeper",
+      draft: false,
+      review_id: 501,
+      review_state: "changes_requested",
+      review_url: "https://github.com/re-cinq/floor/pull/12#pullrequestreview-501",
+    });
+  });
+
+  it("says a person sent it, so a line may refuse what a bot sent", () => {
+    expect(eventOf("pull_request_review", REVIEWED)?.payload.sender_type).toBe("User");
+  });
+
+  it("says a bot sent it", () => {
+    const posted = { ...REVIEWED, sender: { login: "lore-agent[bot]", type: "Bot" } };
+
+    expect(eventOf("pull_request_review", posted)?.payload.sender_type).toBe("Bot");
   });
 });

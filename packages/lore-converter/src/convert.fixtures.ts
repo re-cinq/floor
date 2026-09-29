@@ -67,3 +67,31 @@ edges:
 `;
 
 export const PLANNING_RECIPE = "Plan {description} as plan {plan_id}.";
+
+export const REPLY_LINE = `
+name: code-review-reply
+description: Act on a human reply to a review comment.
+version: 1
+entry: reply
+exit: done
+nodes:
+  - id: reply
+    type: agent
+    prompt_ref: code-review-refine
+    station_ref: code-review-refine
+  - id: done
+    type: retrospective
+edges:
+  - { from: reply, to: done, on: success }
+  - { from: reply, to: done, on: changes_requested }
+  - { from: reply, to: done, on: failed }
+`;
+
+export const REFINE_RECIPE = `---
+timeout_minutes: 20
+repo_workdir: false
+---
+{description}
+
+Commit the fix locally and let Lore post your reply.
+`;

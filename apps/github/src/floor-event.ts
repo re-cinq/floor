@@ -20,12 +20,13 @@ export interface Delivery {
 const common = z.looseObject({
   action: z.string().optional(),
   repository: z.looseObject({ full_name: z.string() }).optional(),
-  sender: z.looseObject({ login: z.string() }).optional(),
+  sender: z.looseObject({ login: z.string(), type: z.string().optional() }).optional(),
 });
 
+// A `pull_request` event carries the number beside the pull request; a review carries it only inside.
 const pullRequest = z.looseObject({
-  number: z.number(),
   pull_request: z.looseObject({
+    number: z.number(),
     html_url: z.string(),
     title: z.string(),
     draft: z.boolean().optional(),
@@ -33,6 +34,10 @@ const pullRequest = z.looseObject({
     head: z.looseObject({ ref: z.string(), sha: z.string() }),
     base: z.looseObject({ ref: z.string() }),
   }),
+});
+
+const review = z.looseObject({
+  review: z.looseObject({ id: z.number(), state: z.string(), html_url: z.string() }),
 });
 
 const issueComment = z.looseObject({
@@ -57,6 +62,9 @@ interface About {
   repository: string;
   repo: string;
   sender: string;
+  /** `User` or `Bot`, as GitHub says: what keeps a line from being started by what the floor itself posted. Spelled as the event's other fields are. */
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  sender_type?: string;
   action?: string;
 }
 
@@ -67,7 +75,7 @@ function aboutOf(body: z.infer<typeof common>): About | null {
   if (!repository) return null;
   const named = `github.com/${repository.full_name}`;
 
-  return { repository: named, repo: named, sender: sender?.login ?? "", action: body.action };
+  return { repository: named, repo: named, sender: sender?.login ?? "", sender_type: sender?.type, action: body.action };
 }
 
 function withoutUnset(about: About): Payload {
@@ -76,10 +84,16 @@ function withoutUnset(about: About): Payload {
   return Object.fromEntries(given);
 }
 
-function detailOf(delivery: Delivery): Payload {
-  if (delivery.event === "pull_request") return pullRequestOf(delivery.body);
+const DETAILS: Partial<Record<string, (body: unknown) => Payload>> = {
+  pull_request: pullRequestOf,
+  pull_request_review: reviewOf,
+  issue_comment: commentOf,
+};
 
-  return delivery.event === "issue_comment" ? commentOf(delivery.body) : {};
+function detailOf(delivery: Delivery): Payload {
+  const detail = DETAILS[delivery.event];
+
+  return detail ? detail(delivery.body) : {};
 }
 
 // `subjectKey` is what a line marks as its subject, so an event about a pull request finds the run already open on it.
@@ -91,7 +105,7 @@ function pullRequestOf(body: unknown): Payload {
 
   return {
     ...subjectOf(pull.html_url),
-    number: parsed.data.number,
+    number: pull.number,
     title: pull.title,
     draft: pull.draft ?? false,
     merged: pull.merged ?? false,
@@ -99,6 +113,16 @@ function pullRequestOf(body: unknown): Payload {
     head_sha: pull.head.sha,
     base_ref: pull.base.ref,
   };
+}
+
+// A review carries its pull request whole, so it is told as one, with the review beside it.
+function reviewOf(body: unknown): Payload {
+  const parsed = review.safeParse(body);
+
+  if (!parsed.success) return {};
+  const { id, state, html_url: url } = parsed.data.review;
+
+  return { ...pullRequestOf(body), review_id: id, review_state: state, review_url: url };
 }
 
 // A comment on an issue that is not a pull request is about no run of ours.

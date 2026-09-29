@@ -12,10 +12,18 @@ export interface HookStation {
   bind: Record<string, string>;
 }
 
+/** A station lore's floor ran in code before the line's entry. The line enters here, and goes on to its own entry when this succeeds. */
+export type EntryStation = Pick<HookStation, "nodeId" | "stationId" | "station" | "bind">;
+
 export interface KnownLine {
   args: Record<string, LineArgSpec>;
   start?: LineStart;
+  first?: EntryStation;
   hooks: HookStation[];
+  /** Node -> what its agent is told, after lore's prompt, about delivering what it committed. Its station writes to the repository. */
+  delivers?: Record<string, string>;
+  /** Node -> need name -> the bag item it is filled from, beside the repository. */
+  binds?: Record<string, Record<string, string>>;
 }
 
 export const DEFAULT_ARGS: Record<string, LineArgSpec> = {
@@ -56,6 +64,46 @@ const REVIEW_ARGS: KnownLine["args"] = {
 
 const FROM_A_PULL_REQUEST = { repo: "{repository}@{head_ref}", pr_url: "{pull_request_url}", description: "{title}" };
 
+// lore's floor read the review, its body and its inline comments, from GitHub before it started the line, and wrote the agent's task from them.
+const READ_REVIEW: EntryStation = {
+  nodeId: "read-review",
+  stationId: "read-review",
+  station: {
+    kind: "service",
+    outcomes: ["success", "failed"],
+    needs: [
+      { name: "pr_url", kind: "value" },
+      { name: "review_id", kind: "value" },
+      { name: "intent", kind: "value" },
+    ],
+    produces: [{ name: "review_feedback", kind: "value" }],
+  },
+  bind: {},
+};
+
+// lore's floor posted the reply from a hook, `postReplyFromNode`.
+const POST_REPLY: HookStation = {
+  after: "reply",
+  outcomes: ["success", "changes_requested"],
+  nodeId: "post-reply",
+  stationId: "post-reply",
+  station: {
+    kind: "service",
+    outcomes: ["success", "failed"],
+    needs: [
+      { name: "reply_output", kind: "file" },
+      { name: "pr_url", kind: "value" },
+    ],
+    produces: [{ name: "reply_url", kind: "value" }],
+  },
+  bind: { reply_output: "{node}_output" },
+};
+
+// lore's prompt has the agent commit and never push, and nothing in lore pushes for it: the fix stays in the pod. Here git in the pod is authenticated for the one repository, so the agent is told to push.
+const PUSH_THE_FIX = `One thing above is different here. Nobody pushes your commit for you. When the intent is address, push it once it is committed:
+\`git -C /workspace/target push origin HEAD\`
+That one command may use the network, and git is already authenticated for this repository. Push nothing else, and never force. If the push is refused, say so in your reply and output REVIEW_RESULT:CHANGES_REQUESTED:the fix could not be pushed.`;
+
 // A push to a pull request starts neither of these by itself. lore chose in code: the full review if none had run, the fast recheck if one had. Here a router line chooses, `review-router` in @floor/github, and asks for one by name.
 export const KNOWN_LINES: Partial<Record<string, KnownLine>> = {
   "code-review": {
@@ -67,5 +115,23 @@ export const KNOWN_LINES: Partial<Record<string, KnownLine>> = {
     args: REVIEW_ARGS,
     start: { on: ["review.recheck.requested"], args: FROM_A_PULL_REQUEST },
     hooks: [postReviewAfter("recheck")],
+  },
+  // Started by a person's review asking for changes, never by a bot's: the post-review station's own review would start it again. lore's other way in, a comment read by a triage line, is switched off in lore.
+  "code-review-reply": {
+    args: {
+      repo: { kind: "git" },
+      pr_url: { kind: "value", subject: true },
+      review_id: { kind: "value" },
+      intent: { kind: "value" },
+    },
+    start: {
+      on: ["github.pull_request_review.submitted"],
+      when: { review_state: "changes_requested", sender_type: "User", draft: false },
+      args: { repo: "{repository}@{head_ref}", pr_url: "{pull_request_url}", review_id: "{review_id}", intent: "address" },
+    },
+    first: READ_REVIEW,
+    hooks: [POST_REPLY],
+    delivers: { reply: PUSH_THE_FIX },
+    binds: { reply: { description: "review_feedback" } },
   },
 };

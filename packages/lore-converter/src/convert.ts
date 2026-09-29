@@ -1,6 +1,6 @@
 // A lore line, converted (docs/api_sketch.md, the converter's table). What cannot be read from lore's files is said in `notes`, never guessed silently.
 import { validateLine, type AgentDefinitionBody, type LineBody, type LineEdge, type LineNode, type StationBody } from "@floor/store";
-import { DEFAULT_ARGS, KNOWN_LINES, type HookStation, type KnownLine } from "./known-lines.js";
+import { DEFAULT_ARGS, KNOWN_LINES, type EntryStation, type HookStation, type KnownLine } from "./known-lines.js";
 import type { LoreLine, LoreNode, LoreRecipe } from "./lore.js";
 import {
   agentDefinitionIdOf,
@@ -30,11 +30,10 @@ interface Converted {
 }
 
 export function convertLine(line: LoreLine, recipes: Partial<Record<string, LoreRecipe>>, options: ConvertOptions): Conversion {
-  const known = KNOWN_LINES[line.name];
-  const converted = line.nodes.map((node) => convertNode(line, node, { recipes, options }));
-  const hooks = known?.hooks ?? [];
+  const known = KNOWN_LINES[line.name] ?? UNKNOWN;
+  const converted = line.nodes.map((node) => convertNode(line, node, { recipes, options, known }));
   const body = lineBodyOf(line, converted, known);
-  const stations = uniqueById([...converted.flatMap((each) => each.station ?? []), ...hooks.map((hook) => ({ id: hook.stationId, body: hook.station }))]);
+  const stations = uniqueById([...converted.flatMap((each) => each.station ?? []), ...addedTo(known).map((added) => ({ id: added.stationId, body: added.station }))]);
 
   return {
     line: { id: line.name, body },
@@ -51,24 +50,38 @@ function refusals(body: LineBody, stations: Named<StationBody>[]): string[] {
   return problems.map((problem) => `the floor would refuse this line: ${problem}`);
 }
 
-function lineBodyOf(line: LoreLine, converted: Converted[], known: KnownLine | undefined): LineBody {
-  const hooks = known?.hooks ?? [];
+/** A line nothing is known of: lore's file, and no more. */
+const UNKNOWN: KnownLine = { args: DEFAULT_ARGS, hooks: [] };
+
+// The stations lore's floor was in code: the ones before the line's entry, then the hooks.
+function addedTo(known: KnownLine): EntryStation[] {
+  return [...firstOf(known), ...known.hooks];
+}
+
+function firstOf(known: KnownLine): EntryStation[] {
+  return known.first ? [known.first] : [];
+}
+
+function lineBodyOf(line: LoreLine, converted: Converted[], known: KnownLine): LineBody {
+  const first = firstOf(known);
   const edges = line.edges.map((edge): LineEdge => ({ from: edge.from, to: edge.to, on: edge.on, iterationMax: edge.iteration_max }));
+  const entered = first.map((station): LineEdge => ({ from: station.nodeId, to: line.entry, on: "success" }));
+  const hooked = known.hooks.reduce(withHook, [...entered, ...edges]);
 
   return {
-    entry: line.entry,
+    entry: first.map((station) => station.nodeId).at(0) ?? line.entry,
     exit: line.exit,
-    start: known?.start,
-    args: known?.args ?? DEFAULT_ARGS,
-    nodes: [...converted.map((each) => each.node), ...hooks.map(hookNode)],
-    edges: hooks.reduce(withHook, edges).map(withoutUnsetBudget),
+    start: known.start,
+    args: known.args,
+    nodes: [...first.map((station) => addedNode(station, "")), ...converted.map((each) => each.node), ...known.hooks.map((hook) => addedNode(hook, hook.after))],
+    edges: hooked.map(withoutUnsetBudget),
   };
 }
 
-function hookNode(hook: HookStation): LineNode {
-  const bind = Object.entries(hook.bind).map(([need, from]) => [need, from.replace("{node}", hook.after)]);
+function addedNode(added: EntryStation, follows: string): LineNode {
+  const bind = Object.entries(added.bind).map(([need, from]) => [need, from.replace("{node}", follows)]);
 
-  return { id: hook.nodeId, station: hook.stationId, bind: Object.fromEntries(bind) };
+  return { id: added.nodeId, station: added.stationId, bind: Object.fromEntries(bind) };
 }
 
 // The hook's node takes the edges the node it follows had for these outcomes, and hands on to where they led, when it succeeds. It has no edge for failing: a review nobody could post is not a run that went well, and the run ends as an error saying so.
@@ -89,6 +102,7 @@ function withoutUnsetBudget(edge: LineEdge): LineEdge {
 interface Sources {
   recipes: Partial<Record<string, LoreRecipe>>;
   options: ConvertOptions;
+  known: KnownLine;
 }
 
 function convertNode(line: LoreLine, node: LoreNode, sources: Sources): Converted {
@@ -116,18 +130,27 @@ function agentNode(node: LoreNode, start: Pick<LineNode, "start">, sources: Sour
   const recipe = sources.recipes[node.prompt_ref ?? ""];
 
   if (!recipe) return { node: { id: node.id }, notes: [`node "${node.id}": recipe "${node.prompt_ref}" was not found, so the node is a marker`] };
-  const agentDefinition = { id: agentDefinitionIdOf(node, recipe, sources.options), body: agentDefinitionOf(node, recipe, sources.options) };
-  const station = { id: stationIdOf(node), body: agentStationOf(node, recipe, agentDefinition.id) };
+  const { delivers = {}, binds = {} } = sources.known;
+  const told = deliveringOf(recipe, delivers[node.id]);
+  const agentDefinition = { id: agentDefinitionIdOf(node, told, sources.options), body: agentDefinitionOf(node, told, sources.options) };
+  const station = { id: stationIdOf(node), body: agentStationOf(node, told, agentDefinition.id) };
 
-  return { node: { id: node.id, station: station.id, bind: { target: "repo" }, ...start }, station, agentDefinition, notes: [] };
+  return { node: { id: node.id, station: station.id, bind: { target: "repo", ...binds[node.id] }, ...start }, station, agentDefinition, notes: [] };
+}
+
+// The recipe as lore wrote it, unless its agent has something to deliver: then it is told how, and works in a repository it may write to.
+function deliveringOf(recipe: LoreRecipe, instruction: string | undefined): LoreRecipe {
+  if (!instruction) return recipe;
+
+  return { ...recipe, prompt: `${recipe.prompt.trimEnd()}\n\n${instruction}\n`, settings: { ...recipe.settings, repo_workdir: true } };
 }
 
 function serviceNote(node: LoreNode, stationId: string): string {
   return `node "${node.id}": service station "${stationId}" has no needs or produces yet; what lore's job read and wrote is in its code, not in the line`;
 }
 
-function lineNotes(line: LoreLine, known: KnownLine | undefined): string[] {
-  if (known) return [];
+function lineNotes(line: LoreLine, known: KnownLine): string[] {
+  if (known !== UNKNOWN) return [];
 
   return [`line "${line.name}": nothing is known of what starts it or what lore's floor did around it; it has the default arguments and no start event`];
 }

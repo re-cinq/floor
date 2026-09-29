@@ -90,7 +90,7 @@ deliver() {
   webhook="$(jq -cn --arg action "${action}" --arg repository "${REPOSITORY#github.com/}" --arg branch "${BRANCH}" --arg url "${PULL_REQUEST}" '{
     action: $action, number: 1,
     repository: {full_name: $repository}, sender: {login: "walk-code-review.sh"},
-    pull_request: {html_url: $url, title: "Review the change on branch \($branch)", draft: false, merged: false,
+    pull_request: {number: 1, html_url: $url, title: "Review the change on branch \($branch)", draft: false, merged: false,
                    head: {ref: $branch, sha: ""}, base: {ref: "main"}}}')"
   signature="sha256=$(printf '%s' "${webhook}" | openssl dgst -sha256 -hmac "${WEBHOOK_SECRET}" | sed 's/^.* //')"
   for _ in $(seq 1 50); do

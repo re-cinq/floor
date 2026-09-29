@@ -3,7 +3,7 @@ import { validateLine } from "@floor/store";
 import type { LineBody } from "@floor/store";
 import { convertLine, type Conversion } from "./convert.js";
 import type { ConvertOptions } from "./nodes.js";
-import { CODE_REVIEW_LINE, CODE_REVIEW_RECIPE, PLANNING_LINE, PLANNING_RECIPE } from "./convert.fixtures.js";
+import { CODE_REVIEW_LINE, CODE_REVIEW_RECIPE, PLANNING_LINE, PLANNING_RECIPE, REFINE_RECIPE, REPLY_LINE } from "./convert.fixtures.js";
 import { parseLine, parseRecipe } from "./lore.js";
 
 const IMAGE: ConvertOptions = { image: "node:22-bookworm" };
@@ -14,6 +14,23 @@ function codeReview(options = IMAGE): Conversion {
 
 function planning(): Conversion {
   return convertLine(parseLine(PLANNING_LINE), { "feature-planning": parseRecipe("feature-planning", PLANNING_RECIPE) }, IMAGE);
+}
+
+function reply(): Conversion {
+  return convertLine(parseLine(REPLY_LINE), { "code-review-refine": parseRecipe("code-review-refine", REFINE_RECIPE) }, IMAGE);
+}
+
+function refusalsOf(converted: Conversion): string[] {
+  const stations = new Set(converted.stations.map((station) => station.id));
+
+  return validateLine(lineOf(converted), { stations });
+}
+
+function promptOf(converted: Conversion): string {
+  const [definition] = converted.agentDefinitions;
+  const settings = definition!.body.settings;
+
+  return settings.prompt;
 }
 
 function stationNamed(conversion: Conversion, id: string) {
@@ -34,10 +51,7 @@ function nodeNamed(conversion: Conversion, id: string) {
 
 describe("convertLine: lore's code-review", () => {
   it("is a line this floor accepts, against the stations it comes with", () => {
-    const converted = codeReview();
-    const stations = new Set(converted.stations.map((station) => station.id));
-
-    expect(validateLine(lineOf(converted), { stations })).toEqual([]);
+    expect(refusalsOf(codeReview())).toEqual([]);
   });
 
   it("turns the terminal retrospective into a marker", () => {
@@ -58,10 +72,7 @@ describe("convertLine: lore's code-review", () => {
   });
 
   it("keeps the prompt as lore wrote it", () => {
-    const [definition] = codeReview().agentDefinitions;
-    const settings = definition!.body.settings;
-
-    expect(settings.prompt).toMatch(/^\{description\}\n\nThe PR branch[\s\S]*<one-line summary>$/);
+    expect(promptOf(codeReview())).toMatch(/^\{description\}\n\nThe PR branch[\s\S]*<one-line summary>$/);
   });
 
   it("clones read-only for a recipe that does not work in the repo", () => {
@@ -139,5 +150,45 @@ describe("convertLine: what lore's planning line uses", () => {
 describe("parseRecipe", () => {
   it("takes a recipe with no front matter as all prompt", () => {
     expect(parseRecipe("plain", "Just do it.\n")).toEqual({ name: "plain", settings: {}, prompt: "Just do it." });
+  });
+});
+
+describe("convertLine: lore's code-review-reply", () => {
+  it("is a line this floor accepts, against the stations it comes with", () => {
+    expect(refusalsOf(reply())).toEqual([]);
+  });
+
+  it("enters at read-review, which lore's floor did in code before the line began", () => {
+    expect(lineOf(reply()).entry).toBe("read-review");
+  });
+
+  it("goes from read-review to reply, from reply to post-reply, and on to done", () => {
+    expect(lineOf(reply()).edges).toEqual([
+      { from: "read-review", to: "reply", on: "success" },
+      { from: "reply", to: "done", on: "failed" },
+      { from: "reply", to: "post-reply", on: "success" },
+      { from: "reply", to: "post-reply", on: "changes_requested" },
+      { from: "post-reply", to: "done", on: "success" },
+    ]);
+  });
+
+  it("gives the agent what read-review wrote as its task", () => {
+    expect(nodeNamed(reply(), "reply")).toEqual({ id: "reply", station: "code-review-refine", bind: { target: "repo", description: "review_feedback" } });
+  });
+
+  it("lets the agent write to the repository, though lore's recipe says it works outside it", () => {
+    expect(stationNamed(reply(), "code-review-refine")?.needs).toContainEqual({ name: "target", kind: "git", path: "target", access: "write" });
+  });
+
+  it("keeps lore's prompt and tells the agent, after it, to push", () => {
+    expect(promptOf(reply())).toMatch(/^\{description\}[\s\S]*let Lore post your reply\.\n\nOne thing above is different here[\s\S]*git -C \/workspace\/target push origin HEAD/);
+  });
+
+  it("is started by a person's review asking for changes, never by a bot's", () => {
+    expect(lineOf(reply()).start).toMatchObject({ on: ["github.pull_request_review.submitted"], when: { review_state: "changes_requested", sender_type: "User" } });
+  });
+
+  it("has nothing left to say", () => {
+    expect(reply().notes).toEqual([]);
   });
 });
