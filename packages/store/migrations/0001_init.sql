@@ -3,7 +3,7 @@
 -- read out of the report's own JSON.
 
 create table if not exists definitions (
-  kind        text not null,                       -- line | station | agent_definition | schedule
+  kind        text not null,                       -- line | station | agent_definition | schedule | migration
   id          text not null,
   hash        text not null,                        -- sha256 of body
   body        jsonb not null,

@@ -129,7 +129,8 @@ function serviceNode(node: LoreNode, start: Pick<LineNode, "start">): Converted 
 function agentNode(node: LoreNode, start: Pick<LineNode, "start">, sources: Sources): Converted {
   const recipe = sources.recipes[node.prompt_ref ?? ""];
 
-  if (!recipe) return { node: { id: node.id }, notes: [`node "${node.id}": recipe "${node.prompt_ref}" was not found, so the node is a marker`] };
+  // A node lore started by hand is still started by hand with no recipe to run: dropping its start event would leave it unreachable and unstartable both.
+  if (!recipe) return { node: { id: node.id, ...start }, notes: [`node "${node.id}": recipe "${node.prompt_ref}" was not found, so the node is a marker`] };
   const { delivers = {}, binds = {} } = sources.known;
   const told = deliveringOf(recipe, delivers[node.id]);
   const agentDefinition = { id: agentDefinitionIdOf(node, told, sources.options), body: agentDefinitionOf(node, told, sources.options) };

@@ -43,15 +43,6 @@ app.kubernetes.io/component: api
 app.kubernetes.io/component: cluster-agent
 {{- end -}}
 
-{{- define "floor.github.fullname" -}}
-{{ include "floor.fullname" . }}-github
-{{- end -}}
-
-{{- define "floor.github.selectorLabels" -}}
-{{ include "floor.selectorLabels" . }}
-app.kubernetes.io/component: github
-{{- end -}}
-
 {{/*
 The one image both apps ship from, tagged by the one shared .Values.version.
 */}}
@@ -100,11 +91,9 @@ http://{{ include "floor.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster
 {{- end -}}
 {{- end -}}
 
-{{/* Where the api asks for a git credential: what it was told, else this chart's own provider, else nowhere. */}}
+{{/* Where the api asks for a git credential, when it was told anywhere at all. The floor mints nothing itself: the provider is a service outside this chart. */}}
 {{- define "floor.api.gitCredentialUrl" -}}
 {{- if .Values.api.gitCredentialUrl -}}
 {{ .Values.api.gitCredentialUrl }}
-{{- else if and .Values.github.enabled .Values.github.gitCredentials -}}
-http://{{ include "floor.github.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.github.service.port }}/git-credentials
 {{- end -}}
 {{- end }}

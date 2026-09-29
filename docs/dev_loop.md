@@ -60,13 +60,11 @@ The floor's token is `floor-dev-token` unless `.env.local` sets
 | `npm run minikube-setup` | installs the ai-agent-subsystem into minikube, in the floor's own namespace `floor-agents`, beside any other install; runs the next command |
 | `npm run minikube-claude-auth` | gives the agents a Claude credential: an API key, or your own subscription through `claude setup-token`. Run again when a token expires |
 | `npm run minikube-gemini-auth` | gives the agents a Gemini API key, beside their Claude credential |
+| `floor-pipeline` | a pipeline as one YAML file: `export` one or all from a floor, `import` one, `migrate` a folder in order; see `packages/pipeline` |
 | `scripts/walk.sh` | boots a floor of its own and walks a run through a service station, over HTTP |
 | `scripts/walk-agent.sh` | boots a floor and a cluster agent of its own and walks a run through a real agent pod |
 | `scripts/walk-gemini.sh` | the same walk on a Gemini model, with a gcloud login and no API key: a relay on this machine asks Vertex AI as you, and the pod holds a key for that walk alone |
 | `scripts/walk-git.sh` | walks a run whose station writes to a repository: git in the pod asks the floor for its credential |
-| `scripts/walk-code-review-reply.sh` | walks lore's `code-review-reply` against a stand-in for GitHub |
-| `scripts/walk-real-review.sh <pull request>` | the one walk that reaches GitHub: reviews a real pull request and posts the review; `--then-fix` and `--fix-review <id>` go on to push a fix |
-| `scripts/walk-code-review.sh` | converts lore's `code-review` from a lore checkout and walks it: a signed webhook arrives at the receiver, a pod reviews a public branch, a station takes the review |
 
 Setup pins a kubeconfig to the minikube context, so neither it nor the
 cluster agent can act on whatever cluster `kubectl` points at. The test

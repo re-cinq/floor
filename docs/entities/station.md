@@ -51,8 +51,10 @@ A file an agent produces is one it wrote at `path`, or, with
 for a prompt that answers in its output, which the next station then reads
 as a file.
 
-> **Not built yet.** `must_change` is accepted and ignored. `route` is
-> stored and never rendered.
+> **Not built yet.** `must_change` is accepted and ignored.
+
+`route` is stored for whoever builds a human station's page and is never
+rendered by the floor, which serves no page of its own.
 
 ## The interface
 
@@ -134,14 +136,20 @@ the floor's behalf: `open-pr`, `mark-ready`, `post-review`, `post-reply`.
 
 ### human
 
-> **Not built yet.** The page. A human visit opens, waits with no deadline,
-> and is answered by a report or by an event its node's `reports` names.
+Nothing is dispatched. A human visit opens, waits with no deadline, and is
+answered by a report or by an event its node's `reports` names.
 
-Nothing is dispatched. The route is rendered from the needs when a person
-opens the page. The page shows the needs and offers actions; each action
-posts a report. Refine is `changes_requested` with the edited file
-produced; Approve is `success`. A webhook can report too, for a page the
-platform does not own, like a GitHub PR. Human visits have no deadline.
+**The floor serves no page, by design.** Whoever maintains a human station
+builds whatever a person acts through, exactly as the maintainer of a
+service station writes its worker. The floor offers only what that page
+needs of it: the visit and its needs to read, `route` stored on the node for
+the page's own use, and a report or a named event to answer with. It renders
+nothing and calls nothing out.
+
+A page built this way shows the needs and offers actions, each posting a
+report: Refine is `changes_requested` with the edited file produced, Approve
+is `success`. A webhook can answer instead, for a page the platform does not
+own, like a GitHub PR.
 
 ### Markers are not stations
 

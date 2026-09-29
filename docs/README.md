@@ -27,7 +27,8 @@ whoever builds it removes the mark. Nothing unmarked should be false.
 
 Definitions are written here as authored YAML, in `snake_case`. The API
 takes the same fields as JSON in `camelCase` (`agent_definition` is
-`agentDefinition`); nothing converts one to the other yet.
+`agentDefinition`). `floor-pipeline` (`packages/pipeline`) converts one to
+the other: a pipeline as one YAML file, out of a floor and into one.
 
 ## The reviews
 

@@ -153,6 +153,12 @@ describe("convertLine: what lore's planning line uses", () => {
     expect(nodeNamed(planning(), "issues")).toEqual({ id: "issues", station: "issues" });
   });
 
+  it("keeps the start event of a by-hand node whose recipe was not found", () => {
+    const validate = lineOf(planning()).nodes.find((node) => node.id === "validate");
+
+    expect(validate).toEqual({ id: "validate", start: "manual.feature-planning.validate" });
+  });
+
   it("says what it could not read, for each thing", () => {
     expect(planning().notes).toEqual([
       'node "validate": recipe "missing-recipe" was not found, so the node is a marker',

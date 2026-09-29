@@ -1,0 +1,33 @@
+{
+  "name": "@floor/pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A pipeline as one file: an assembly line with its stations, its agent definitions and their prompts, its files and its schedules. Exports one from a floor, imports one into a floor, and applies a folder of them in order, each once. It speaks the floor's HTTP API and nothing else.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": { "floor-pipeline": "dist/cli.js" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc --watch -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yaml": "^2.7.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

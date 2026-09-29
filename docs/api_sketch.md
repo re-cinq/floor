@@ -135,6 +135,15 @@ POST   /agent-definitions
 PUT    /agent-definitions/:id            // new version
 DELETE /agent-definitions/:id            // archives. Not built yet: 409 while a station's latest version references it
 
+## Migrations - the pipeline files that ran
+
+GET    /migrations                       // service token only
+GET    /migrations/:name                 // the sha256 the file ran as; 404 for one that has not run
+PUT    /migrations/:name                 // { sha256 }. 409 for a name that ran as other content: a file runs once
+
+The floor applies no file itself. `floor-pipeline migrate` (@floor/pipeline) does, through the routes above
+and the ones any client uses, and the floor remembers.
+
 ## Costs - collected by the floor for every visit
 
 GET    /costs                            // service token only. filter required: run, repo, line, station, since, until; group required: day | line | station | model | run
@@ -192,8 +201,8 @@ services without changing this API.
 | station contract | outcome vocabulary, `(run, node, iteration)`, `LORE_NODE_RESULT:` / `REVIEW_RESULT:` in agent output | same | same |
 | agent pods | the ai-agent-subsystem: an `Agent` resource per visit | one cluster agent on minikube | cluster agents per cluster, claiming by tag |
 | events queue | names, `dedupe_key`, `not_before`, claim/ack | own table | proxy to event-router |
-| GitHub's events | `github.<event>.<action>`, fields lifted to the top | `@floor/github`'s receiver | lore's own webhook handler, posting the same events |
-| git credentials | the subsystem's broker: git in the pod trades its run credential for a repo-scoped token, minted when it asks | the floor's own endpoint, asking `@floor/github` as a GitHub App | lore's `POST /api/github-credentials` |
+| GitHub's events | `github.<event>.<action>`, fields lifted to the top | lore's webhook handler, posting to `/events` | lore's own webhook handler, posting the same events |
+| git credentials | the subsystem's broker: git in the pod trades its run credential for a repo-scoped token, minted when it asks | the floor's own endpoint, asking the provider at `FLOOR_GIT_CREDENTIAL_URL` | lore's `POST /api/github-credentials` |
 | agent output | `LORE_NODE_RESULT:`, then `REVIEW_RESULT:`, then success | lore's parser, ported; outcomes are the station's own | same |
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled` |
 | agent context | none required | whatever the definition names | lore MCP gateway |

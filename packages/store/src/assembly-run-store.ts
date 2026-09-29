@@ -21,6 +21,7 @@ import {
   nodeVisitCount,
   openRunBySubject,
   openVisitRows,
+  pricedCallExists,
   overdueVisitRows,
   settleRun,
   writeReport,
@@ -282,9 +283,23 @@ export class AssemblyRunStore {
     const visit = await writeReport(client, { visitId, report, worker, now: this.now() });
 
     await this.releaseWorker(client, visit);
+    await this.noteMissingCost(client, visit);
     await this.advance(client, visit.runId);
 
     return visit;
+  }
+
+  // docs/assembly_run_storage.md, "Costs": an agent visit that ends with nothing priced is an anomaly, never a failure of the visit. Deduplicated, so a replayed report raises it once.
+  private async noteMissingCost(client: PoolClient, visit: Visit): Promise<void> {
+    if (!visit.agentDefinitionHash) return;
+    if (await pricedCallExists(client, visit.id)) return;
+
+    await this.eventsOn(client).enqueue({
+      name: "internal.cost.missing",
+      payload: { visitId: visit.id, nodeId: visit.nodeId },
+      dedupeKey: `internal.cost.missing:${visit.id}`,
+      runId: visit.runId,
+    });
   }
 
   // A worker that claimed the dispatch holds something for this visit (a pod, a secret); the visit being done, it is told to let go. Deduplicated, so a replayed report tells it once.

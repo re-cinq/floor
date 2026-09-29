@@ -13,6 +13,7 @@ import { registerConversationRoutes } from "./routes/conversations.js";
 import { registerSkillRoutes } from "./routes/skills.js";
 import { registerCostsRoutes } from "./routes/costs.js";
 import { registerScheduleRoutes } from "./routes/schedules.js";
+import { registerMigrationRoutes } from "./routes/migrations.js";
 
 const ROUTES = [
   registerDefinitionRoutes,
@@ -25,6 +26,7 @@ const ROUTES = [
   registerConversationRoutes,
   registerCostsRoutes,
   registerScheduleRoutes,
+  registerMigrationRoutes,
 ];
 
 export async function buildServer(deps: Deps, holdsLease: () => boolean): Promise<Hapi.Server> {

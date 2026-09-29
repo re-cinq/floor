@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Visit } from "./types.js";
-import { setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
+import { RecordsStore, type RecordInput } from "./records.js";
+import { FIXED_NOW, setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
 
 const { pool, store, events, seedReviewLine, openEntryVisit, reviewSucceedsIntoRetrospective } = setupStoreFixture();
 
@@ -221,3 +222,56 @@ describe("AssemblyRunStore.report: releasing the worker", () => {
   });
 });
 
+
+describe("AssemblyRunStore.report, on an agent visit that cost nothing", () => {
+  async function costEventsAfterReport(records: RecordInput[]): Promise<string[]> {
+    const { runId, visitId } = await openEntryVisit();
+
+    if (records.length > 0) await new RecordsStore({ pool: pool() }).append(visitId, records);
+    await store().report(visitId, { outcome: "success" });
+
+    return (await events().listByRun(runId)).filter((event) => event.name === "internal.cost.missing").map((event) => event.name);
+  }
+
+  function llmCall(body: unknown): RecordInput {
+    return { kind: "llm_call", body, occurredAt: FIXED_NOW };
+  }
+
+  it("raises internal.cost.missing when the visit has no llm_call record", async () => {
+    expect(await costEventsAfterReport([])).toEqual(["internal.cost.missing"]);
+  });
+
+  it("raises internal.cost.missing when its only llm_call states no costUsd", async () => {
+    expect(await costEventsAfterReport([llmCall({ usage: { input_tokens: 10 } })])).toEqual(["internal.cost.missing"]);
+  });
+
+  it("names the visit and its agent definition in the event", async () => {
+    const { runId, visitId } = await openEntryVisit();
+
+    await store().report(visitId, { outcome: "success" });
+    const [raised] = (await events().listByRun(runId)).filter((event) => event.name === "internal.cost.missing");
+
+    expect(raised).toMatchObject({ payload: { visitId, nodeId: "review" }, runId });
+  });
+
+  it("raises nothing when an llm_call states a costUsd", async () => {
+    expect(await costEventsAfterReport([llmCall({ costUsd: 0.0125 })])).toEqual([]);
+  });
+
+  it("raises nothing for a node with no station, which called no model", async () => {
+    const { runId } = await reviewSucceedsIntoRetrospective();
+    const raised = (await events().listByRun(runId)).filter((event) => event.name === "internal.cost.missing");
+
+    expect(raised.map((event) => event.payload)).toEqual([{ visitId: expect.any(String), nodeId: "review" }]);
+  });
+
+  it("raises it once, though the report is replayed", async () => {
+    const { runId, visitId } = await openEntryVisit();
+
+    await store().report(visitId, { outcome: "success" });
+    await store().report(visitId, { outcome: "success" });
+    const raised = (await events().listByRun(runId)).filter((event) => event.name === "internal.cost.missing");
+
+    expect(raised).toHaveLength(1);
+  });
+});

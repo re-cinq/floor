@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Lints and renders deploy/chart against a minimal values file for each of: both apps, API only,
-# cluster agent only, github enabled. Also asserts every install-time refusal actually fires, and
+# and cluster agent only. Also asserts every install-time refusal actually fires, and
 # that no rendered ConfigMap or values.yaml default carries a password/token/secret.
 set -euo pipefail
 
@@ -15,7 +15,7 @@ export KUBECONFIG="/dev/null"
 say() { printf '\n== %s\n' "$*"; }
 fail() { printf 'FAILED: %s\n' "$*" >&2; exit 1; }
 
-for scenario in both api-only cluster-agent-only github; do
+for scenario in both api-only cluster-agent-only; do
   say "helm template: ${scenario}"
   helm template floor "${CHART}" -f "${CHART}/ci/values-${scenario}.yaml" >/dev/null
   helm lint "${CHART}" -f "${CHART}/ci/values-${scenario}.yaml"
@@ -24,14 +24,15 @@ done
 say "helm template: subsystem enabled"
 helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" --set subsystem.enabled=true >/dev/null
 
-say "the api asks this chart's own github app for git credentials, when it provides them"
-helm template floor "${CHART}" -f "${CHART}/ci/values-github.yaml" --set github.gitCredentials=true \
-  | grep -qF 'value: "http://floor-github.default.svc.cluster.local:8280/git-credentials"' \
-  || fail "github.gitCredentials=true did not point the api at the github app"
+say "the api asks the provider it was given for git credentials"
+helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" \
+  --set api.gitCredentialUrl=http://lore/git-credentials \
+  | grep -qF 'value: "http://lore/git-credentials"' \
+  || fail "api.gitCredentialUrl did not reach the api"
 
 say "the api asks nobody for git credentials by default"
-if helm template floor "${CHART}" -f "${CHART}/ci/values-github.yaml" | grep -qF FLOOR_GIT_CREDENTIAL_URL; then
-  fail "FLOOR_GIT_CREDENTIAL_URL is set though nothing provides git credentials"
+if helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" | grep -qF FLOOR_GIT_CREDENTIAL_URL; then
+  fail "FLOOR_GIT_CREDENTIAL_URL is set though no provider was given"
 fi
 
 assert_refusal() {
@@ -67,10 +68,6 @@ assert_refusal "unsupported subsystem.version" \
   --set api.enabled=false --set clusterAgent.enabled=false \
   --set subsystem.enabled=true --set subsystem.version=v0.0.1
 
-assert_refusal "github.enabled without github.existingSecret" \
-  "github.existingSecret is required" \
-  --set version=t --set postgres.existingSecret=s --set postgres.secretKey=k \
-  --set api.enabled=false --set clusterAgent.enabled=false --set github.enabled=true
 
 say "no password/token/secret value in values.yaml defaults"
 if grep -inE '^\s*(password|token|secret)\s*:\s*[^"'"'"' ]' "${CHART}/values.yaml" \
@@ -79,7 +76,7 @@ if grep -inE '^\s*(password|token|secret)\s*:\s*[^"'"'"' ]' "${CHART}/values.yam
 fi
 
 say "no password in any rendered ConfigMap"
-for scenario in both api-only cluster-agent-only github; do
+for scenario in both api-only cluster-agent-only; do
   rendered="$(helm template floor "${CHART}" -f "${CHART}/ci/values-${scenario}.yaml" --set subsystem.enabled=true)"
   configmaps="$(awk '/^kind: ConfigMap$/{found=1} /^---/{found=0} found' <<<"${rendered}")"
   if [ -n "${configmaps}" ] && grep -qiE 'password|secret' <<<"${configmaps}"; then

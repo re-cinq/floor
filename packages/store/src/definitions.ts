@@ -3,7 +3,8 @@
 import type { Pool, PoolClient } from "pg";
 import { definitionHash } from "@floor/assembly-lines";
 
-export type DefinitionKind = "line" | "station" | "agent_definition" | "schedule";
+/** A `migration` is a pipeline file that ran: its name, and the sha256 of what it held when it did. */
+export type DefinitionKind = "line" | "station" | "agent_definition" | "schedule" | "migration";
 
 export interface DefinitionRow<Body> {
   kind: DefinitionKind;

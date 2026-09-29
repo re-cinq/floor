@@ -95,10 +95,6 @@ replaces with one table and a tag filter.
   A visit counts as missing cost when it has an agent definition hash and a
   report but no `llm_call` record with a numeric `costUsd`.
 
-## Not yet here
-
-The Floor's HTTP API itself.
-
 ## Testing
 
 Real Postgres, not a fake — `FOR UPDATE SKIP LOCKED` has no meaningful

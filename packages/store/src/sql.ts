@@ -204,6 +204,18 @@ export async function nodeVisitCount(client: Queryable, runId: string, nodeId: s
   return { openVisit: visits.find((visit) => visit.report === null) ?? null, highestIteration: visits.at(0)?.iteration ?? 0 };
 }
 
+/** Whether this visit counted a model call that says what it cost: what makes its cost present rather than missing (docs/assembly_run_storage.md, "Costs"). The same reading as `CostsStore.summary`'s own missing-cost count, so the two never disagree. */
+export async function pricedCallExists(client: Queryable, visitId: string): Promise<boolean> {
+  const { rows } = await client.query(
+    `select 1 from station_run_records
+     where station_run_id = $1 and kind = 'llm_call' and body->>'costUsd' is not null
+     limit 1`,
+    [visitId],
+  );
+
+  return rows.length > 0;
+}
+
 /** The tags of this visit's dispatch, when a worker claimed it: only then may something of the visit exist outside the floor. Null when nobody did. */
 export async function claimedDispatchTags(client: Queryable, visitId: string): Promise<string[] | null> {
   const { rows } = await client.query(

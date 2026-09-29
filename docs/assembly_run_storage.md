@@ -433,8 +433,10 @@ The floor collects every cost itself.
 - **Cost rows are never dropped.** A batch that is oversized or partly
   malformed still has its `llm_call` rows written.
 - **Missing cost is an anomaly.** An agent visit that ends with no
-  `llm_call` record raises `internal.cost.missing`. It never fails the
-  visit. *Not built yet.*
+  `llm_call` record stating a `costUsd` raises `internal.cost.missing`,
+  naming the visit and its node. It never fails the visit, and a replayed
+  report raises it once. The same reading as the missing-cost count in
+  `GET /costs`, so the two never disagree.
 - **Crashes still cost.** Records are written during the visit.
 - **Rollups are queries.** Visit, run and aggregate cost are sums over
   records, in SQL: `CostsStore.summary`, grouped by day, line, station or

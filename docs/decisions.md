@@ -120,10 +120,12 @@ would be guessing.
 
 ## GitHub
 
-**GitHub's client is a third app, and optional.** The floor holds no
-provider client, and checking a webhook's signature or posting a review is
-provider knowledge. `@floor/github` is where it lives. A floor with no
-GitHub in its lines runs the two apps it always did.
+**GitHub's client is not the floor's, and is not in this repository.**
+The floor holds no provider client, and checking a webhook's signature or
+posting a review is provider knowledge. lore owns GitHub: it posts GitHub's
+events to `/events`, and it runs a service station for every GitHub action a
+line takes. `@floor/github` held all of this and was deleted; the floor runs
+the two apps it always did.
 
 **The receiver flattens.** A line's templates read top-level fields, so the
 receiver lifts what a line may want out of GitHub's nesting and names it
@@ -181,8 +183,9 @@ last thing a visit does.
 
 **The floor decides who may have a credential; a provider mints it.** The
 floor knows the visit, its needs and their access. It holds no GitHub
-client, so it asks the provider it was configured with, as a service, over
-HTTP. `@floor/github` is that provider. A queue would not do: git waits
+client, so it asks the provider at `FLOOR_GIT_CREDENTIAL_URL`, as a service,
+over HTTP: `{ repoUrl, access }` in, `{ username, password }` out, answered
+inside twenty seconds. lore is that provider. A queue would not do: git waits
 thirty seconds for its answer.
 
 **A visit gets a credential only for a repository it has a `git` need for,**
@@ -245,6 +248,25 @@ with a status and its counts, and says its answer in pieces along the way.
 When the last line carries no words, the floor puts the answer together
 from the pieces. Without that a Gemini agent's verdict read as empty, which
 passes as success.
+
+**A pipeline is one file, and the tool that reads it is a client.** An
+assembly line with every station, agent definition, prompt, file and
+schedule it needs, in YAML. `floor-pipeline` exports one, imports one, and
+runs a folder of them. It adds no way into the floor: it uses the routes
+any client uses, so what it can do, HTTP can do.
+
+**Seeding is migrations: ordered, each once.** The other way was a folder
+the floor is made to match at every deploy. Then an edit made over HTTP is
+lost at the next deploy, and nobody is told. Here a file that ran is not run
+again, so what a person changed stays until a later file says otherwise. A
+file that ran and was changed since is refused: a change is a new file.
+
+**The floor remembers which files ran, and runs none.** It keeps each file's
+name and the sha256 of what it held. Applying a file stays outside, in the
+tool.
+
+**A file holds a line's files by their content.** The floor keeps them by
+their hash, and a hash is no backup.
 
 **The floor holds no price.** Gemini counts tokens and names no cost, so
 somebody has to multiply. lore keeps a table in its code, which goes stale

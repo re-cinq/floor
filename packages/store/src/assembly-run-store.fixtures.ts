@@ -91,7 +91,7 @@ function registerPoolLifecycle(): () => PgPool {
   });
 
   beforeEach(async () => {
-    await pool.query("truncate definitions, assembly_runs, station_runs, events restart identity cascade");
+    await pool.query("truncate definitions, assembly_runs, station_runs, station_run_records, events restart identity cascade");
   });
 
   afterAll(async () => {

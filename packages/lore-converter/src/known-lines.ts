@@ -104,7 +104,7 @@ const PUSH_THE_FIX = `One thing above is different here. Nobody pushes your comm
 \`git -C /workspace/target push origin HEAD\`
 That one command may use the network, and git is already authenticated for this repository. Push nothing else, and never force. If the push is refused, say so in your reply and output REVIEW_RESULT:CHANGES_REQUESTED:the fix could not be pushed.`;
 
-// A push to a pull request starts neither of these by itself. lore chose in code: the full review if none had run, the fast recheck if one had. Here a router line chooses, `review-router` in @floor/github, and asks for one by name.
+// A push to a pull request starts neither of these by itself. lore chose in code: the full review if none had run, the fast recheck if one had. Here a router line chooses, a `review-router` station, and asks for one by name.
 export const KNOWN_LINES: Partial<Record<string, KnownLine>> = {
   "code-review": {
     args: REVIEW_ARGS,

@@ -23,8 +23,8 @@ api:
   # FLOOR_REAP_MS — optional override of the api's own default reap interval.
   reapMs: ""
   # FLOOR_GIT_CREDENTIAL_URL — where the api asks for a git credential for a visit's repository.
-  # Empty uses this chart's own github app when github.gitCredentials is on, and otherwise
-  # nothing: a visit that would write to a repository is then not dispatched.
+  # The provider is a service outside this chart, which mints a credential for one repository when
+  # asked. Empty means nothing does: a visit that would write to a repository is not dispatched.
   gitCredentialUrl: ""
 
 clusterAgent:
@@ -35,24 +35,6 @@ clusterAgent:
   # "claude=CLAUDE_CODE_OAUTH_TOKEN,gemini=GEMINI_API_KEY" — overrides which secret key in
   # agent-secrets holds each model family's credential. Optional; the agent has its own defaults.
   modelSecretKeys: ""
-
-# The floor's GitHub receiver and post-review station (apps/github). Off by default: a floor with
-# no GitHub in its lines does not run it.
-github:
-  enabled: false
-  # A Secret that may hold webhookSecret, token, appId and appPrivateKey; each key is optional,
-  # matching what apps/github itself treats as optional. Required when github.enabled is true.
-  existingSecret: ""
-  # GITHUB_API_URL — a GitHub Enterprise server. Empty uses apps/github's own default (github.com).
-  apiUrl: ""
-  # GITHUB_REVIEW_ROUTER — run the review router station, which needs only the floor.
-  reviewRouter: false
-  # GITHUB_GIT_CREDENTIALS — mint a token for one repository's contents when the api asks for a
-  # visit. Needs appId and appPrivateKey in existingSecret: a token given outright is never
-  # handed to a pod, and the app refuses to start.
-  gitCredentials: false
-  service:
-    port: 8280
 
 postgres:
   # Either set existingSecret + secretKey (a Secret holding a full connection string under that
