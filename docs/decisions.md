@@ -419,8 +419,18 @@ Nothing reaches a pod. The subsystem ships the same rules for its own
 namespace, and the floor runs its agents in another. What lore's agents call
 inside the cluster is not known to this chart, so it is a value.
 
+**The chart is walked, not only rendered.** `check-chart.sh` renders the
+chart and reads what came out. `walk-chart.sh` installs it in minikube and
+runs an agent through it. The first walk found what no rendering shows: an
+agent's pod is the controller's, so the chart's pull secret does not reach
+it, and an install that does not name the model's secret key leaves the pod
+waiting for a key that is not there.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is
   lost after the start. A run has no dedupe key.
 - A pod killed from outside posts nothing; its visit fails at its deadline.
+- The network policy for agent pods is rendered, installed and selects the
+  pods, and has never been seen to bind: minikube's default network plugin
+  enforces none.

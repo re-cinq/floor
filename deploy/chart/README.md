@@ -55,6 +55,22 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   is checked against `subsystem.supportedVersions` (today: `v0.11.6` only) — add to that list
   before pointing the chart at a newer vendored `controller.yaml`.
 
+## Walked on minikube
+
+`scripts/walk-chart.sh` installs this chart whole, from an image built of the checkout, in a
+namespace of its own, and walks a run through it. What it has to do beside `helm install` is what
+an operator has to do:
+
+- **Bind the pull secret to the namespace's `default` service account.** `imagePullSecrets`
+  reaches the pods this chart renders. An agent's pod is rendered by the subsystem's controller,
+  under `default`, and the subsystem's images are private:
+  `kubectl -n <namespace> patch serviceaccount default -p '{"imagePullSecrets":[{"name":"<secret>"}]}'`.
+- **Label the namespace** `agents.re-cinq.com/system=true`, as the subsystem expects.
+- **Put the model's credential in `agent-secrets`**, under the key `clusterAgent.modelSecretKeys`
+  names. With that value empty the cluster agent looks for `ANTHROPIC_API_KEY`; a Claude OAuth
+  token under `CLAUDE_CODE_OAUTH_TOKEN` needs `claude=CLAUDE_CODE_OAUTH_TOKEN`. A pod whose key
+  is missing stays in `CreateContainerConfigError` until its visit's deadline.
+
 ## What an agent's pod may reach
 
 The code in an agent's pod is whatever a model wrote a minute ago. With `clusterAgent.enabled`,

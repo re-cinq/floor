@@ -1,0 +1,28 @@
+# What scripts/walk-chart.sh seeds: one agent writes one sentence into a file.
+line:
+  id: walk-note
+  entry: write
+  exit: done
+  args:
+    topic: { kind: value, subject: true }
+  nodes:
+    - { id: write, station: walk-note }
+    - { id: done }
+  edges:
+    - { from: write, to: done, on: success }
+stations:
+  walk-note:
+    kind: agent
+    agent_definition: walk-note
+    outcomes: [success, failed]
+    needs: [{ name: topic, kind: value }]
+    produces: [{ name: note, kind: file, path: note.md }]
+agent_definitions:
+  walk-note:
+    settings:
+      model: claude-sonnet-4-6
+      image: node:22-bookworm
+      timeout_minutes: 8
+      config: { max_turns: 10 }
+      prompt: |
+        Write exactly one short sentence about {topic} into the file {note_path}. Do nothing else. When the file is written, end your reply with this line on its own: LORE_NODE_RESULT: success
