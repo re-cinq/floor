@@ -65,17 +65,20 @@ POST   /assembly-lines                   // create a line (first version); 400 w
 PUT    /assembly-lines/:id               // does NOT mutate; creates a new version, returns its hash
 DELETE /assembly-lines/:id               // archives; 409 while runs are open on it
 
-POST   /assembly-lines/:id/start         // body: repo, startItems, optional entry. 201, or, if an open run already
-                                         // holds the subject, that run (200, joined: true)
-                                         // not built yet: checking startItems against the line's args, and naming a version
+POST   /assembly-lines/:id/start         // body: repo, startItems, optional entry, optional lineHash (a version of the
+                                         // line; absent means the latest). 201, or, if an open run already holds the
+                                         // subject, that run (200, joined: true). 400 naming every arg the line declares
+                                         // that startItems lacks or holds as another kind, or a lineHash that is not a
+                                         // version of the line, or names a version of an archived line; a start item
+                                         // the line does not declare is kept
 
 A run is also started by an **event**, when the line declares `start.on`.
 That is how a PR opening starts a review and a schedule starts a sweep.
 
 ## Assembly runs - one execution of a line, walked on events
 
-GET    /assembly-runs                    // filter required: line, open, repo, subject. Not built yet: since
-GET    /assembly-runs/:id                // run + bag. Not built yet: current node, cost
+GET    /assembly-runs                    // filter required: line, open, repo, subject, since (a created_at floor; cursor pages)
+GET    /assembly-runs/:id                // run + bag + currentNode (the open visit's node, else the last opened; null) + cost (null if nothing counted)
 POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops its queued events, aborts open visits
 
 // its visits:  GET /station-runs?run=:id        its events:  GET /events?run=:id
@@ -140,7 +143,7 @@ Read-only. A visit is open until its one report arrives, and the report
 arrives as an event: `station_run.reported`, posted to `/events` with the
 visit token.
 
-GET    /station-runs                     // run required; node and open narrow it. Not built yet: station, since
+GET    /station-runs                     // run required; node, station, open and since (an opened_at floor) narrow it
 GET    /station-runs/:id                 // the visit + outcome + worker + deadline, and `cost`: what its agent counted and
                                          // what that cost, model by model; null for a visit nothing was counted for
 GET    /station-runs/:id/brief           // for the executor: each need with its kind, path and access, the resolved
@@ -192,7 +195,7 @@ GET    /agent-definitions/:id/versions
 GET    /agent-definitions/:id/versions/:hash
 POST   /agent-definitions
 PUT    /agent-definitions/:id            // new version
-DELETE /agent-definitions/:id            // archives. Not built yet: 409 while a station's latest version references it
+DELETE /agent-definitions/:id            // archives; 409 while a station's latest version references it
 
 ## Migrations - the pipeline files that ran
 

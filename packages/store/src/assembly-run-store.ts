@@ -6,16 +6,20 @@ import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
 import { foldBag } from "./bag.js";
+import { enforceStartArgs } from "./start-args.js";
 import { valueArgsOf } from "./run-args.js";
 import { deriveSubjectKey, foldLineFiles } from "./resolve.js";
 import { Refusal, enforce } from "./refusal.js";
 import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
+import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
-import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable } from "./rows.js";
+import { enforceFilesExist, lineToStart } from "./start-line.js";
+import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable, type VisitFilter } from "./rows.js";
 import {
-  blobHashesExist,
   claimedDispatchTags,
   closeOpenHumanVisits,
+  currentNodeOf,
+  deferPendingAgentDispatches,
   insertRun,
   insertVisit,
   listQuery,
@@ -35,6 +39,8 @@ export interface StartRunInput {
   startItems: Record<string, Item>;
   /** Starts at a node other than the line's entry; the node must exist. */
   entry?: string;
+  /** Pins a version of the line; absent means the latest. */
+  lineHash?: string;
 }
 
 export interface StartResult {
@@ -52,6 +58,8 @@ export interface RunFilter {
   repo?: string;
   subjectKey?: string;
   open?: boolean;
+  /** A floor on when the run was created. */
+  since?: Date;
 }
 
 export interface Page {
@@ -92,26 +100,17 @@ export class AssemblyRunStore {
   }
 
   async start(input: StartRunInput): Promise<StartResult> {
-    const line = await this.definitions.latest<LineBody>("line", input.lineId);
+    const line = await lineToStart(this.definitions, input);
 
-    enforce(line, `no line named "${input.lineId}"`);
+    enforceStartArgs(line.body.args, input.startItems);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
-    await this.enforceFilesExist(line.body.files);
+    await enforceFilesExist(this.deps.pool, line.body.files);
     const startItems = foldLineFiles(line.body.files, input.startItems);
     const subjectKey = deriveSubjectKey(line.body, startItems);
 
     return withTransaction(this.deps.pool, (client) =>
       this.startInTransaction(client, { input: { ...input, startItems }, lineHash: line.hash, entry, subjectKey }),
     );
-  }
-
-  private async enforceFilesExist(files: Record<string, string> | undefined): Promise<void> {
-    if (!files || Object.keys(files).length === 0) return;
-    const existing = await blobHashesExist(this.deps.pool, Object.values(files));
-
-    for (const [name, hash] of Object.entries(files)) {
-      enforce(existing.has(hash), `file "${name}" names blob "${hash}", which does not exist`);
-    }
   }
 
   private async startInTransaction(client: PoolClient, prepared: PreparedStart): Promise<StartResult> {
@@ -285,9 +284,17 @@ export class AssemblyRunStore {
 
     await this.releaseWorker(client, visit);
     await this.noteMissingCost(client, visit);
+    await this.pauseAgentDispatchesWhenOutOfCredit(client, visit, report);
     await this.advance(client, visit.runId);
 
     return visit;
+  }
+
+  // docs/assembly_run_storage.md, "Dispatch": a provider out of credit fails every visit at once, so the queue waits. The gate is the rows' own not_before, which a restart keeps.
+  private async pauseAgentDispatchesWhenOutOfCredit(client: PoolClient, visit: Visit, report: Report): Promise<void> {
+    if (!visit.agentDefinitionHash || !isProviderOutOfCredit(report)) return;
+
+    await deferPendingAgentDispatches(client, new Date(this.now().getTime() + CREDIT_PAUSE_MS));
   }
 
   // docs/assembly_run_storage.md, "Costs": an agent visit that ends with nothing priced is an anomaly, never a failure of the visit. Deduplicated, so a replayed report raises it once.
@@ -343,8 +350,12 @@ export class AssemblyRunStore {
     }
   }
 
-  async visits(runId: string): Promise<Visit[]> {
-    return visitsWith(this.deps.pool, runId);
+  async visits(runId: string, filter: VisitFilter = {}): Promise<Visit[]> {
+    return visitsWith(this.deps.pool, runId, filter);
+  }
+
+  async currentNode(runId: string): Promise<string | null> {
+    return currentNodeOf(this.deps.pool, runId);
   }
 
   /** Every open visit whose deadline has passed, for a sweep to fail as a timeout. A human visit never has a deadline, so it never sweeps. */

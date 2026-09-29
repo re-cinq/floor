@@ -114,6 +114,56 @@ describe("DELETE /assembly-lines/:id", () => {
   });
 });
 
+describe("DELETE /agent-definitions/:id", () => {
+  const AGENT_DEFINITION = { id: "reviewer", settings: { prompt: "p", image: "img:1", timeoutMinutes: 5 } };
+
+  async function send(method: "POST" | "DELETE", url: string, payload?: object) {
+    return injectJson<{ errors?: string[]; detail?: string }>(server(), { method, url, headers: authHeaders(), payload });
+  }
+
+  async function putAgentDefinitionAndStation(): Promise<void> {
+    await send("POST", "/agent-definitions", AGENT_DEFINITION);
+    await send("POST", "/stations", STATION_BODY);
+  }
+
+  it("answers 409 naming the station when a station's latest version names it", async () => {
+    await putAgentDefinitionAndStation();
+
+    const response = await send("DELETE", "/agent-definitions/reviewer");
+
+    expect({ statusCode: response.statusCode, detail: response.result.detail }).toEqual({
+      statusCode: 409,
+      detail: `agent definition "reviewer" is named by station "review"`,
+    });
+  });
+
+  it("answers 204 when the station named it only in an older version", async () => {
+    await putAgentDefinitionAndStation();
+    await send("POST", "/stations", { ...STATION_BODY, agentDefinition: "other-reviewer" });
+
+    const response = await send("DELETE", "/agent-definitions/reviewer");
+
+    expect(response.statusCode).toBe(204);
+  });
+
+  it("answers 204 when the station naming it is archived", async () => {
+    await putAgentDefinitionAndStation();
+    await send("DELETE", "/stations/review");
+
+    const response = await send("DELETE", "/agent-definitions/reviewer");
+
+    expect(response.statusCode).toBe(204);
+  });
+
+  it("answers 204 when no station names it", async () => {
+    await send("POST", "/agent-definitions", AGENT_DEFINITION);
+
+    const response = await send("DELETE", "/agent-definitions/reviewer");
+
+    expect(response.statusCode).toBe(204);
+  });
+});
+
 describe("POST /assembly-lines semantic validation", () => {
   const STATION_ID = "review";
 

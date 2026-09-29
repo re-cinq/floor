@@ -162,8 +162,13 @@ start, each as a `file` item `by: "line"`; a start item the caller gave
 under the same name wins. A named hash the blobs table does not hold
 refuses the start, naming the file.
 
-> **Not built yet.** Start arguments are not checked against the line's
-> `args`, and a start cannot name a line version: it takes the latest.
+A start is checked against the line's `args` before anything is written and
+before the subject join: every declared arg must be in `startItems` with the
+same `kind`, and one refusal names every arg that is missing or of another
+kind. A start item the line does not declare is allowed and kept in the bag.
+An optional `lineHash` pins the line version, and the args checked are that
+version's; absent, the start takes the latest. A hash that is not a version of
+the line refuses the start. Event-started runs pass through the same check.
 
 ## Routing: the kernel decides, events carry
 
@@ -251,10 +256,26 @@ the floor report the visit `failed`, `error: unclaimed`, naming the tags no
 worker offers. A launch that fails is failed back to the queue and retried
 with backoff.
 
-> **Not built yet.** **Provider out of credit.** When a visit fails with
-> that error class, the floor pushes `not_before` on every pending agent
-> dispatch by five minutes. The gate is data in the queue, so a restart does
-> not forget it.
+**Provider out of credit.** When an agent visit reports an error that says
+the model provider is out of credit, the floor sets `not_before` to five
+minutes from now on every pending agent dispatch (`station_run.dispatch`
+tagged `kind:agent`), in the same transaction as the report. A dispatch a
+worker has already claimed is left alone, so is a service station's, and a
+`not_before` already later than that (a retry's backoff) stays where it is. A
+burst of such failures therefore holds the queue for five minutes past the
+last one, not for five minutes each. The gate is the rows' own `not_before`,
+so a restart does not forget it.
+
+The error is recognised by `packages/store/src/provider-credit.ts`, the one
+place to add a provider's wording. It matches, case-insensitively, anywhere in
+the report's `error`:
+
+| provider | wording matched |
+|---|---|
+| Anthropic API, Claude Code | `credit balance is too low` |
+| OpenAI | `exceeded your current quota`, `insufficient_quota` |
+| OpenRouter | `insufficient credits` |
+| Gemini | `prepayment credits are depleted` |
 
 ### The agent kind runs on the ai-agent-subsystem, with no code of ours in the pod
 
@@ -317,16 +338,20 @@ query.
 
 ## Security: how the rules are enforced
 
-> **Not built yet**, of the list below: the lint fence, the branded route
-> type, fuzzing, the threat models, and the second reviewer. Built: the
-> template engine as one module, with tests named after the attacks; the
+> **Not built yet**, of the list below: the branded route type, fuzzing, the
+> threat models, and the second reviewer. Built: the template engine as one
+> module, with tests named after the attacks; the lint fence around it (below); the
 > visit token, with tests proving it reaches only its own visit and only
 > the ten routes a visit is given, every other route being a service's
 > alone; no outbound request from the floor.
 
 - Rules are tests first, each with a hostile input named after the attack.
 - One module per boundary: templates, routes, tokens; a lint rule fences the
-  template engine inside its module.
+  template engine inside its module. The rule is ESLint's own
+  `no-restricted-imports`, in this repo's `eslint.config.mjs`: any import or
+  re-export of `template` is an error except in `template.ts`, its test, and
+  `event-match.ts`, the one caller, which renders start arguments. The package
+  index does not export `renderTemplate`.
 - Template scope is a type holding only declared names; secrets cannot be an
   `Item`; a route is a branded type.
 - Templates, routes and report payloads are fuzzed.
@@ -423,9 +448,15 @@ The lease is checked before every pass: Postgres drops an advisory lock
 with its connection and tells nobody. A refusal from the store is never
 retried, the event is dead at once; anything else is.
 
-> **Not built yet.** **Retention.** Events of a run are kept while it is
-> open and 30 days after. `internal.*` events are the audit log and are
-> never deleted. Today nothing is deleted.
+**Retention.** The events of a run are kept while it is open and for 30
+days after it settles. The age counts from the run settling, never from
+the event: an old event of a run still open stays, and a run that settled
+yesterday keeps every event whatever its own age. Exempt, and never
+deleted: `internal.*` events, the audit log, and any event that belongs to
+no run (outside events, schedule ticks), whose dedupe key is what keeps a
+redelivery from firing twice. The floor's loop does it beside the blob
+reaping, on the instance holding the lease, every `FLOOR_REAP_MS`
+(default an hour).
 
 ## Costs
 

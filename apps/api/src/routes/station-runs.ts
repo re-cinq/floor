@@ -6,6 +6,7 @@ import { HTTP_CREATED } from "../http-status.js";
 import { parseBody } from "../parse.js";
 import { badRequest, forbidden, notFound } from "../problem.js";
 import { createRecordsSchema, recordKindSchema } from "../schemas.js";
+import { dateOf } from "./date-of.js";
 import { isUuid } from "./own-visit.js";
 
 const DEFAULT_LIMIT = 50;
@@ -22,7 +23,7 @@ async function list(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const query = request.query as Record<string, string | undefined>;
 
   if (!query.run) return badRequest(toolkit, "filter required: run");
-  const visits = await deps.runs.visits(query.run);
+  const visits = await deps.runs.visits(query.run, { station: query.station, since: dateOf(query.since) });
 
   return { items: visits.filter((visit) => matches(visit, query)) };
 }

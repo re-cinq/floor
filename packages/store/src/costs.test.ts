@@ -278,4 +278,28 @@ describe("CostsStore.summary", () => {
 
     expect(rows[0]!.visitsMissingCost).toBe(0);
   });
+
+  it("says what one run cost through ofRun, key and all", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const visitId = await openAgentVisit("code-review", "r", DAY_1);
+
+    await recordCost(visitId, 2, DAY_1, { tokensIn: 5, tokensOut: 7 });
+
+    expect(await costs().ofRun(await runOf(visitId))).toEqual({
+      key: await runOf(visitId),
+      costUsd: 2,
+      tokensIn: 5,
+      tokensOut: 7,
+      visits: 1,
+      visitsMissingCost: 0,
+      unpriced: [],
+    });
+  });
+
+  it("says null through ofRun for a run nothing was counted for", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const visitId = await openAgentVisit("code-review", "r", DAY_1);
+
+    expect(await costs().ofRun(await runOf(visitId))).toBeNull();
+  });
 });

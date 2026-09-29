@@ -75,6 +75,16 @@ function toOpenVisitRow(row: { station_run_id: string; input: { dispatchTags?: s
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
+/** The node of the run's most recently opened open visit; with none open, of the last visit opened; null with no visits. */
+export async function currentNodeOf(connection: Queryable, runId: string): Promise<string | null> {
+  const { rows } = await connection.query(
+    `select node_id from station_runs where assembly_run_id = $1 order by (report is null) desc, id desc limit 1`,
+    [runId],
+  );
+
+  return rows[0]?.node_id ?? null;
+}
+
 export async function insertVisit(client: PoolClient, runId: string, context: OpenContext): Promise<{ visit: Visit; created: boolean }> {
   const input = {
     brief: context.brief,
@@ -155,6 +165,7 @@ export function listQuery(filter: RunFilter, page: Page): { text: string; values
   addCondition(conditions, values, "line_id = $%", filter.lineId);
   addCondition(conditions, values, "repo = $%", filter.repo && canonicalRepo(filter.repo));
   addCondition(conditions, values, "subject_key = $%", filter.subjectKey);
+  addCondition(conditions, values, "created_at >= $%", filter.since);
   if (filter.open !== undefined) conditions.push(filter.open ? "finished_at is null" : "finished_at is not null");
   if (page.cursor) addCondition(conditions, values, "id < $%", page.cursor);
   values.push(page.limit);
@@ -226,4 +237,14 @@ export async function claimedDispatchTags(client: Queryable, visitId: string): P
   );
 
   return rows[0] ? (rows[0].tags as string[]) : null;
+}
+
+/** Pending agent dispatches only: one a worker has claimed is being worked on, and a service station's has nothing to do with a model provider. Never pulls a later `not_before` earlier. */
+export async function deferPendingAgentDispatches(client: Queryable, heldUntil: Date): Promise<void> {
+  await client.query(
+    `update events set not_before = greatest(not_before, $1)
+     where name = 'station_run.dispatch' and tags @> array['kind:agent']
+       and claimed_at is null and acked_at is null and dead_at is null and dropped_at is null`,
+    [heldUntil],
+  );
 }

@@ -3,6 +3,7 @@ import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import type { CostsFilter, CostsGroupBy } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { badRequest } from "../problem.js";
+import { dateOf } from "./date-of.js";
 import { isUuid } from "./own-visit.js";
 
 const GROUP_BY_VALUES: CostsGroupBy[] = ["day", "line", "station", "model", "run"];
@@ -30,13 +31,6 @@ function filterFrom(query: Record<string, string | undefined>): CostsFilter {
 
 function hasFilter(filter: CostsFilter): boolean {
   return Object.values(filter).some((value) => value !== undefined);
-}
-
-function dateOf(value: string | undefined): Date | undefined {
-  if (value === undefined) return undefined;
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function groupByOf(value: string | undefined): CostsGroupBy | undefined {
