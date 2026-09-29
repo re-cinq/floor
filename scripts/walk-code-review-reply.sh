@@ -58,7 +58,7 @@ npm run --silent build >/dev/null
 
 say "starting a stand-in GitHub holding one review, and a stand-in git credential provider"
 FAKE_BRANCH="${BRANCH}" FAKE_REVIEW_BODY="Why is this repository called Spoon-Knife? Answer from what the README says." \
-  FAKE_REVIEW_COMMENTS='[{"id": 11, "path": "README.md", "line": 1, "body": "What is this file for?"}]' \
+  FAKE_REVIEW_COMMENTS='[{"id": 11, "pull_request_review_id": 900, "path": "README.md", "line": 1, "body": "What is this file for?"}]' \
   node scripts/stations/fake-github.mjs >"${LOGS}/fake-github.log" 2>&1 &
 PIDS+=($!)
 PORT="${PROVIDER_PORT}" FLOOR_SERVICE_TOKEN="${TOKEN}" node scripts/stations/git-credentials.mjs >"${LOGS}/provider.log" 2>&1 &

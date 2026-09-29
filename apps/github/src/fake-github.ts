@@ -89,7 +89,7 @@ interface Asked {
 
 const GITHUB_PAGE_SIZE = 30;
 
-const REVIEW_COMMENTS_PATH = /\/pulls\/\d+\/reviews\/\d+\/comments$/;
+const REVIEW_COMMENTS_PATH = /\/pulls\/\d+\/comments$/;
 const REVIEW_PATH = /\/pulls\/\d+\/reviews\/\d+$/;
 const PULL_PATH = /\/pulls\/\d+$/;
 const ISSUE_COMMENTS_PATH = /\/issues\/\d+\/comments$/;

@@ -5,7 +5,11 @@
 # there is no default.
 #
 #   FLOOR_GITHUB_ENV_FILE=<file with GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY> \
-#     bash scripts/walk-real-review.sh https://github.com/<owner>/<name>/pull/<number>
+#     bash scripts/walk-real-review.sh https://github.com/<owner>/<name>/pull/<number> [--then-fix]
+#
+# With --then-fix it goes on: lore's code-review-reply, converted, acts on the review just posted.
+# An agent in a real pod commits a fix and PUSHES IT TO THE PULL REQUEST'S BRANCH, and its reply is
+# posted as a comment. Whatever listens to that repository, CI or another floor, hears the push.
 #
 # The app's key is read by @floor/github from that file, and is never on a command line or in a
 # file of this script's. Needs `gh`, a lore checkout (LORE_DIR) and `npm run minikube-setup`.
@@ -16,6 +20,8 @@ set -euo pipefail
 
 cd "${ROOT}"
 PULL_REQUEST="${1:-}"
+THEN="${2:-}"
+[ -z "${THEN}" ] || [ "${THEN}" = "--then-fix" ] || fail "the only thing to add is --then-fix"
 [[ "${PULL_REQUEST}" =~ ^https://github\.com/([^/]+)/([^/]+)/pull/([0-9]+)$ ]] || fail "name the pull request: https://github.com/<owner>/<name>/pull/<number>"
 OWNER="${BASH_REMATCH[1]}"; NAME="${BASH_REMATCH[2]}"; NUMBER="${BASH_REMATCH[3]}"
 [ -f "${FLOOR_GITHUB_ENV_FILE:-}" ] || fail "set FLOOR_GITHUB_ENV_FILE to a file holding GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY"
@@ -112,34 +118,39 @@ RUN="$(jq -n --arg repo "github.com/${OWNER}/${NAME}" --arg branch "${BRANCH}" -
 RUN="$(jq -r .run.id <<<"${RUN}")"
 echo "run ${RUN}"
 
+# Waits for a run to settle, saying what the pods do meanwhile, and says its outcome.
+settled() {
+  local run="$1" outcome=null seen="" now
+  for _ in $(seq 1 "$((WAIT_SECONDS / 5))"); do
+    outcome="$(api "${BASE}/assembly-runs/${run}" | jq -r .run.outcome)"
+    [ "${outcome}" != "null" ] && break
+    now="$(kubectl -n "${FLOOR_AGENTS_NAMESPACE}" get pods --no-headers 2>/dev/null | awk '!/agent-controller/ {printf "%s  ", $3}' || true)"
+    if [ "${now}" != "${seen}" ]; then echo "  pods: ${now:-none yet}" >&2; seen="${now}"; fi
+    sleep 5
+  done
+  echo "${outcome}"
+}
+
+# A run as it ended: its bag, its visits in order, and what the agent at one of its nodes cost.
+told() {
+  local run="$1" node="$2" visit
+  say "the run"
+  api "${BASE}/assembly-runs/${run}" | jq '{outcome: .run.outcome, reason: .run.reason, bag: (.bag | map_values(.ref))}'
+  say "its visits, in order"
+  api "${BASE}/station-runs?run=${run}" | jq -r '.items | sort_by(.openedAt)[] | "\(.nodeId)\t\(.report.outcome // "open")\t\(.report.error // "")"'
+  say "what the agent cost"
+  visit="$(api "${BASE}/station-runs?run=${run}" | jq -r --arg node "${node}" '.items | map(select(.nodeId == $node)) | .[0].id')"
+  api "${BASE}/station-runs/${visit}/records?kind=llm_call" | jq -c '.items[].body | {costUsd, turns, durationMs}'
+}
+
 say "waiting for the review, up to ${WAIT_SECONDS}s"
-OUTCOME=null
-SEEN=""
-for _ in $(seq 1 "$((WAIT_SECONDS / 5))"); do
-  OUTCOME="$(api "${BASE}/assembly-runs/${RUN}" | jq -r .run.outcome)"
-  [ "${OUTCOME}" != "null" ] && break
-  NOW="$(kubectl -n "${FLOOR_AGENTS_NAMESPACE}" get pods --no-headers 2>/dev/null | awk '!/agent-controller/ {printf "%s  ", $3}' || true)"
-  if [ "${NOW}" != "${SEEN}" ]; then echo "  pods: ${NOW:-none yet}"; SEEN="${NOW}"; fi
-  sleep 5
-done
-
-say "the run"
-api "${BASE}/assembly-runs/${RUN}" | jq '{outcome: .run.outcome, reason: .run.reason, bag: (.bag | map_values(.ref))}'
-
-say "its visits, in order"
-api "${BASE}/station-runs?run=${RUN}" | jq -r '.items | sort_by(.openedAt)[] | "\(.nodeId)\t\(.report.outcome // "open")\t\(.report.error // "")"'
-
-say "what the agent cost"
-REVIEW_VISIT="$(api "${BASE}/station-runs?run=${RUN}" | jq -r '.items | map(select(.nodeId == "review")) | .[0].id')"
-api "${BASE}/station-runs/${REVIEW_VISIT}/records?kind=llm_call" | jq -c '.items[].body | {costUsd, turns, durationMs}'
+OUTCOME="$(settled "${RUN}")"
+told "${RUN}" review
 
 say "the pull request's reviews, as GitHub has them now"
 gh api "repos/${OWNER}/${NAME}/pulls/${NUMBER}/reviews" --paginate \
   --jq '.[] | {id, by: .user.login, state, url: .html_url, body: (.body | .[0:160])}'
 REVIEWS_AFTER="$(gh api "repos/${OWNER}/${NAME}/pulls/${NUMBER}/reviews" --paginate --jq 'length')"
-
-say "waiting for the cluster agent to clean up after the walk"
-wait_for_cleanup
 
 if [ "${OUTCOME}" != "success" ] || [ "$((REVIEWS_AFTER - REVIEWS_BEFORE))" -ne 1 ]; then
   what_went_wrong
@@ -147,3 +158,59 @@ if [ "${OUTCOME}" != "success" ] || [ "$((REVIEWS_AFTER - REVIEWS_BEFORE))" -ne 
 fi
 
 say "reviewed: ${RUN} settled as success; one review posted to ${PULL_REQUEST}"
+
+if [ "${THEN}" != "--then-fix" ]; then
+  say "waiting for the cluster agent to clean up after the walk"
+  wait_for_cleanup
+  exit 0
+fi
+
+REVIEW_ID="$(api "${BASE}/assembly-runs/${RUN}" | jq -r '.bag.review_url.ref | sub(".*#pullrequestreview-"; "")')"
+[[ "${REVIEW_ID}" =~ ^[0-9]+$ ]] || fail "the review's address names no review: ${REVIEW_ID}"
+HEAD_BEFORE="$(gh api "repos/${OWNER}/${NAME}/pulls/${NUMBER}" --jq .head.sha)"
+COMMENTS_BEFORE="$(gh api "repos/${OWNER}/${NAME}/issues/${NUMBER}/comments" --paginate --jq 'length')"
+
+say "converting lore's code-review-reply, and putting it to the floor"
+FLOOR_SERVICE_TOKEN="${TOKEN}" node packages/lore-converter/dist/cli.js \
+  --lore "${LORE_DIR}" --line code-review-reply --model "${MODEL}" --put "${BASE}" \
+  | jq -r '"line \(.line.id): enters at \(.line.body.entry); nodes \([.line.body.nodes[].id] | join(", "))"'
+
+say "starting the fix, acting on review ${REVIEW_ID}; the branch is at ${HEAD_BEFORE:0:10}"
+FIX="$(jq -n --arg repo "github.com/${OWNER}/${NAME}" --arg branch "${BRANCH}" --arg url "${PULL_REQUEST}" --arg review "${REVIEW_ID}" '{
+    repo: $repo, startItems: {
+      repo: {kind: "git", ref: "\($repo)@\($branch)", by: "walk-real-review.sh"},
+      pr_url: {kind: "value", ref: $url, by: "walk-real-review.sh"},
+      review_id: {kind: "value", ref: $review, by: "walk-real-review.sh"},
+      intent: {kind: "value", ref: "address", by: "walk-real-review.sh"}}}' \
+  | api -X POST "${BASE}/assembly-lines/code-review-reply/start" -d @-)"
+[ "$(jq -r .joined <<<"${FIX}")" = "false" ] || fail "a run is already open on ${PULL_REQUEST}: $(jq -r .run.id <<<"${FIX}")"
+FIX="$(jq -r .run.id <<<"${FIX}")"
+echo "run ${FIX}"
+
+say "waiting for the fix, up to ${WAIT_SECONDS}s"
+FIXED="$(settled "${FIX}")"
+told "${FIX}" reply
+
+say "the branch, as GitHub has it now"
+HEAD_AFTER="$(gh api "repos/${OWNER}/${NAME}/pulls/${NUMBER}" --jq .head.sha)"
+echo "before ${HEAD_BEFORE:0:10}, after ${HEAD_AFTER:0:10}"
+if [ "${HEAD_AFTER}" != "${HEAD_BEFORE}" ]; then
+  gh api "repos/${OWNER}/${NAME}/compare/${HEAD_BEFORE}...${HEAD_AFTER}" \
+    --jq '{ahead_by, behind_by, commits: [.commits[] | {sha: .sha[0:10], author: .commit.author.name, message: (.commit.message | split("\n")[0])}], files: [.files[] | "\(.filename) +\(.additions) -\(.deletions)"]}'
+fi
+
+say "the pull request's comments since, as GitHub has them"
+gh api "repos/${OWNER}/${NAME}/issues/${NUMBER}/comments" --paginate \
+  --jq ".[${COMMENTS_BEFORE}:] | .[] | {by: .user.login, url: .html_url, body: (.body | .[0:400])}"
+COMMENTS_AFTER="$(gh api "repos/${OWNER}/${NAME}/issues/${NUMBER}/comments" --paginate --jq 'length')"
+
+say "waiting for the cluster agent to clean up after the walk"
+wait_for_cleanup
+
+MOVED="$([ "${HEAD_AFTER}" != "${HEAD_BEFORE}" ] && echo yes || echo no)"
+if [ "${FIXED}" != "success" ] || [ "${MOVED}" = "no" ] || [ "${COMMENTS_AFTER}" -le "${COMMENTS_BEFORE}" ]; then
+  what_went_wrong
+  fail "outcome ${FIXED}, branch moved: ${MOVED}, comments posted $((COMMENTS_AFTER - COMMENTS_BEFORE)); logs kept in ${LOGS}"
+fi
+
+say "fixed: ${FIX} settled as success; a commit pushed to ${BRANCH}, and a reply posted to ${PULL_REQUEST}"

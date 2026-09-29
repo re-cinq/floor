@@ -25,7 +25,7 @@ describe("the read-review station", () => {
       expect.arrayContaining([
         "GET /repos/re-cinq/floor/pulls/12",
         "GET /repos/re-cinq/floor/pulls/12/reviews/900",
-        "GET /repos/re-cinq/floor/pulls/12/reviews/900/comments?per_page=100&page=1",
+        "GET /repos/re-cinq/floor/pulls/12/comments?per_page=100&page=1",
       ]),
     );
   });
@@ -33,7 +33,7 @@ describe("the read-review station", () => {
   it("turns a review's body and inline comments into the reply agent's task", async () => {
     github.fixtures.branch = "feature/x";
     github.fixtures.reviewBody = "guard the null case";
-    github.fixtures.reviewComments = [{ id: 11, path: "src/a.ts", line: 7, body: "null here" }];
+    github.fixtures.reviewComments = [{ id: 11, pull_request_review_id: 900, path: "src/a.ts", line: 7, body: "null here" }];
 
     const report = await reported();
 
@@ -48,11 +48,35 @@ describe("the read-review station", () => {
   });
 
   it("reads the 101st inline comment of a long review, which GitHub gives on a second page", async () => {
-    github.fixtures.reviewComments = Array.from({ length: 101 }, (unused, index) => ({ id: index + 1, path: "src/a.ts", line: index + 1, body: `finding ${index + 1}` }));
+    github.fixtures.reviewComments = Array.from({ length: 101 }, (unused, index) => ({ id: index + 1, pull_request_review_id: 900, path: "src/a.ts", line: index + 1, body: `finding ${index + 1}` }));
 
     const report = await reported();
 
     expect(report.produced?.review_feedback).toContain("- inline comment 101 on src/a.ts:101: finding 101");
+  });
+
+  it("names line 58 for a comment whose line has since changed, which GitHub keeps only as the line it was written on", async () => {
+    github.fixtures.reviewComments = [{ id: 12, pull_request_review_id: 900, path: "src/a.ts", line: null, original_line: 58, body: "say why" }];
+
+    const report = await reported();
+
+    expect(report.produced?.review_feedback).toContain("- inline comment 12 on src/a.ts:58: say why");
+  });
+
+  it("names the file alone for a comment GitHub gives no line for", async () => {
+    github.fixtures.reviewComments = [{ id: 13, pull_request_review_id: 900, path: "src/a.ts", body: "about the whole file" }];
+
+    const report = await reported();
+
+    expect(report.produced?.review_feedback).toContain("- inline comment 13 on src/a.ts: about the whole file");
+  });
+
+  it("leaves out the comments of another review on the same pull request", async () => {
+    github.fixtures.reviewComments = [{ id: 14, pull_request_review_id: 901, path: "src/b.ts", line: 3, body: "someone else's" }];
+
+    const report = await reported();
+
+    expect(report.produced?.review_feedback).not.toContain("someone else's");
   });
 
   it("tells the agent to only answer when the intent is answer", async () => {
