@@ -129,4 +129,7 @@ if [ "${OUTCOME}" != "success" ] || [ -z "${NOTE}" ] || [ "${ASKED}" -eq 0 ]; th
   fail "outcome ${OUTCOME}, note ${NOTE:-missing}, provider asked ${ASKED} time(s); logs kept in ${LOGS}"
 fi
 
+say "waiting for the cluster agent to clean up after the walk"
+wait_for_cleanup
+
 say "walked: ${RUN} settled as success; git in the pod asked the floor ${ASKED} time(s)"

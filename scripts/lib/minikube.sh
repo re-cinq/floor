@@ -66,3 +66,15 @@ set_process_env() {
   echo "${name}=${value}" >>"${kept}"
   mv "${kept}" "${PROCESS_ENV_FILE}"
 }
+
+# Waits for the cluster agent to take away what the walk's visits left. It learns that a visit has
+# ended from an event, a moment after the run settles, so a walk that stops it at once leaves pods.
+wait_for_cleanup() {
+  local left=""
+  for _ in $(seq 1 30); do
+    left="$(kubectl -n "${FLOOR_AGENTS_NAMESPACE}" get agents --no-headers 2>/dev/null | awk '/^floor-/ {print $1}' || true)"
+    [ -z "${left}" ] && break
+    sleep 5
+  done
+  if [ -n "${left}" ]; then printf 'still in the cluster:\n%s\n' "${left}"; else echo "nothing of the walk is left in the cluster"; fi
+}

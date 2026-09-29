@@ -159,4 +159,7 @@ if [ "${OUTCOME}" != "success" ] || [ "${POSTED}" -ne 1 ]; then
   fail "outcome ${OUTCOME}, replies posted ${POSTED}; logs kept in ${LOGS}"
 fi
 
+say "waiting for the cluster agent to clean up after the walk"
+wait_for_cleanup
+
 say "walked: ${RUN} settled as success; one reply posted, to the stand-in"
