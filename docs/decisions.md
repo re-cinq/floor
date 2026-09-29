@@ -448,6 +448,14 @@ otherwise move it backwards.
 is a number to `helm --set`, and one such as `1234e56` is a number with an
 exponent.
 
+**An agent pod is let through to the node's DNS cache.** The policy allowed
+the cluster's DNS pods and the internet, and excluded link-local to keep a
+pod away from the cloud's metadata endpoint. Where NodeLocal DNSCache runs,
+which is every GKE cluster, a pod asks a link-local address on its own node
+and so resolved nothing: the first agent in a real cluster could not look up
+the floor's own address. lore's own policy had the rule; the subsystem's
+vendored one, which this was copied from, does not.
+
 **The chart is walked, not only rendered.** `check-chart.sh` renders the
 chart and reads what came out. `walk-chart.sh` installs it in minikube and
 runs an agent through it. The first walk found what no rendering shows: an

@@ -96,6 +96,9 @@ grep -qF 'ingress: []' <<<"${policy}" || fail "the policy lets something reach a
 grep -qF 'app.kubernetes.io/component: api' <<<"${policy}" || fail "the policy does not let an agent pod reach the api"
 grep -qF '169.254.0.0/16' <<<"${policy}" || fail "the policy lets an agent pod reach the metadata endpoint"
 
+say "agent pods reach the node's own DNS cache, where the cluster runs one"
+grep -qF '169.254.20.10/32' <<<"${policy}" || fail "the policy does not let an agent pod reach NodeLocal DNSCache"
+
 say "agent pods reach what the operator lists"
 helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" -s templates/agent-networkpolicy.yaml \
   --set 'agentNetworkPolicy.extraEgress[0].to[0].namespaceSelector.matchLabels.kubernetes\.io/metadata\.name=lore' \

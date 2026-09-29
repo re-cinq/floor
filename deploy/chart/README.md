@@ -80,6 +80,7 @@ subsystem's controller runs, by the label it puts on them: `agents.re-cinq.com/c
 | a pod reaches | how |
 |---|---|
 | the cluster's DNS | `kube-system`, `k8s-app: kube-dns`, port 53 |
+| the node's DNS cache | `agentNetworkPolicy.nodeLocalDnsAddress`, port 53. Where a cluster runs NodeLocal DNSCache, this is the one a pod actually asks |
 | the public internet | port 443, without the private ranges and without `169.254.0.0/16`, where a cloud's metadata endpoint is |
 | this release's api | its pods, port 8080, when `api.enabled` |
 | what you list | `agentNetworkPolicy.extraEgress`, NetworkPolicy egress rules as they are written |
@@ -91,6 +92,9 @@ Nothing reaches a pod.
   `extraEgress`.
 - **A floor that is not this release's api must be listed too**: a cluster-agent-only release, or
   an `api.baseUrl` on a private address.
+- **NodeLocal DNSCache needs its own rule.** It answers on a link-local address on the node,
+  so the cluster-DNS rule never sees that traffic and the internet rule excludes the whole
+  link-local range. A pod then resolves nothing at all. GKE runs it, and uses `169.254.20.10`.
 - **The network plugin must enforce NetworkPolicy.** Where it does not, the policy is accepted
   and binds nothing. minikube's default plugin does not; start it with `--cni=calico` to see it
   bind.
