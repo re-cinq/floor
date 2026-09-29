@@ -69,7 +69,8 @@ POST   /assembly-lines/:id/start         // body: repo, startItems, optional ent
                                          // line; absent means the latest). 201, or, if an open run already holds the
                                          // subject, that run (200, joined: true). 400 naming every arg the line declares
                                          // that startItems lacks or holds as another kind, or a lineHash that is not a
-                                         // version of the line; a start item the line does not declare is kept
+                                         // version of the line, or names a version of an archived line; a start item
+                                         // the line does not declare is kept
 
 A run is also started by an **event**, when the line declares `start.on`.
 That is how a PR opening starts a review and a schedule starts a sweep.

@@ -64,6 +64,17 @@ describe("AssemblyRunStore.start naming a line version", () => {
     );
   });
 
+  it("refuses a pinned version of a line that has been archived", async () => {
+    await seedReviewLine();
+    const pinned = (await definitions().latest("line", "code-review"))!.hash;
+
+    await definitions().archive("line", "code-review");
+
+    await expect(
+      store().start({ lineId: "code-review", repo, startItems: startItems(), lineHash: pinned }),
+    ).rejects.toThrow(new Error('line "code-review" is archived'));
+  });
+
   it("refuses a hash that is not a version of the line", async () => {
     await seedReviewLine();
 

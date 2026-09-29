@@ -125,6 +125,8 @@ export class AssemblyRunStore {
     const pinned = await this.definitions.byHash<LineBody>("line", input.lineId, input.lineHash);
 
     enforce(pinned, `"${input.lineHash}" is not a version of line "${input.lineId}"`);
+    // Archiving retires a line, and naming a version by hand must not walk around that.
+    enforce(!pinned.archivedAt, `line "${input.lineId}" is archived`);
 
     return pinned;
   }
