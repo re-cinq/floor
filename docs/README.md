@@ -22,7 +22,7 @@ underneath it.
 - [API sketch](api_sketch.md): every endpoint, the conventions, the lore compatibility table and the converter
 - [Assembly run storage](assembly_run_storage.md): the model, routing, dispatch, events, costs, tables, and the mapping from lore's columns
 - [Development loop](dev_loop.md): minikube, hot reload, one command
-- [Releasing](releasing.md): a GitHub Release publishes the image and the two npm packages, and deploys
+- [Releasing](releasing.md): a GitHub Release publishes the image and the four npm packages, and deploys
 
 ## What is built
 

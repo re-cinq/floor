@@ -422,13 +422,13 @@ inside the cluster is not known to this chart, so it is a value.
 **A release is a GitHub Release, and the tag is the version.** As
 HALEngine and bowman-ui do it. Publishing the release starts `publish.yml`:
 the tag is checked, the gates run again on the tagged commit, and then the
-image, the two npm packages and the deploy. The packages carry a placeholder
+image, the four npm packages and the deploy. The packages carry a placeholder
 version on `main` and are stamped from the tag, so no commit bumps a
 version. A pushed tag alone publishes nothing.
 
-**The npm packages are `@re-cinq/floor-station` and
-`@re-cinq/floor-pipeline`.** They were `@floor/station` and
-`@floor/pipeline`; re:cinq publishes under `@re-cinq`, and holds no
+**The npm packages are `@re-cinq/floor-contracts`, `@re-cinq/floor-client`,
+`@re-cinq/floor-station` and `@re-cinq/floor-pipeline`.** The last two were
+`@floor/station` and `@floor/pipeline`; re:cinq publishes under `@re-cinq`, and holds no
 `@floor` on npm. The packages that are
 not published keep `@floor`. They are licensed Apache-2.0, as every package
 re:cinq publishes is.

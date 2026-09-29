@@ -1,7 +1,7 @@
 name: Publish
 
-# Publishes a version: the image to ghcr.io/re-cinq/floor, the station SDK and the pipeline
-# tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
+# Publishes a version: the image to ghcr.io/re-cinq/floor, the wire contracts, the client, the
+# station SDK and the pipeline tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
 #
 # Publishing a GitHub Release is what starts this file. The release carries the `vX.Y.Z` tag
 # and the notes, and the tag is the version: the packages carry a placeholder on main, stamped
