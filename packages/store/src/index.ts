@@ -23,7 +23,7 @@ export {
   type DispatchNeed,
 } from "./dispatch-brief.js";
 export { OutsideEvents, type OutsideEvent, type OutsideEventsDeps, type RunRef } from "./outside-events.js";
-export { SchedulesStore, isValidCron, type SchedulesStoreDeps } from "./schedules.js";
+export { SchedulesStore, isValidCron, isValidTimezone, type SchedulesStoreDeps } from "./schedules.js";
 export {
   DefinitionsStore,
   type DefinitionKind,

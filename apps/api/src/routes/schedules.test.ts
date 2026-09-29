@@ -51,6 +51,30 @@ describe("POST /schedules", () => {
     });
   });
 
+  it("returns 400 naming the field for an invalid timezone", async () => {
+    const response = await injectJson<{ errors?: string[] }>(server(), {
+      method: "POST",
+      url: "/schedules",
+      headers: authHeaders(),
+      payload: { ...SCHEDULE_BODY, timezone: "Not/AZone" },
+    });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({
+      statusCode: 400,
+      errors: ["timezone: invalid timezone"],
+    });
+  });
+
+  it("leaves the pending event unchanged when the same body is posted again", async () => {
+    await putSchedule();
+    const before = await injectJson<ScheduleRow>(server(), { method: "GET", url: "/schedules/nightly", headers: authHeaders() });
+
+    await putSchedule();
+    const after = await injectJson<ScheduleRow>(server(), { method: "GET", url: "/schedules/nightly", headers: authHeaders() });
+
+    expect(pendingOf(after)?.id).toBe(pendingOf(before)?.id);
+  });
+
   it("refuses a non-service bearer token", async () => {
     const token = mintVisitToken("visit-1", new Date("2026-01-01T01:00:00Z"), VISIT_TOKEN_SECRET);
 

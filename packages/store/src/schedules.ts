@@ -1,5 +1,6 @@
 // Schedules (docs/api_sketch.md, "Schedules"): a name, a cron and an event payload, holding exactly one pending event. Handling its tick enqueues the next occurrence.
 import { CronExpressionParser } from "cron-parser";
+import { definitionHash } from "@floor/assembly-lines";
 import type { DefinitionsStore, PutResult } from "./definitions.js";
 import type { EventStore, FloorEvent } from "./events.js";
 import type { ScheduleBody } from "./types.js";
@@ -13,8 +14,13 @@ export interface SchedulesStoreDeps {
 export class SchedulesStore {
   constructor(private readonly deps: SchedulesStoreDeps) {}
 
-  /** Stores the version and enqueues the first occurrence; an existing schedule's old pending event is dropped first. */
+  /** Stores the version and enqueues the first occurrence; an existing schedule's old pending event is dropped first. A body identical to the current latest is a no-op, leaving the pending event untouched, so a repeated create never resets the timer. */
   async put(name: string, body: ScheduleBody, createdBy?: string): Promise<PutResult> {
+    const current = await this.deps.definitions.latest<ScheduleBody>("schedule", name);
+    const hash = definitionHash(body);
+
+    if (current?.hash === hash) return { hash, created: false };
+
     await this.deps.events.dropByName(tickName(name));
     const result = await this.deps.definitions.put("schedule", name, body, createdBy);
 
@@ -76,6 +82,16 @@ export function isValidCron(cron: string): boolean {
   try {
     // eslint-disable-next-line id-length -- cron-parser's own option name
     CronExpressionParser.parse(cron, { tz: "UTC" });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isValidTimezone(timezone: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
 
     return true;
   } catch {
