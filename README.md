@@ -124,6 +124,7 @@ it `needs` and what it `produces`; floor moves the bytes and nothing else crosse
 | [`packages/pipeline`](packages/pipeline/README.md) | A whole pipeline as one file, exported from or imported into a floor over HTTP. |
 | [`packages/lore-converter`](packages/lore-converter/README.md) | Reads a lore checkout and writes the definitions this floor runs in its place. |
 | [`deploy/chart`](deploy/chart/README.md) | One Helm chart, one image, both apps, toggled. |
+| [`.github/workflows`](.github/workflows) | CI on every pull request; build, push and deploy to GKE on `main`. |
 
 **GitHub is not in this repository.** lore owns it: lore posts GitHub's events to `/events`, runs a
 service station for every GitHub action an assembly line takes, and answers floor's git-credential

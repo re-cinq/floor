@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  test:
+    # One job a workspace: a red suite must not mask the others, which is what the
+    # root scripts' `&&` chaining does locally.
+    name: test ${{ matrix.workspace }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - "@floor/assembly-lines"
+          - "@floor/store"
+          - "@floor/station"
+          - "@floor/lore-converter"
+          - "@floor/pipeline"
+          - "@floor/api"
+          - "@floor/cluster-agent"
+
+    services:
+      # The store and api suites need a real Postgres: `FOR UPDATE SKIP LOCKED` has
+      # no meaningful in-memory stand-in. 5433, as `npm run db:up` uses locally, so
+      # the default test URL needs no override. The suites create and migrate the
+      # test database themselves.
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: floor
+          POSTGRES_DB: floor
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # --ignore-scripts: dependency lifecycle scripts are a supply-chain execution
+      # vector and nothing in this tree needs them.
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      # Before the tests, always. Cross-package suites import a workspace through its
+      # `main` — that is, its `dist` — so a suite run without this tests the last
+      # build, not the working tree, and passes while the change is broken.
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm run test -w ${{ matrix.workspace }}
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Build
+        run: npm run build
+      - name: Typecheck
+        run: npm run typecheck
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Type-aware rules read the compiled d.ts of the packages they import.
+      - name: Build
+        run: npm run build
+      - name: Lint
+        run: npm run lint
+
+  chart:
+    name: helm chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+      # Lints and renders the chart for every values scenario, asserts each
+      # install-time refusal fires, and checks no rendered ConfigMap or default
+      # carries a secret.
+      - name: Check the chart
+        run: bash scripts/check-chart.sh
+
+  docker:
+    # The image is what ships; a Dockerfile that stopped building should fail the PR
+    # that broke it, not the push to main that tries to publish it.
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

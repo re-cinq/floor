@@ -104,6 +104,39 @@ always lint (and install) with a complete values file.
 Install anything into a cluster, push an image, or touch `apps/` or `packages/` — build the image
 from the repo root's `Dockerfile` and push it yourself, then point `version` at that tag.
 
+## Continuous delivery
+
+`.github/workflows/build.yml` builds the one image on every push to `main` that touches the code,
+the Dockerfile or the chart, pushes it to `ghcr.io/re-cinq/floor` tagged with the short SHA (and
+`latest`), then installs that tag into GKE with this chart. Authentication to GCP is Workload
+Identity Federation, the same setup lore uses — no service-account key is stored anywhere.
+
+It needs these set on the repository. The secrets are shared with lore; the variables are floor's
+own.
+
+| | name | what it is |
+|---|---|---|
+| secret | `GCP_WORKLOAD_IDENTITY_PROVIDER` | the provider the run's OIDC token is traded at |
+| secret | `GCP_SERVICE_ACCOUNT` | the service account it impersonates |
+| variable | `GCP_PROJECT_ID`, `GKE_CLUSTER_NAME` | the cluster to deploy into |
+| variable | `GKE_LOCATION` | optional; `europe-west1` when unset |
+| variable | `FLOOR_BASE_URL` | `api.baseUrl` — the address **pods** reach the api at |
+| variable | `FLOOR_NAMESPACE` | optional; `floor` when unset |
+| variable | `FLOOR_PULL_SECRET` | optional; `ghcr` when unset |
+| variable | `FLOOR_API_SECRET`, `FLOOR_POSTGRES_SECRET`, `FLOOR_POSTGRES_SECRET_KEY` | optional; the Secret names, defaulting to `floor-api`, `floor-postgres` and `connectionString` |
+
+Two things must already exist in the cluster, because the workflow creates neither: the two Secrets
+above (see [the tutorial](../../docs/tutorial.md)), and **an image pull secret for GHCR**, since the
+package is private and a GKE node cannot pull it with the node service account alone.
+
+The deploy runs `helm upgrade --install --wait`, so a release that does not become ready fails the
+run rather than reporting success, and the migration Job is waited on with everything else.
+
+`.github/workflows/ci.yml` gates pull requests: one test job a workspace so a red suite cannot mask
+the others, then typecheck, lint, `scripts/check-chart.sh`, and a Docker build. Every job builds
+before it tests — cross-package suites import a workspace through its `dist`, so a run without a
+build tests the last build rather than the branch.
+
 ## Verified on a cluster
 
 Installed into a scratch namespace on minikube, from an image built from this repo's Dockerfile, with Postgres outside the cluster. A run went through a real agent pod with the API, the cluster agent and the subsystem's controller all in-cluster, and the visit's resources were deleted afterwards. The cluster agent ran under the chart's Role, which `kubectl auth can-i --list` shows as exactly: `create` and `delete` on the three agent resources, `get` and `update` on the secret `agent-secrets`.
