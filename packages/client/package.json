@@ -1,0 +1,56 @@
+{
+  "name": "@re-cinq/floor-client",
+  "version": "0.1.0",
+  "description": "The floor over HTTP and its live socket, typed: definitions, runs, visits, blobs, events, schedules and costs, plus a watch that replays a run from a cursor and reconnects without losing a frame.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/re-cinq/floor.git",
+    "directory": "packages/client"
+  },
+  "homepage": "https://github.com/re-cinq/floor/tree/main/packages/client#readme",
+  "bugs": {
+    "url": "https://github.com/re-cinq/floor/issues"
+  },
+  "keywords": [
+    "floor",
+    "client",
+    "orchestration",
+    "agents"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc --watch -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@re-cinq/floor-contracts": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

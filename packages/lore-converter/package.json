@@ -6,7 +6,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": { "floor-convert-lore": "dist/cli.js" },
+  "bin": {
+    "floor-convert-lore": "dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -22,6 +24,7 @@
   },
   "dependencies": {
     "@floor/store": "*",
+    "@re-cinq/floor-client": "*",
     "yaml": "^2.7.0",
     "zod": "^4.5.4"
   },

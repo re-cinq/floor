@@ -8,7 +8,7 @@
 #   scripts/release-version.sh v1.2.3             stamps 1.2.3 into the published packages
 set -euo pipefail
 
-PUBLISHED=(@re-cinq/floor-station @re-cinq/floor-pipeline)
+PUBLISHED=(@re-cinq/floor-contracts @re-cinq/floor-client @re-cinq/floor-station @re-cinq/floor-pipeline)
 
 check_only=false
 if [ "${1:-}" = "--check" ]; then

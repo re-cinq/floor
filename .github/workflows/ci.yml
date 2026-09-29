@@ -20,22 +20,36 @@ env:
   NODE_VERSION: "22"
 
 jobs:
+  # The workspaces are a fact npm already holds. A list written out here drifts the moment a package is added, which is exactly what happened the first time.
+  workspaces:
+    runs-on: ubuntu-latest
+    outputs:
+      names: ${{ steps.list.outputs.names }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # `npm pkg` reads the workspaces' own package.json files, so this needs no install; `npm query` asks the installed tree and answers nothing before one.
+      - id: list
+        run: |
+          names="$(npm pkg get name --workspaces | jq -c 'keys')"
+          # An empty matrix runs no jobs and reports success, which is worse than a red one.
+          [ "$(jq -r 'length' <<<"${names}")" -gt 0 ] || { echo "no workspaces found: the test matrix would be empty" >&2; exit 1; }
+          echo "names=${names}" >> "$GITHUB_OUTPUT"
+          echo "${names}" | jq -r '.[]' | sed 's/^/testing /'
+
+
   test:
     # One job a workspace: a red suite must not mask the others, which is what the
     # root scripts' `&&` chaining does locally.
     name: test ${{ matrix.workspace }}
+    needs: workspaces
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        workspace:
-          - "@floor/assembly-lines"
-          - "@floor/store"
-          - "@re-cinq/floor-station"
-          - "@floor/lore-converter"
-          - "@re-cinq/floor-pipeline"
-          - "@floor/api"
-          - "@floor/cluster-agent"
+        workspace: ${{ fromJSON(needs.workspaces.outputs.names) }}
 
     services:
       # The store and api suites need a real Postgres: `FOR UPDATE SKIP LOCKED` has

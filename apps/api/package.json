@@ -18,10 +18,12 @@
     "@floor/store": "*",
     "@hapi/boom": "^10.0.1",
     "@hapi/hapi": "21.4.10",
+    "@re-cinq/floor-contracts": "*",
     "ws": "^8.22.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@re-cinq/floor-client": "*",
     "@re-cinq/floor-pipeline": "*",
     "@re-cinq/floor-station": "*",
     "@types/node": "^22.20.1",

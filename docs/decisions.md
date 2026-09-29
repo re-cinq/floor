@@ -455,6 +455,43 @@ agent's pod is the controller's, so the chart's pull secret does not reach
 it, and an install that does not name the model's secret key leaves the pod
 waiting for a key that is not there.
 
+## The client, and the wire it reads
+
+**The wire is one declaration, in `@re-cinq/floor-contracts`.** The store
+instantiates it, the api annotates its handlers with it, and the client
+reads it back. Four hand-rolled clients had written the same shapes out
+themselves and the copies had already drifted: one omitted a git need's
+`access`, another a visit's `iteration`, and the rename a route does on the
+way out was named on neither side. The root of it was one missing return
+type on `briefResponse`; annotating it made the wire a fact the compiler
+checks.
+
+**A type is a wire type only if it is already valid JSON-after-parse.** No
+`Date`, no `Buffer`. A row the store keeps has `finishedAt: Date` and the
+same row on the wire has a string, so a row is declared once, parameterised
+on its timestamp, and read two ways: `Run` is `RunFields<Date>` and `RunView`
+is `RunFields<string>`. The `*View` name carries the difference, and
+`apps/api/src/wire-contract.test-d.ts` proves the two sides agree, the live
+socket's frames included.
+
+**Validate across a trust boundary you do not own; annotate across one you
+do.** The floor validates what a git credential provider answers, because
+that is somebody else's service. The client casts, in one function, because
+a floor talking to itself is checked at the source. Validating in the client
+would find the same drift later and worse, as a throw in someone else's pod,
+and would cost every station author a dependency.
+
+**A status that carries a decision is in the return type.** Absence is null,
+an empty queue is an empty list, and a brief answers `brief`, `reported` or
+`absent`, because a claim loop does something different for each. A station
+used to read the last two both as null and could not tell them apart, while
+the cluster agent threw on both and retried a settled visit until its event
+died.
+
+**A visit client is built for one visit and takes an id in no method.** The
+floor refuses a visit token that reaches for another visit; binding the id at
+construction refuses it a step earlier, where it cannot be written.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is

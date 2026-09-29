@@ -4,12 +4,10 @@ import type { Pool } from "pg";
 import type { AssemblyRunStore } from "./assembly-run-store.js";
 import type { DefinitionsStore } from "./definitions.js";
 import { enforce } from "./refusal.js";
+import type { BriefNeed } from "@re-cinq/floor-contracts";
 import type { AgentSettings, Item, LineBody, NeedSpec, ProduceSpec, StationBody, Visit } from "./types.js";
 
-export type DispatchNeed =
-  | { name: string; kind: "value"; value: string }
-  | { name: string; kind: "file"; path: string; url: string }
-  | { name: string; kind: "git"; path: string; repoUrl: string; ref: string; access: "read" | "write" };
+export type DispatchNeed = BriefNeed;
 
 /** `visitId` names the earlier visit whose conversation this one continues: the id the subsystem resumes, and fetches the archive by. `save` is for the first round of a station that continues: nothing to restore yet, but the next round will want this one. */
 export type DispatchConversation = { mode: "new"; save: boolean } | { mode: "continue"; visitId: string };

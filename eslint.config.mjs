@@ -6,7 +6,7 @@ import markdown from "@eslint/markdown";
 import globals from "globals";
 import reLint from "@re-cinq/eslint-plugin-re-lint";
 
-const FIRST_PARTY = { firstPartyScopes: ["@floor"] };
+const FIRST_PARTY = { firstPartyScopes: ["@floor", "@re-cinq"] };
 
 export default tseslint.config(
   {

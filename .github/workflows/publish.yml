@@ -153,18 +153,18 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Build
-        run: npm run build -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
+        run: npm run build -w @re-cinq/floor-contracts -w @re-cinq/floor-client -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
 
       # The pack list is the only place where what ships is a fact and not an intention.
       - name: Pack lists carry the packages and nothing else
-        run: node scripts/check-pack-list.mjs packages/station packages/pipeline
+        run: node scripts/check-pack-list.mjs packages/contracts packages/client packages/station packages/pipeline
 
       - name: Stage the versions on npm
         env:
           VERSION: ${{ needs.release-tag.outputs.version }}
         run: |
           set -o pipefail
-          for package in packages/station packages/pipeline; do
+          for package in packages/contracts packages/client packages/station packages/pipeline; do
             name="$(node -p "require('./${package}/package.json').name")"
             # A run started again after it failed half way publishes what is left.
             if npm view "${name}@${VERSION}" version >/dev/null 2>&1; then

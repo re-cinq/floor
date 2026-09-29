@@ -117,7 +117,8 @@ api "${BASE}/station-runs/${VISIT}" | jq '{report, worker}'
 
 say "what the provider was asked, by the floor, for the pod"
 cat "${LOGS}/provider.log"
-ASKED="$(grep -c "asked for write on https://${REPOSITORY}" "${LOGS}/provider.log" || true)"
+# The floor canonicalises a repository to lower case, so what the provider is asked never matches a name spelled with capitals.
+ASKED="$(grep -ci "asked for write on https://${REPOSITORY}" "${LOGS}/provider.log" || true)"
 
 NOTE="$(api "${BASE}/assembly-runs/${RUN}" | jq -r '.bag.note.ref // empty')"
 if [ -n "${NOTE}" ]; then

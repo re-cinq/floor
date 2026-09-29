@@ -3,7 +3,8 @@
 import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
 import { buildAgentTriple } from "./domain/agent-triple.js";
-import type { ClaimedEvent, FloorClient } from "./floor-client.js";
+import type { FloorClient } from "@re-cinq/floor-client";
+import type { ClaimedEvent } from "@re-cinq/floor-contracts";
 import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js";
 import { modelSecretKeyFor, type KeyByFamily } from "./domain/model-secret.js";
 
@@ -29,6 +30,8 @@ export type ClaimTickOutcome =
   | { kind: "empty" }
   | { kind: "dispatched"; visitId: string }
   | { kind: "aborted"; visitId: string }
+  /** The visit had already reported, or was never there: nothing to run, and the dispatch is acked rather than tried again until it dies. */
+  | { kind: "settled"; visitId: string; why: "reported" | "absent" }
   | { kind: "error"; message: string };
 
 const DEFAULT_IDLE_MS = 5_000;
@@ -72,7 +75,9 @@ async function claimTick(
 // A floor out of reach is a tick that found nothing, not the end of the agent: it starts before the floor on a fresh install, and outlives every restart of it.
 async function claimed(deps: ClaimLoopDeps, claimLimit: number): Promise<ClaimedEvent[]> {
   try {
-    return await deps.floor.claim(deps.tags, claimLimit);
+    const { events } = deps.floor;
+
+    return await events.claim({ tags: deps.tags, limit: claimLimit });
   } catch (error) {
     deps.onError?.(error);
 
@@ -93,12 +98,12 @@ async function handle(
         ? await dispatch(deps, secretName, event.payload.visitId)
         : await abort(deps, secretName, event.payload.visitId);
 
-    await floor.ack(event.id);
+    await floor.events.ack(event.id);
 
     return outcome;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const failed = floor.fail(event.id, message);
+    const failed = floor.events.fail(event.id, message);
 
     await failed.catch(() => undefined);
 
@@ -111,7 +116,14 @@ async function dispatch(
   secretName: string,
   visitId: string,
 ): Promise<ClaimTickOutcome> {
-  const brief = await deps.floor.brief(visitId);
+  const { stationRuns } = deps.floor;
+  const outcome = await stationRuns.brief(visitId);
+
+  if (outcome.kind !== "brief") return { kind: "settled", visitId, why: outcome.kind };
+  const brief = outcome.brief;
+
+  if (!brief.settings) throw new Error(`station run "${visitId}" dispatched an agent with no settings, so there is no image to run`);
+  const settings = brief.settings;
 
   await deps.secrets.setKey(secretName, tokenSecretKey(visitId), authorizationHeader(brief.token));
   const triple = buildAgentTriple({
@@ -119,10 +131,10 @@ async function dispatch(
     floorBaseUrl: brief.floorBaseUrl,
     tokenSecretKey: tokenSecretKey(visitId),
     visitToken: brief.token,
-    modelSecretKey: brief.modelSecretKey ?? modelSecretKeyFor(brief.settings.model, deps.modelSecretKeys),
+    modelSecretKey: brief.modelSecretKey ?? modelSecretKeyFor(settings.model, deps.modelSecretKeys),
     secretName,
     deadlineMinutes: brief.deadlineMinutes,
-    settings: brief.settings,
+    settings,
     needs: brief.needs,
     produces: brief.produces,
     conversation: brief.conversation,

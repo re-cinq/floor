@@ -1,7 +1,7 @@
 // Process entry: a tiny liveness server plus the claim loop; no Kubernetes readiness probe, an apiserver blip should not take the agent out of rotation.
 
 import { createServer, type Server } from "node:http";
-import { FloorClient } from "./floor-client.js";
+import { createFloorClient, serviceToken } from "@re-cinq/floor-client";
 import { KubeAgentResourcesApi } from "./kube/agent-resources.js";
 import { KubeSecretKeyWriter } from "./kube/secret-writer.js";
 import { runClaimLoop } from "./claim-loop.js";
@@ -12,9 +12,9 @@ const HTTP_OK = 200;
 const MS_PER_SECOND = 1000;
 
 async function main(): Promise<void> {
-  const floor = new FloorClient({
-    baseUrl: env("FLOOR_API_URL"),
-    token: env("FLOOR_CLUSTER_AGENT_TOKEN"),
+  const floor = createFloorClient({
+    url: env("FLOOR_API_URL"),
+    token: serviceToken(env("FLOOR_CLUSTER_AGENT_TOKEN")),
   });
   const { running, sleep, stop } = createStoppable();
 

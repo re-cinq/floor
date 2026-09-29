@@ -3,16 +3,38 @@ import { runClaimLoop, tokenSecretKey } from "./claim-loop.js";
 import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
 import { createStoppable } from "./lib/stoppable.js";
-import type { ClaimedEvent, DispatchBriefResponse, FloorClient } from "./floor-client.js";
+import type { BriefOutcome, FloorClient } from "@re-cinq/floor-client";
+import type { FloorEventView, VisitBrief } from "@re-cinq/floor-contracts";
 
-function fakeFloor(overrides: Partial<FloorClient> = {}): FloorClient {
-  return {
-    claim: vi.fn(() => Promise.resolve([] as ClaimedEvent[])),
+interface FakeCalls {
+  claim: (claiming: { tags: string[]; limit: number }) => Promise<FloorEventView[]>;
+  ack: (eventId: string) => Promise<void>;
+  fail: (eventId: string, error: string) => Promise<void>;
+  brief: (visitId: string) => Promise<BriefOutcome>;
+}
+
+interface FakeFloor extends FakeCalls {
+  client: FloorClient;
+}
+
+function fakeFloor(overrides: Partial<FakeCalls> = {}): FakeFloor {
+  const calls: FakeCalls = {
+    claim: vi.fn(() => Promise.resolve([] as FloorEventView[])),
     ack: vi.fn(() => Promise.resolve()),
     fail: vi.fn(() => Promise.resolve()),
-    brief: vi.fn(),
+    brief: vi.fn(() => Promise.resolve({ kind: "absent" } as BriefOutcome)),
     ...overrides,
-  } as unknown as FloorClient;
+  };
+
+  return { ...calls, client: { events: calls, stationRuns: { brief: calls.brief } } as unknown as FloorClient };
+}
+
+function claiming(events: FloorEventView[]): FakeCalls["claim"] {
+  return vi.fn(() => Promise.resolve(events));
+}
+
+function dispatchOf(id: string, visitId: string, name = "station_run.dispatch"): FloorEventView {
+  return { id, name, payload: { visitId } } as unknown as FloorEventView;
 }
 
 function fakeResources(overrides: Partial<AgentResourcesApi> = {}): AgentResourcesApi {
@@ -31,7 +53,7 @@ function fakeSecrets(overrides: Partial<SecretKeyWriter> = {}): SecretKeyWriter 
   };
 }
 
-const dispatchBrief: DispatchBriefResponse = {
+const dispatchBrief: VisitBrief = {
   visitId: "v1",
   floorBaseUrl: "http://host.minikube.internal:8080",
   token: "visit-token-abc",
@@ -39,23 +61,16 @@ const dispatchBrief: DispatchBriefResponse = {
   settings: { prompt: "hi", image: "img:1" },
   needs: [],
   produces: [],
-  conversation: { mode: "new" },
+  conversation: { mode: "new", save: false },
+  iteration: 1,
 };
 
-async function runOneTick(
-  claim: (tags: string[], limit: number) => Promise<ClaimedEvent[]>,
-  rest: Parameters<typeof runClaimLoop>[0],
-): Promise<void> {
+async function runOneTick(floor: FakeFloor, rest: Omit<Parameters<typeof runClaimLoop>[0], "floor">): Promise<void> {
   let ticks = 0;
 
   await runClaimLoop({
     ...rest,
-    floor: fakeFloor({
-      claim,
-      ack: rest.floor.ack,
-      fail: rest.floor.fail,
-      brief: rest.floor.brief,
-    }),
+    floor: floor.client,
     sleep: async () => {
       ticks += 1;
     },
@@ -64,19 +79,17 @@ async function runOneTick(
 }
 
 interface DispatchScenario {
-  floor: FloorClient;
+  floor: FakeFloor;
   secrets: SecretKeyWriter;
   resources: AgentResourcesApi;
   applied: unknown[];
 }
 
-async function dispatchScenario(brief: DispatchBriefResponse): Promise<DispatchScenario> {
+async function dispatchScenario(brief: VisitBrief): Promise<DispatchScenario> {
   const applied: unknown[] = [];
   const floor = fakeFloor({
-    claim: vi.fn(() =>
-      Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: brief.visitId } } as ClaimedEvent]),
-    ),
-    brief: vi.fn(() => Promise.resolve(brief)),
+    claim: claiming([dispatchOf("e1", brief.visitId)]),
+    brief: vi.fn(() => Promise.resolve({ kind: "brief", brief } as BriefOutcome)),
   });
   const secrets = fakeSecrets();
   const resources = fakeResources({
@@ -87,7 +100,7 @@ async function dispatchScenario(brief: DispatchBriefResponse): Promise<DispatchS
     }),
   });
 
-  await runOneTick(floor.claim, { floor, resources, secrets, tags: ["kind:agent"], sleep: async () => {} });
+  await runOneTick(floor, { resources, secrets, tags: ["kind:agent"], sleep: async () => {} });
 
   return { floor, secrets, resources, applied };
 }
@@ -129,21 +142,13 @@ describe("runClaimLoop: dispatch", () => {
     expect(scenario.secrets.setKey).toHaveBeenCalledTimes(1);
   });
 
-  async function dispatchThrowsScenario(): Promise<FloorClient> {
+  async function dispatchThrowsScenario(): Promise<FakeFloor> {
     const floor = fakeFloor({
-      claim: vi.fn(() =>
-        Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: "v1" } } as ClaimedEvent]),
-      ),
+      claim: claiming([dispatchOf("e1", "v1")]),
       brief: vi.fn(() => Promise.reject(new Error("brief unavailable"))),
     });
 
-    await runOneTick(floor.claim, {
-      floor,
-      resources: fakeResources(),
-      secrets: fakeSecrets(),
-      tags: [],
-      sleep: async () => {},
-    });
+    await runOneTick(floor, { resources: fakeResources(), secrets: fakeSecrets(), tags: [], sleep: async () => {} });
 
     return floor;
   }
@@ -162,18 +167,48 @@ describe("runClaimLoop: dispatch", () => {
 });
 
 async function abortScenario(): Promise<DispatchScenario> {
-  const floor = fakeFloor({
-    claim: vi.fn(() =>
-      Promise.resolve([{ id: "e2", name: "station_run.abort", payload: { visitId: "v1" } } as ClaimedEvent]),
-    ),
-  });
+  const floor = fakeFloor({ claim: claiming([dispatchOf("e2", "v1", "station_run.abort")]) });
   const resources = fakeResources();
   const secrets = fakeSecrets();
 
-  await runOneTick(floor.claim, { floor, resources, secrets, tags: [], sleep: async () => {} });
+  await runOneTick(floor, { resources, secrets, tags: [], sleep: async () => {} });
 
   return { floor, secrets, resources, applied: [] };
 }
+
+describe("runClaimLoop: a dispatch with nothing left to run", () => {
+  async function settledScenario(outcome: BriefOutcome): Promise<FakeFloor> {
+    const floor = fakeFloor({ claim: claiming([dispatchOf("e1", "v1")]), brief: vi.fn(() => Promise.resolve(outcome)) });
+
+    await runOneTick(floor, { resources: fakeResources(), secrets: fakeSecrets(), tags: [], sleep: async () => {} });
+
+    return floor;
+  }
+
+  it("acks a dispatch whose visit already reported, rather than failing it until it dies", async () => {
+    const floor = await settledScenario({ kind: "reported" });
+
+    expect({ acked: (floor.ack as unknown as { mock: { calls: unknown[] } }).mock.calls, failed: (floor.fail as unknown as { mock: { calls: unknown[] } }).mock.calls }).toEqual({
+      acked: [["e1"]],
+      failed: [],
+    });
+  });
+
+  it("acks a dispatch for a visit that is not there, since asking again would never find it", async () => {
+    const floor = await settledScenario({ kind: "absent" });
+
+    expect((floor.ack as unknown as { mock: { calls: unknown[] } }).mock.calls).toEqual([["e1"]]);
+  });
+
+  it("creates nothing in the cluster for either", async () => {
+    const resources = fakeResources();
+    const floor = fakeFloor({ claim: claiming([dispatchOf("e1", "v1")]), brief: vi.fn(() => Promise.resolve({ kind: "reported" } as BriefOutcome)) });
+
+    await runOneTick(floor, { resources, secrets: fakeSecrets(), tags: [], sleep: async () => {} });
+
+    expect(resources.apply).not.toHaveBeenCalled();
+  });
+});
 
 describe("runClaimLoop: abort", () => {
   it("deletes the CR triple named after the visit", async () => {
@@ -204,10 +239,8 @@ describe("runClaimLoop: abort", () => {
 describe("runClaimLoop: stopping", () => {
   it("acks the dispatch in flight and claims nothing more once told to stop", async () => {
     const { running, sleep, stop } = createStoppable();
-    const claim = vi.fn(() =>
-      Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: "v1" } } as ClaimedEvent]),
-    );
-    const { calls: claimCalls } = claim.mock;
+    const claim = claiming([dispatchOf("e1", "v1")]);
+    const { calls: claimCalls } = (claim as unknown as { mock: { calls: unknown[] } }).mock;
     const ack = vi.fn(() => Promise.resolve());
     const floor = fakeFloor({
       claim,
@@ -215,11 +248,11 @@ describe("runClaimLoop: stopping", () => {
       brief: vi.fn(() => {
         stop();
 
-        return Promise.resolve(dispatchBrief);
+        return Promise.resolve({ kind: "brief", brief: dispatchBrief } as BriefOutcome);
       }),
     });
 
-    await runClaimLoop({ floor, resources: fakeResources(), secrets: fakeSecrets(), tags: [], running, sleep });
+    await runClaimLoop({ floor: floor.client, resources: fakeResources(), secrets: fakeSecrets(), tags: [], running, sleep });
 
     expect({ acked: ack.mock.calls, claims: claimCalls.length }).toEqual({
       acked: [["e1"]],

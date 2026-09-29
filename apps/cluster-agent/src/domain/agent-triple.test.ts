@@ -16,7 +16,7 @@ function brief(overrides: Partial<DispatchBrief> = {}): DispatchBrief {
     },
     needs: [],
     produces: [],
-    conversation: { mode: "new" },
+    conversation: { mode: "new", save: false },
     ...overrides,
   };
 }
@@ -207,7 +207,7 @@ describe("buildAgentTriple", () => {
   });
 
   it("omits conversation entirely on a fresh visit", () => {
-    const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new" } }));
+    const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new", save: false } }));
     const resources = agentDefinition.spec?.resources;
 
     expect(resources?.conversation).toBeUndefined();
