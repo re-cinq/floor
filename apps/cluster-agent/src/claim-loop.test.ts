@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runClaimLoop, tokenSecretKey } from "./claim-loop.js";
 import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
+import { createStoppable } from "./lib/stoppable.js";
 import type { ClaimedEvent, DispatchBriefResponse, FloorClient } from "./floor-client.js";
 
 function fakeFloor(overrides: Partial<FloorClient> = {}): FloorClient {
@@ -197,5 +198,32 @@ describe("runClaimLoop: abort", () => {
     const scenario = await abortScenario();
 
     expect(scenario.floor.brief).not.toHaveBeenCalled();
+  });
+});
+
+describe("runClaimLoop: stopping", () => {
+  it("acks the dispatch in flight and claims nothing more once told to stop", async () => {
+    const { running, sleep, stop } = createStoppable();
+    const claim = vi.fn(() =>
+      Promise.resolve([{ id: "e1", name: "station_run.dispatch", payload: { visitId: "v1" } } as ClaimedEvent]),
+    );
+    const { calls: claimCalls } = claim.mock;
+    const ack = vi.fn(() => Promise.resolve());
+    const floor = fakeFloor({
+      claim,
+      ack,
+      brief: vi.fn(() => {
+        stop();
+
+        return Promise.resolve(dispatchBrief);
+      }),
+    });
+
+    await runClaimLoop({ floor, resources: fakeResources(), secrets: fakeSecrets(), tags: [], running, sleep });
+
+    expect({ acked: ack.mock.calls, claims: claimCalls.length }).toEqual({
+      acked: [["e1"]],
+      claims: 1,
+    });
   });
 });

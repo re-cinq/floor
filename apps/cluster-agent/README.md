@@ -89,6 +89,11 @@ The loop rests 5 seconds after finding nothing, growing to a minute while
 nothing keeps coming; `FLOOR_CLAIM_IDLE_MS` and `FLOOR_CLAIM_MAX_IDLE_MS`
 change both. On a laptop a lower ceiling makes clean-up after a visit prompt.
 
+On SIGTERM or SIGINT the agent stops claiming: an idle sleep is cut short, and a dispatch already
+in flight is finished and acked before the loop returns, the health server closes and the process
+exits with code 0. The chart gives the pod 60 seconds for that, and every request to the Floor
+gives up after 30.
+
 `claim-loop.ts` also widens `station_run.abort` beyond what
 `docs/assembly_run_storage.md` states (there, only `cancel` triggers it): it
 treats abort as "release this visit's cluster resources," fired on every
@@ -125,7 +130,7 @@ reach the Floor through the same sink).
 
 ## Tests
 
-37 cases: the pure CR-mapping table (`domain/agent-triple.test.ts`), the two
+The tests cover the pure CR-mapping table (`domain/agent-triple.test.ts`), the two
 Kubernetes IO seams against a fake client
 (`kube/agent-resources.test.ts`, `kube/secret-writer.test.ts`), and the
 claim loop's dispatch/abort/backoff behaviour against a fake Floor client

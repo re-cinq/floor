@@ -15,6 +15,8 @@ spec:
       labels:
         {{- include "floor.clusterAgent.selectorLabels" . | nindent 8 }}
     spec:
+      # A dispatch in flight creates three resources and writes a secret; it is given time to finish.
+      terminationGracePeriodSeconds: 60
       serviceAccountName: {{ include "floor.clusterAgent.fullname" . }}
       {{- include "floor.imagePullSecrets" . | nindent 6 }}
       securityContext:

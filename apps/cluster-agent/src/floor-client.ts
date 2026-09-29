@@ -4,6 +4,7 @@ import type { BriefNeed, Produce } from "./domain/need.js";
 import type { DispatchSettings, Conversation } from "./domain/agent-triple.js";
 
 const HTTP_NO_CONTENT = 204;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export interface ClaimedEvent {
   id: string;
@@ -70,6 +71,7 @@ export class FloorClient {
   async brief(visitId: string): Promise<DispatchBriefResponse> {
     const res = await this.fetchFn(`${this.deps.baseUrl}/station-runs/${visitId}/brief`, {
       headers: { authorization: `Bearer ${this.deps.token}` },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!res.ok) throw await httpError("brief", res);
@@ -85,6 +87,7 @@ export class FloorClient {
         authorization: `Bearer ${this.deps.token}`,
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   }
 }
