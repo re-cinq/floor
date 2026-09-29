@@ -24,6 +24,16 @@ done
 say "helm template: subsystem enabled"
 helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" --set subsystem.enabled=true >/dev/null
 
+say "the api asks this chart's own github app for git credentials, when it provides them"
+helm template floor "${CHART}" -f "${CHART}/ci/values-github.yaml" --set github.gitCredentials=true \
+  | grep -qF 'value: "http://floor-github.default.svc.cluster.local:8280/git-credentials"' \
+  || fail "github.gitCredentials=true did not point the api at the github app"
+
+say "the api asks nobody for git credentials by default"
+if helm template floor "${CHART}" -f "${CHART}/ci/values-github.yaml" | grep -qF FLOOR_GIT_CREDENTIAL_URL; then
+  fail "FLOOR_GIT_CREDENTIAL_URL is set though nothing provides git credentials"
+fi
+
 assert_refusal() {
   local name="$1"
   local expected="$2"

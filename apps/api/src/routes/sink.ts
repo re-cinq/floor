@@ -1,12 +1,13 @@
-// What a running visit's executor calls (docs/api_sketch.md, "Station runs"): its structured brief, its event sink, its git credential. A visit token reaches only its own visit.
+// What a running visit's executor calls (docs/api_sketch.md, "Station runs"): its structured brief and its event sink. A visit token reaches only its own visit.
 import type { ResponseToolkit, Server } from "@hapi/hapi";
-import { Refusal, type AgentSettings, type DispatchBrief } from "@floor/store";
+import { Refusal, enforce, type AgentSettings, type DispatchBrief } from "@floor/store";
 import { agentConfigSchema, executorSettings } from "../agent-config.js";
+import { declaresWrite } from "../git-grant.js";
 import type { Deps } from "../deps.js";
 import { Sink } from "../engine/sink.js";
 import { HTTP_NO_CONTENT } from "../http-status.js";
 import { issuesOf } from "../parse.js";
-import { conflict, notFound, unconfigured } from "../problem.js";
+import { conflict, notFound } from "../problem.js";
 import { forOwnVisit, isUuid } from "./own-visit.js";
 import { mintVisitToken } from "../visit-token.js";
 
@@ -18,7 +19,6 @@ export function registerSinkRoutes(server: Server, deps: Deps): void {
 
   server.route({ method: "GET", path: "/station-runs/{id}/brief", handler: forOwnVisit((visitId, request, toolkit) => brief(deps, visitId, toolkit)) });
   server.route({ method: "POST", path: "/station-runs/{id}/sink", handler: forOwnVisit((visitId, request, toolkit) => takeEvent(sink, { visitId, body: request.payload }, toolkit)) });
-  server.route({ method: "POST", path: "/station-runs/{id}/git-credential", handler: forOwnVisit((visitId, request, toolkit) => gitCredential(toolkit)) });
 }
 
 async function brief(deps: Deps, visitId: string, toolkit: ResponseToolkit) {
@@ -37,6 +37,7 @@ async function brief(deps: Deps, visitId: string, toolkit: ResponseToolkit) {
 }
 
 function briefResponse(deps: Deps, found: DispatchBrief) {
+  enforce(deps.config.gitCredentialUrl || !declaresWrite(found.needs), "this floor has no git credential provider configured, so a git need cannot be granted write access");
   const now = deps.now();
   const deadline = found.visit.deadline ?? new Date(now.getTime() + UNDATED_TOKEN_MINUTES * MS_PER_MINUTE);
   const conversation = found.conversation;
@@ -82,8 +83,4 @@ async function takeEvent(sink: Sink, posted: { visitId: string; body: unknown },
 
     return conflict(toolkit, error.message);
   }
-}
-
-function gitCredential(toolkit: ResponseToolkit) {
-  return unconfigured(toolkit, "this floor has no git credential provider configured, so a git need cannot be granted write access");
 }

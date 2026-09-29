@@ -99,3 +99,12 @@ api) that Deployment's in-cluster Service address. floor.checks guarantees one o
 http://{{ include "floor.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:8080
 {{- end -}}
 {{- end -}}
+
+{{/* Where the api asks for a git credential: what it was told, else this chart's own provider, else nowhere. */}}
+{{- define "floor.api.gitCredentialUrl" -}}
+{{- if .Values.api.gitCredentialUrl -}}
+{{ .Values.api.gitCredentialUrl }}
+{{- else if and .Values.github.enabled .Values.github.gitCredentials -}}
+http://{{ include "floor.github.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.github.service.port }}/git-credentials
+{{- end -}}
+{{- end }}

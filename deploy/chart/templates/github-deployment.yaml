@@ -43,6 +43,14 @@ spec:
             - name: GITHUB_API_URL
               value: {{ .Values.github.apiUrl | quote }}
             {{- end }}
+            {{- if .Values.github.reviewRouter }}
+            - name: GITHUB_REVIEW_ROUTER
+              value: "1"
+            {{- end }}
+            {{- if .Values.github.gitCredentials }}
+            - name: GITHUB_GIT_CREDENTIALS
+              value: "1"
+            {{- end }}
             - name: GITHUB_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:

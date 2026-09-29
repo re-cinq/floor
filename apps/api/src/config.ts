@@ -10,6 +10,8 @@ export interface Config {
   pollMs: number;
   sweepMs: number;
   reapMs: number;
+  /** Absent: no git credential is given, and a visit that would write to a repository is not dispatched. */
+  gitCredentialUrl?: string;
 }
 
 const DEFAULT_PORT = 8080;
@@ -31,6 +33,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     pollMs: numberOf(env.FLOOR_POLL_MS, DEFAULT_POLL_MS),
     sweepMs: numberOf(env.FLOOR_SWEEP_MS, DEFAULT_SWEEP_MS),
     reapMs: numberOf(env.FLOOR_REAP_MS, DEFAULT_REAP_MS),
+    gitCredentialUrl: env.FLOOR_GIT_CREDENTIAL_URL || undefined,
   };
 }
 

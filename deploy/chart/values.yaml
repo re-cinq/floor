@@ -22,6 +22,10 @@ api:
   existingSecret: ""
   # FLOOR_REAP_MS — optional override of the api's own default reap interval.
   reapMs: ""
+  # FLOOR_GIT_CREDENTIAL_URL — where the api asks for a git credential for a visit's repository.
+  # Empty uses this chart's own github app when github.gitCredentials is on, and otherwise
+  # nothing: a visit that would write to a repository is then not dispatched.
+  gitCredentialUrl: ""
 
 clusterAgent:
   enabled: true
@@ -41,6 +45,12 @@ github:
   existingSecret: ""
   # GITHUB_API_URL — a GitHub Enterprise server. Empty uses apps/github's own default (github.com).
   apiUrl: ""
+  # GITHUB_REVIEW_ROUTER — run the review router station, which needs only the floor.
+  reviewRouter: false
+  # GITHUB_GIT_CREDENTIALS — mint a token for one repository's contents when the api asks for a
+  # visit. Needs appId and appPrivateKey in existingSecret: a token given outright is never
+  # handed to a pod, and the app refuses to start.
+  gitCredentials: false
   service:
     port: 8280
 

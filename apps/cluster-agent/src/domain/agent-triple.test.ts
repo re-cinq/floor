@@ -6,6 +6,7 @@ function brief(overrides: Partial<DispatchBrief> = {}): DispatchBrief {
     visitId: "abc-123",
     floorBaseUrl: "http://host.minikube.internal:8080",
     tokenSecretKey: "visit-abc-123-token",
+    visitToken: "visit-token-abc",
     secretName: "agent-secrets",
     deadlineMinutes: 20,
     settings: {
@@ -53,7 +54,7 @@ describe("buildAgentTriple", () => {
     });
   });
 
-  it("turns a git need into a repo the AgentDefinition clones, at its branch, with its token secret", () => {
+  it("turns a git need into a repo the AgentDefinition clones, at its branch, with no credential of its own", () => {
     const { agentDefinition } = buildAgentTriple(
       brief({
         needs: [
@@ -63,7 +64,7 @@ describe("buildAgentTriple", () => {
             path: "repo",
             repoUrl: "https://github.com/re-cinq/lore.git",
             ref: "main",
-            tokenSecret: "GH_TOKEN_abc123",
+            access: "write",
           },
         ],
       }),
@@ -76,9 +77,24 @@ describe("buildAgentTriple", () => {
         url: "https://github.com/re-cinq/lore.git",
         ref: "main",
         path: "repo",
-        token_secret: "GH_TOKEN_abc123",
       },
     ]);
+  });
+
+  it("names the floor as the broker git asks for a credential, under the visit's own token", () => {
+    const workspace = { name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/re-cinq/lore", ref: "main", access: "read" as const };
+    const { agent } = buildAgentTriple(brief({ needs: [workspace] }));
+
+    expect(agent.spec?.parameters).toMatchObject({
+      git_credential: "visit-token-abc",
+      git_credential_url: "http://host.minikube.internal:8080/station-runs/abc-123/git-credential",
+    });
+  });
+
+  it("names no broker for a visit with no repository", () => {
+    const { agent } = buildAgentTriple(brief());
+
+    expect(agent.spec?.parameters).not.toHaveProperty("git_credential");
   });
 
   it("turns a file need into a file the Agent downloads before it starts", () => {
@@ -268,6 +284,7 @@ describe("buildAgentTriple", () => {
             path: "repo",
             repoUrl: "https://github.com/re-cinq/lore.git",
             ref: "main",
+            access: "read",
           },
         ],
       }),

@@ -13,8 +13,8 @@ export interface FileNeed {
   url: string;
 }
 
-/** The wire shape a `DispatchBriefResponse` carries: the Floor states intent (`access`), not a credential. */
-export interface GitNeedRaw {
+/** The floor states intent (`access`), never a credential: git asks the floor for one when it needs it. */
+export interface GitNeed {
   name: string;
   kind: "git";
   path: string;
@@ -23,17 +23,7 @@ export interface GitNeedRaw {
   access: "read" | "write";
 }
 
-/** The shape the CR builder consumes: a write need has already been exchanged for a `tokenSecret` by the claim loop. */
-export interface GitNeedResolved {
-  name: string;
-  kind: "git";
-  path: string;
-  repoUrl: string;
-  ref: string;
-  tokenSecret?: string;
-}
-
-export type BriefNeed = ValueNeed | FileNeed | GitNeedRaw;
+export type BriefNeed = ValueNeed | FileNeed | GitNeed;
 
 export interface Produce {
   name: string;

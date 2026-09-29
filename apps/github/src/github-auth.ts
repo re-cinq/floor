@@ -17,6 +17,10 @@ export interface Repository {
 
 export type TokenFor = (repository: Repository) => Promise<string>;
 
+export type Access = "read" | "write";
+
+export type ScopedTokenFor = (repository: Repository, access: Access) => Promise<string>;
+
 export interface AppCredentials {
   appId: string;
   privateKey: string;
@@ -63,10 +67,19 @@ export function appTokens(credentials: AppCredentials): TokenFor {
   };
 }
 
-async function installationToken(credentials: AppCredentials, repository: Repository): Promise<Held> {
+/** A token for that one repository's contents and nothing else the app may do, minted each time: it is handed to a pod, and is never the token this app works with itself. */
+export function scopedTokens(credentials: AppCredentials): ScopedTokenFor {
+  return async (repository, access) => {
+    const scoped = await installationToken(credentials, repository, { repositories: [repository.name], permissions: { contents: access } });
+
+    return scoped.token;
+  };
+}
+
+async function installationToken(credentials: AppCredentials, repository: Repository, narrowedTo?: object): Promise<Held> {
   const claim = appClaim(credentials);
   const installation = await asked<{ id: number }>(credentials, claim, { method: "GET", path: `/repos/${repository.owner}/${repository.name}/installation` });
-  const granted = await asked<Granted>(credentials, claim, { method: "POST", path: `/app/installations/${installation.id}/access_tokens` });
+  const granted = await asked<Granted>(credentials, claim, { method: "POST", path: `/app/installations/${installation.id}/access_tokens`, body: narrowedTo });
 
   return { token: granted.token, expires: new Date(granted.expires_at) };
 }
@@ -79,10 +92,11 @@ interface Granted {
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
-async function asked<Answer>(credentials: AppCredentials, claim: string, request: { method: string; path: string }): Promise<Answer> {
+async function asked<Answer>(credentials: AppCredentials, claim: string, request: { method: string; path: string; body?: object }): Promise<Answer> {
   const response = await fetch(`${credentials.apiUrl}${request.path}`, {
     method: request.method,
-    headers: { authorization: `Bearer ${claim}`, accept: "application/vnd.github+json" },
+    headers: { authorization: `Bearer ${claim}`, accept: "application/vnd.github+json", "content-type": "application/json" },
+    body: request.body && JSON.stringify(request.body),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 

@@ -50,7 +50,7 @@ export async function injectJson<T = Record<string, never>>(server: Server, opti
   return { statusCode: response.statusCode, result: response.result as T, rawPayload: response.rawPayload };
 }
 
-export function setupTestServer(): TestServer {
+export function setupTestServer(configured: Partial<Config> = {}): TestServer {
   let pool: PgPool;
   let deps: Deps;
   let server: Server;
@@ -58,7 +58,7 @@ export function setupTestServer(): TestServer {
 
   beforeAll(async () => {
     pool = await openTestPool();
-    deps = buildDeps(pool, TEST_CONFIG, () => FIXED_NOW);
+    deps = buildDeps(pool, { ...TEST_CONFIG, ...configured }, () => FIXED_NOW);
     loop = buildLoop(deps, "floor-test");
     server = await buildServer(deps, () => loop.holdsLease());
   });

@@ -2,13 +2,14 @@
 
 The floor's GitHub side. Optional: a floor with no GitHub in its lines does not run it. The floor itself holds no provider client; this is where GitHub's is.
 
-One process, three parts. Each runs only when it has what it needs, so a deployment may be any of them alone.
+One process, four parts. Each runs only when it has what it needs, so a deployment may be any of them alone.
 
 | half | runs when | what it does |
 |---|---|---|
 | the webhook receiver | `GITHUB_WEBHOOK_SECRET` is set | takes GitHub's webhooks at `POST /webhooks/github` and posts each to the floor as an event |
 | the `post-review` station | `GITHUB_TOKEN`, or `GITHUB_APP_ID` with a key, is set | posts the review an agent printed to the pull request |
 | the review router | `GITHUB_REVIEW_ROUTER=1` | chooses, for a push to a pull request, the full review or the recheck |
+| the git credential provider | `GITHUB_GIT_CREDENTIALS=1`, with `GITHUB_APP_ID` and a key | mints a token for one repository when the floor asks at `POST /git-credentials` |
 
 ```
 FLOOR_API_URL=http://localhost:8180 FLOOR_SERVICE_TOKEN=floor-dev-token \
@@ -16,7 +17,7 @@ FLOOR_API_URL=http://localhost:8180 FLOOR_SERVICE_TOKEN=floor-dev-token \
   npm start -w @floor/github
 ```
 
-`PORT` is the receiver's, 8280 when unset. `GITHUB_API_URL` is GitHub's API, for a GitHub Enterprise server.
+`PORT` is the receiver's and the provider's, 8280 when unset. `GITHUB_API_URL` is GitHub's API, for a GitHub Enterprise server.
 
 ## The receiver
 
@@ -48,6 +49,14 @@ A push to a pull request is reviewed in full if it never was, and rechecked if i
 
 The router puts its own station and line to the floor when it starts. The choice it made is in its run's bag, `routed_to`.
 
+## The git credential provider
+
+The floor asks it, with the floor's service token, for `{ repoUrl, access }`, and gets `{ username, password }`: what git's credential helper reads. The floor has already decided that the visit may have it. Point the floor here with `FLOOR_GIT_CREDENTIAL_URL=http://<this app>/git-credentials`.
+
+The token is minted each time, for that one repository, with `contents: read` or `contents: write` and nothing else the app may do. It is never the token the post-review station works with.
+
+It runs only as a GitHub App. With `GITHUB_TOKEN` and no app it refuses to start: a token given outright belongs to a person and cannot be narrowed, so it is never handed to a pod.
+
 ## Who it is, to GitHub
 
 A token given outright, `GITHUB_TOKEN`, wins. Otherwise it is a GitHub App: it signs a claim with the app's key, good for nine minutes, and trades it for a token for the installation on that one repository, kept until a minute before it expires.
@@ -55,6 +64,8 @@ A token given outright, `GITHUB_TOKEN`, wins. Otherwise it is a GitHub App: it s
 ## Testing
 
 Against a stand-in for GitHub's API over real HTTP, `fake-github.ts`: it checks an app's claim against the app's public key as GitHub does, so a claim signed with another key is refused by it and not by a stub. The signature check is tested against the example in GitHub's own documentation.
+
+`scripts/walk-git.sh` walks a run whose station writes to a repository through a real pod, with a stand-in for this provider: git in the pod asks the floor, and the floor asks the provider.
 
 `scripts/walk-code-review.sh` sends a signed webhook through the receiver and walks the run it starts, then a push, which the router sends to the recheck.
 

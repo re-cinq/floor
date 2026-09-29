@@ -17,6 +17,8 @@ export interface FakeGitHub {
   /** Every request taken, as `METHOD path`. */
   asked: string[];
   reviews: unknown[];
+  /** What each token granted was narrowed to; null for one that was not. */
+  grants: unknown[];
   close(): Promise<void>;
 }
 
@@ -28,10 +30,11 @@ interface Answer {
 export async function startFakeGitHub(appPublicKey: string, tokenExpires: Date): Promise<FakeGitHub> {
   const asked: string[] = [];
   const reviews: unknown[] = [];
+  const grants: unknown[] = [];
   const server = createServer((request, response) => {
     void bodyOf(request).then((body) => {
       asked.push(`${request.method} ${request.url}`);
-      const answer = answerTo(request, body, { appPublicKey, tokenExpires, reviews });
+      const answer = answerTo(request, body, { appPublicKey, tokenExpires, reviews, grants });
 
       response.writeHead(answer.status, { "content-type": "application/json" }).end(JSON.stringify(answer.body));
     });
@@ -39,7 +42,7 @@ export async function startFakeGitHub(appPublicKey: string, tokenExpires: Date):
 
   await new Promise<void>((resolve) => server.listen(0, resolve));
 
-  return { apiUrl: `http://localhost:${(server.address() as AddressInfo).port}`, asked, reviews, close: () => closed(server) };
+  return { apiUrl: `http://localhost:${(server.address() as AddressInfo).port}`, asked, reviews, grants, close: () => closed(server) };
 }
 
 function closed(server: Server): Promise<void> {
@@ -50,6 +53,7 @@ interface Knows {
   appPublicKey: string;
   tokenExpires: Date;
   reviews: unknown[];
+  grants: unknown[];
 }
 
 function answerTo(request: IncomingMessage, body: string, knows: Knows): Answer {
@@ -57,10 +61,18 @@ function answerTo(request: IncomingMessage, body: string, knows: Knows): Answer 
   const bearer = (request.headers.authorization ?? "").replace("Bearer ", "");
 
   if (path.endsWith("/installation")) return asApp(bearer, knows, { id: INSTALLATION_ID });
-  if (path === `/app/installations/${INSTALLATION_ID}/access_tokens`) return asApp(bearer, knows, { token: INSTALLATION_TOKEN, expires_at: knows.tokenExpires.toISOString() });
+  if (path === `/app/installations/${INSTALLATION_ID}/access_tokens`) return grant(bearer, body, knows);
   if (path.endsWith("/reviews")) return review(bearer, body, knows);
 
   return { status: HTTP_NOT_FOUND, body: { message: "Not Found" } };
+}
+
+function grant(claim: string, body: string, knows: Knows): Answer {
+  const granted = asApp(claim, knows, { token: INSTALLATION_TOKEN, expires_at: knows.tokenExpires.toISOString() });
+
+  if (granted.status === HTTP_OK) knows.grants.push(body ? JSON.parse(body) : null);
+
+  return granted;
 }
 
 function asApp(claim: string, knows: Knows, body: unknown): Answer {

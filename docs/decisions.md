@@ -171,9 +171,37 @@ flagged it, and the positive name says the same thing.
 open. It is an HMAC over the visit and its deadline, so checking one costs
 no query and nothing has to be kept.
 
-**Git write access answers 501.** It needs a GitHub App. Until one is
-configured, a station with a `git` need declaring `access: write` cannot be
-dispatched.
+**Git asks for its credential when it needs one.** The floor is the
+subsystem's git credential broker, as lore's API is in production. The pod
+holds its visit token and the floor's address, and git's helper trades the
+one for a token at the moment it authenticates. The other way was to mint a
+token at dispatch and write it to a secret. A GitHub App's token lives an
+hour and a visit may run longer, so that way fails on the push, which is the
+last thing a visit does.
+
+**The floor decides who may have a credential; a provider mints it.** The
+floor knows the visit, its needs and their access. It holds no GitHub
+client, so it asks the provider it was configured with, as a service, over
+HTTP. `@floor/github` is that provider. A queue would not do: git waits
+thirty seconds for its answer.
+
+**A visit gets a credential only for a repository it has a `git` need for,**
+with the access that need declares, and only until it reports. A read need
+gets one too, so a private repository can be cloned.
+
+**The token is good for one repository's contents.** Not pull requests, not
+workflows, not the rest of what the app may do. It is minted each time and
+never kept. A token given outright, `GITHUB_TOKEN`, is never handed to a
+pod: it belongs to a person and cannot be narrowed.
+
+**Without a provider, a visit that would write is not dispatched.** Its
+brief is refused. The other way is an agent that works for an hour and then
+cannot push.
+
+**The visit token is in the Agent resource, in the clear.** The subsystem
+reads the broker's credential from the Agent's parameters and has no secret
+reference for it. The token opens one visit's files and one visit's
+repositories, and stops working at the visit's deadline.
 
 ## Operations
 

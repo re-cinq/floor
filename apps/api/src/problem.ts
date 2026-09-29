@@ -1,6 +1,6 @@
 // RFC 9457 problem details (docs/api_sketch.md, "Errors"): every error response is application/problem+json.
 import type { ResponseToolkit } from "@hapi/hapi";
-import { HTTP_NOT_IMPLEMENTED } from "./http-status.js";
+import { HTTP_BAD_GATEWAY, HTTP_NOT_IMPLEMENTED } from "./http-status.js";
 
 export interface Problem {
   status: number;
@@ -34,4 +34,8 @@ export function forbidden(toolkit: ResponseToolkit, detail: string): ReturnType<
 
 export function unconfigured(toolkit: ResponseToolkit, detail: string): ReturnType<ResponseToolkit["response"]> {
   return problemResponse(toolkit, { status: HTTP_NOT_IMPLEMENTED, title: "Not Implemented", detail });
+}
+
+export function badGateway(toolkit: ResponseToolkit, detail: string): ReturnType<ResponseToolkit["response"]> {
+  return problemResponse(toolkit, { status: HTTP_BAD_GATEWAY, title: "Bad Gateway", detail });
 }

@@ -86,8 +86,9 @@ GET    /station-runs                     // run required; node and open narrow i
 GET    /station-runs/:id                 // the visit + outcome + worker + deadline. Not built yet: cost
 GET    /station-runs/:id/brief           // for the executor: each need with its kind, path and access, the resolved
                                          // settings, and a freshly minted visit token. 409 once the visit is done
-POST   /station-runs/:id/git-credential  // visit token -> short-lived token for the one repo of a git need declaring
-                                         // `access: write`. Not built yet: answers 501, no provider is configured
+POST   /station-runs/:id/git-credential  // { repo: "owner/name" }, visit token -> { username, password } for a repository
+                                         // the visit has a git need for, read or write as the need declares. 403 for
+                                         // any other repository, 501 on a floor with no provider, 502 when it refuses
 
 The data plane, written with the visit token, never through the queue:
 
@@ -189,7 +190,7 @@ services without changing this API.
 | agent pods | the ai-agent-subsystem: an `Agent` resource per visit | one cluster agent on minikube | cluster agents per cluster, claiming by tag |
 | events queue | names, `dedupe_key`, `not_before`, claim/ack | own table | proxy to event-router |
 | GitHub's events | `github.<event>.<action>`, fields lifted to the top | `@floor/github`'s receiver | lore's own webhook handler, posting the same events |
-| git credentials | visit token → repo-scoped short-lived token | not built yet; a GitHub App configured on a `git-credential` service station | lore's `POST /api/github-credentials` |
+| git credentials | the subsystem's broker: git in the pod trades its run credential for a repo-scoped token, minted when it asks | the floor's own endpoint, asking `@floor/github` as a GitHub App | lore's `POST /api/github-credentials` |
 | agent output | `LORE_NODE_RESULT:`, then `REVIEW_RESULT:`, then success | lore's parser, ported; outcomes are the station's own | same |
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled` |
 | agent context | none required | whatever the definition names | lore MCP gateway |

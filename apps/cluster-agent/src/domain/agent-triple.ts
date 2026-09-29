@@ -9,10 +9,10 @@ import type {
   OutputSpec,
   Station,
 } from "@re-cinq/agent-contracts";
-import type { ValueNeed, FileNeed, GitNeedResolved, Produce } from "./need.js";
+import type { BriefNeed, GitNeed, FileNeed, Produce } from "./need.js";
 import { promptParameters } from "./prompt-parameters.js";
 
-export type DispatchNeed = ValueNeed | FileNeed | GitNeedResolved;
+export type DispatchNeed = BriefNeed;
 export type DispatchProduce = Produce;
 
 /** `sessionRef` is the earlier visit's id: what the subsystem resumes, and fetches the archive by. `save` on a new conversation is the first round of a station that continues. */
@@ -51,6 +51,8 @@ export interface DispatchBrief {
   floorBaseUrl: string;
   /** The visit token, already written to `secretName` under this key by the caller; referenced as every `headers_secret` here. */
   tokenSecretKey: string;
+  /** The visit token itself: what the pod's git credential helper presents to the floor. */
+  visitToken: string;
   /** The `agent-secrets` key holding the API key for this visit's model family; omitted when the model needs none. */
   modelSecretKey?: string;
   secretName: string;
@@ -105,7 +107,6 @@ function agentResources(name: string, input: DispatchBrief): AgentResources {
       url: need.repoUrl,
       ref: need.ref,
       path: need.path,
-      token_secret: need.tokenSecret,
     })),
     skills: input.settings.skills,
     // Always set, skills or none: the subsystem fetches the agent's settings.json from here, and starts Claude pointing at it.
@@ -133,8 +134,8 @@ function outputSpec(input: DispatchBrief): OutputSpec {
   };
 }
 
-function gitNeedsOf(input: DispatchBrief): GitNeedResolved[] {
-  return input.needs.filter((need): need is GitNeedResolved => need.kind === "git");
+function gitNeedsOf(input: DispatchBrief): GitNeed[] {
+  return input.needs.filter((need): need is GitNeed => need.kind === "git");
 }
 
 function fileProducesOf(input: DispatchBrief): (DispatchProduce & { path: string })[] {
@@ -203,10 +204,17 @@ function buildAgent(name: string, input: DispatchBrief): Agent {
       taskId: input.visitId,
       targetRepo: gitNeed ? repoOwnerName(gitNeed.repoUrl) : undefined,
       branch: gitNeed?.ref,
-      parameters: promptParameters(input.needs, input.produces),
+      parameters: { ...promptParameters(input.needs, input.produces), ...brokerParameters(input, gitNeed) },
       files: fileNeeds.map((need) => ({ path: need.path, url: need.url, headers_secret: input.tokenSecretKey })),
     },
   };
+}
+
+// The subsystem lifts these two out of the parameters and into the clone's credential helper, which asks the floor for a token when git authenticates. They go last, so no value need can take their names.
+function brokerParameters(input: DispatchBrief, gitNeed: GitNeed | undefined): Record<string, string> {
+  if (!gitNeed) return {};
+
+  return { git_credential: input.visitToken, git_credential_url: `${input.floorBaseUrl}/station-runs/${input.visitId}/git-credential` };
 }
 
 // `AgentSpec.targetRepo` wants `owner/name`; a git need's url is a full clone url. Best effort, informational only: the actual clone uses the full `repoUrl`.

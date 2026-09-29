@@ -27,9 +27,8 @@ in the lore monorepo, Apache 2.0, same organisation:
   `kube-agent-api.ts` (`KubeAgentApi`), generalised from one CR to the triple
 - `kube/secret-writer.ts` — the read-modify-replace-with-retry pattern of
   `kube-token-provisioner.ts` (`KubeSecretKeyWriter`); the token-*minting*
-  half of that file (the GitHub App JWT exchange) is not here, because the
-  plan makes that an HTTP concern of a `git-credential` service station on
-  the Floor, not a Kubernetes concern of this agent
+  half of that file (the GitHub App JWT exchange) is not here: a git
+  credential is never this agent's to hold
 - `events/claim/claim-loop.ts` — the shape only (idle backoff, never throw
   inside a tick, poll forever); the dispatch/abort handling is new, since
   lore dispatches straight from its own database row, not an HTTP-claimed
@@ -87,10 +86,12 @@ never through this agent. Without that widening the CR triple and the
 per-visit secret keys would never be reclaimed on the common path. Flagged
 for confirmation in the same file.
 
-A read-only `git` need gets no credential (`floor-client.ts`'s
-`gitCredential` doc comment): the documented endpoint is scoped to `access:
-write` needs and refuses anything else, so a private repo cloned read-only
-is a real gap here, not an oversight to silently paper over.
+A `git` need gets no credential from this agent, read or write. The Agent
+it creates carries the visit's token and the Floor's address as the
+subsystem's `git_credential` and `git_credential_url` parameters
+(`domain/agent-triple.ts`), and git in the pod asks the Floor when it
+authenticates. The one secret key this agent writes for a visit is the
+visit's own token.
 
 ## Not ported
 

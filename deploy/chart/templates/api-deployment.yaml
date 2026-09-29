@@ -53,6 +53,10 @@ spec:
             - name: FLOOR_REAP_MS
               value: {{ .Values.api.reapMs | quote }}
             {{- end }}
+            {{- with (include "floor.api.gitCredentialUrl" .) }}
+            - name: FLOOR_GIT_CREDENTIAL_URL
+              value: {{ . | quote }}
+            {{- end }}
           # Ready is "can reach Postgres". Which replica runs the loop is the lease's business.
           livenessProbe:
             httpGet:

@@ -17,7 +17,7 @@ describe("promptParameters", () => {
   });
 
   it("gives a git need the path it was cloned to", () => {
-    const needs = [{ name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/re-cinq/lore", ref: "main" }];
+    const needs = [{ name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/re-cinq/lore", ref: "main", access: "read" as const }];
 
     expect(promptParameters(needs, [])).toEqual({ workspace_path: "/workspace/repo" });
   });

@@ -38,7 +38,7 @@ produces:
 | `kind` | who does the work: `agent`, `service`, `human` |
 | `outcomes` | what it may report; default `[success, failed]`. The line must have an edge for each |
 | `needs` / `produces` | items read from and written to the run's bag, by name and kind |
-| `access` on a `git` need | `read` (default) or `write`; write lets the visit trade its token for a push credential |
+| `access` on a `git` need | `read` (default) or `write`; what the visit's token is traded for when git asks: a credential that reads the repository, or one that may push to it |
 | `must_change` | agent kind: a `success` with no diff on the branch is recorded as `failed` |
 | `agent_definition`, `conversation`, `conversation_key` | agent kind only |
 | `route` | human kind only: the page template a person works on |

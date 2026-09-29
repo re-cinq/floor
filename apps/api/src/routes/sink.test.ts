@@ -290,12 +290,3 @@ describe("conversations", () => {
     expect(response.statusCode).toBe(404);
   });
 });
-
-describe("POST /station-runs/:id/git-credential", () => {
-  it("says plainly that no provider is configured", async () => {
-    const { brief } = await reviewDispatched();
-    const response = await injectJson(server(), { method: "POST", url: `/station-runs/${brief.visitId}/git-credential`, headers: bearer(brief.token) });
-
-    expect(response.statusCode).toBe(501);
-  });
-});

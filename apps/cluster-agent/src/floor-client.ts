@@ -77,16 +77,6 @@ export class FloorClient {
     return (await res.json()) as DispatchBriefResponse;
   }
 
-  /** Only for a `git` need declaring `access: write`; refused with 403 otherwise. A read-only need clones without a token, which only works against a public repo — see claim-loop.ts's dispatch handler. */
-  async gitCredential(visitId: string): Promise<string> {
-    const res = await this.post(`/station-runs/${visitId}/git-credential`, {});
-
-    if (!res.ok) throw await httpError("git-credential", res);
-    const body = (await res.json()) as { token: string };
-
-    return body.token;
-  }
-
   private post(path: string, body: unknown): Promise<Response> {
     return this.fetchFn(`${this.deps.baseUrl}${path}`, {
       method: "POST",
