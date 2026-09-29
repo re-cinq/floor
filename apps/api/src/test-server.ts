@@ -70,6 +70,7 @@ export function setupTestServer(configured: Partial<Config> = {}): TestServer {
   afterAll(async () => {
     await loop.stop();
     await server.stop();
+    await deps.notifier.close();
     await pool.end();
   });
 

@@ -7,9 +7,12 @@ import {
   DispatchBriefs,
   EventStore,
   OutsideEvents,
+  PgRunNotifier,
   RecordsStore,
+  RunJournal,
   SchedulesStore,
   type PgPool,
+  type RunNotifier,
 } from "@floor/store";
 import type { Config } from "./config.js";
 
@@ -26,6 +29,9 @@ export interface Deps {
   outside: OutsideEvents;
   costs: CostsStore;
   schedules: SchedulesStore;
+  journal: RunJournal;
+  /** Holds a connection of its own once somebody watches a run: close it when the floor stops. */
+  notifier: RunNotifier;
 }
 
 export function buildDeps(pool: PgPool, config: Config, now: () => Date = () => new Date()): Deps {
@@ -46,5 +52,7 @@ export function buildDeps(pool: PgPool, config: Config, now: () => Date = () => 
     briefs: new DispatchBriefs({ pool, runs, definitions }),
     costs: new CostsStore({ connection: pool }),
     schedules: new SchedulesStore({ definitions, events, now }),
+    journal: new RunJournal({ pool }),
+    notifier: new PgRunNotifier({ connectionString: config.databaseUrl, onError: (error) => console.error("floor live channel: lost its listening connection", error) }),
   };
 }

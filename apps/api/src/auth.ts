@@ -13,14 +13,17 @@ const VISIT = "visit";
 /** For a route a visit reaches with its own token. Every route that does not say this is a service's alone: a visit's token is held by an agent in a pod, and a route added tomorrow is closed to it without anyone remembering to close it. */
 export const VISITS_TOO = { scope: [SERVICE, VISIT] };
 
-export function registerAuth(server: Server, deps: { serviceToken: string; visitTokenSecret: string; now: () => Date }): void {
+export interface AuthDeps {
+  serviceToken: string;
+  visitTokenSecret: string;
+  now: () => Date;
+}
+
+export function registerAuth(server: Server, deps: AuthDeps): void {
   server.auth.scheme("bearer", () => ({
     authenticate(request, toolkit) {
       const header: unknown = request.headers.authorization;
-      const token = bearerToken(typeof header === "string" ? header : undefined);
-
-      if (!token) return toolkit.unauthenticated(unauthorized());
-      const credentials = credentialsFor(token, deps);
+      const credentials = callerOf(typeof header === "string" ? header : undefined, deps);
 
       if (!credentials) return toolkit.unauthenticated(unauthorized());
 
@@ -31,7 +34,14 @@ export function registerAuth(server: Server, deps: { serviceToken: string; visit
   server.auth.default({ strategy: "bearer", scope: [SERVICE] });
 }
 
-function credentialsFor(token: string, deps: { serviceToken: string; visitTokenSecret: string; now: () => Date }): Credentials | null {
+/** Who an authorization header names, or null when it names nobody. Exported for what hapi's own auth never sees: a socket's upgrade. */
+export function callerOf(header: string | undefined, deps: AuthDeps): Credentials | null {
+  const token = bearerToken(header);
+
+  return token ? credentialsFor(token, deps) : null;
+}
+
+function credentialsFor(token: string, deps: AuthDeps): Credentials | null {
   if (isToken(token, deps.serviceToken)) return { kind: "service", scope: [SERVICE] };
   const verified = verifyVisitToken(token, deps.visitTokenSecret, deps.now());
 

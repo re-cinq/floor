@@ -1,6 +1,7 @@
 import Hapi from "@hapi/hapi";
 import { registerAuth } from "./auth.js";
 import type { Deps } from "./deps.js";
+import { registerLiveSocket } from "./live/live-socket.js";
 import { registerProblemResponses } from "./problem.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerDefinitionRoutes } from "./routes/definitions.js";
@@ -38,6 +39,7 @@ export async function buildServer(deps: Deps, holdsLease: () => boolean): Promis
   registerHealthRoutes(server, { pool: deps.pool, holdsLease });
   registerSkillRoutes(server);
   for (const register of ROUTES) register(server, deps);
+  registerLiveSocket(server, deps);
 
   await server.initialize();
 

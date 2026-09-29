@@ -21,6 +21,7 @@ async function main(): Promise<void> {
   const shutDown = async (): Promise<void> => {
     await loop.stop();
     await server.stop();
+    await deps.notifier.close();
     await pool.end();
   };
 

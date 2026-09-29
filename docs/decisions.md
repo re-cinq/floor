@@ -307,6 +307,37 @@ reads the broker's credential from the Agent's parameters and has no secret
 reference for it. The token opens one visit's files and one visit's
 repositories, and stops working at the visit's deadline.
 
+**A run has one cursor, and Postgres keeps it.** A record's `seq` counts
+within a visit and a kind, so a viewer of a run had five cursors a visit and
+no order between them. The journal, `run_feed`, numbers everything in a run
+in one sequence. Triggers write it and not the code: records, visits and
+runs are written in at least seven places, and the eighth would have
+forgotten.
+
+**The journal has no gaps, at the price of a lock.** A sequence skips a
+number when a transaction rolls back, and a viewer cannot tell a skipped
+number from a lost frame. So an entry takes the run's advisory lock and the
+next number. Writers of one run wait for each other until they commit;
+writers of different runs do not.
+
+**Live is a WebSocket a run, and lore relays it.** The browser subscribes
+and unsubscribes on the socket lore already gives it. lore-api opens a
+socket to the floor for that one run and closes it on unsubscribe. So the
+floor has no channels, no subscribe messages and no browser sessions, and
+a connection's life is the subscription's.
+
+**A refused viewer is told by a close code.** The floor takes the upgrade
+up and then closes with 4401, 4404, 4400 or 4429. A refused upgrade has an
+HTTP status that few WebSocket clients show.
+
+**A slow viewer is dropped, not waited for.** What waits to be read is held
+in the floor's memory. Past 4 MB the connection is cut, and the viewer comes
+back with its cursor and replays from the journal.
+
+**What a viewer says is answered `unsupported`.** The way in is kept for a
+person's word to a running agent. Answering now, instead of ignoring or
+closing, means giving it a meaning later breaks no client.
+
 ## Operations
 
 **The subsystem is installed in the floor's own namespace**, `floor-agents`.

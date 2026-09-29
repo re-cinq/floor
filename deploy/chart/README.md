@@ -53,6 +53,14 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   is checked against `subsystem.supportedVersions` (today: `v0.11.6` only) — add to that list
   before pointing the chart at a newer vendored `controller.yaml`.
 
+## The live channel
+
+Watching a run is a WebSocket on the api Service, on the same port as everything else:
+`GET /assembly-runs/<id>/live`, with the service token. It needs no value and no extra Service.
+Whatever stands between lore and the api Service must pass an upgrade through, and should not
+close a connection idle for less than 30 seconds: the floor pings every 25. Each api replica
+holds one more Postgres connection once it has a viewer, named `floor-run-listener`.
+
 ## Seeding pipelines
 
 When `pipelines.existingConfigMap` is set and `api.enabled` is true, the chart renders a Job (a

@@ -14,6 +14,15 @@ export interface Config {
   gitCredentialUrl?: string;
   /** What the floor presents to that provider; never the service token, which opens the whole floor. */
   gitCredentialToken?: string;
+  /** Absent: the live channel's own limits (live/live-socket.ts). */
+  live?: Partial<LiveLimits>;
+}
+
+export interface LiveLimits {
+  viewersPerRun: number;
+  /** What may wait to be read by one viewer before it is dropped as too slow. */
+  bufferedBytes: number;
+  pingMs: number;
 }
 
 const DEFAULT_PORT = 8080;

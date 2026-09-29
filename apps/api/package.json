@@ -14,18 +14,20 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hapi/hapi": "21.4.10",
-    "@hapi/boom": "^10.0.1",
-    "@floor/store": "*",
     "@floor/assembly-lines": "*",
+    "@floor/store": "*",
+    "@hapi/boom": "^10.0.1",
+    "@hapi/hapi": "21.4.10",
+    "ws": "^8.22.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@floor/pipeline": "*",
+    "@floor/station": "*",
     "@types/node": "^22.20.1",
+    "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^5.0.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0",
-    "@floor/station": "*",
-    "@floor/pipeline": "*"
+    "vitest": "^5.0.0"
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Server } from "@hapi/hapi";
-import { SERVICE_STATION, WORK_LINE } from "./test-fixtures.js";
+import { workStarted } from "./test-fixtures.js";
 import { SERVICE_TOKEN, VISIT_TOKEN_SECRET, setupTestServer } from "./test-server.js";
 import { mintVisitToken } from "./visit-token.js";
 
@@ -24,14 +24,9 @@ const OPEN_TO_A_VISIT = [
 ];
 
 async function openVisit(): Promise<string> {
-  const { definitions, runs } = deps();
+  const { visitId } = await workStarted(deps());
 
-  await definitions.put("station", "work", SERVICE_STATION);
-  await definitions.put("line", "line", WORK_LINE);
-  const { run } = await runs.start({ lineId: "line", repo: "r", startItems: {} });
-  const { visit } = await runs.openVisit(run.id, "work", 1);
-
-  return visit.id;
+  return visitId;
 }
 
 interface Asked {
