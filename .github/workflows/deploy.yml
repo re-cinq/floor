@@ -76,7 +76,18 @@ jobs:
           POSTGRES_SECRET: ${{ vars.FLOOR_POSTGRES_SECRET || 'floor-postgres' }}
           POSTGRES_SECRET_KEY: ${{ vars.FLOOR_POSTGRES_SECRET_KEY || 'connectionString' }}
         run: |
+          # Helm owns the custom resource definitions it installs. Where another install already
+          # owns them, which on a shared cluster is lore's own agent subsystem, applying them
+          # again is a field-ownership conflict and the floor has no business taking them over.
+          # The chart's own comment says as much: a floor can share a subsystem already there.
+          skip_crds=()
+          if kubectl get crd agents.agents.re-cinq.com >/dev/null 2>&1; then
+            skip_crds=(--skip-crds)
+            echo "the agent CRDs are on this cluster already: left to whoever installed them"
+          fi
+
           helm upgrade --install floor deploy/chart \
+            "${skip_crds[@]}" \
             --namespace "${NAMESPACE}" --create-namespace \
             --set-string version="${VERSION}" \
             --set image.repository="${IMAGE}" \
