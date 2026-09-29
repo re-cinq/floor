@@ -72,7 +72,7 @@ schedules:
 | | where it is |
 |---|---|
 | Secrets: a model's key, an MCP server's token | in the cluster's `agent-secrets`. A definition names the key, and never the value |
-| The program behind a service station | wherever it runs. The file declares the station; `post-review` is `@floor/github`'s |
+| The program behind a service station | wherever it runs. The file declares the station; the program that posts a review is lore's |
 | Runs, visits, their records and costs | in the floor's database. This is a backup of what a floor is told to do, and not of what it did |
 
 ## Migrations

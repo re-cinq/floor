@@ -5,8 +5,7 @@
 # `gcloud auth application-default login` and `npm run minikube-setup`.
 #
 #   bash scripts/walk-gemini.sh                       walk-agent.sh, on Gemini
-#   bash scripts/walk-gemini.sh <walk> [its words]    another walk, on Gemini: walk-real-review.sh
-#                                                     and the pull request, say
+#   bash scripts/walk-gemini.sh <walk> [its words]    another walk, on Gemini: scripts/walk-git.sh, say
 #
 # GOOGLE_CLOUD_PROJECT names the project with Vertex AI; gcloud's own is used when it is not set.
 set -euo pipefail
