@@ -45,6 +45,8 @@ COPY --from=build --chown=node:node /app/packages/assembly-lines/dist packages/a
 COPY --from=build --chown=node:node /app/packages/store/package.json packages/store/package.json
 COPY --from=build --chown=node:node /app/packages/store/dist packages/store/dist
 COPY --from=build --chown=node:node /app/packages/store/migrations packages/store/migrations
+COPY --from=build --chown=node:node /app/packages/station/package.json packages/station/package.json
+COPY --from=build --chown=node:node /app/packages/station/dist packages/station/dist
 COPY --from=build --chown=node:node /app/apps/api/package.json apps/api/package.json
 COPY --from=build --chown=node:node /app/apps/api/dist apps/api/dist
 COPY --from=build --chown=node:node /app/apps/cluster-agent/package.json apps/cluster-agent/package.json
