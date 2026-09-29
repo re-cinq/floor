@@ -10,9 +10,8 @@
 #      install (lore's, say) already gave one.
 #   3. You: it asks you to paste a key, and keeps it in .env.local for next time.
 #
-# It is an API key and nothing wider. Your gcloud login, the application-default credentials, is
-# not used: it is a file, a pod is given variables, and what it opens is your whole account, in
-# reach of an agent that runs commands.
+# It is an API key and nothing wider. With a gcloud login and no key, use scripts/walk-gemini.sh:
+# the login stays on this machine, behind a relay, and never reaches a pod.
 set -euo pipefail
 
 # shellcheck source=lib/minikube.sh

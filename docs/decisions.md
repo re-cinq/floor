@@ -239,6 +239,21 @@ a public repository and ask for changes. What the review says becomes the
 task of an agent that may push, so `code-review-reply` starts only for a
 review GitHub attributes to an owner, a member or a collaborator.
 
+**What an agent said is read from wherever it said it.** Claude ends its
+stream with a line that repeats its answer and gives its cost. Gemini ends
+with a status and its counts, and says its answer in pieces along the way.
+When the last line carries no words, the floor puts the answer together
+from the pieces. Without that a Gemini agent's verdict read as empty, which
+passes as success. Gemini gives tokens and no price, so its cost in money
+is unknown and its tokens are kept.
+
+**A laptop with a gcloud login reaches Gemini through a relay.** A pod is
+given variables, and a gcloud login is a file that opens a whole account and
+never expires. So the file stays on the laptop: a relay there asks Vertex AI
+as its owner, and the pod holds a key made for one walk, which opens the
+relay and nothing else. A one-hour token was tried first and Google refused
+it, for want of a quota project.
+
 **The visit token is in the Agent resource, in the clear.** The subsystem
 reads the broker's credential from the Agent's parameters and has no secret
 reference for it. The token opens one visit's files and one visit's

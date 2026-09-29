@@ -2,7 +2,7 @@
 import { readAgentVerdict } from "@floor/assembly-lines";
 import { enforce, type RecordKind, type Report, type StationBody, type Visit } from "@floor/store";
 import type { Deps } from "../deps.js";
-import { peel, readSinkEvent, type SinkEvent } from "./sink-event.js";
+import { peel, readSinkEvent, spokenIn, type SinkEvent } from "./sink-event.js";
 
 const MAX_ERROR_CHARS = 300;
 const MAX_NOTES = 200;
@@ -82,7 +82,18 @@ export class Sink {
   private async resultOf(visitId: string): Promise<ResultNote | null> {
     const latest = await this.deps.records.latest(visitId, "llm_call");
 
-    return latest ? (latest.body as ResultNote) : null;
+    if (!latest) return null;
+    const note = latest.body as ResultNote;
+
+    return note.text ? note : { ...note, text: spokenIn(await this.turnsOf(visitId)) };
+  }
+
+  // Every turn the visit recorded, a page after a page: how many there are is known only when one comes back short.
+  private async turnsOf(visitId: string, after = 0): Promise<unknown[]> {
+    const page = await this.deps.records.list(visitId, "turn", { limit: MAX_NOTES, after });
+    const turns = page.items.map((record) => record.body);
+
+    return page.nextCursor === null ? turns : [...turns, ...(await this.turnsOf(visitId, page.nextCursor))];
   }
 
   private async sessionOf(visitId: string): Promise<string | undefined> {

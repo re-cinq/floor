@@ -1,4 +1,4 @@
-// Pure: what one event from the ai-agent-subsystem's supervisor means to a visit. The wire shapes are the subsystem's (website/.../reference/notification-api.md): an envelope around a Claude stream-json line, a lifecycle event, or a file event.
+// Pure: what one event from the ai-agent-subsystem's supervisor means to a visit. The wire shapes are the subsystem's (website/.../reference/notification-api.md): an envelope around a line of the agent's own stream, Claude's or Gemini's, a lifecycle event, or a file event.
 import { z } from "zod";
 
 export type SinkEvent =
@@ -18,6 +18,15 @@ export interface ResultCost {
 const TIMEOUT_EXIT_CODE = 124;
 const PRODUCED_PREFIX = "produced.";
 
+/** Gemini counts what it read as `input` and `cached`, which together are its `input_tokens`. */
+const geminiStats = z.object({
+  input: z.number().optional(),
+  cached: z.number().optional(),
+  output_tokens: z.number().optional(),
+  duration_ms: z.number().optional(),
+});
+
+// Claude ends with what it said and what it cost. Gemini ends with a status and its counts, and says what it said in messages along the way.
 const resultLine = z.object({
   type: z.literal("result"),
   result: z.string().optional(),
@@ -26,7 +35,12 @@ const resultLine = z.object({
   num_turns: z.number().optional(),
   duration_ms: z.number().optional(),
   usage: z.unknown().optional(),
+  status: z.string().optional(),
+  error: z.object({ message: z.string() }).optional(),
+  stats: geminiStats.optional(),
 });
+
+const spokenPiece = z.object({ type: z.literal("message"), role: z.literal("assistant"), content: z.string() });
 
 const fileEvent = z.object({
   kind: z.literal("file"),
@@ -62,9 +76,31 @@ function readResult(payload: unknown): SinkEvent | null {
 
   if (!parsed.success) return null;
   const line = parsed.data;
-  const cost = { costUsd: line.total_cost_usd, turns: line.num_turns, durationMs: line.duration_ms, usage: line.usage };
+  const counted = countedBy(line.stats);
+  const cost = { costUsd: line.total_cost_usd, turns: line.num_turns, durationMs: line.duration_ms ?? counted.durationMs, usage: line.usage ?? counted.usage };
 
-  return { kind: "result", text: line.result ?? "", failed: line.is_error ?? false, cost };
+  return { kind: "result", text: saidAtTheEnd(line), failed: line.is_error ?? line.status === "error", cost };
+}
+
+function saidAtTheEnd(line: z.infer<typeof resultLine>): string {
+  const reason = line.error;
+
+  return line.result ?? reason?.message ?? "";
+}
+
+// Gemini's counts under the names Claude's go by, which are the names costs are read by.
+function countedBy(stats: z.infer<typeof geminiStats> | undefined): Pick<ResultCost, "durationMs" | "usage"> {
+  if (!stats) return {};
+  const { input = 0, cached = 0, output_tokens: written = 0 } = stats;
+
+  return { durationMs: stats.duration_ms, usage: { input_tokens: input, cache_read_input_tokens: cached, output_tokens: written } };
+}
+
+/** What the agent said, put together from the pieces it said it in: for an agent whose last line does not repeat it. */
+export function spokenIn(turns: unknown[]): string {
+  const pieces = turns.map((turn) => spokenPiece.safeParse(turn)).filter((piece) => piece.success);
+
+  return pieces.map((piece) => piece.data.content).join("");
 }
 
 function readFile(payload: unknown): SinkEvent | null {

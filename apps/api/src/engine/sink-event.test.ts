@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { peel, readSinkEvent } from "./sink-event.js";
+import { peel, readSinkEvent, spokenIn } from "./sink-event.js";
 
 const SOURCE = { agent: "floor-1", pod: "p", namespace: "n" };
 const SHA = "a".repeat(64);
@@ -32,6 +32,23 @@ describe("readSinkEvent", () => {
       failed: false,
       cost: { costUsd: 0.42, turns: 7, durationMs: 9000, usage: undefined },
     });
+  });
+
+  it("reads Gemini's last line: no words, its counts under the names costs are read by", () => {
+    const line = { type: "result", timestamp: "2026-09-29T10:43:29.000Z", status: "success", stats: { total_tokens: 1200, input_tokens: 1000, output_tokens: 200, cached: 300, input: 700, duration_ms: 9000, tool_calls: 2, models: {} } };
+
+    expect(readSinkEvent(enveloped(line))).toEqual({
+      kind: "result",
+      text: "",
+      failed: false,
+      cost: { costUsd: undefined, turns: undefined, durationMs: 9000, usage: { input_tokens: 700, cache_read_input_tokens: 300, output_tokens: 200 } },
+    });
+  });
+
+  it("reads Gemini's last line when it failed, with the reason it gave", () => {
+    const line = { type: "result", status: "error", error: { type: "FatalToolExecutionError", message: "the tool could not run" }, stats: {} };
+
+    expect(readSinkEvent(enveloped(line))).toMatchObject({ kind: "result", text: "the tool could not run", failed: true });
   });
 
   it("reads an uploaded file as produced under the name after produced.", () => {
@@ -80,5 +97,23 @@ describe("readSinkEvent", () => {
 
   it("reads a line that was not JSON as a log line", () => {
     expect(readSinkEvent(enveloped("plain text from the pod"))).toEqual({ kind: "log" });
+  });
+});
+
+describe("spokenIn", () => {
+  const SAID = [
+    { type: "init", model: "gemini-3.1-pro-preview" },
+    { type: "message", role: "user", content: "Review it." },
+    { type: "message", role: "assistant", content: "Looks good.\n", delta: true },
+    { type: "tool_use", tool_name: "write_file", parameters: { content: "REVIEW_RESULT:CHANGES_REQUESTED" } },
+    { type: "message", role: "assistant", content: "REVIEW_RESULT:APPROVED", delta: true },
+  ];
+
+  it("puts together what the agent said, from the pieces it said it in", () => {
+    expect(spokenIn(SAID)).toBe("Looks good.\nREVIEW_RESULT:APPROVED");
+  });
+
+  it("is empty for an agent that said nothing", () => {
+    expect(spokenIn([{ type: "init" }, { type: "message", role: "user", content: "Review it." }])).toBe("");
   });
 });
