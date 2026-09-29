@@ -1,13 +1,16 @@
 # Releasing
 
-A release is a version of three things, published together: the image, the station SDK and
-the pipeline tool. Publishing a GitHub Release is the whole act. No commit bumps a version.
+A release is a version of five things, published together: the image, the wire contracts, the
+client, the station SDK and the pipeline tool. Publishing a GitHub Release is the whole act.
+No commit bumps a version.
 
 ## What a release publishes
 
 | | where | as |
 |---|---|---|
 | the image | `ghcr.io/re-cinq/floor` | `1.2.3` and `1.2` |
+| the wire contracts | npm, `@re-cinq/floor-contracts` | `1.2.3`, staged |
+| the client | npm, `@re-cinq/floor-client` | `1.2.3`, staged |
 | the station SDK | npm, `@re-cinq/floor-station` | `1.2.3`, staged |
 | the pipeline tool | npm, `@re-cinq/floor-pipeline` | `1.2.3`, staged |
 | the deploy | the cluster the repository names | the image `1.2.3` |
@@ -32,15 +35,15 @@ That starts `.github/workflows/publish.yml`:
 3. **The image is built and pushed**, and **the packages are staged on npm**.
 4. **The image is deployed**, once the repository names a cluster.
 
-Then **approve the two staged versions**: nobody can install them before. On each package's
+Then **approve the four staged versions**: nobody can install them before. On each package's
 page on npmjs.com, the Versions tab, Approve, with 2FA. Or `npm stage list`, then
 `npm stage approve <id>`. That approval is the only brake on the one step that cannot be taken
 back: a version published to npm is there for good.
 
 ## The version is the tag
 
-The two packages carry a placeholder version on `main`. `scripts/release-version.sh v1.2.3`
-stamps `1.2.3` into them just before they are built, in the workflow's checkout, and commits
+The four packages carry a placeholder version on `main`. `scripts/release-version.sh v1.2.3`
+stamps `1.2.3` into them, and into the ranges they ask of one another, just before they are built, in the workflow's checkout, and commits
 nothing. `scripts/check-pack-list.mjs` then reads what each tarball would hold: the entry point
 and the license are there, and no test and no source map is.
 
@@ -49,21 +52,23 @@ and the license are there, and no test and no source map is.
 npm publishes from this repository without a token: Trusted Publishing trades the workflow's
 OIDC token for a credential that lives for minutes. A trusted publisher is registered on a
 package, and a package that was never published is not there to register it on. So the first
-version of each is published by a person.
+version of each is published by a person. A package added later gets the same, alone.
 
 ```
 git switch --detach <the commit to release>
 scripts/release-version.sh v0.1.0
 npm ci --ignore-scripts
-npm run build -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
-node scripts/check-pack-list.mjs packages/station packages/pipeline
+npm run build -w @re-cinq/floor-contracts -w @re-cinq/floor-client -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
+node scripts/check-pack-list.mjs packages/contracts packages/client packages/station packages/pipeline
 npm login
-(cd packages/station  && npm publish --access public --ignore-scripts)
-(cd packages/pipeline && npm publish --access public --ignore-scripts)
+(cd packages/contracts && npm publish --access public --ignore-scripts)
+(cd packages/client    && npm publish --access public --ignore-scripts)
+(cd packages/station   && npm publish --access public --ignore-scripts)
+(cd packages/pipeline  && npm publish --access public --ignore-scripts)
 git restore packages package-lock.json
 ```
 
-Then, for each of the two packages, on npmjs.com: Settings, Trusted Publisher, GitHub Actions.
+Then, for each of the four packages, on npmjs.com: Settings, Trusted Publisher, GitHub Actions.
 
 | field | value |
 |---|---|
@@ -71,7 +76,7 @@ Then, for each of the two packages, on npmjs.com: Settings, Trusted Publisher, G
 | repository | `floor` |
 | workflow filename | `publish.yml` |
 
-Then cut the GitHub Release for the same version. The workflow finds both packages on the
+Then cut the GitHub Release for the same version. The workflow finds all four packages on the
 registry already, leaves them, and publishes the image.
 
 **The publisher is registered against the workflow's file name.** Renaming or moving

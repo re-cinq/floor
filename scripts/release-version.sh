@@ -28,6 +28,14 @@ if [ "${check_only}" = false ]; then
   for package in "${PUBLISHED[@]}"; do
     npm version "${version}" --workspace "${package}" --no-git-tag-version --allow-same-version >/dev/null
   done
+  # The four are released together, so each one asks for exactly the others' version, not "*".
+  for package in "${PUBLISHED[@]}"; do
+    for dependency in $(npm pkg get dependencies --workspace "${package}" | node -e '
+      const found = Object.values(JSON.parse(require("fs").readFileSync(0, "utf8")))[0] ?? {};
+      console.log(Object.keys(found).filter((name) => name.startsWith("@re-cinq/floor-")).join(" "))'); do
+      npm pkg set "dependencies.${dependency}=${version}" --workspace "${package}" >/dev/null
+    done
+  done
 fi
 
 echo "${version}"
