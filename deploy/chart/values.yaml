@@ -36,6 +36,15 @@ clusterAgent:
   # agent-secrets holds each model family's credential. Optional; the agent has its own defaults.
   modelSecretKeys: ""
 
+# Pipelines seeded into the floor at every install and upgrade, by a post-install,post-upgrade Job
+# that runs `floor-pipeline migrate` against the api. Empty means no Job; it also needs api.enabled.
+# existingConfigMap names a ConfigMap you keep: one YAML file a pipeline, and the names are the
+# order they run in (0001-code-review.yaml, 0002-...). Each file runs once, and the floor
+# remembers which did. A file changed after it ran FAILS the Job, and so the upgrade, by design:
+# what it did is done, and a change is a new file. A ConfigMap holds at most 1 MiB.
+pipelines:
+  existingConfigMap: ""
+
 postgres:
   # Either set existingSecret + secretKey (a Secret holding a full connection string under that
   # key), or the host/port/database/user/password below, from which the chart builds one.

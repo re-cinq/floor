@@ -11,6 +11,7 @@ floor-pipeline export code-review --floor http://localhost:8180 > code-review.ya
 floor-pipeline export --all --dir backup/ --floor http://localhost:8180
 floor-pipeline import code-review.yaml --floor http://localhost:8180
 floor-pipeline migrate pipelines/ --floor http://localhost:8180
+floor-pipeline migrate pipelines/ --floor http://floor-api:8080 --wait-ready 180
 ```
 
 | command | what it does |
@@ -19,6 +20,7 @@ floor-pipeline migrate pipelines/ --floor http://localhost:8180
 | `export --all --dir <dir>` | one file a line, named after it: a backup |
 | `import <file>...` | puts each file to the floor. The same file twice changes nothing: a version is its content |
 | `migrate <dir>` | the folder's files in the order of their names, each once |
+| `--wait-ready <seconds>` | first polls the floor's `/readyz` until it answers 200, and fails, naming the floor and the seconds, if it does not in time. For a job that starts with the floor, such as the chart's seed Job |
 
 ## Where this fits
 

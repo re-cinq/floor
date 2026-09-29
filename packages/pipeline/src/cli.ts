@@ -8,6 +8,7 @@ import { readPipelineFile, writePipelineFile } from "./file.js";
 import type { Floor } from "./floor.js";
 import { importPipeline, type Put } from "./import.js";
 import { migrate } from "./migrate.js";
+import { waitUntilReady } from "./ready.js";
 import { fileOf, pipelineOf } from "./shape.js";
 
 const USAGE = `floor-pipeline <what to do> --floor <url>      with FLOOR_SERVICE_TOKEN
@@ -16,9 +17,12 @@ const USAGE = `floor-pipeline <what to do> --floor <url>      with FLOOR_SERVICE
   export --all --dir <dir>   every pipeline, one file each, named after its line: a backup
   import <file>...           puts each file to the floor. The same file twice changes nothing
   migrate <dir>              the folder's files in the order of their names, each once.
-                             The floor remembers which ran`;
+                             The floor remembers which ran
 
-const OPTIONS = { floor: { type: "string" }, out: { type: "string" }, dir: { type: "string" }, all: { type: "boolean" } } as const;
+  --wait-ready <seconds>     first waits up to that long for the floor's /readyz to answer 200,
+                             for a job that starts with the floor`;
+
+const OPTIONS = { floor: { type: "string" }, out: { type: "string" }, dir: { type: "string" }, all: { type: "boolean" }, "wait-ready": { type: "string" } } as const;
 
 type Given = ReturnType<typeof given>;
 
@@ -33,7 +37,18 @@ async function main(): Promise<void> {
   const run = commands[command];
 
   if (!run) throw new Error(USAGE);
-  await run(floorOf(told), told);
+  const floor = floorOf(told);
+
+  await waitedFor(floor, told.values["wait-ready"]);
+  await run(floor, told);
+}
+
+async function waitedFor(floor: Floor, waitReady: string | undefined): Promise<void> {
+  if (waitReady === undefined) return;
+  const seconds = Number(waitReady);
+
+  if (!(seconds > 0)) throw new Error(`--wait-ready is a number of seconds above 0, and not "${waitReady}"`);
+  await waitUntilReady({ floorUrl: floor.url, seconds });
 }
 
 function floorOf(told: Given): Floor {

@@ -87,8 +87,13 @@ api) that Deployment's in-cluster Service address. floor.checks guarantees one o
 {{- if .Values.clusterAgent.floorUrl -}}
 {{ .Values.clusterAgent.floorUrl }}
 {{- else -}}
-http://{{ include "floor.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:8080
+{{ include "floor.api.url" . }}
 {{- end -}}
+{{- end -}}
+
+{{/* The api Service's in-cluster address. */}}
+{{- define "floor.api.url" -}}
+http://{{ include "floor.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:8080
 {{- end -}}
 
 {{/* Where the api asks for a git credential, when it was told anywhere at all. The floor mints nothing itself: the provider is a service outside this chart. */}}

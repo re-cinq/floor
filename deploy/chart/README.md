@@ -43,9 +43,29 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   string), or `host`/`port`/`database`/`user`/`password`, from which the chart builds one. One or
   the other is required unconditionally: the migration Job always runs, whether or not this
   release also deploys the api.
+- `pipelines.existingConfigMap` — a ConfigMap you keep, holding one YAML file a pipeline. Empty
+  (the default) renders no seed Job. See [Seeding pipelines](#seeding-pipelines).
 - `subsystem.*` — the ai-agent-subsystem's controller and CRDs, off by default. `subsystem.version`
   is checked against `subsystem.supportedVersions` (today: `v0.11.6` only) — add to that list
   before pointing the chart at a newer vendored `controller.yaml`.
+
+## Seeding pipelines
+
+When `pipelines.existingConfigMap` is set and `api.enabled` is true, the chart renders a Job (a
+`post-install,post-upgrade` hook) that runs
+`node packages/pipeline/dist/cli.js migrate /pipelines --floor <the api Service> --wait-ready 180`
+with the ConfigMap mounted read-only at `/pipelines`. The service token comes from
+`api.existingSecret`, key `serviceToken`.
+
+- **One file a pipeline**, and the file names are the order they run in (`0001-code-review.yaml`,
+  `0002-...`). Each file runs once: the floor remembers which did.
+- **A file changed after it ran fails the Job, and so the upgrade.** That is by design: what the
+  file did is done, and a change is a new file.
+- **It waits for the api.** A hook runs when resources are created, not when they are ready, so
+  the tool polls `/readyz` for up to 180 seconds before it puts anything.
+- **A ConfigMap holds at most 1 MiB**, all files together. A larger set of pipelines does not fit.
+- **The pipeline tool must be in the image.** The Job runs `packages/pipeline/dist/cli.js` from the
+  same image as the api; an image built without that package fails the Job.
 
 ## What's unconditional
 
@@ -88,7 +108,7 @@ scripts/check-chart.sh
 ```
 
 Runs `helm lint` and `helm template` against a minimal values file for each of: both apps, API
-only, and cluster agent only (`ci/values-*.yaml`); asserts each of the four
+only, cluster agent only, and both with pipelines seeded (`ci/values-*.yaml`); asserts each of the six
 install-time refusals actually fires; and checks that no rendered ConfigMap, nor any default in
 `values.yaml`, carries a password, token, or secret.
 

@@ -1,0 +1,59 @@
+{{- if and .Values.pipelines.existingConfigMap .Values.api.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "floor.fullname" . }}-pipeline-seed
+  labels:
+    {{- include "floor.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "floor.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pipeline-seed
+    spec:
+      restartPolicy: Never
+      {{- include "floor.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pipeline-seed
+          image: {{ include "floor.image" . }}
+          command:
+            - node
+            - packages/pipeline/dist/cli.js
+            - migrate
+            - /pipelines
+            - --floor
+            - {{ include "floor.api.url" . | quote }}
+            - --wait-ready
+            - "180"
+          env:
+            - name: FLOOR_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.existingSecret }}
+                  key: serviceToken
+          volumeMounts:
+            - name: pipelines
+              mountPath: /pipelines
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: pipelines
+          configMap:
+            name: {{ .Values.pipelines.existingConfigMap }}
+{{- end }}

@@ -15,7 +15,7 @@ export KUBECONFIG="/dev/null"
 say() { printf '\n== %s\n' "$*"; }
 fail() { printf 'FAILED: %s\n' "$*" >&2; exit 1; }
 
-for scenario in both api-only cluster-agent-only; do
+for scenario in both api-only cluster-agent-only seeded; do
   say "helm template: ${scenario}"
   helm template floor "${CHART}" -f "${CHART}/ci/values-${scenario}.yaml" >/dev/null
   helm lint "${CHART}" -f "${CHART}/ci/values-${scenario}.yaml"
@@ -68,6 +68,24 @@ assert_refusal "unsupported subsystem.version" \
   --set api.enabled=false --set clusterAgent.enabled=false \
   --set subsystem.enabled=true --set subsystem.version=v0.0.1
 
+assert_refusal "empty version" \
+  "version is required" \
+  --set version="" --set postgres.existingSecret=s --set postgres.secretKey=k \
+  --set api.enabled=false --set clusterAgent.enabled=false
+
+assert_refusal "api.enabled without api.existingSecret" \
+  "api.existingSecret is required" \
+  --set version=t --set postgres.existingSecret=s --set postgres.secretKey=k \
+  --set api.enabled=true --set api.baseUrl=http://floor --set clusterAgent.enabled=false
+
+say "no seed job by default"
+if helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" | grep -qF pipeline-seed; then
+  fail "a seed job rendered though pipelines.existingConfigMap is empty"
+fi
+
+say "the seed job waits for the api, when given a ConfigMap"
+helm template floor "${CHART}" -f "${CHART}/ci/values-seeded.yaml" | grep -qF -- '--wait-ready' \
+  || fail "the seed job is absent, or does not wait for the api"
 
 say "no password/token/secret value in values.yaml defaults"
 if grep -inE '^\s*(password|token|secret)\s*:\s*[^"'"'"' ]' "${CHART}/values.yaml" \
@@ -76,7 +94,7 @@ if grep -inE '^\s*(password|token|secret)\s*:\s*[^"'"'"' ]' "${CHART}/values.yam
 fi
 
 say "no password in any rendered ConfigMap"
-for scenario in both api-only cluster-agent-only; do
+for scenario in both api-only cluster-agent-only seeded; do
   rendered="$(helm template floor "${CHART}" -f "${CHART}/ci/values-${scenario}.yaml" --set subsystem.enabled=true)"
   configmaps="$(awk '/^kind: ConfigMap$/{found=1} /^---/{found=0} found' <<<"${rendered}")"
   if [ -n "${configmaps}" ] && grep -qiE 'password|secret' <<<"${configmaps}"; then

@@ -3,6 +3,7 @@ version: "test"
 
 api:
   enabled: false
+  existingSecret: floor-api-secret
 
 clusterAgent:
   enabled: true

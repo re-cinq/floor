@@ -4,6 +4,10 @@ lint/template/install/upgrade regardless of which components are enabled.
 */}}
 {{- define "floor.checks" -}}
 
+{{- if not .Values.version -}}
+{{ fail "version is required: the image tag both apps run" }}
+{{- end -}}
+
 {{- if not .Values.postgres.existingSecret -}}
 {{- if or (not .Values.postgres.host) (not .Values.postgres.database) (not .Values.postgres.user) (not .Values.postgres.password) -}}
 {{ fail "postgres: set postgres.existingSecret (and postgres.secretKey), or all of postgres.host, postgres.database, postgres.user and postgres.password" }}
@@ -16,6 +20,10 @@ lint/template/install/upgrade regardless of which components are enabled.
 
 {{- if and .Values.clusterAgent.enabled (not .Values.api.enabled) (not .Values.clusterAgent.floorUrl) -}}
 {{ fail "clusterAgent.floorUrl is required when clusterAgent.enabled is true and api.enabled is false" }}
+{{- end -}}
+
+{{- if and (or .Values.api.enabled .Values.clusterAgent.enabled) (not .Values.api.existingSecret) -}}
+{{ fail "api.existingSecret is required when api.enabled or clusterAgent.enabled is true" }}
 {{- end -}}
 
 {{- if .Values.subsystem.enabled -}}
