@@ -7,6 +7,16 @@ package is new — lore has no counterpart to port from; its event bus is a
 separate service (`event-router`) with a subscriber/delivery model this plan
 replaces with one table and a tag filter.
 
+## Where this fits
+
+The only package that speaks to Postgres, and [`apps/api`](../../apps/api/README.md) is its only
+caller — no worker links it, so the queue is the only way into a floor's state. It calls
+[`@floor/assembly-lines`](../assembly-lines/README.md) for the walk decision and owns everything
+around it: the tables, the definitions, the queue, and the transaction that makes a report and what
+follows from it one write.
+
+See [the map](../../README.md) for what sits either side of it.
+
 ## What is here
 
 - `migrations/0001_init.sql` — `definitions`, `assembly_runs`, `station_runs`,

@@ -11,6 +11,18 @@ kind agent", and
 [docs/assembly_run_storage.md](../../docs/assembly_run_storage.md), "the
 agent kind runs on the ai-agent-subsystem, with no code of ours in the pod".
 
+## Where this fits
+
+One per cluster, and the only process allowed to talk to that cluster's Kubernetes API. It links
+none of floor's packages: it claims `station_run.dispatch` and `station_run.abort` from the queue
+over HTTP, by tag, so a floor can drive several clusters by tagging agent definitions differently
+and never itself knows what a pod is.
+
+It creates and deletes the subsystem's resources and never watches them. What the pod does comes
+back to the api's own sink, not through here.
+
+See [the map](../../README.md) for where the pod's work rejoins the walk.
+
 ## Ported from lore
 
 Source: `apps/cluster-agent/src/{lib/k8s-errors,lib/poll-loop→libs/shared,

@@ -5,6 +5,15 @@ plus content-hashing for versioned definitions (`definitionHash`). See
 [docs/assembly_run_storage.md](../../docs/assembly_run_storage.md), "Routing:
 the kernel decides, events carry".
 
+## Where this fits
+
+The bottom of the stack, and the only part with no I/O at all: given a line and the visits a run
+has so far, it says which edge is taken next. [`packages/store`](../store/README.md) is its only
+caller — it asks once, inside the transaction that writes a report. It depends on nothing of ours,
+which is why its tests are plain values and no database.
+
+See [the map](../../README.md) for how a decision here becomes work somewhere else.
+
 ## Ported from lore
 
 Source: `libs/assembly-lines/src/{transition,definition-hash}.ts` in the

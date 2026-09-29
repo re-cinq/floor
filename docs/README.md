@@ -2,6 +2,14 @@
 
 A standalone Floor, compatible with lore. Read in this order.
 
+For what the pieces are and how they fit together — the map, the invariants, and the path an event
+takes through them — start at [the repository's README](../README.md). These pages are the design
+underneath it.
+
+## Start here
+
+[Tutorial](tutorial.md): install floor with Helm, register a cluster, import a line and run it.
+
 ## The entities
 
 1. [Station](entities/station.md): one unit of work, one function, three kinds

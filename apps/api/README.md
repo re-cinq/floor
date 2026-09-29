@@ -2,6 +2,19 @@
 
 The Floor's HTTP API (docs/api_sketch.md): a thin hapi layer over `@floor/store`. Holds no provider client — every worker (the cluster agent, a service station) pulls its own work from `/events/claim`.
 
+## Where this fits
+
+The centre, and the only process that touches Postgres: it links
+[`@floor/store`](../../packages/store/README.md) and, through it,
+[`@floor/assembly-lines`](../../packages/assembly-lines/README.md). Everything else — the cluster
+agent, every service worker, lore, the CLIs — reaches a floor only through the routes here.
+
+Two jobs in one process. It **serves** every request, on every replica. It also **runs the loop**
+that routes events, opens visits, enqueues dispatches and sweeps what has timed out — but only on
+the one replica holding a Postgres advisory lease, while every replica keeps serving.
+
+See [the map](../../README.md) for the whole path an event takes.
+
 ## What is here
 
 - **Auth** (`auth.ts`, `visit-token.ts`): one bearer scheme. A token equal to `FLOOR_SERVICE_TOKEN` is a service; anything else is checked as a visit token, an HMAC over `visitId.expiry` signed with `FLOOR_VISIT_TOKEN_SECRET` — no database lookup to verify one. Human sessions are not implemented.

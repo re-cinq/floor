@@ -10,6 +10,15 @@ node packages/lore-converter/dist/cli.js --lore ~/workspace/lore --line code-rev
 
 `--all` is a report: for each line, what it became and what is left for a person to decide.
 
+## Where this fits
+
+A tool a person runs, not a process that stays up. It reads a lore checkout from disk and writes
+what this floor would run in its place; with `--put` it posts the result to a floor over HTTP like
+any other client. It links [`@floor/store`](../store/README.md) only for its types and
+`validateLine`, so it can say up front what a floor would refuse.
+
+It is how lore's existing assembly lines get here at all. See [the map](../../README.md).
+
 ## What becomes what
 
 | in lore | here |

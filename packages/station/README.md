@@ -16,6 +16,16 @@ defineStation("close-issue", async (brief, tools) => {
 
 Run it with `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` set. It needs a way out to the floor and nothing else: the floor never calls it.
 
+## Where this fits
+
+This is not one of floor's processes: it is what somebody else's process imports to *become* a
+station. A service worker built with it runs wherever its author likes — another repository, another
+cluster — and needs only a way out to the floor's HTTP API and a service token. Floor never calls
+it; it claims its own work from the queue by the tag `station:<name>`.
+
+Every provider-shaped job is one of these. lore's GitHub workers are written with this, which is
+why the picture in [the map](../../README.md) has nothing GitHub-shaped inside floor.
+
 ## What it does for the function
 
 | | |

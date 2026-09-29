@@ -20,6 +20,16 @@ floor-pipeline migrate pipelines/ --floor http://localhost:8180
 | `import <file>...` | puts each file to the floor. The same file twice changes nothing: a version is its content |
 | `migrate <dir>` | the folder's files in the order of their names, each once |
 
+## Where this fits
+
+A client and nothing more: it speaks the floor's HTTP API with a service token, exactly as lore or
+a worker does, and links none of floor's own packages. Where
+[`@floor/lore-converter`](../lore-converter/README.md) brings an assembly line *in* from lore, this
+moves a whole pipeline between a file and a floor — to review it, to keep it in git, or to put the
+same one into another floor. It moves definitions only; assembly runs stay where they happened.
+
+See [the map](../../README.md).
+
 ## The file
 
 YAML, in `snake_case`, as the docs write definitions. Every prompt is in it, as the block it is.
