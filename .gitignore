@@ -4,3 +4,4 @@ dist/
 .env.local
 .floor-kubeconfig-minikube
 .floor-agents.env
+apps/github/coverage/
