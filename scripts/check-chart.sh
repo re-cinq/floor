@@ -89,6 +89,34 @@ assert_refusal "api.enabled without api.existingSecret" \
   --set version=t --set postgres.existingSecret=s --set postgres.secretKey=k \
   --set api.enabled=true --set api.baseUrl=http://floor --set clusterAgent.enabled=false
 
+say "agent pods reach the api of their own release, and are reached by nothing"
+policy="$(helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" -s templates/agent-networkpolicy.yaml)"
+grep -qF 'agents.re-cinq.com/component: job' <<<"${policy}" || fail "the policy does not select agent pods"
+grep -qF 'ingress: []' <<<"${policy}" || fail "the policy lets something reach an agent pod"
+grep -qF 'app.kubernetes.io/component: api' <<<"${policy}" || fail "the policy does not let an agent pod reach the api"
+grep -qF '169.254.0.0/16' <<<"${policy}" || fail "the policy lets an agent pod reach the metadata endpoint"
+
+say "agent pods reach what the operator lists"
+helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" -s templates/agent-networkpolicy.yaml \
+  --set 'agentNetworkPolicy.extraEgress[0].to[0].namespaceSelector.matchLabels.kubernetes\.io/metadata\.name=lore' \
+  --set 'agentNetworkPolicy.extraEgress[0].ports[0].port=8443' \
+  | grep -qF 'kubernetes.io/metadata.name: lore' \
+  || fail "agentNetworkPolicy.extraEgress did not reach the policy"
+
+say "a release with no api names no api in the policy"
+if helm template floor "${CHART}" -f "${CHART}/ci/values-cluster-agent-only.yaml" -s templates/agent-networkpolicy.yaml \
+     | grep -qF 'app.kubernetes.io/component: api'; then
+  fail "the policy names an api this release does not run"
+fi
+
+say "no policy where no agent runs, nor when it is turned off"
+for without in "-f ${CHART}/ci/values-api-only.yaml" "-f ${CHART}/ci/values-both.yaml --set agentNetworkPolicy.enabled=false"; do
+  # shellcheck disable=SC2086
+  if helm template floor "${CHART}" ${without} | grep -qF 'kind: NetworkPolicy'; then
+    fail "a NetworkPolicy rendered with: ${without}"
+  fi
+done
+
 say "no seed job by default"
 if helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" | grep -qF pipeline-seed; then
   fail "a seed job rendered though pipelines.existingConfigMap is empty"

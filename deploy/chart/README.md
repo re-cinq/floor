@@ -47,11 +47,41 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   string), or `host`/`port`/`database`/`user`/`password`, from which the chart builds one. One or
   the other is required unconditionally: the migration Job always runs, whether or not this
   release also deploys the api.
+- `agentNetworkPolicy.*` — what an agent's pod may reach, on by default. See
+  [What an agent's pod may reach](#what-an-agents-pod-may-reach).
 - `pipelines.existingConfigMap` — a ConfigMap you keep, holding one YAML file a pipeline. Empty
   (the default) renders no seed Job. See [Seeding pipelines](#seeding-pipelines).
 - `subsystem.*` — the ai-agent-subsystem's controller and CRDs, off by default. `subsystem.version`
   is checked against `subsystem.supportedVersions` (today: `v0.11.6` only) — add to that list
   before pointing the chart at a newer vendored `controller.yaml`.
+
+## What an agent's pod may reach
+
+The code in an agent's pod is whatever a model wrote a minute ago. With `clusterAgent.enabled`,
+the chart renders one NetworkPolicy in the release's namespace, selecting every pod the
+subsystem's controller runs, by the label it puts on them: `agents.re-cinq.com/component: job`.
+
+| a pod reaches | how |
+|---|---|
+| the cluster's DNS | `kube-system`, `k8s-app: kube-dns`, port 53 |
+| the public internet | port 443, without the private ranges and without `169.254.0.0/16`, where a cloud's metadata endpoint is |
+| this release's api | its pods, port 8080, when `api.enabled` |
+| what you list | `agentNetworkPolicy.extraEgress`, NetworkPolicy egress rules as they are written |
+
+Nothing reaches a pod.
+
+- **List what else your agents call.** lore's MCP gateway and skills registry are inside the
+  cluster, so they are not the public internet, and a pod does not reach them until they are in
+  `extraEgress`.
+- **A floor that is not this release's api must be listed too**: a cluster-agent-only release, or
+  an `api.baseUrl` on a private address.
+- **The network plugin must enforce NetworkPolicy.** Where it does not, the policy is accepted
+  and binds nothing. minikube's default plugin does not; start it with `--cni=calico` to see it
+  bind.
+- **The subsystem's own policy is for its own namespace**, `ai-agents`. This one is the same
+  rules, for the namespace this release runs its agents in, with the floor added.
+- `agentNetworkPolicy.enabled=false` renders none, for a cluster whose policies are kept
+  elsewhere.
 
 ## The live channel
 

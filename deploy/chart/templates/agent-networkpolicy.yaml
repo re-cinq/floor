@@ -1,0 +1,61 @@
+{{- if and .Values.clusterAgent.enabled .Values.agentNetworkPolicy.enabled }}
+# What an agent's pod may reach. The code in it is whatever a model wrote a minute ago, so it
+# reaches the cluster's DNS, the public internet on 443, the floor, and what the operator lists.
+# Nothing reaches it. The subsystem's controller puts the label on every pod it runs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "floor.fullname" . }}-agent-pods
+  labels:
+    {{- include "floor.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      agents.re-cinq.com/component: job
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    # The cluster's own resolver and no other, so nothing is carried out through a resolver
+    # somebody else runs.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # The model's provider and the git forge. Private ranges are left out, and so is link-local,
+    # where a cloud's metadata endpoint answers with the node's own credentials.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- if .Values.api.enabled }}
+    # The floor: the pod's brief, its sink, its git credentials and its conversation.
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "floor.api.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    {{- with .Values.agentNetworkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

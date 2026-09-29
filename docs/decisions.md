@@ -412,6 +412,13 @@ without asking the floor again. Values are small; files and repositories
 are left out, since a file's ref is a blob hash and its content may be
 large or private.
 
+**An agent's pod reaches the internet, the floor, and what the operator
+lists.** The chart ships a NetworkPolicy for the pods the subsystem runs,
+on by default: DNS, port 443 outside the private ranges, the floor's api.
+Nothing reaches a pod. The subsystem ships the same rules for its own
+namespace, and the floor runs its agents in another. What lore's agents call
+inside the cluster is not known to this chart, so it is a value.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is

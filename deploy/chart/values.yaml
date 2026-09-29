@@ -42,6 +42,22 @@ clusterAgent:
   # agent-secrets holds each model family's credential. Optional; the agent has its own defaults.
   modelSecretKeys: ""
 
+# What an agent's pod may reach: the cluster's DNS, the public internet on 443, and this release's
+# api. Nothing reaches the pod. Rendered when clusterAgent.enabled, in the release's namespace,
+# where the cluster agent runs its agents. It binds only where the cluster's network plugin
+# enforces NetworkPolicy; where it does not, it is accepted and does nothing.
+agentNetworkPolicy:
+  enabled: true
+  # More places a pod may reach, as NetworkPolicy egress rules, added as they are written:
+  # lore's MCP gateway and skills registry, a floor in another namespace or outside the cluster
+  # (api.enabled false, or an api.baseUrl on a private address), a proxy.
+  #   - to:
+  #       - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: lore } }
+  #         podSelector: { matchLabels: { app: mcp-gateway } }
+  #     ports:
+  #       - { protocol: TCP, port: 8080 }
+  extraEgress: []
+
 # Pipelines seeded into the floor at every install and upgrade, by a post-install,post-upgrade Job
 # that runs `floor-pipeline migrate` against the api. Empty means no Job; it also needs api.enabled.
 # existingConfigMap names a ConfigMap you keep: one YAML file a pipeline, and the names are the
