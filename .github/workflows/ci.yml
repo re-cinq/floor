@@ -30,8 +30,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+      # `npm pkg` reads the workspaces' own package.json files, so this needs no install; `npm query` asks the installed tree and answers nothing before one.
       - id: list
-        run: echo "names=$(npm query .workspace | jq -c '[.[].name]')" >> "$GITHUB_OUTPUT"
+        run: |
+          names="$(npm pkg get name --workspaces | jq -c 'keys')"
+          # An empty matrix runs no jobs and reports success, which is worse than a red one.
+          [ "$(jq -r 'length' <<<"${names}")" -gt 0 ] || { echo "no workspaces found: the test matrix would be empty" >&2; exit 1; }
+          echo "names=${names}" >> "$GITHUB_OUTPUT"
+          echo "${names}" | jq -r '.[]' | sed 's/^/testing /'
+
 
   test:
     # One job a workspace: a red suite must not mask the others, which is what the
