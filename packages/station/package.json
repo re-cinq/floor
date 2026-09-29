@@ -1,8 +1,23 @@
 {
-  "name": "@floor/station",
+  "name": "@re-cinq/floor-station",
   "version": "0.1.0",
-  "private": true,
-  "description": "The service station SDK (docs/entities/station.md, \"service\"): defineStation(name, handle) claims the station's dispatches from the floor's queue, hands each to one function as a brief, and posts what it returns as the visit's report. A station needs only a way out to the floor; the floor never calls it.",
+  "description": "The floor's service station SDK: defineStation(name, handle) claims the station's dispatches from a floor's queue, hands each to one function as a brief, and posts what it returns as the visit's report. A station needs only a way out to the floor; the floor never calls it.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/re-cinq/floor.git",
+    "directory": "packages/station"
+  },
+  "homepage": "https://github.com/re-cinq/floor/tree/main/packages/station#readme",
+  "bugs": {
+    "url": "https://github.com/re-cinq/floor/issues"
+  },
+  "keywords": [
+    "floor",
+    "station",
+    "orchestration",
+    "agents"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,6 +26,16 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

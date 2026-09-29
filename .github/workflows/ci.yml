@@ -6,6 +6,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # By publish.yml, against the commit a release tags.
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -29,9 +31,9 @@ jobs:
         workspace:
           - "@floor/assembly-lines"
           - "@floor/store"
-          - "@floor/station"
+          - "@re-cinq/floor-station"
           - "@floor/lore-converter"
-          - "@floor/pipeline"
+          - "@re-cinq/floor-pipeline"
           - "@floor/api"
           - "@floor/cluster-agent"
 

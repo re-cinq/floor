@@ -200,7 +200,7 @@ GET    /migrations                       // service token only
 GET    /migrations/:name                 // the sha256 the file ran as; 404 for one that has not run
 PUT    /migrations/:name                 // { sha256 }. 409 for a name that ran as other content: a file runs once
 
-The floor applies no file itself. `floor-pipeline migrate` (@floor/pipeline) does, through the routes above
+The floor applies no file itself. `floor-pipeline migrate` (@re-cinq/floor-pipeline) does, through the routes above
 and the ones any client uses, and the floor remembers.
 
 ## Costs - collected by the floor for every visit

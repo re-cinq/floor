@@ -1,10 +1,12 @@
-# @floor/pipeline
+# @re-cinq/floor-pipeline
 
 A pipeline as one file: an assembly line with its stations, its agent definitions and their prompts, its files and its schedules. One file is one pipeline, and holds everything the pipeline needs that a file can hold.
 
-The tool speaks the floor's HTTP API and nothing else. It is a client like any other, with the service token.
+The tool speaks the HTTP API of a [floor](https://github.com/re-cinq/floor) and nothing else. It is a client like any other, with the service token.
 
 ```
+npm install @re-cinq/floor-pipeline      # the command is floor-pipeline
+
 export FLOOR_SERVICE_TOKEN=...
 
 floor-pipeline export code-review --floor http://localhost:8180 > code-review.yaml
@@ -26,11 +28,11 @@ floor-pipeline migrate pipelines/ --floor http://floor-api:8080 --wait-ready 180
 
 A client and nothing more: it speaks the floor's HTTP API with a service token, exactly as lore or
 a worker does, and links none of floor's own packages. Where
-[`@floor/lore-converter`](../lore-converter/README.md) brings an assembly line *in* from lore, this
+[`@floor/lore-converter`](https://github.com/re-cinq/floor/blob/main/packages/lore-converter/README.md) brings an assembly line *in* from lore, this
 moves a whole pipeline between a file and a floor — to review it, to keep it in git, or to put the
 same one into another floor. It moves definitions only; assembly runs stay where they happened.
 
-See [the map](../../README.md).
+See [the map](https://github.com/re-cinq/floor/blob/main/README.md).
 
 ## The file
 

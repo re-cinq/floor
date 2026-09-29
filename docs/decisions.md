@@ -419,6 +419,35 @@ Nothing reaches a pod. The subsystem ships the same rules for its own
 namespace, and the floor runs its agents in another. What lore's agents call
 inside the cluster is not known to this chart, so it is a value.
 
+**A release is a GitHub Release, and the tag is the version.** As
+HALEngine and bowman-ui do it. Publishing the release starts `publish.yml`:
+the tag is checked, the gates run again on the tagged commit, and then the
+image, the two npm packages and the deploy. The packages carry a placeholder
+version on `main` and are stamped from the tag, so no commit bumps a
+version. A pushed tag alone publishes nothing.
+
+**The npm packages are `@re-cinq/floor-station` and
+`@re-cinq/floor-pipeline`.** They were `@floor/station` and
+`@floor/pipeline`; re:cinq publishes under `@re-cinq`, and holds no
+`@floor` on npm. The packages that are
+not published keep `@floor`. They are licensed Apache-2.0, as every package
+re:cinq publishes is.
+
+**npm is published without a token, and staged.** Trusted Publishing trades
+the workflow's OIDC token for a credential, so the repository holds no npm
+secret. A staged version is not installable until a maintainer approves it
+with 2FA, which is the only brake on a publish that cannot be taken back.
+The first version of each package is published by hand, since a trusted
+publisher is registered on a package that exists.
+
+**`latest` is main's.** A release publishes `1.2.3` and `1.2` and leaves the
+image `latest` where `main` put it. A release of an older commit would
+otherwise move it backwards.
+
+**The chart's `version` is set as a string.** A short SHA of seven digits
+is a number to `helm --set`, and one such as `1234e56` is a number with an
+exponent.
+
 **The chart is walked, not only rendered.** `check-chart.sh` renders the
 chart and reads what came out. `walk-chart.sh` installs it in minikube and
 runs an agent through it. The first walk found what no rendering shows: an

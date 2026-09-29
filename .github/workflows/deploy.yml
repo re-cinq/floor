@@ -1,0 +1,99 @@
+name: Deploy
+
+# Installs one version of the image into GKE with the chart. Called, never started by itself:
+# by build.yml for a commit to main, by publish.yml for a release.
+#
+# Skipped until the repository names a cluster, so publishing does not wait for one. Both
+# callers deploy into the same release, so what serves is what was deployed last; they run one
+# after the other, never at once, since helm refuses a second upgrade of a release while the
+# first is under way.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The image's tag, which is the chart's `version`
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/re-cinq/floor
+
+jobs:
+  deploy:
+    name: deploy ${{ inputs.version }}
+    if: vars.GKE_CLUSTER_NAME != ''
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-floor
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write # the OIDC token Workload Identity Federation trades for GCP credentials
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      # The same Workload Identity Federation setup lore uses: no service-account key
+      # is stored anywhere, the run's OIDC token is traded for a short-lived credential.
+      - name: Auth to GCP
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@3da1e46a907576cefaa90c484278bb5b259dd395 # v3.0.0
+        with:
+          cluster_name: ${{ vars.GKE_CLUSTER_NAME }}
+          location: ${{ vars.GKE_LOCATION || 'europe-west1' }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+
+      # One chart, one image, one `version` — the api and the cluster agent roll together.
+      #
+      # `--wait` is safe here: every api replica that reaches Postgres is ready, and the
+      # loop runs on whichever holds the Postgres lease. It was not always so — when
+      # /readyz meant "holds the lease" a second replica was never ready and --wait sat
+      # there until it timed out. See deploy/chart/README.md, "Verified on a cluster".
+      #
+      # The migration Job is part of the release, so --wait also waits for the schema.
+      # What a person or a variable wrote reaches the shell through the environment, never
+      # pasted into the script.
+      - name: Deploy
+        env:
+          VERSION: ${{ inputs.version }}
+          NAMESPACE: ${{ vars.FLOOR_NAMESPACE || 'floor' }}
+          PULL_SECRET: ${{ vars.FLOOR_PULL_SECRET || 'ghcr' }}
+          BASE_URL: ${{ vars.FLOOR_BASE_URL }}
+          API_SECRET: ${{ vars.FLOOR_API_SECRET || 'floor-api' }}
+          POSTGRES_SECRET: ${{ vars.FLOOR_POSTGRES_SECRET || 'floor-postgres' }}
+          POSTGRES_SECRET_KEY: ${{ vars.FLOOR_POSTGRES_SECRET_KEY || 'connectionString' }}
+        run: |
+          helm upgrade --install floor deploy/chart \
+            --namespace "${NAMESPACE}" --create-namespace \
+            --set-string version="${VERSION}" \
+            --set image.repository="${IMAGE}" \
+            --set "imagePullSecrets[0].name=${PULL_SECRET}" \
+            --set api.baseUrl="${BASE_URL}" \
+            --set api.existingSecret="${API_SECRET}" \
+            --set postgres.existingSecret="${POSTGRES_SECRET}" \
+            --set postgres.secretKey="${POSTGRES_SECRET_KEY}" \
+            --set subsystem.enabled=true \
+            --wait --timeout 10m
+
+      # A rollout can report success while the old pods still serve. /version says which
+      # image answered and whether that replica holds the loop's lease.
+      - name: What is serving
+        env:
+          NAMESPACE: ${{ vars.FLOOR_NAMESPACE || 'floor' }}
+        run: |
+          kubectl -n "${NAMESPACE}" rollout status deployment/floor-api --timeout=5m
+          kubectl -n "${NAMESPACE}" rollout status deployment/floor-cluster-agent --timeout=5m
+          kubectl -n "${NAMESPACE}" get pods -l app.kubernetes.io/name=floor -o wide

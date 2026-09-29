@@ -1,0 +1,194 @@
+name: Publish
+
+# Publishes a version: the image to ghcr.io/re-cinq/floor, the station SDK and the pipeline
+# tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
+#
+# Publishing a GitHub Release is what starts this file. The release carries the `vX.Y.Z` tag
+# and the notes, and the tag is the version: the packages carry a placeholder on main, stamped
+# just before they are built, so a release is one act and no commit ever bumps a version.
+# Draft releases fire nothing, and a prerelease is refused.
+#
+# npm's auth is tokenless: Trusted Publishing mints a short-lived credential from the GitHub
+# OIDC token, so no NPM_TOKEN secret exists here. The trusted publisher is registered, for each
+# package, against THIS file's path: renaming or moving it breaks publishing until it is
+# registered again. It cannot be registered before a package's first publish, since npm has
+# nothing to attach it to: the first version of each package is published by hand
+# (docs/releasing.md).
+#
+# The npm publish is staged rather than direct. The tarball and its provenance reach the
+# registry, but the version is not installable until a maintainer approves the stage with 2FA:
+# the package page's Versions tab, or `npm stage list` then `npm stage approve <id>`. That is
+# the only brake there is on the one step here that cannot be undone.
+on:
+  release:
+    types: [published]
+  # The way back in when a publish fails after the release already exists. Select the release's
+  # tag, not a branch: the first job refuses anything that is not a vMAJOR.MINOR.PATCH tag.
+  # What was published before the failure is left as it is, and the rest is published.
+  workflow_dispatch:
+
+# One release at a time, in order, and never cut short half way.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+# Least privilege by default: a job that writes says so itself, and none starts before the
+# gates have passed.
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: re-cinq/floor
+
+jobs:
+  release-tag:
+    name: Release tag names a version on main
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+          # Ancestry needs the graph connecting the tag to main; a release checks out one commit.
+          fetch-depth: 0
+
+      - name: Release tag names a stable version
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: echo "version=$(./scripts/release-version.sh --check "${RELEASE_TAG}")" >> "$GITHUB_OUTPUT"
+
+      # main is the trust boundary: it takes a pull request. A release can be cut against any
+      # branch or commit, so without this the boundary is passed by whoever can draft one.
+      - name: Tagged commit is on main
+        run: |
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "publish: ${GITHUB_SHA} is not an ancestor of origin/main; cut the release from a commit merged to main" >&2
+            exit 1
+          fi
+
+  # The gates, run again against the tagged commit. A tag points at whatever its author chose,
+  # so a green run on main is evidence about main and not about what is published.
+  verify:
+    needs: release-tag
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    name: Publish the image
+    needs: [release-tag, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # `latest` is what main last built, and stays so: a release of an older commit would
+      # otherwise move it backwards.
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.release-tag.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-tag.outputs.version }}
+
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: FLOOR_BUILD_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  packages:
+    name: Publish the packages to npm
+    needs: [release-tag, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      # Trusted publishing needs npm >= 11.5.1 and `npm stage` needs >= 11.15.0; Node 22 ships
+      # an older npm. Pinned to the 11 line and not `latest`: this is the job holding
+      # id-token: write, and `latest` lets a major nobody here has run decide how it behaves.
+      - name: Upgrade npm for OIDC trusted publishing and staging
+        run: npm install -g npm@^11.15.0
+
+      - name: Set the version from the release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: ./scripts/release-version.sh "${RELEASE_TAG}"
+
+      - name: Install (no build)
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
+
+      # The pack list is the only place where what ships is a fact and not an intention.
+      - name: Pack lists carry the packages and nothing else
+        run: node scripts/check-pack-list.mjs packages/station packages/pipeline
+
+      - name: Stage the versions on npm
+        env:
+          VERSION: ${{ needs.release-tag.outputs.version }}
+        run: |
+          set -o pipefail
+          for package in packages/station packages/pipeline; do
+            name="$(node -p "require('./${package}/package.json').name")"
+            # A run started again after it failed half way publishes what is left.
+            if npm view "${name}@${VERSION}" version >/dev/null 2>&1; then
+              echo "${name}@${VERSION} is on the registry already" | tee -a stage.log
+              continue
+            fi
+            (cd "${package}" && npm stage publish --access public --provenance --ignore-scripts) 2>&1 | tee -a stage.log
+          done
+          {
+            echo "## Staged on npm - a maintainer must approve each before anyone can install it"
+            echo
+            echo "The package page's Versions tab -> Approve, with 2FA. Or: \`npm stage list\`, then \`npm stage approve <id>\`."
+            echo
+            echo '```'
+            cat stage.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: [release-tag, image]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      version: ${{ needs.release-tag.outputs.version }}
+    secrets: inherit

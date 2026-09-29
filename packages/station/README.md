@@ -1,9 +1,13 @@
-# @floor/station
+# @re-cinq/floor-station
 
-The service station SDK. A service station is one function; this is everything around it.
+The service station SDK of [floor](https://github.com/re-cinq/floor). A service station is one function; this is everything around it.
+
+```
+npm install @re-cinq/floor-station
+```
 
 ```ts
-import { defineStation } from "@floor/station";
+import { defineStation } from "@re-cinq/floor-station";
 
 defineStation("close-issue", async (brief, tools) => {
   const spec = await tools.read("spec");
@@ -24,7 +28,7 @@ cluster — and needs only a way out to the floor's HTTP API and a service token
 it; it claims its own work from the queue by the tag `station:<name>`.
 
 Every provider-shaped job is one of these. lore's GitHub workers are written with this, which is
-why the picture in [the map](../../README.md) has nothing GitHub-shaped inside floor.
+why the picture in [the map](https://github.com/re-cinq/floor/blob/main/README.md) has nothing GitHub-shaped inside floor.
 
 ## What it does for the function
 

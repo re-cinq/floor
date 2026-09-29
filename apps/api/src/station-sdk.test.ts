@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { defineStation, type Brief, type Handle } from "@floor/station";
+import { defineStation, type Brief, type Handle } from "@re-cinq/floor-station";
 import type { LineBody, StationBody } from "@floor/store";
 import { SERVICE_TOKEN, outcomeOnceSettled, setupTestServer } from "./test-server.js";
 

@@ -190,20 +190,23 @@ from the repo root's `Dockerfile` and push it yourself, then point `version` at 
 
 ## Continuous delivery
 
-`.github/workflows/build.yml` builds the one image on every push to `main` that touches the code,
-the Dockerfile or the chart, pushes it to `ghcr.io/re-cinq/floor` tagged with the short SHA (and
-`latest`), then installs that tag into GKE with this chart. Authentication to GCP is Workload
-Identity Federation, the same setup lore uses — no service-account key is stored anywhere.
+Three workflows, and the image is always `ghcr.io/re-cinq/floor`.
 
-| what is pushed | the image's tags |
-|---|---|
-| a commit to `main` | its short SHA, and `latest` |
-| a tag `v1.2.3` | `1.2.3` and `1.2`, and the commit's short SHA |
-| the workflow run by hand on a branch | the commit's short SHA |
+| what happens | the workflow | the image's tags | deployed as |
+|---|---|---|---|
+| a commit to `main` that touches the code, the Dockerfile or the chart | `build.yml` | its short SHA, and `latest` | its short SHA |
+| a GitHub Release `v1.2.3` is published | `publish.yml` | `1.2.3` and `1.2` | `1.2.3` |
+| `build.yml` run by hand on a branch | `build.yml` | the commit's short SHA | not deployed |
 
-- **Only a push to `main` deploys**, and only once the repository names a cluster in
-  `GKE_CLUSTER_NAME`. Until then the image is published and the deploy is skipped.
-- **The package is private**, as the repository is. A cluster pulls it with a pull secret.
+- **Both deploy through `deploy.yml`**, which installs one version with this chart.
+  Authentication to GCP is Workload Identity Federation, the same setup lore uses — no
+  service-account key is stored anywhere.
+- **The deploy is skipped until the repository names a cluster** in `GKE_CLUSTER_NAME`. The
+  image is published all the same.
+- **Both deploy into the same release**, so what serves is what was deployed last. Release
+  `v1.2.3` and the cluster runs `1.2.3`; push to `main` after and it runs a SHA again. The two
+  never run at once: deploys wait for each other.
+- **A release publishes the npm packages too.** See [Releasing](../../docs/releasing.md).
 
 It needs these set on the repository. The secrets are shared with lore; the variables are floor's
 own.
@@ -220,8 +223,8 @@ own.
 | variable | `FLOOR_API_SECRET`, `FLOOR_POSTGRES_SECRET`, `FLOOR_POSTGRES_SECRET_KEY` | optional; the Secret names, defaulting to `floor-api`, `floor-postgres` and `connectionString` |
 
 Two things must already exist in the cluster, because the workflow creates neither: the two Secrets
-above (see [the tutorial](../../docs/tutorial.md)), and **an image pull secret for GHCR**, since the
-package is private and a GKE node cannot pull it with the node service account alone.
+above (see [the tutorial](../../docs/tutorial.md)), and **an image pull secret for GHCR** if the
+image's package is private, since a GKE node cannot pull it with the node service account alone.
 
 The deploy runs `helm upgrade --install --wait`, so a release that does not become ready fails the
 run rather than reporting success, and the migration Job is waited on with everything else.
