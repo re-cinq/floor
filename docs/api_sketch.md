@@ -98,7 +98,7 @@ numbers everything in one run 1, 2, 3, with no gap. A viewer that lost its
 connection comes back with the last `seq` it saw and misses nothing.
 
 ```
-floor sends    { type: "record",         seq, visitId, nodeId, iteration, record }   // a turn, a log line, an llm_call
+floor sends    { type: "record",         seq, visitId, nodeId, iteration, record }   // a log, turn, llm_call or produced
                { type: "visit_opened",   seq, visit }                                // as GET /station-runs/:id, no report yet
                { type: "visit_reported", seq, visit }                                // the same visit, with its report
                { type: "run_settled",    seq, run }                                  // always the last, then 1000
@@ -127,6 +127,10 @@ lore closes    at any time: that is the unsubscribe
   person's word to a running agent, so giving it a meaning later changes
   nothing here.
 - Every replica serves viewers, whichever of them wrote what is sent.
+- `node scripts/watch-run.mjs <floor url> <run id> [after]` is a viewer for
+  a terminal, a line a frame, with `FLOOR_SERVICE_TOKEN` in its environment.
+  `scripts/walk-agent.sh` watches its own run with it, and fails when it was
+  sent no turn or no settling.
 - A run settled before the floor kept a journal replays nothing and closes
   with 1000. Its visits and records are read over HTTP, as before.
 

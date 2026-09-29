@@ -62,7 +62,8 @@ The floor's token is `floor-dev-token` unless `.env.local` sets
 | `npm run minikube-gemini-auth` | gives the agents a Gemini API key, beside their Claude credential |
 | `floor-pipeline` | a pipeline as one YAML file: `export` one or all from a floor, `import` one, `migrate` a folder in order; see `packages/pipeline` |
 | `scripts/walk.sh` | boots a floor of its own and walks a run through a service station, over HTTP |
-| `scripts/walk-agent.sh` | boots a floor and a cluster agent of its own and walks a run through a real agent pod |
+| `scripts/walk-agent.sh` | boots a floor and a cluster agent of its own and walks a run through a real agent pod, watching it over the live channel |
+| `scripts/watch-run.mjs` | watches one run of a running floor as it happens, a line a frame: `FLOOR_SERVICE_TOKEN=<token> node scripts/watch-run.mjs <floor url> <run id>` |
 | `scripts/walk-gemini.sh` | the same walk on a Gemini model, with a gcloud login and no API key: a relay on this machine asks Vertex AI as you, and the pod holds a key for that walk alone |
 | `scripts/walk-git.sh` | walks a run whose station writes to a repository: git in the pod asks the floor for its credential |
 

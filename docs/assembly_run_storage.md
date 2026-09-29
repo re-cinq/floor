@@ -465,7 +465,7 @@ happens in a run, numbered 1, 2, 3 per run with no gap.
 
 | entry | written when |
 |---|---|
-| `record` | a `log`, `turn` or `llm_call` record is appended to a visit of the run |
+| `record` | a `log`, `turn`, `llm_call` or `produced` record is appended to a visit of the run |
 | `visit_opened` | a visit is opened |
 | `visit_reported` | a visit's report is written |
 | `run_settled` | the run gets its `finished_at` |

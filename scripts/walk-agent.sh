@@ -89,6 +89,10 @@ say "starting a run"
 RUN="$(api -X POST "${BASE}/assembly-lines/${NAME}/start" -d '{"repo":"github.com/re-cinq/floor","startItems":{"topic":{"kind":"value","ref":"robots that bend girders","by":"walk-agent.sh"}}}' | jq -r .run.id)"
 echo "run ${RUN}"
 
+say "watching the run over the live channel"
+FLOOR_SERVICE_TOKEN="${TOKEN}" node scripts/watch-run.mjs "${BASE}" "${RUN}" >"${LOGS}/live.log" 2>&1 &
+WATCHER=$!
+
 say "waiting for the agent, up to ${WAIT_SECONDS}s"
 OUTCOME=null
 SEEN=""
@@ -117,6 +121,14 @@ if [ -n "${NOTE}" ]; then
   api "${BASE}/blobs/${NOTE}"
   echo
 fi
+
+say "the run as a viewer saw it, live"
+WATCHED=0
+wait "${WATCHER}" || WATCHED=$?
+awk '{ if ($2 == "record" && $4 == "turn") turns++; else print } END { if (turns) print "       and " turns " turns, each as it was said" }' "${LOGS}/live.log"
+[ "${WATCHED}" = 0 ] || { what_went_wrong; fail "the viewer was not closed with 1000; logs kept in ${LOGS}"; }
+grep -q ' record .* turn ' "${LOGS}/live.log" || fail "the viewer was sent no turn; logs kept in ${LOGS}"
+grep -q ' run_settled ' "${LOGS}/live.log" || fail "the viewer was not sent the run's settling; logs kept in ${LOGS}"
 
 say "its events, in order"
 api "${BASE}/events?run=${RUN}" | jq -r '.items[] | "\(.id)\t\(.name)\t\(if .ackedAt then "acked" elif .deadAt then "dead: \(.lastError)" else "open" end)"'
