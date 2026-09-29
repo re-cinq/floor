@@ -60,6 +60,23 @@ describe("GET /costs", () => {
     expect(response.result.items).toEqual([{ key: "code-review", costUsd: 3, tokensIn: 0, tokensOut: 0, visits: 1, visitsMissingCost: 0 }]);
   });
 
+  it("returns what one run cost, asked for by its id", async () => {
+    await reportedVisit("r", 3);
+    await reportedVisit("r", 4);
+    const listed = await deps().runs.list({ repo: "r" }, { limit: 1 });
+    const [run] = listed.items;
+
+    const response = await injectJson<CostsResult>(server(), { method: "GET", url: `/costs?run=${run!.id}&group=run`, headers: authHeaders() });
+
+    expect(response.result.items).toMatchObject([{ key: run!.id, visits: 1 }]);
+  });
+
+  it("answers 400 to a run that is no run's id, before the database is asked", async () => {
+    const response = await injectJson(server(), { method: "GET", url: "/costs?run=nonsense&group=run", headers: authHeaders() });
+
+    expect(response.statusCode).toBe(400);
+  });
+
   it("groups by day", async () => {
     await reportedVisit("r", 3);
 

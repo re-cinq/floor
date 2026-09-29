@@ -4,6 +4,8 @@ import type { Pool, PoolClient } from "pg";
 import { addCondition } from "./rows.js";
 
 export interface CostsFilter {
+  /** One assembly run: what one review cost, say. */
+  runId?: string;
   repo?: string;
   lineId?: string;
   station?: string;
@@ -11,7 +13,7 @@ export interface CostsFilter {
   until?: Date;
 }
 
-export type CostsGroupBy = "day" | "line" | "station" | "model";
+export type CostsGroupBy = "day" | "line" | "station" | "model" | "run";
 
 export interface CostsRow {
   key: string | null;
@@ -44,12 +46,14 @@ const GROUP_KEY_EXPR: Record<CostsGroupBy, string> = {
   line: "line_id",
   station: "station_id",
   model: "input->'agentSettings'->>'model'",
+  run: "run_id::text",
 };
 
 function whereClauseFor(filter: CostsFilter): { where: string; values: unknown[] } {
   const conditions: string[] = [];
   const values: unknown[] = [];
 
+  addCondition(conditions, values, "ar.id = $%", filter.runId);
   addCondition(conditions, values, "ar.repo = $%", filter.repo && canonicalRepo(filter.repo));
   addCondition(conditions, values, "ar.line_id = $%", filter.lineId);
   addCondition(conditions, values, "d.id = $%", filter.station);
@@ -80,7 +84,7 @@ const LLM_TOTALS_CTE = `
 
 const VISITS_COLUMNS = `
   sr.opened_at, sr.agent_definition_hash, sr.report, sr.input,
-  ar.repo, ar.line_id, d.id as station_id,
+  ar.id as run_id, ar.repo, ar.line_id, d.id as station_id,
   lt.cost_usd, lt.tokens_in, lt.tokens_out, lt.has_cost
 `;
 
@@ -90,6 +94,9 @@ const VISITS_JOIN = `
   left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
   left join llm_totals lt on lt.station_run_id = sr.station_run_id
 `;
+
+/** A millionth of a dollar. An agent reports its cost as a fraction a machine cannot write exactly, and a sum of those ends in noise. */
+const COST_DECIMALS = 6;
 
 const MISSING_COST_FILTER = "agent_definition_hash is not null and report is not null and not coalesce(has_cost, false)";
 
@@ -103,7 +110,7 @@ function summarySql(where: string, key: string): string {
     )
     select
       ${key} as key,
-      coalesce(sum(cost_usd), 0) as cost_usd,
+      round(coalesce(sum(cost_usd), 0), ${COST_DECIMALS}) as cost_usd,
       coalesce(sum(tokens_in), 0) as tokens_in,
       coalesce(sum(tokens_out), 0) as tokens_out,
       count(*) as visits,

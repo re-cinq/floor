@@ -136,7 +136,7 @@ DELETE /agent-definitions/:id            // archives. Not built yet: 409 while a
 
 ## Costs - collected by the floor for every visit
 
-GET    /costs                            // service token only. filter required: repo, line, station, since, until; group required: day | line | station | model
+GET    /costs                            // service token only. filter required: run, repo, line, station, since, until; group required: day | line | station | model | run
                                          // returns cost, tokens in and out, visit count, and visits with missing cost
 
 ## Blobs - content-addressed bytes behind every `file` item

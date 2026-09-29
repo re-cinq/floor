@@ -76,6 +76,12 @@ async function openHumanVisit(repo: string, moment: Date): Promise<string> {
   return visit.id;
 }
 
+async function runOf(visitId: string): Promise<string> {
+  const visit = await runs().visit(visitId);
+
+  return visit!.runId;
+}
+
 async function setOpenedAt(visitId: string, moment: Date): Promise<void> {
   await pool.query("update station_runs set opened_at = $2 where station_run_id = $1", [visitId, moment]);
 }
@@ -222,6 +228,37 @@ describe("CostsStore.summary", () => {
     const rows = await costs().summary({ repo: "r", since: new Date("2026-01-02T00:00:00Z"), until: new Date("2026-01-06T00:00:00Z") }, "line");
 
     expect(rows.map((row) => row.costUsd)).toEqual([2]);
+  });
+
+  it("filters by run: what one run cost, and no other", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const asked = await openAgentVisit("code-review", "r", DAY_1);
+
+    await recordCost(asked, 1, DAY_1);
+    await recordCost(await openAgentVisit("code-review", "r", DAY_1), 2, DAY_1);
+    const rows = await costs().summary({ runId: await runOf(asked) }, "line");
+
+    expect(rows).toMatchObject([{ key: "code-review", costUsd: 1, visits: 1 }]);
+  });
+
+  it("groups by run", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const first = await openAgentVisit("code-review", "r", DAY_1);
+
+    await recordCost(first, 1, DAY_1);
+    await recordCost(await openAgentVisit("code-review", "r", DAY_1), 2, DAY_1);
+    const rows = await costs().summary({ repo: "r" }, "run");
+
+    expect(rows).toContainEqual(expect.objectContaining({ key: await runOf(first), costUsd: 1 }));
+  });
+
+  it("sums 0.4727074999999999 and 0.1 to 0.572707, and not to the noise a machine adds", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    await recordCost(await openAgentVisit("code-review", "r", DAY_1), 0.4727074999999999, DAY_1);
+    await recordCost(await openAgentVisit("code-review", "r", DAY_1), 0.1, DAY_1);
+    const [row] = await costs().summary({ repo: "r" }, "line");
+
+    expect(row!.costUsd).toBe(0.572707);
   });
 
   it("counts a visit with no llm_call record as missing", async () => {

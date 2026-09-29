@@ -4,8 +4,9 @@ import type { CostsFilter, CostsGroupBy } from "@floor/store";
 import type { Credentials } from "../auth.js";
 import type { Deps } from "../deps.js";
 import { badRequest, forbidden } from "../problem.js";
+import { isUuid } from "./own-visit.js";
 
-const GROUP_BY_VALUES: CostsGroupBy[] = ["day", "line", "station", "model"];
+const GROUP_BY_VALUES: CostsGroupBy[] = ["day", "line", "station", "model", "run"];
 
 export function registerCostsRoutes(server: Server, deps: Deps): void {
   server.route({ method: "GET", path: "/costs", handler: (request, toolkit) => summary(deps, request, toolkit) });
@@ -18,20 +19,21 @@ async function summary(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const query = request.query as Record<string, string | undefined>;
   const filter = filterFrom(query);
 
-  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: repo, line, station, since, or until");
+  if (query.run && !isUuid(query.run)) return badRequest(toolkit, `"${query.run}" is no run's id`);
+  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: run, repo, line, station, since, or until");
   const groupBy = groupByOf(query.group);
 
-  if (!groupBy) return badRequest(toolkit, "group is required: day, line, station, or model");
+  if (!groupBy) return badRequest(toolkit, "group is required: day, line, station, model, or run");
 
   return { items: await deps.costs.summary(filter, groupBy) };
 }
 
 function filterFrom(query: Record<string, string | undefined>): CostsFilter {
-  return { repo: query.repo, lineId: query.line, station: query.station, since: dateOf(query.since), until: dateOf(query.until) };
+  return { runId: query.run, repo: query.repo, lineId: query.line, station: query.station, since: dateOf(query.since), until: dateOf(query.until) };
 }
 
 function hasFilter(filter: CostsFilter): boolean {
-  return [filter.repo, filter.lineId, filter.station, filter.since, filter.until].some((value) => value !== undefined);
+  return Object.values(filter).some((value) => value !== undefined);
 }
 
 function dateOf(value: string | undefined): Date | undefined {
