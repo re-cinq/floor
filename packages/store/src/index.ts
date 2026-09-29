@@ -16,7 +16,6 @@ export { RunJournal, type JournalEntry, type JournalPage, type RunJournalDeps } 
 export { LISTENER_NAME, PgRunNotifier, type PgRunNotifierDeps, type RunListener, type RunNotifier } from "./run-notifier.js";
 export { validateLine, type KnownDefinitions } from "./line-validation.js";
 export { CostsStore, type CostsFilter, type CostsGroupBy, type CostsRow, type CostsStoreDeps } from "./costs.js";
-export { renderTemplate } from "./template.js";
 export {
   DispatchBriefs,
   dispatchNeeds,

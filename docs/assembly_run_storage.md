@@ -317,16 +317,20 @@ query.
 
 ## Security: how the rules are enforced
 
-> **Not built yet**, of the list below: the lint fence, the branded route
-> type, fuzzing, the threat models, and the second reviewer. Built: the
-> template engine as one module, with tests named after the attacks; the
+> **Not built yet**, of the list below: the branded route type, fuzzing, the
+> threat models, and the second reviewer. Built: the template engine as one
+> module, with tests named after the attacks; the lint fence around it (below); the
 > visit token, with tests proving it reaches only its own visit and only
 > the ten routes a visit is given, every other route being a service's
 > alone; no outbound request from the floor.
 
 - Rules are tests first, each with a hostile input named after the attack.
 - One module per boundary: templates, routes, tokens; a lint rule fences the
-  template engine inside its module.
+  template engine inside its module. The rule is ESLint's own
+  `no-restricted-imports`, in this repo's `eslint.config.mjs`: any import or
+  re-export of `template` is an error except in `template.ts`, its test, and
+  `event-match.ts`, the one caller, which renders start arguments. The package
+  index does not export `renderTemplate`.
 - Template scope is a type holding only declared names; secrets cannot be an
   `Item`; a route is a branded type.
 - Templates, routes and report payloads are fuzzed.

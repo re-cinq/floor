@@ -6,6 +6,11 @@ import markdown from "@eslint/markdown";
 import globals from "globals";
 import reLint from "@re-cinq/eslint-plugin-re-lint";
 
+const TEMPLATE_ENGINE_ALLOWED = [
+  "packages/store/src/template.ts",
+  "packages/store/src/template.test.ts",
+  "packages/store/src/event-match.ts",
+];
 const FIRST_PARTY = { firstPartyScopes: ["@floor", "@re-cinq"] };
 
 export default tseslint.config(
@@ -70,6 +75,25 @@ export default tseslint.config(
       "id-length": ["error", { min: 3, exceptions: ["on", "to", "id", "by"] }],
       // RFC 9457's own name for the status, not a boolean negated at the use site.
       "re-lint/no-negative-names": ["error", { allow: ["notFound"] }],
+    },
+  },
+
+  // The template engine is a security boundary: only event-match.ts (plus the engine's own file and tests) may reach it; everyone else goes through event-match.
+  {
+    files: ["**/*.ts"],
+    ignores: TEMPLATE_ENGINE_ALLOWED,
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/template", "**/template.js"],
+              message: "The template engine is a security boundary: go through event-match.ts, never import renderTemplate directly.",
+            },
+          ],
+        },
+      ],
     },
   },
 
