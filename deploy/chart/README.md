@@ -195,6 +195,16 @@ the Dockerfile or the chart, pushes it to `ghcr.io/re-cinq/floor` tagged with th
 `latest`), then installs that tag into GKE with this chart. Authentication to GCP is Workload
 Identity Federation, the same setup lore uses — no service-account key is stored anywhere.
 
+| what is pushed | the image's tags |
+|---|---|
+| a commit to `main` | its short SHA, and `latest` |
+| a tag `v1.2.3` | `1.2.3` and `1.2`, and the commit's short SHA |
+| the workflow run by hand on a branch | the commit's short SHA |
+
+- **Only a push to `main` deploys**, and only once the repository names a cluster in
+  `GKE_CLUSTER_NAME`. Until then the image is published and the deploy is skipped.
+- **The package is private**, as the repository is. A cluster pulls it with a pull secret.
+
 It needs these set on the repository. The secrets are shared with lore; the variables are floor's
 own.
 
