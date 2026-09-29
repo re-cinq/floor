@@ -135,7 +135,7 @@ An assembly line, its stations, its agent definitions and their prompts travel t
 file**. Put it in with `floor-pipeline`:
 
 ```bash
-npm run build -w @floor/pipeline
+npm run build -w @re-cinq/floor-pipeline
 
 export FLOOR_SERVICE_TOKEN=<the serviceToken from step 1>
 node packages/pipeline/dist/cli.js import my-line.yaml --floor https://floor.example.com

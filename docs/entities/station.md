@@ -112,7 +112,7 @@ Writing an agent station is writing the YAML above and a prompt.
 A station that sits next to its data, so no pod and no clone.
 
 ```ts
-import { defineStation } from "@floor/station";
+import { defineStation } from "@re-cinq/floor-station";
 
 defineStation("close-issue", async (brief, tools) => {
   await issues.close(brief.needs.issue_number);

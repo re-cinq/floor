@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { exportPipeline, fileOf, importPipeline, migrate, pipelineOf, readPipelineFile, writePipelineFile, type Floor } from "@floor/pipeline";
+import { exportPipeline, fileOf, importPipeline, migrate, pipelineOf, readPipelineFile, writePipelineFile, type Floor } from "@re-cinq/floor-pipeline";
 import type { AgentDefinitionBody, LineBody, StationBody } from "@floor/store";
 import { SERVICE_TOKEN, VISIT_TOKEN_SECRET, injectJson, setupTestServer } from "./test-server.js";
 import { mintVisitToken } from "./visit-token.js";

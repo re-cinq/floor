@@ -1,17 +1,45 @@
 {
-  "name": "@floor/pipeline",
+  "name": "@re-cinq/floor-pipeline",
   "version": "0.1.0",
-  "private": true,
-  "description": "A pipeline as one file: an assembly line with its stations, its agent definitions and their prompts, its files and its schedules. Exports one from a floor, imports one into a floor, and applies a folder of them in order, each once. It speaks the floor's HTTP API and nothing else.",
+  "description": "A floor's pipeline as one YAML file: an assembly line with its stations, its agent definitions and their prompts, its files and its schedules. Exports one from a floor, imports one into a floor, and applies a folder of them in order, each once. It speaks the floor's HTTP API and nothing else.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/re-cinq/floor.git",
+    "directory": "packages/pipeline"
+  },
+  "homepage": "https://github.com/re-cinq/floor/tree/main/packages/pipeline#readme",
+  "bugs": {
+    "url": "https://github.com/re-cinq/floor/issues"
+  },
+  "keywords": [
+    "floor",
+    "pipeline",
+    "assembly-line",
+    "yaml",
+    "cli"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": { "floor-pipeline": "dist/cli.js" },
+  "bin": {
+    "floor-pipeline": "dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
