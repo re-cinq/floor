@@ -78,6 +78,10 @@ A token given outright, `GITHUB_TOKEN`, wins. Otherwise it is a GitHub App: it s
 
 Against a stand-in for GitHub's API over real HTTP, `fake-github.ts`: it checks an app's claim against the app's public key as GitHub does, so a claim signed with another key is refused by it and not by a stub. The signature check is tested against the example in GitHub's own documentation.
 
+`scripts/walk-code-review-reply.sh` walks lore's `code-review-reply` through a real pod against the same stand-in, left running: a stranger's review starts nothing, then a review is read, answered, and the answer posted to the stand-in.
+
+`scripts/walk-real-review.sh <pull request>` is the one walk that reaches GitHub. It reviews the pull request it is given and posts the review, as the GitHub App in `FLOOR_GITHUB_ENV_FILE`. It posts a comment, never an approval, and pushes nothing. It has no default pull request.
+
 `scripts/walk-git.sh` walks a run whose station writes to a repository through a real pod, with a stand-in for this provider: git in the pod asks the floor, and the floor asks the provider.
 
 `scripts/walk-code-review.sh` sends a signed webhook through the receiver and walks the run it starts, then a push, which the router sends to the recheck.
