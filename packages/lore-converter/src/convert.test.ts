@@ -184,8 +184,8 @@ describe("convertLine: lore's code-review-reply", () => {
     expect(promptOf(reply())).toMatch(/^\{description\}[\s\S]*let Lore post your reply\.\n\nOne thing above is different here[\s\S]*git -C \/workspace\/target push origin HEAD/);
   });
 
-  it("is started by a person's review asking for changes, never by a bot's", () => {
-    expect(lineOf(reply()).start).toMatchObject({ on: ["github.pull_request_review.submitted"], when: { review_state: "changes_requested", sender_type: "User" } });
+  it("is started by a review asking for changes, from a person who may write to the repository", () => {
+    expect(lineOf(reply()).start).toMatchObject({ on: ["github.pull_request_review.submitted"], when: { review_state: "changes_requested", sender_type: "User", sender_trusted: true } });
   });
 
   it("has nothing left to say", () => {

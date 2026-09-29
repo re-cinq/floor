@@ -37,8 +37,11 @@ const pullRequest = z.looseObject({
 });
 
 const review = z.looseObject({
-  review: z.looseObject({ id: z.number(), state: z.string(), html_url: z.string() }),
+  review: z.looseObject({ id: z.number(), state: z.string(), html_url: z.string(), author_association: z.string().optional() }),
 });
+
+/** Who GitHub says may write to the repository. Anyone may review a public repository's pull request; what they write is only acted on when they are one of these. */
+const TRUSTED = ["OWNER", "MEMBER", "COLLABORATOR"];
 
 const issueComment = z.looseObject({
   issue: z.looseObject({ number: z.number(), pull_request: z.looseObject({ html_url: z.string() }).optional() }),
@@ -120,9 +123,9 @@ function reviewOf(body: unknown): Payload {
   const parsed = review.safeParse(body);
 
   if (!parsed.success) return {};
-  const { id, state, html_url: url } = parsed.data.review;
+  const { id, state, html_url: url, author_association: association } = parsed.data.review;
 
-  return { ...pullRequestOf(body), review_id: id, review_state: state, review_url: url };
+  return { ...pullRequestOf(body), review_id: id, review_state: state, review_url: url, sender_trusted: TRUSTED.includes(association ?? "") };
 }
 
 // A comment on an issue that is not a pull request is about no run of ours.

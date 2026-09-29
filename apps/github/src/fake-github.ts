@@ -80,10 +80,14 @@ interface Knows {
 
 interface Asked {
   path: string;
+  /** Which page of a list, as GitHub reads `per_page` and `page`. */
+  page: { size: number; number: number };
   method: string;
   bearer: string;
   body: string;
 }
+
+const GITHUB_PAGE_SIZE = 30;
 
 const REVIEW_COMMENTS_PATH = /\/pulls\/\d+\/reviews\/\d+\/comments$/;
 const REVIEW_PATH = /\/pulls\/\d+\/reviews\/\d+$/;
@@ -91,14 +95,20 @@ const PULL_PATH = /\/pulls\/\d+$/;
 const ISSUE_COMMENTS_PATH = /\/issues\/\d+\/comments$/;
 
 function answerTo(request: IncomingMessage, body: string, knows: Knows): Answer {
+  const url = new URL(request.url ?? "", "http://github.test");
   const asked: Asked = {
-    path: request.url ?? "",
+    path: url.pathname,
+    page: pageOf(url.searchParams),
     method: request.method ?? "GET",
     bearer: (request.headers.authorization ?? "").replace("Bearer ", ""),
     body,
   };
 
   return answerAuth(asked, knows) ?? answerFixture(asked, knows) ?? { status: HTTP_NOT_FOUND, body: { message: "Not Found" } };
+}
+
+function pageOf(query: URLSearchParams): Asked["page"] {
+  return { size: Number(query.get("per_page") ?? GITHUB_PAGE_SIZE), number: Number(query.get("page") ?? 1) };
 }
 
 function answerAuth(asked: Asked, knows: Knows): Answer | undefined {
@@ -110,7 +120,7 @@ function answerAuth(asked: Asked, knows: Knows): Answer | undefined {
 }
 
 function answerFixture(asked: Asked, knows: Knows): Answer | undefined {
-  if (REVIEW_COMMENTS_PATH.test(asked.path)) return reviewComments(asked.bearer, knows);
+  if (REVIEW_COMMENTS_PATH.test(asked.path)) return reviewComments(asked, knows);
   if (REVIEW_PATH.test(asked.path)) return fetchedReview(asked.bearer, knows);
   if (PULL_PATH.test(asked.path)) return pullDetails(asked.bearer, knows);
   if (ISSUE_COMMENTS_PATH.test(asked.path)) return issueCommentsAnswer(asked, knows);
@@ -118,8 +128,8 @@ function answerFixture(asked: Asked, knows: Knows): Answer | undefined {
   return undefined;
 }
 
-function reviewComments(bearer: string, knows: Knows): Answer {
-  return authorized(bearer) ? { status: HTTP_OK, body: knows.fixtures.reviewComments } : unauthorized();
+function reviewComments(asked: Asked, knows: Knows): Answer {
+  return authorized(asked.bearer) ? { status: HTTP_OK, body: paged(knows.fixtures.reviewComments, asked.page) } : unauthorized();
 }
 
 function fetchedReview(bearer: string, knows: Knows): Answer {
@@ -132,13 +142,17 @@ function pullDetails(bearer: string, knows: Knows): Answer {
 
 function issueCommentsAnswer(asked: Asked, knows: Knows): Answer {
   if (!authorized(asked.bearer)) return unauthorized();
-  if (asked.method !== "POST") return { status: HTTP_OK, body: knows.issueComments };
+  if (asked.method !== "POST") return { status: HTTP_OK, body: paged(knows.issueComments, asked.page) };
   const number = knows.issueComments.length + 1;
   const comment = { ...(JSON.parse(asked.body) as { body: string }), html_url: `https://github.com/re-cinq/floor/issues/12#issuecomment-${number}` };
 
   knows.issueComments.push(comment);
 
   return { status: HTTP_OK, body: comment };
+}
+
+function paged(rows: unknown[], page: Asked["page"]): unknown[] {
+  return rows.slice((page.number - 1) * page.size, page.number * page.size);
 }
 
 function authorized(token: string): boolean {

@@ -50,10 +50,4 @@ describe("replyDescription", () => {
         "Answer their question briefly in the review thread; do not change code.",
     );
   });
-
-  it("names the thread when the comment replies to one", () => {
-    expect(
-      replyDescription("answer", { repo: "re-cinq/floor", prNumber: 42, branch: "feature/x", commentBody: "why?", inReplyToId: 5 }),
-    ).toContain("(branch feature/x) (reply on review-comment thread 5), a human commented: why?");
-  });
 });

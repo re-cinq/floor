@@ -217,6 +217,11 @@ reads its case. So is a value such as a pull request's address, which the
 floor does not know to be an address. Runs written before this keep the
 spelling they had.
 
+**A stranger's review starts nothing.** Anyone may review a pull request on
+a public repository and ask for changes. What the review says becomes the
+task of an agent that may push, so `code-review-reply` starts only for a
+review GitHub attributes to an owner, a member or a collaborator.
+
 **The visit token is in the Agent resource, in the clear.** The subsystem
 reads the broker's credential from the Agent's parameters and has no secret
 reference for it. The token opens one visit's files and one visit's

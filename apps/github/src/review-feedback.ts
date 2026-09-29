@@ -14,7 +14,6 @@ export interface ReplyContext {
   prNumber: number;
   branch: string;
   commentBody: string;
-  inReplyToId?: number;
 }
 
 export function reviewFeedback(body: string, comments: ReviewComment[]): string {
@@ -32,8 +31,7 @@ export function reviewSubmittedFeedback(body: string | undefined, comments: Revi
 }
 
 export function replyDescription(intent: ReplyIntent, ctx: ReplyContext): string {
-  const thread = ctx.inReplyToId ? ` (reply on review-comment thread ${ctx.inReplyToId})` : "";
-  const head = `On pull request #${ctx.prNumber} in ${ctx.repo} (branch ${ctx.branch})${thread}, a human commented: ${ctx.commentBody}`;
+  const head = `On pull request #${ctx.prNumber} in ${ctx.repo} (branch ${ctx.branch}), a human commented: ${ctx.commentBody}`;
 
   return intent === "address"
     ? `${head}\n\nThey approved a fix — implement it and commit to the PR branch, then confirm briefly in the thread.`

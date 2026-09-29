@@ -116,7 +116,7 @@ export const KNOWN_LINES: Partial<Record<string, KnownLine>> = {
     start: { on: ["review.recheck.requested"], args: FROM_A_PULL_REQUEST },
     hooks: [postReviewAfter("recheck")],
   },
-  // Started by a person's review asking for changes, never by a bot's: the post-review station's own review would start it again. lore's other way in, a comment read by a triage line, is switched off in lore.
+  // Started by a review asking for changes, from a person who may write to the repository. Never a bot's: the post-review station's own review would start it again. Never a stranger's: what the review says becomes the task of an agent that may push. lore's other way in, a comment read by a triage line, is switched off in lore.
   "code-review-reply": {
     args: {
       repo: { kind: "git" },
@@ -126,7 +126,7 @@ export const KNOWN_LINES: Partial<Record<string, KnownLine>> = {
     },
     start: {
       on: ["github.pull_request_review.submitted"],
-      when: { review_state: "changes_requested", sender_type: "User", draft: false },
+      when: { review_state: "changes_requested", sender_type: "User", sender_trusted: true, draft: false },
       args: { repo: "{repository}@{head_ref}", pr_url: "{pull_request_url}", review_id: "{review_id}", intent: "address" },
     },
     first: READ_REVIEW,

@@ -32,6 +32,7 @@ An event is named `github.<event>.<action>`, as a line's `start.on` and a node's
 | `repository`, `repo` | `github.com/<full_name>` |
 | `sender`, `action` | as GitHub names them |
 | `sender_type` | `User` or `Bot`, so a line may refuse to be started by what the floor itself posted |
+| `sender_trusted` | on a review: whether GitHub says its author is an owner, a member or a collaborator |
 | `pull_request_url`, `number`, `title`, `draft`, `merged`, `head_ref`, `head_sha`, `base_ref` | a `pull_request` event |
 | the pull request's fields, and `review_id`, `review_state`, `review_url` | a `pull_request_review` event |
 | `pull_request_url`, `number`, `comment_id`, `comment_body`, `comment_url` | an `issue_comment` on a pull request |

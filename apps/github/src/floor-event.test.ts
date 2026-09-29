@@ -33,7 +33,7 @@ const REVIEWED = {
   repository: REPOSITORY,
   sender: { login: "bogdan", type: "User" },
   pull_request: OPENED.pull_request,
-  review: { id: 501, state: "changes_requested", body: null, html_url: "https://github.com/re-cinq/floor/pull/12#pullrequestreview-501" },
+  review: { id: 501, state: "changes_requested", body: null, html_url: "https://github.com/re-cinq/floor/pull/12#pullrequestreview-501", author_association: "MEMBER" },
 };
 
 function eventOf(event: string, body: unknown) {
@@ -108,6 +108,22 @@ describe("floorEventOf", () => {
 
   it("says a person sent it, so a line may refuse what a bot sent", () => {
     expect(eventOf("pull_request_review", REVIEWED)?.payload.sender_type).toBe("User");
+  });
+
+  it("trusts a review by a member of the organisation", () => {
+    expect(eventOf("pull_request_review", REVIEWED)?.payload.sender_trusted).toBe(true);
+  });
+
+  it("stranger: does not trust a review by someone with no part in the repository", () => {
+    const strangers = { ...REVIEWED, review: { ...REVIEWED.review, author_association: "NONE" } };
+
+    expect(eventOf("pull_request_review", strangers)?.payload.sender_trusted).toBe(false);
+  });
+
+  it("stranger: does not trust a review that says nothing of who wrote it", () => {
+    const unsigned = { id: 501, state: "changes_requested", html_url: REVIEWED.review.html_url };
+
+    expect(eventOf("pull_request_review", { ...REVIEWED, review: unsigned })?.payload.sender_trusted).toBe(false);
   });
 
   it("says a bot sent it", () => {

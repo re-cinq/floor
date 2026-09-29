@@ -5,6 +5,10 @@ import type { ReviewRequest } from "./review.js";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const HTTP_UNPROCESSABLE = 422;
+/** The most GitHub gives in one answer; it gives thirty unless asked. */
+const PAGE_SIZE = 100;
+/** Five thousand comments, past which a thread is read no further. */
+const MAX_PAGES = 50;
 const PULL_REQUEST_URL = /^https:\/\/[^/]+\/([^/]+)\/([^/]+)\/pull\/(\d+)\/?$/;
 
 export interface PullRequest extends Repository {
@@ -58,7 +62,7 @@ export async function getReview(deps: GitHubDeps, pull: PullRequest, reviewId: s
 }
 
 export async function getReviewComments(deps: GitHubDeps, pull: PullRequest, reviewId: string): Promise<ReviewComment[]> {
-  return githubJson(deps, pull, `/pulls/${pull.number}/reviews/${reviewId}/comments`);
+  return githubPages(deps, pull, `/pulls/${pull.number}/reviews/${reviewId}/comments`);
 }
 
 export interface IssueComment {
@@ -67,7 +71,7 @@ export interface IssueComment {
 }
 
 export async function listIssueComments(deps: GitHubDeps, pull: PullRequest): Promise<IssueComment[]> {
-  const comments = await githubJson<FetchedIssueComment[]>(deps, pull, `/issues/${pull.number}/comments`);
+  const comments = await githubPages<FetchedIssueComment>(deps, pull, `/issues/${pull.number}/comments`);
 
   return comments.map(issueCommentOf);
 }
@@ -92,6 +96,15 @@ interface FetchedIssueComment {
 
 function issueCommentOf(comment: FetchedIssueComment): IssueComment {
   return { body: comment.body, htmlUrl: comment.html_url };
+}
+
+// Every page, one after another: how many there are is known only when one comes back short.
+async function githubPages<Row>(deps: GitHubDeps, pull: PullRequest, path: string, page = 1): Promise<Row[]> {
+  const fetched = await githubJson<Row[]>(deps, pull, `${path}?per_page=${PAGE_SIZE}&page=${page}`);
+
+  if (fetched.length < PAGE_SIZE || page >= MAX_PAGES) return fetched;
+
+  return [...fetched, ...(await githubPages<Row>(deps, pull, path, page + 1))];
 }
 
 async function githubJson<Answer>(deps: GitHubDeps, pull: PullRequest, path: string, init: { method?: string; body?: unknown } = {}): Promise<Answer> {

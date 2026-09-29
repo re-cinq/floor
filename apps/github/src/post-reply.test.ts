@@ -53,6 +53,18 @@ describe("the post-reply station", () => {
     });
   });
 
+  it("posts nothing for a visit whose reply is the 101st comment, on GitHub's second page", async () => {
+    const chatter = Array.from({ length: 100 }, (unused, index) => ({ body: `comment ${index + 1}`, html_url: `https://github.com/re-cinq/floor/issues/12#chatter-${index + 1}` }));
+
+    github.issueComments.unshift(...chatter);
+    github.issueComments.push({ body: "<!-- floor-reply: far-down -->\n\nSaid already.", html_url: "https://github.com/re-cinq/floor/issues/12#issuecomment-far" });
+    const before = github.issueComments.length;
+
+    await replied(printed(REPLY_BODY), PULL_REQUEST, "far-down");
+
+    expect(github.issueComments.length - before).toBe(0);
+  });
+
   it("fails the visit on output with no REVIEW_REPLY block", async () => {
     const report = await replied("REVIEW_RESULT:APPROVED");
 

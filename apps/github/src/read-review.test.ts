@@ -25,7 +25,7 @@ describe("the read-review station", () => {
       expect.arrayContaining([
         "GET /repos/re-cinq/floor/pulls/12",
         "GET /repos/re-cinq/floor/pulls/12/reviews/900",
-        "GET /repos/re-cinq/floor/pulls/12/reviews/900/comments",
+        "GET /repos/re-cinq/floor/pulls/12/reviews/900/comments?per_page=100&page=1",
       ]),
     );
   });
@@ -45,6 +45,14 @@ describe("the read-review station", () => {
         ),
       },
     });
+  });
+
+  it("reads the 101st inline comment of a long review, which GitHub gives on a second page", async () => {
+    github.fixtures.reviewComments = Array.from({ length: 101 }, (unused, index) => ({ id: index + 1, path: "src/a.ts", line: index + 1, body: `finding ${index + 1}` }));
+
+    const report = await reported();
+
+    expect(report.produced?.review_feedback).toContain("- inline comment 101 on src/a.ts:101: finding 101");
   });
 
   it("tells the agent to only answer when the intent is answer", async () => {
