@@ -217,6 +217,12 @@ reads its case. So is a value such as a pull request's address, which the
 floor does not know to be an address. Runs written before this keep the
 spelling they had.
 
+**What floor posts says that floor posted it.** On a laptop floor posts as
+the same GitHub App production lore does. Its first real review landed
+beside one of lore's that said the opposite, under the same name. Every
+review and reply now ends with a line saying it is floor's, and of which
+visit.
+
 **A stranger's review starts nothing.** Anyone may review a pull request on
 a public repository and ask for changes. What the review says becomes the
 task of an agent that may push, so `code-review-reply` starts only for a

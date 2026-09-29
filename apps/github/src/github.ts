@@ -65,21 +65,28 @@ export async function getReviewComments(deps: GitHubDeps, pull: PullRequest, rev
   return githubPages(deps, pull, `/pulls/${pull.number}/reviews/${reviewId}/comments`);
 }
 
-export interface IssueComment {
+/** Something said on a pull request, a comment or a review, and where it can be read. */
+export interface Said {
   body: string;
   htmlUrl: string;
 }
 
-export async function listIssueComments(deps: GitHubDeps, pull: PullRequest): Promise<IssueComment[]> {
-  const comments = await githubPages<FetchedIssueComment>(deps, pull, `/issues/${pull.number}/comments`);
+export async function listReviews(deps: GitHubDeps, pull: PullRequest): Promise<Said[]> {
+  const reviews = await githubPages<FetchedSaid>(deps, pull, `/pulls/${pull.number}/reviews`);
 
-  return comments.map(issueCommentOf);
+  return reviews.map(saidOf);
 }
 
-export async function postIssueComment(deps: GitHubDeps, pull: PullRequest, body: string): Promise<IssueComment> {
-  const posted = await githubJson<FetchedIssueComment>(deps, pull, `/issues/${pull.number}/comments`, { method: "POST", body: { body } });
+export async function listIssueComments(deps: GitHubDeps, pull: PullRequest): Promise<Said[]> {
+  const comments = await githubPages<FetchedSaid>(deps, pull, `/issues/${pull.number}/comments`);
 
-  return issueCommentOf(posted);
+  return comments.map(saidOf);
+}
+
+export async function postIssueComment(deps: GitHubDeps, pull: PullRequest, body: string): Promise<Said> {
+  const posted = await githubJson<FetchedSaid>(deps, pull, `/issues/${pull.number}/comments`, { method: "POST", body: { body } });
+
+  return saidOf(posted);
 }
 
 interface PullDetails {
@@ -88,14 +95,15 @@ interface PullDetails {
 
 // GitHub's own field name.
 /* eslint-disable @typescript-eslint/naming-convention */
-interface FetchedIssueComment {
-  body: string;
+interface FetchedSaid {
+  /** Null for a review that is inline comments and no more. */
+  body: string | null;
   html_url: string;
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
-function issueCommentOf(comment: FetchedIssueComment): IssueComment {
-  return { body: comment.body, htmlUrl: comment.html_url };
+function saidOf(fetched: FetchedSaid): Said {
+  return { body: fetched.body ?? "", htmlUrl: fetched.html_url };
 }
 
 // Every page, one after another: how many there are is known only when one comes back short.

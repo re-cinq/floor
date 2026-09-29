@@ -114,7 +114,7 @@ function pageOf(query: URLSearchParams): Asked["page"] {
 function answerAuth(asked: Asked, knows: Knows): Answer | undefined {
   if (asked.path.endsWith("/installation")) return asApp(asked.bearer, knows, { id: INSTALLATION_ID });
   if (asked.path === `/app/installations/${INSTALLATION_ID}/access_tokens`) return grant(asked.bearer, asked.body, knows);
-  if (asked.path.endsWith("/reviews")) return review(asked.bearer, asked.body, knows);
+  if (asked.path.endsWith("/reviews")) return asked.method === "POST" ? review(asked.bearer, asked.body, knows) : reviewsSoFar(asked, knows);
 
   return undefined;
 }
@@ -183,14 +183,20 @@ function isAppClaim(claim: string, publicKey: string): boolean {
   return createVerify("RSA-SHA256").update(`${header}.${payload}`).verify(publicKey, signature, "base64url");
 }
 
+function reviewsSoFar(asked: Asked, knows: Knows): Answer {
+  return authorized(asked.bearer) ? { status: HTTP_OK, body: paged(knows.reviews, asked.page) } : unauthorized();
+}
+
 function review(token: string, body: string, knows: Knows): Answer {
   if (!authorized(token)) return unauthorized();
   const posted = JSON.parse(body) as { comments: { line: number }[] };
 
   if (posted.comments.some((comment) => comment.line > LAST_LINE)) return { status: HTTP_UNPROCESSABLE, body: { message: "Line could not be resolved" } };
-  knows.reviews.push(posted);
+  const taken = { ...posted, html_url: `https://github.com/re-cinq/floor/pull/12#pullrequestreview-${knows.reviews.length + 1}` };
 
-  return { status: HTTP_OK, body: { html_url: `https://github.com/re-cinq/floor/pull/12#pullrequestreview-${knows.reviews.length}` } };
+  knows.reviews.push(taken);
+
+  return { status: HTTP_OK, body: taken };
 }
 
 async function bodyOf(request: IncomingMessage): Promise<string> {

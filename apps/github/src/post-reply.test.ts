@@ -32,7 +32,7 @@ describe("the post-reply station", () => {
   it("leads the comment with a marker naming the visit", async () => {
     await replied(printed(REPLY_BODY), PULL_REQUEST, "leads-with-marker");
 
-    expect(github.issueComments.at(-1)).toMatchObject({ body: `<!-- floor-reply: leads-with-marker -->\n\n${REPLY_BODY}` });
+    expect(github.issueComments.at(-1)).toMatchObject({ body: `<!-- floor-reply: leads-with-marker -->\n\n${REPLY_BODY}\n\n<sub>Posted by floor, visit leads-with-marker.</sub>` });
   });
 
   it("reports where the reply can be read", async () => {

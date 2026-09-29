@@ -1,6 +1,7 @@
 // The post-reply station: what lore's floor did in a hook, `postReplyFromNode`. It posts the agent's reply as a plain comment, deduped by visit.
 import type { Handle } from "@floor/station";
 import { listIssueComments, postIssueComment, pullRequestOf, type GitHubDeps, type PullRequest } from "./github.js";
+import { markOf, signed } from "./floor-mark.js";
 import { parseReviewReply } from "./review-reply.js";
 
 export function postReplyStation(github: GitHubDeps): Handle {
@@ -19,12 +20,11 @@ export function postReplyStation(github: GitHubDeps): Handle {
 
 // A reply for a visit already posted is not posted again: the marker in the comment's own body is the record of it.
 async function replied(github: GitHubDeps, pull: PullRequest, visitId: string, reply: string): Promise<string> {
-  const marker = `<!-- floor-reply: ${visitId} -->`;
   const existing = await listIssueComments(github, pull);
-  const already = existing.find((comment) => comment.body.includes(marker));
+  const already = existing.find((comment) => comment.body.includes(markOf("reply", visitId)));
 
   if (already) return already.htmlUrl;
-  const posted = await postIssueComment(github, pull, `${marker}\n\n${reply}`);
+  const posted = await postIssueComment(github, pull, signed("reply", visitId, reply));
 
   return posted.htmlUrl;
 }

@@ -13,15 +13,24 @@ function printed(line: number): string {
   return `\`\`\`REVIEW_FINDINGS\n${JSON.stringify(review)}\n\`\`\``;
 }
 
-async function posted(said: string, prUrl = PULL_REQUEST) {
+interface Visited {
+  prUrl?: string;
+  visitId?: string;
+}
+
+let visits = 0;
+
+async function posted(said: string, visited: Visited = {}) {
   const station = postReviewStation({ apiUrl: github.apiUrl, tokenFor: fixedToken(GIVEN_TOKEN) });
-  const report = await station(visit(prUrl), toolsReading(said));
+  const report = await station(visit(visited), toolsReading(said));
 
   return { report, review: github.reviews.at(-1) };
 }
 
-function visit(prUrl: string): Brief {
-  return { visitId: "v1", iteration: 1, needs: { pr_url: prUrl, review_output: "/blobs/sha256-x" } };
+function visit(visited: Visited): Brief {
+  visits += 1;
+
+  return { visitId: visited.visitId ?? `visit-${visits}`, iteration: 1, needs: { pr_url: visited.prUrl ?? PULL_REQUEST, review_output: "/blobs/sha256-x" } };
 }
 
 describe("the post-review station", () => {
@@ -46,6 +55,28 @@ describe("the post-review station", () => {
     });
   });
 
+  it("leads the review with its mark, and ends by saying floor posted it", async () => {
+    const { review } = await posted(printed(42), { visitId: "marked" });
+
+    expect(review).toMatchObject({ body: "<!-- floor-review: marked -->\n\n**changes_requested**: One defect.\n\n<sub>Posted by floor, visit marked.</sub>" });
+  });
+
+  it("posts nothing for a visit that has already posted its review", async () => {
+    await posted(printed(42), { visitId: "worked-twice" });
+    const before = github.reviews.length;
+
+    await posted(printed(42), { visitId: "worked-twice" });
+
+    expect(github.reviews.length - before).toBe(0);
+  });
+
+  it("reports the review already posted, for a visit worked twice", async () => {
+    const first = await posted(printed(42), { visitId: "reported-twice" });
+    const second = await posted(printed(42), { visitId: "reported-twice" });
+
+    expect(second.report).toEqual(first.report);
+  });
+
   it("posts the findings in the body when GitHub refuses where one is placed", async () => {
     const { review } = await posted(printed(LAST_LINE + 1));
 
@@ -59,7 +90,7 @@ describe("the post-review station", () => {
   });
 
   it("fails the visit on an address that is no pull request's", async () => {
-    const { report } = await posted(printed(42), "https://github.com/re-cinq/floor/issues/12");
+    const { report } = await posted(printed(42), { prUrl: "https://github.com/re-cinq/floor/issues/12" });
 
     expect(report.error).toBe('"https://github.com/re-cinq/floor/issues/12" is not a pull request\'s address');
   });

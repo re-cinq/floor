@@ -48,13 +48,19 @@ It reads the last fenced `REVIEW_FINDINGS` block the agent printed, which is lor
 
 When GitHub refuses the review for where a comment is placed, most often a line the pull request does not touch, it is posted again with every finding in the body.
 
+## What floor leaves on what it posts
+
+A review and a reply both lead with a mark no reader sees, `<!-- floor-review: <visit> -->` or `<!-- floor-reply: <visit> -->`, and end with a line every reader sees: "Posted by floor, visit `<visit>`."
+
+The line is for people. Floor may post under a name something else posts under too, and what it says should not be taken for another's. The mark is for floor: before it posts, it looks for its own mark on the pull request, and a visit worked twice posts once.
+
 ## The read-review station
 
 What lore's floor did before it started the `code-review-reply` line. It needs `pr_url`, `review_id` and `intent`. It reads the review's body and its inline comments from GitHub, and the pull request's branch, then writes the reply agent's task: what was said, and whether to implement a fix or only answer.
 
 ## The post-reply station
 
-What lore's floor did in a hook, `postReplyFromNode`. It needs `reply_output`, a file, and `pr_url`. It reads the last fenced `REVIEW_REPLY` block the agent printed and posts it as a plain comment on the pull request, never on a review thread: no thread replies and no thread resolving, lore's path for those is switched off here. The comment leads with a marker naming the visit, so a visit already replied to posts nothing again.
+What lore's floor did in a hook, `postReplyFromNode`. It needs `reply_output`, a file, and `pr_url`. It reads the last fenced `REVIEW_REPLY` block the agent printed and posts it as a plain comment on the pull request, never on a review thread: no thread replies and no thread resolving, lore's path for those is switched off here.
 
 ## The review router
 
