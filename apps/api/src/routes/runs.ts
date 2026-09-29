@@ -5,6 +5,7 @@ import type { RunFilter } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { parseBody } from "../parse.js";
 import { badRequest, notFound } from "../problem.js";
+import { dateOf } from "./date-of.js";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -19,9 +20,9 @@ export function registerRunRoutes(server: Server, deps: Deps): void {
 
 async function list(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const query = request.query as Record<string, string | undefined>;
-  const filter: RunFilter = { lineId: query.line, repo: query.repo, subjectKey: query.subject, open: openFilter(query.open) };
+  const filter: RunFilter = { lineId: query.line, repo: query.repo, subjectKey: query.subject, open: openFilter(query.open), since: dateOf(query.since) };
 
-  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: line, repo, subject, or open");
+  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: line, repo, subject, open, or since");
 
   return deps.runs.list(filter, { limit: limitOf(query.limit), cursor: query.cursor });
 }
@@ -30,9 +31,9 @@ async function getOne(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const run = await deps.runs.get(request.params.id as string);
 
   if (!run) return notFound(toolkit, `no run "${request.params.id}"`);
-  const bag = await deps.runs.bag(run.id);
+  const [bag, currentNode, cost] = await Promise.all([deps.runs.bag(run.id), deps.runs.currentNode(run.id), deps.costs.ofRun(run.id)]);
 
-  return { run, bag };
+  return { run, bag, currentNode, cost };
 }
 
 async function cancel(deps: Deps, request: Request, toolkit: ResponseToolkit) {
@@ -48,7 +49,7 @@ async function cancel(deps: Deps, request: Request, toolkit: ResponseToolkit) {
 }
 
 function hasFilter(filter: RunFilter): boolean {
-  const given = [filter.lineId, filter.repo, filter.subjectKey, filter.open];
+  const given = [filter.lineId, filter.repo, filter.subjectKey, filter.open, filter.since];
 
   return given.some((value) => value !== undefined);
 }

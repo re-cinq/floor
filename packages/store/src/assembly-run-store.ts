@@ -12,11 +12,12 @@ import { Refusal, enforce } from "./refusal.js";
 import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
 import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
-import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable } from "./rows.js";
+import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable, type VisitFilter } from "./rows.js";
 import {
   blobHashesExist,
   claimedDispatchTags,
   closeOpenHumanVisits,
+  currentNodeOf,
   deferPendingAgentDispatches,
   insertRun,
   insertVisit,
@@ -54,6 +55,8 @@ export interface RunFilter {
   repo?: string;
   subjectKey?: string;
   open?: boolean;
+  /** A floor on when the run was created. */
+  since?: Date;
 }
 
 export interface Page {
@@ -353,8 +356,12 @@ export class AssemblyRunStore {
     }
   }
 
-  async visits(runId: string): Promise<Visit[]> {
-    return visitsWith(this.deps.pool, runId);
+  async visits(runId: string, filter: VisitFilter = {}): Promise<Visit[]> {
+    return visitsWith(this.deps.pool, runId, filter);
+  }
+
+  async currentNode(runId: string): Promise<string | null> {
+    return currentNodeOf(this.deps.pool, runId);
   }
 
   /** Every open visit whose deadline has passed, for a sweep to fail as a timeout. A human visit never has a deadline, so it never sweeps. */

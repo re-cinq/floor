@@ -88,6 +88,48 @@ describe("POST /station-runs/{id}/records", () => {
   });
 });
 
+describe("GET /station-runs", () => {
+  async function visitIdsOf(query: (runId: string) => string): Promise<string[]> {
+    const visitId = await openVisit();
+    const visit = await deps().runs.visit(visitId);
+    const response = await injectJson<{ items: { id: string }[] }>(server(), { method: "GET", url: `/station-runs?${query(visit!.runId)}`, headers: authHeaders() });
+
+    const { items: listedVisits } = response.result;
+
+    return listedVisits.map((listed) => listed.id);
+  }
+
+  it("keeps the visit at the named station", async () => {
+    const visitIds = await visitIdsOf((runId) => `run=${runId}&station=work`);
+
+    expect(visitIds).toHaveLength(1);
+  });
+
+  it("returns nothing for a station no visit was at", async () => {
+    const visitIds = await visitIdsOf((runId) => `run=${runId}&station=elsewhere`);
+
+    expect(visitIds).toEqual([]);
+  });
+
+  it("keeps the visit opened since 2020-01-01", async () => {
+    const visitIds = await visitIdsOf((runId) => `run=${runId}&since=2020-01-01`);
+
+    expect(visitIds).toHaveLength(1);
+  });
+
+  it("returns nothing when since is 2999-01-01", async () => {
+    const visitIds = await visitIdsOf((runId) => `run=${runId}&since=2999-01-01`);
+
+    expect(visitIds).toEqual([]);
+  });
+
+  it("combines station, since and open", async () => {
+    const visitIds = await visitIdsOf((runId) => `run=${runId}&station=work&since=2020-01-01&open=true`);
+
+    expect(visitIds).toHaveLength(1);
+  });
+});
+
 describe("GET /station-runs/{id}", () => {
   const COUNTED = { costUsd: 0.42, durationMs: 9000, usage: { input_tokens: 900, output_tokens: 400 }, models: { "claude-x": { input_tokens: 900, output_tokens: 400, cost_usd: 0.42 } } };
 

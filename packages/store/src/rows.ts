@@ -82,11 +82,19 @@ export async function getWith(connection: Queryable, runId: string): Promise<Run
   return rows[0] ? toRun(rows[0]) : null;
 }
 
-export async function visitsWith(connection: Queryable, runId: string): Promise<Visit[]> {
-  const { rows } = await connection.query(
-    `select * from station_runs where assembly_run_id = $1 order by id`,
-    [runId],
-  );
+/** `station` is a station definition's id, `since` a floor on when the visit opened. */
+export interface VisitFilter {
+  station?: string;
+  since?: Date;
+}
+
+export async function visitsWith(connection: Queryable, runId: string, filter: VisitFilter = {}): Promise<Visit[]> {
+  const conditions = ["assembly_run_id = $1"];
+  const values: unknown[] = [runId];
+
+  addCondition(conditions, values, "station_hash in (select hash from definitions where kind = 'station' and id = $%)", filter.station);
+  addCondition(conditions, values, "opened_at >= $%", filter.since);
+  const { rows } = await connection.query(`select * from station_runs where ${conditions.join(" and ")} order by id`, values);
 
   return rows.map(toVisit);
 }

@@ -41,6 +41,17 @@ export class CostsStore {
 
     return rows.map(toCostsRow);
   }
+
+  /** What one run cost, or null when nothing was counted for it. */
+  async ofRun(runId: string): Promise<CostsRow | null> {
+    const rows = await this.summary({ runId }, "run");
+
+    return rows.find(wasCounted) ?? null;
+  }
+}
+
+function wasCounted(row: CostsRow): boolean {
+  return row.costUsd > 0 || row.tokensIn > 0 || row.tokensOut > 0 || row.unpriced.length > 0;
 }
 
 // The `visits` CTE's own output columns, not the joined tables' aliases, which are out of scope by the time the outer select runs. A visit that names no models did its work with the one its definition gave it.

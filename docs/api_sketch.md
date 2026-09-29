@@ -74,8 +74,8 @@ That is how a PR opening starts a review and a schedule starts a sweep.
 
 ## Assembly runs - one execution of a line, walked on events
 
-GET    /assembly-runs                    // filter required: line, open, repo, subject. Not built yet: since
-GET    /assembly-runs/:id                // run + bag. Not built yet: current node, cost
+GET    /assembly-runs                    // filter required: line, open, repo, subject, since (a created_at floor; cursor pages)
+GET    /assembly-runs/:id                // run + bag + currentNode (the open visit's node, else the last opened; null) + cost (null if nothing counted)
 POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops its queued events, aborts open visits
 
 // its visits:  GET /station-runs?run=:id        its events:  GET /events?run=:id
@@ -140,7 +140,7 @@ Read-only. A visit is open until its one report arrives, and the report
 arrives as an event: `station_run.reported`, posted to `/events` with the
 visit token.
 
-GET    /station-runs                     // run required; node and open narrow it. Not built yet: station, since
+GET    /station-runs                     // run required; node, station, open and since (an opened_at floor) narrow it
 GET    /station-runs/:id                 // the visit + outcome + worker + deadline, and `cost`: what its agent counted and
                                          // what that cost, model by model; null for a visit nothing was counted for
 GET    /station-runs/:id/brief           // for the executor: each need with its kind, path and access, the resolved
