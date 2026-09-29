@@ -77,4 +77,24 @@ describe("the webhook receiver", () => {
   it("knows no other path", async () => {
     expect(await deliver({ to: url.replace("/webhooks/github", "/anything-else") })).toBe(404);
   });
+
+  it("answers 404 to a GET, which posts no webhook", async () => {
+    const response = await fetch(url, { method: "GET", signal: AbortSignal.timeout(5000) });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("answers 413 to a body over GitHub's own cap, unsigned or not", async () => {
+    const oversized = Buffer.alloc(26_214_401);
+    const response = await fetch(url, { method: "POST", headers: { "x-hub-signature-256": "sha256=00" }, body: oversized, signal: AbortSignal.timeout(5000) });
+
+    expect(response.status).toBe(413);
+  });
+
+  it("still hands the floor something when GitHub's own headers are missing", async () => {
+    const headers = { "x-hub-signature-256": signatureOf(Buffer.from(OPENED), SECRET) };
+    await fetch(url, { method: "POST", headers, body: OPENED, signal: AbortSignal.timeout(5000) });
+
+    expect(handed).toMatchObject([{ dedupeKey: "github:" }]);
+  });
 });

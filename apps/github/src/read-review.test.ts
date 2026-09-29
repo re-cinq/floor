@@ -78,4 +78,10 @@ describe("the read-review station", () => {
 
     expect(report.error).toBe('"https://github.com/re-cinq/floor/issues/12" is not a pull request\'s address');
   });
+
+  it("throws when GitHub refuses the token", async () => {
+    const station = readReviewStation({ apiUrl: github.apiUrl, tokenFor: fixedToken("bad-token") });
+
+    await expect(station(visit({}), toolsReading(""))).rejects.toThrow(/GitHub answered 401/);
+  });
 });

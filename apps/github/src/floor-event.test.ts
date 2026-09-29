@@ -93,6 +93,16 @@ describe("floorEventOf", () => {
     expect(eventOf("pull_request", null)).toBeNull();
   });
 
+  it("treats a delivery with no sender at all as anonymous", () => {
+    expect(eventOf("pull_request", { ...OPENED, sender: undefined })?.payload.sender).toBe("");
+  });
+
+  it("defaults draft and merged to false when GitHub omits them", () => {
+    const bare = { ...OPENED, pull_request: { ...OPENED.pull_request, draft: undefined, merged: undefined } };
+
+    expect(eventOf("pull_request", bare)?.payload).toMatchObject({ draft: false, merged: false });
+  });
+
   it("tells a review as its pull request, with the review beside it", () => {
     expect(eventOf("pull_request_review", REVIEWED)?.payload).toMatchObject({
       pull_request_url: "https://github.com/re-cinq/floor/pull/12",
@@ -130,5 +140,17 @@ describe("floorEventOf", () => {
     const posted = { ...REVIEWED, sender: { login: "lore-agent[bot]", type: "Bot" } };
 
     expect(eventOf("pull_request_review", posted)?.payload.sender_type).toBe("Bot");
+  });
+
+  it("gives no review detail for a review shaped nothing like GitHub's", () => {
+    const unshaped = { ...REVIEWED, review: { id: "not-a-number" } };
+
+    expect(eventOf("pull_request_review", unshaped)?.payload.review_id).toBeUndefined();
+  });
+
+  it("gives no comment detail for a comment shaped nothing like GitHub's", () => {
+    const unshaped = { ...COMMENTED, comment: { id: "not-a-number" } };
+
+    expect(eventOf("issue_comment", unshaped)?.payload.comment_id).toBeUndefined();
   });
 });

@@ -94,4 +94,27 @@ describe("the post-review station", () => {
 
     expect(report.error).toBe('"https://github.com/re-cinq/floor/issues/12" is not a pull request\'s address');
   });
+
+  it("throws when GitHub refuses the token outright", async () => {
+    const station = postReviewStation({ apiUrl: github.apiUrl, tokenFor: fixedToken("bad-token") });
+
+    await expect(station(visit({ visitId: "bad-token" }), toolsReading(printed(42)))).rejects.toThrow(/GitHub answered 401/);
+  });
+
+  it("throws when GitHub refuses the review placed and unplaced alike", async () => {
+    github.fixtures.refuseReviews = true;
+
+    await expect(posted(printed(42), { visitId: "refused-twice" })).rejects.toThrow(/GitHub refused the review/);
+
+    github.fixtures.refuseReviews = false;
+  });
+
+  it("does not choke on an existing review with no body, and posts its own", async () => {
+    github.reviews.push({ body: null, html_url: "https://github.com/re-cinq/floor/pull/12#pullrequestreview-blank" });
+    const before = github.reviews.length;
+
+    await posted(printed(42), { visitId: "past-a-blank-review" });
+
+    expect(github.reviews.length - before).toBe(1);
+  });
 });

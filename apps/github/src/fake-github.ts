@@ -1,7 +1,7 @@
 // A stand-in for GitHub's API for the tests, over real HTTP: it checks an app's claim against the app's public key as GitHub does, grants a token, and takes reviews, refusing one that comments past the end of the file.
 import { createVerify } from "node:crypto";
-import { createServer, type IncomingMessage, type Server } from "node:http";
-import type { AddressInfo } from "node:net";
+import type { IncomingMessage } from "node:http";
+import { startFakeServer, type Answer } from "./fake-http.js";
 
 export const INSTALLATION_TOKEN = "ghs_installation";
 export const GIVEN_TOKEN = "ghp_given";
@@ -16,6 +16,8 @@ export interface Fixtures {
   branch: string;
   reviewBody: string | null;
   reviewComments: unknown[];
+  /** Refuses every review posted, regardless of where its comments are placed. */
+  refuseReviews: boolean;
 }
 
 export interface FakeGitHub {
@@ -32,41 +34,19 @@ export interface FakeGitHub {
   close(): Promise<void>;
 }
 
-interface Answer {
-  status: number;
-  body: unknown;
-}
-
 export async function startFakeGitHub(appPublicKey: string, tokenExpires: Date): Promise<FakeGitHub> {
   const asked: string[] = [];
   const reviews: unknown[] = [];
   const grants: unknown[] = [];
   const issueComments: unknown[] = [];
-  const fixtures: Fixtures = { branch: "main", reviewBody: null, reviewComments: [] };
-  const server = createServer((request, response) => {
-    void bodyOf(request).then((body) => {
-      asked.push(`${request.method} ${request.url}`);
-      const answer = answerTo(request, body, { appPublicKey, tokenExpires, reviews, grants, issueComments, fixtures });
+  const fixtures: Fixtures = { branch: "main", reviewBody: null, reviewComments: [], refuseReviews: false };
+  const server = await startFakeServer((request, body) => {
+    asked.push(`${request.method} ${request.url}`);
 
-      response.writeHead(answer.status, { "content-type": "application/json" }).end(JSON.stringify(answer.body));
-    });
+    return answerTo(request, body, { appPublicKey, tokenExpires, reviews, grants, issueComments, fixtures });
   });
 
-  await new Promise<void>((resolve) => server.listen(0, resolve));
-
-  return {
-    apiUrl: `http://localhost:${(server.address() as AddressInfo).port}`,
-    asked,
-    reviews,
-    grants,
-    issueComments,
-    fixtures,
-    close: () => closed(server),
-  };
-}
-
-function closed(server: Server): Promise<void> {
-  return new Promise((resolve) => server.close(() => resolve()));
+  return { apiUrl: server.url, asked, reviews, grants, issueComments, fixtures, close: server.close };
 }
 
 interface Knows {
@@ -190,19 +170,12 @@ function reviewsSoFar(asked: Asked, knows: Knows): Answer {
 function review(token: string, body: string, knows: Knows): Answer {
   if (!authorized(token)) return unauthorized();
   const posted = JSON.parse(body) as { comments: { line: number }[] };
+  const refused = knows.fixtures.refuseReviews || posted.comments.some((comment) => comment.line > LAST_LINE);
 
-  if (posted.comments.some((comment) => comment.line > LAST_LINE)) return { status: HTTP_UNPROCESSABLE, body: { message: "Line could not be resolved" } };
+  if (refused) return { status: HTTP_UNPROCESSABLE, body: { message: "Line could not be resolved" } };
   const taken = { ...posted, html_url: `https://github.com/re-cinq/floor/pull/12#pullrequestreview-${knows.reviews.length + 1}` };
 
   knows.reviews.push(taken);
 
   return { status: HTTP_OK, body: taken };
-}
-
-async function bodyOf(request: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) chunks.push(chunk as Buffer);
-
-  return Buffer.concat(chunks).toString();
 }

@@ -36,6 +36,10 @@ describe("readReview", () => {
   it("says what is wrong, for a block it cannot read", () => {
     expect(readReview(printed({ summary: "no verdict" }))).toEqual({ unreadable: expect.stringContaining("verdict") });
   });
+
+  it("says the block cannot be read, for text inside it that is not JSON at all", () => {
+    expect(readReview("```REVIEW_FINDINGS\nnot json at all\n```")).toEqual({ unreadable: expect.stringContaining("REVIEW_FINDINGS block cannot be read") });
+  });
 });
 
 describe("reviewRequest", () => {
@@ -61,5 +65,11 @@ describe("reviewInBody", () => {
 
   it("says every finding in the body, each with where it is", () => {
     expect(reviewInBody(REVIEW).body).toContain("- `src/foo.ts:42` **issue (blocking):** user can be null here");
+  });
+
+  it("says a finding with a path but no line as the path alone, with no colon", () => {
+    const noLine: Review = { verdict: "changes_requested", summary: "A file-level note.", findings: [{ path: "src/bar.ts", label: "note", subject: "the whole file is stale" }] };
+
+    expect(reviewInBody(noLine).body).toContain("- `src/bar.ts` **note:** the whole file is stale");
   });
 });

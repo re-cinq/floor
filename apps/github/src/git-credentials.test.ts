@@ -32,16 +32,25 @@ afterAll(async () => {
 
 interface Asking {
   token?: string;
+  noAuth?: boolean;
   body?: unknown;
 }
 
 async function ask(asking: Asking = {}): Promise<Response> {
   return fetch(url, {
     method: "POST",
-    headers: { authorization: `Bearer ${asking.token ?? SERVICE_TOKEN}`, "content-type": "application/json" },
+    headers: headersOf(asking),
     body: JSON.stringify(asking.body ?? { repoUrl: "https://github.com/re-cinq/floor", access: "write" }),
     signal: AbortSignal.timeout(5000),
   });
+}
+
+function headersOf(asking: Asking): Record<string, string> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+
+  if (!asking.noAuth) headers.authorization = `Bearer ${asking.token ?? SERVICE_TOKEN}`;
+
+  return headers;
 }
 
 describe("the git credential provider", () => {
@@ -74,6 +83,12 @@ describe("the git credential provider", () => {
 
   it("stranger: refuses a caller without the floor's service token", async () => {
     const response = await ask({ token: "someone-else" });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("stranger: refuses a caller with no authorization header at all", async () => {
+    const response = await ask({ noAuth: true });
 
     expect(response.status).toBe(401);
   });
