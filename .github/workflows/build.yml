@@ -3,11 +3,13 @@ name: Build and push floor
 # One image, both apps. Which one a container runs is chosen at deploy time by
 # overriding `command`, so there is never a version skew between them.
 # A push to main publishes the short SHA and `latest`; a tag `v1.2.3` publishes `1.2.3` and `1.2`.
-# Path filters are not applied to a tag, so a tag always builds.
+# Path filters are not applied to a tag, so a tag always builds. Both are deployed: a commit to
+# main by its short SHA, a tag by its version.
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    # A version and nothing else: a tag `vnext` would publish no version, and deploy an image that is not there.
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
     paths:
       - "apps/**"
       - "packages/**"
@@ -34,14 +36,19 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image_tag: ${{ steps.sha.outputs.short_sha }}
+      image_tag: ${{ steps.deployed.outputs.image_tag }}
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Short SHA
-        id: sha
-        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      # What the deploy installs: the version for a tag `v1.2.3`, as the image is tagged `1.2.3`;
+      # the short SHA for anything else.
+      - name: The tag to deploy
+        id: deployed
+        run: |
+          image_tag="${GITHUB_SHA::7}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then image_tag="${GITHUB_REF_NAME#v}"; fi
+          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
 
       # The default docker driver cannot export a build cache; buildx's own can.
       - uses: docker/setup-buildx-action@v3
@@ -76,10 +83,16 @@ jobs:
           cache-to: type=gha,mode=max
 
   # Skipped until the repository names a cluster: publishing the image does not wait for one.
+  # A commit to main and a version tag deploy into the same release, so the one that ran last is
+  # what serves. They run one after the other, never at once: helm refuses a second upgrade of a
+  # release while the first is under way.
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main' && vars.GKE_CLUSTER_NAME != ''
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && vars.GKE_CLUSTER_NAME != ''
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-floor
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write # the OIDC token Workload Identity Federation trades for GCP credentials

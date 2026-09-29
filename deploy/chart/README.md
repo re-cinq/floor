@@ -195,14 +195,20 @@ the Dockerfile or the chart, pushes it to `ghcr.io/re-cinq/floor` tagged with th
 `latest`), then installs that tag into GKE with this chart. Authentication to GCP is Workload
 Identity Federation, the same setup lore uses — no service-account key is stored anywhere.
 
-| what is pushed | the image's tags |
-|---|---|
-| a commit to `main` | its short SHA, and `latest` |
-| a tag `v1.2.3` | `1.2.3` and `1.2`, and the commit's short SHA |
-| the workflow run by hand on a branch | the commit's short SHA |
+| what is pushed | the image's tags | deployed as |
+|---|---|---|
+| a commit to `main` | its short SHA, and `latest` | its short SHA |
+| a tag `v1.2.3` | `1.2.3` and `1.2`, the commit's short SHA, and `latest` | `1.2.3` |
+| a tag `v1.2.3-rc.1` | `1.2.3-rc.1`, and the commit's short SHA | `1.2.3-rc.1` |
+| the workflow run by hand on a branch | the commit's short SHA | not deployed |
 
-- **Only a push to `main` deploys**, and only once the repository names a cluster in
+- **A commit to `main` and a version tag both deploy**, once the repository names a cluster in
   `GKE_CLUSTER_NAME`. Until then the image is published and the deploy is skipped.
+- **Both deploy into the same release**, so what serves is what was deployed last. Tag the head of
+  `main` and the cluster ends on the version; push to `main` after and it is back on a SHA. The
+  two never run at once: deploys wait for each other.
+- **Only a version is a release tag**: `v` and three numbers, and what follows them. Any other tag
+  builds nothing.
 - **The package is private**, as the repository is. A cluster pulls it with a pull secret.
 
 It needs these set on the repository. The secrets are shared with lore; the variables are floor's
