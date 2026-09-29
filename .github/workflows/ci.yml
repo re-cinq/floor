@@ -145,5 +145,13 @@ jobs:
         with:
           context: .
           push: false
+          # Loaded into the daemon, so the check below can run it.
+          load: true
+          tags: floor:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # A Dockerfile that builds is not a Dockerfile that runs: the package list drifted twice,
+      # and the second time the cluster agent crash-looped on a package the image did not hold.
+      - name: The image holds every package the apps need
+        run: bash scripts/check-image.sh floor:ci

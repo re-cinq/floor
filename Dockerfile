@@ -6,18 +6,25 @@
 #   docker run floor node apps/api/dist/index.js
 #   docker run floor node apps/cluster-agent/dist/index.js
 #   docker run floor node packages/pipeline/dist/cli.js
+#
+# Nothing here names a package. A written-out list drifted twice: five packages became seven,
+# then nine, and the cluster agent crash-looped in a real cluster on a package the image did
+# not hold. The workspaces are a fact npm already keeps, and `scripts/check-image.sh` asks the
+# built image whether it can resolve each of them.
+
+# Every workspace's package.json and nothing else, so `npm ci` below is a layer that changes
+# only when a manifest does, without this file listing which manifests exist.
+FROM node:22-slim AS manifests
+WORKDIR /src
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages packages
+COPY apps apps
+RUN find packages apps -mindepth 2 -type f ! -name package.json -delete
 
 FROM node:22-slim AS build
 WORKDIR /app
 
-COPY package.json package-lock.json tsconfig.base.json ./
-COPY packages/assembly-lines/package.json packages/assembly-lines/package.json
-COPY packages/lore-converter/package.json packages/lore-converter/package.json
-COPY packages/pipeline/package.json packages/pipeline/package.json
-COPY packages/station/package.json packages/station/package.json
-COPY packages/store/package.json packages/store/package.json
-COPY apps/api/package.json apps/api/package.json
-COPY apps/cluster-agent/package.json apps/cluster-agent/package.json
+COPY --from=manifests /src/ ./
 RUN npm ci
 
 COPY packages packages
@@ -27,14 +34,7 @@ RUN npm run build
 FROM node:22-slim AS prod-deps
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-COPY packages/assembly-lines/package.json packages/assembly-lines/package.json
-COPY packages/lore-converter/package.json packages/lore-converter/package.json
-COPY packages/pipeline/package.json packages/pipeline/package.json
-COPY packages/station/package.json packages/station/package.json
-COPY packages/store/package.json packages/store/package.json
-COPY apps/api/package.json apps/api/package.json
-COPY apps/cluster-agent/package.json apps/cluster-agent/package.json
+COPY --from=manifests /src/ ./
 RUN npm ci --omit=dev
 
 FROM node:22-slim AS runtime
@@ -43,21 +43,13 @@ ENV NODE_ENV=production
 ARG FLOOR_BUILD_SHA=dev
 ENV FLOOR_BUILD_SHA=$FLOOR_BUILD_SHA
 
+# The whole of packages and apps as they were built: their dist, their manifests, and the
+# store's migrations, with no list to fall behind. Their sources ride along, which is a few
+# hundred kilobytes beside node_modules.
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json ./package.json
-COPY --from=build --chown=node:node /app/packages/assembly-lines/package.json packages/assembly-lines/package.json
-COPY --from=build --chown=node:node /app/packages/assembly-lines/dist packages/assembly-lines/dist
-COPY --from=build --chown=node:node /app/packages/store/package.json packages/store/package.json
-COPY --from=build --chown=node:node /app/packages/store/dist packages/store/dist
-COPY --from=build --chown=node:node /app/packages/store/migrations packages/store/migrations
-COPY --from=build --chown=node:node /app/packages/station/package.json packages/station/package.json
-COPY --from=build --chown=node:node /app/packages/station/dist packages/station/dist
-COPY --from=build --chown=node:node /app/packages/pipeline/package.json packages/pipeline/package.json
-COPY --from=build --chown=node:node /app/packages/pipeline/dist packages/pipeline/dist
-COPY --from=build --chown=node:node /app/apps/api/package.json apps/api/package.json
-COPY --from=build --chown=node:node /app/apps/api/dist apps/api/dist
-COPY --from=build --chown=node:node /app/apps/cluster-agent/package.json apps/cluster-agent/package.json
-COPY --from=build --chown=node:node /app/apps/cluster-agent/dist apps/cluster-agent/dist
+COPY --from=build --chown=node:node /app/packages packages
+COPY --from=build --chown=node:node /app/apps apps
 
 USER node
 EXPOSE 8080
