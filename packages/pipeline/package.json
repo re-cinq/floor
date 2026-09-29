@@ -49,6 +49,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@re-cinq/floor-client": "*",
     "yaml": "^2.7.0",
     "zod": "^4.5.4"
   },

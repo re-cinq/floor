@@ -21,9 +21,10 @@
     "migrate": "node dist/migrate-cli.js"
   },
   "dependencies": {
-    "pg": "^8.23.0",
+    "@floor/assembly-lines": "*",
+    "@re-cinq/floor-contracts": "*",
     "cron-parser": "^5.10.1",
-    "@floor/assembly-lines": "*"
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

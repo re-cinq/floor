@@ -1,6 +1,7 @@
 // What a running visit's executor calls (docs/api_sketch.md, "Station runs"): its structured brief and its event sink. A visit token reaches only its own visit.
 import type { ResponseToolkit, Server } from "@hapi/hapi";
 import { Refusal, enforce, type AgentSettings, type DispatchBrief } from "@floor/store";
+import type { BriefSettings, VisitBrief } from "@re-cinq/floor-contracts";
 import { agentConfigSchema, executorSettings } from "../agent-config.js";
 import { VISITS_TOO } from "../auth.js";
 import { declaresWrite } from "../git-grant.js";
@@ -37,7 +38,7 @@ async function brief(deps: Deps, visitId: string, toolkit: ResponseToolkit) {
   }
 }
 
-function briefResponse(deps: Deps, found: DispatchBrief) {
+function briefResponse(deps: Deps, found: DispatchBrief): VisitBrief {
   enforce(deps.config.gitCredentialUrl || !declaresWrite(found.needs), "this floor has no git credential provider configured, so a git need cannot be granted write access");
   const now = deps.now();
   const deadline = found.visit.deadline ?? new Date(now.getTime() + UNDATED_TOKEN_MINUTES * MS_PER_MINUTE);
@@ -58,7 +59,7 @@ function briefResponse(deps: Deps, found: DispatchBrief) {
 }
 
 // A definition's config was checked when it was put; one that no longer reads is refused here, by name, and never half-applied.
-function dispatchSettings(settings: AgentSettings) {
+function dispatchSettings(settings: AgentSettings): BriefSettings {
   const config = agentConfigSchema.safeParse(settings.config ?? {});
 
   if (!config.success) throw new Refusal(`the agent definition's config cannot be read: ${issuesOf(config.error).join("; ")}`);

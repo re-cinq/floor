@@ -44,12 +44,14 @@ flowchart TB
     worker["<b>a service worker</b><br/>written with packages/station"]
     lore["<b>lore</b><br/>owns GitHub"]
     tools["<b>packages/pipeline</b><br/><b>packages/lore-converter</b>"]
+    client(["<b>packages/client</b><br/>typed HTTP and the live socket"])
     k8s[["Kubernetes,<br/>the agent pods"]]
 
-    cluster -. HTTP .-> api
-    worker -. HTTP .-> api
-    lore -. HTTP .-> api
-    tools -. HTTP .-> api
+    cluster --> client
+    worker --> client
+    lore --> client
+    tools --> client
+    client -. HTTP .-> api
     cluster --> k8s
 ```
 
@@ -120,6 +122,8 @@ it `needs` and what it `produces`; floor moves the bytes and nothing else crosse
 | [`apps/cluster-agent`](apps/cluster-agent/README.md) | The only process that talks to one cluster's Kubernetes API. Turns a dispatch into an agent pod. |
 | [`packages/store`](packages/store/README.md) | Six tables, the definitions store, the events queue, and the run store. |
 | [`packages/assembly-lines`](packages/assembly-lines/README.md) | The walk kernel: which edge is taken next, given the visits so far. Pure, no I/O. |
+| [`packages/contracts`](packages/contracts/README.md) | The floor's wire, as types. No runtime, no dependencies: the server, its store and every client share one declaration. |
+| [`packages/client`](packages/client/README.md) | The floor over HTTP and its live socket, typed. What anything outside a floor reaches it through. |
 | [`packages/station`](packages/station/README.md) | The SDK a service station is written with: one function, and the claim loop around it. |
 | [`packages/pipeline`](packages/pipeline/README.md) | A whole pipeline as one file, exported from or imported into a floor over HTTP. |
 | [`packages/lore-converter`](packages/lore-converter/README.md) | Reads a lore checkout and writes the definitions this floor runs in its place. |

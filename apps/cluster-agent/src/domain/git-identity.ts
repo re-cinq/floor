@@ -1,5 +1,5 @@
 // Who a pod's commits are by. git refuses to commit for nobody, and a pod is nobody until it is told; an agent left to name itself names itself anything.
-import type { BriefNeed } from "./need.js";
+import type { BriefNeed } from "@re-cinq/floor-contracts";
 
 const NAME = "Floor Agent";
 const ADDRESS = "floor-agent@re-cinq.com";

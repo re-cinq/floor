@@ -1,0 +1,55 @@
+{
+  "name": "@re-cinq/floor-contracts",
+  "version": "0.1.0",
+  "description": "The floor's wire, as types: what its HTTP routes and its live socket take and answer, and nothing else. No runtime, no dependencies.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/re-cinq/floor.git",
+    "directory": "packages/contracts"
+  },
+  "homepage": "https://github.com/re-cinq/floor/tree/main/packages/contracts#readme",
+  "bugs": {
+    "url": "https://github.com/re-cinq/floor/issues"
+  },
+  "keywords": [
+    "floor",
+    "contracts",
+    "types",
+    "orchestration",
+    "agents"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc --watch -p tsconfig.build.json",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

@@ -5,45 +5,21 @@ import type {
   AgentDefinition,
   AgentResources,
   ConversationRef,
-  McpTransport,
   OutputSpec,
   Station,
 } from "@re-cinq/agent-contracts";
-import type { BriefNeed, GitNeed, FileNeed, Produce } from "./need.js";
+import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, ProduceSpec } from "@re-cinq/floor-contracts";
 import { environmentOf } from "./pod-environment.js";
 import { promptParameters } from "./prompt-parameters.js";
 
 export type DispatchNeed = BriefNeed;
-export type DispatchProduce = Produce;
+export type DispatchProduce = ProduceSpec;
 
-/** `sessionRef` is the earlier visit's id: what the subsystem resumes, and fetches the archive by. `save` on a new conversation is the first round of a station that continues. */
-export type Conversation = { mode: "new"; save?: boolean } | { mode: "continue"; sessionRef: string };
+export type Conversation = BriefConversation;
 
-export interface DispatchSettings {
-  model?: string;
-  /** The unrendered template; the subsystem fills `{placeholder}`s from `parameters`, built here from the `value` needs. The Floor never renders it twice. */
-  prompt: string;
-  image: string;
-  disallowedTools?: string[];
-  skills?: string[];
-  env?: Record<string, string>;
-  /** `bypass` unless the definition says otherwise: a pod has nobody to answer a permission prompt, so `auto` there means every tool is refused. */
-  permissionMode?: "auto" | "bypass";
-  maxTurns?: number;
-  /** Where the pod fetches its skills and the agent's settings; the floor's own registry when the definition names none. */
-  skillsSource?: string;
-  mcpServers?: DispatchMcpServer[];
-}
+export type DispatchSettings = BriefSettings;
 
-/** `headersSecret` names a key in the cluster's `agent-secrets` holding the header to send, whole: `Authorization: Bearer <token>`. The pod's reference to it is not optional, so a key that is not there is a pod that never starts. */
-export interface DispatchMcpServer {
-  name: string;
-  transport: McpTransport;
-  command?: string;
-  args?: string[];
-  url?: string;
-  headersSecret?: string;
-}
+export type DispatchMcpServer = McpServerSettings;
 
 export interface DispatchBrief {
   /** The station run id; also the name given to all three resources. */

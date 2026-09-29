@@ -44,6 +44,10 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@re-cinq/floor-client": "*",
+    "@re-cinq/floor-contracts": "*"
+  },
   "devDependencies": {
     "@types/node": "^22.20.1",
     "@vitest/coverage-v8": "^5.0.0",

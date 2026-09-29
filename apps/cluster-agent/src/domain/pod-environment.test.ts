@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BriefNeed } from "./need.js";
+import type { BriefNeed } from "@re-cinq/floor-contracts";
 import { environmentOf } from "./pod-environment.js";
 
 const WRITES: BriefNeed = { name: "target", kind: "git", path: "target", repoUrl: "https://github.com/re-cinq/floor", ref: "main", access: "write" };

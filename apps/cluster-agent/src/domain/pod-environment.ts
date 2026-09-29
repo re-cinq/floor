@@ -1,6 +1,6 @@
 // What a pod is told that no agent definition should have to say: it is true of every pod of its kind, on every cluster.
 import { identityFor } from "./git-identity.js";
-import type { BriefNeed } from "./need.js";
+import type { BriefNeed } from "@re-cinq/floor-contracts";
 
 /** Gemini's CLI works only in a folder it was told to trust, and with nobody at a terminal to ask, it stops. A pod's workspace is made for the visit and holds what the visit was given. */
 const TRUSTING = { GEMINI_CLI_TRUST_WORKSPACE: "true" };
