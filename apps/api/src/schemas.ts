@@ -92,6 +92,7 @@ export const startRunSchema = z.object({
   repo: z.string(),
   startItems: z.record(z.string(), startItem),
   entry: z.string().optional(),
+  lineHash: z.string().optional(),
 });
 
 const coercedDate = z.coerce.date();

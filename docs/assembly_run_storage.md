@@ -162,8 +162,13 @@ start, each as a `file` item `by: "line"`; a start item the caller gave
 under the same name wins. A named hash the blobs table does not hold
 refuses the start, naming the file.
 
-> **Not built yet.** Start arguments are not checked against the line's
-> `args`, and a start cannot name a line version: it takes the latest.
+A start is checked against the line's `args` before anything is written and
+before the subject join: every declared arg must be in `startItems` with the
+same `kind`, and one refusal names every arg that is missing or of another
+kind. A start item the line does not declare is allowed and kept in the bag.
+An optional `lineHash` pins the line version, and the args checked are that
+version's; absent, the start takes the latest. A hash that is not a version of
+the line refuses the start. Event-started runs pass through the same check.
 
 ## Routing: the kernel decides, events carry
 

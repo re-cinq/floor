@@ -11,6 +11,8 @@ export interface StartRun {
   startItems: Record<string, Item>;
   /** Starts somewhere other than the line's entry; the node must exist. */
   entry?: string;
+  /** Pins a version of the line; absent means the latest. */
+  lineHash?: string;
 }
 
 export interface StartedRun {

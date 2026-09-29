@@ -65,9 +65,11 @@ POST   /assembly-lines                   // create a line (first version); 400 w
 PUT    /assembly-lines/:id               // does NOT mutate; creates a new version, returns its hash
 DELETE /assembly-lines/:id               // archives; 409 while runs are open on it
 
-POST   /assembly-lines/:id/start         // body: repo, startItems, optional entry. 201, or, if an open run already
-                                         // holds the subject, that run (200, joined: true)
-                                         // not built yet: checking startItems against the line's args, and naming a version
+POST   /assembly-lines/:id/start         // body: repo, startItems, optional entry, optional lineHash (a version of the
+                                         // line; absent means the latest). 201, or, if an open run already holds the
+                                         // subject, that run (200, joined: true). 400 naming every arg the line declares
+                                         // that startItems lacks or holds as another kind, or a lineHash that is not a
+                                         // version of the line; a start item the line does not declare is kept
 
 A run is also started by an **event**, when the line declares `start.on`.
 That is how a PR opening starts a review and a schedule starts a sweep.

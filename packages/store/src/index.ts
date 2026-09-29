@@ -12,6 +12,7 @@ export { EVENT_RETENTION_MS, reapSettledRunEvents } from "./events-retention.js"
 export { acquireLease, type Lease } from "./lease.js";
 export { openTestPool, testDatabaseUrl } from "./test-database.js";
 export { Refusal, enforce } from "./refusal.js";
+export { InvalidStart } from "./start-args.js";
 export { canonicalRepo } from "./repo-name.js";
 export { RunJournal, type JournalEntry, type JournalPage, type RunJournalDeps } from "./run-journal.js";
 export { LISTENER_NAME, PgRunNotifier, type PgRunNotifierDeps, type RunListener, type RunNotifier } from "./run-notifier.js";

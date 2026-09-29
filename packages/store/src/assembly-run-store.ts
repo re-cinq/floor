@@ -2,10 +2,11 @@
 
 import type { Pool, PoolClient } from "pg";
 import { getNextTransition, type Transition } from "@floor/assembly-lines";
-import { DefinitionsStore } from "./definitions.js";
+import { DefinitionsStore, type DefinitionRow } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
 import { foldBag } from "./bag.js";
+import { enforceStartArgs } from "./start-args.js";
 import { valueArgsOf } from "./run-args.js";
 import { deriveSubjectKey, foldLineFiles } from "./resolve.js";
 import { Refusal, enforce } from "./refusal.js";
@@ -38,6 +39,8 @@ export interface StartRunInput {
   startItems: Record<string, Item>;
   /** Starts at a node other than the line's entry; the node must exist. */
   entry?: string;
+  /** Pins a version of the line; absent means the latest. */
+  lineHash?: string;
 }
 
 export interface StartResult {
@@ -97,9 +100,9 @@ export class AssemblyRunStore {
   }
 
   async start(input: StartRunInput): Promise<StartResult> {
-    const line = await this.definitions.latest<LineBody>("line", input.lineId);
+    const line = await this.lineToStart(input);
 
-    enforce(line, `no line named "${input.lineId}"`);
+    enforceStartArgs(line.body.args, input.startItems);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
     await this.enforceFilesExist(line.body.files);
     const startItems = foldLineFiles(line.body.files, input.startItems);
@@ -108,6 +111,22 @@ export class AssemblyRunStore {
     return withTransaction(this.deps.pool, (client) =>
       this.startInTransaction(client, { input: { ...input, startItems }, lineHash: line.hash, entry, subjectKey }),
     );
+  }
+
+  private async lineToStart(input: StartRunInput): Promise<DefinitionRow<LineBody>> {
+    if (input.lineHash === undefined) {
+      const latest = await this.definitions.latest<LineBody>("line", input.lineId);
+
+      enforce(latest, `no line named "${input.lineId}"`);
+
+      return latest;
+    }
+
+    const pinned = await this.definitions.byHash<LineBody>("line", input.lineId, input.lineHash);
+
+    enforce(pinned, `"${input.lineHash}" is not a version of line "${input.lineId}"`);
+
+    return pinned;
   }
 
   private async enforceFilesExist(files: Record<string, string> | undefined): Promise<void> {

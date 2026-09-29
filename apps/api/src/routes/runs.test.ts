@@ -57,6 +57,37 @@ describe("POST /assembly-lines/:id/start", () => {
 
     expect(response.statusCode).toBe(400);
   });
+
+  it("returns 400 naming every arg problem when pr_url and repo are wrong", async () => {
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: { ...LINE_BODY, args: { ...LINE_BODY.args, repo: { kind: "git" } } } });
+
+    const response = await injectJson<{ errors: string[] }>(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { repo: "r", startItems: { repo: { kind: "value", ref: "x", by: "start" } } } });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({
+      statusCode: 400,
+      errors: ['startItems.repo: the line wants kind "git", got "value"', 'startItems.pr_url: required by the line, as kind "value"'],
+    });
+  });
+
+  it("starts against the pinned version when lineHash names one", async () => {
+    await seedLine();
+    const versions = await injectJson<{ items: { hash: string }[] }>(server(), { method: "GET", url: "/assembly-lines/code-review/versions", headers: authHeaders() });
+    const [{ hash }] = versions.result.items;
+
+    const response = await injectJson<{ run: { lineHash: string } }>(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { ...startPayload("https://pr/1"), lineHash: hash } });
+
+    const { run } = response.result;
+
+    expect(run.lineHash).toBe(hash);
+  });
+
+  it("returns 400 when lineHash is not a version of the line", async () => {
+    await seedLine();
+
+    const response = await injectJson(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { ...startPayload("https://pr/1"), lineHash: "sha256-nope" } });
+
+    expect(response.statusCode).toBe(400);
+  });
 });
 
 describe("GET /assembly-runs", () => {
