@@ -75,6 +75,12 @@ with the ConfigMap mounted read-only at `/pipelines`. The service token comes fr
   at. Its hook weight is set below the chart-built postgres Secret's own hook weight, so the
   Secret exists before the Job reads it (only relevant when the chart builds that Secret itself;
   an `existingSecret` is assumed to already be there).
+- **Migrating is safe to run more than once at a time.** The Job and every API replica migrate,
+  and `migrate` holds a Postgres advisory lock for its whole run, so the second waits for the
+  first.
+- **The cluster agent is given sixty seconds to stop** (`terminationGracePeriodSeconds`). Told to
+  stop, it finishes the dispatch in flight, which creates three resources and writes a secret, and
+  claims nothing more.
 - **The CRDs** under `crds/` (copied from `deploy/agent-subsystem/crds/`) install via Helm's own
   `crds/` convention: unconditionally, on `helm install`, and never removed by `helm uninstall` or
   reapplied by `helm upgrade`. This is a Helm limitation, not a bug in this chart —

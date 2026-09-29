@@ -26,6 +26,15 @@ See [the map](../../README.md) for what sits either side of it.
   disagree with it.
 - `pg.ts` — one pool per process, and a plain migration runner (a
   `schema_migrations` table tracking applied filenames; no framework).
+  `migrate` holds a Postgres advisory lock for its whole run
+  (`withAdvisoryLock` in `lease.ts`), on one connection. Every API replica
+  migrates at start and so does the chart's hook Job; the second waits for
+  the first and then finds nothing left to do. Without the lock two of them
+  collide inside Postgres on `create table if not exists`, which
+  `migrate.test.ts` shows.
+- `run-args.ts` — `valueArgsOf`: a run's `value` start items by name, which
+  `internal.run.started` and `internal.run.settled` carry as `args`. Files
+  and repositories are left out.
 - `events.ts` — `EventStore`: `enqueue` (idempotent on `dedupeKey`), `claim`
   (a batch under `FOR UPDATE SKIP LOCKED`, filtered by name and, for
   `station_run.dispatch`/`abort`, by tag subset), `claimExcept` (the same

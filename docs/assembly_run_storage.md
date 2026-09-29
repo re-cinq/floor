@@ -320,8 +320,9 @@ query.
 > **Not built yet**, of the list below: the lint fence, the branded route
 > type, fuzzing, the threat models, and the second reviewer. Built: the
 > template engine as one module, with tests named after the attacks; the
-> visit token, with tests proving it reaches only its own visit; no
-> outbound request from the floor.
+> visit token, with tests proving it reaches only its own visit and only
+> the ten routes a visit is given, every other route being a service's
+> alone; no outbound request from the floor.
 
 - Rules are tests first, each with a hostile input named after the attack.
 - One module per boundary: templates, routes, tokens; a lint rule fences the

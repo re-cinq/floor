@@ -327,6 +327,35 @@ the old one lives. The API keeps nothing between requests, so nothing is
 lost by letting every replica answer. `/readyz` is now "can reach the
 database", and `/version` says whether this instance runs the loop.
 
+**Migrating takes a lock.** Every API replica migrates when it starts, and
+the chart's hook Job migrates too, so three may start at once. `create table
+if not exists` is not safe against itself: two of them collide inside
+Postgres. `migrate` now holds an advisory lock for its whole run. The second
+waits, then finds nothing left to do. The API still migrates at start,
+because a laptop has no hook Job.
+
+**The cluster agent stops when it is told to.** It ignored SIGTERM, so
+Kubernetes killed it mid-dispatch, between the three resources a dispatch
+creates. Told to stop, it now finishes the tick in flight and claims nothing
+more. Its idle sleep, which grows to a minute, is cut short, and the pod is
+given sixty seconds where Kubernetes gives thirty. A request to the floor
+gives up after thirty seconds, so a floor that hangs cannot hold a stop.
+
+**The image holds the pipeline tool and not the converter.** A job in the
+cluster seeds pipelines with `floor-pipeline`, so it is in the image. The
+converter reads a lore checkout from a person's disk, which a pod has not
+got, so it is built and left out.
+
+**Pipelines are seeded by a job that waits for the floor.** A Helm hook runs
+when the floor's pods are created, not when they are ready, so the job asks
+`/readyz` until it answers. The files come from a ConfigMap the operator
+names. A file changed after it ran fails the job, and so the upgrade: a
+change is a new file.
+
+**The chart refuses an install it knows is broken.** An empty `version`
+rendered an image name no registry has, and a missing `api.existingSecret`
+rendered pods that never start. Both are refused before anything is applied.
+
 **The cluster agent outlives the floor.** A claim that cannot reach the
 floor is a tick that found nothing. It used to end the process, which on a
 fresh install starts before the floor does.

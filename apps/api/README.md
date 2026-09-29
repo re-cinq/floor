@@ -17,7 +17,7 @@ See [the map](../../README.md) for the whole path an event takes.
 
 ## What is here
 
-- **Auth** (`auth.ts`, `visit-token.ts`): one bearer scheme. A token equal to `FLOOR_SERVICE_TOKEN` is a service; anything else is checked as a visit token, an HMAC over `visitId.expiry` signed with `FLOOR_VISIT_TOKEN_SECRET` — no database lookup to verify one. Human sessions are not implemented.
+- **Auth** (`auth.ts`, `visit-token.ts`): one bearer scheme. A token equal to `FLOOR_SERVICE_TOKEN` is a service; anything else is checked as a visit token, an HMAC over `visitId.expiry` signed with `FLOOR_VISIT_TOKEN_SECRET` — no database lookup to verify one. Human sessions are not implemented. **A route is a service's alone unless it says otherwise.** A visit token is held by an agent in a pod, so it reaches ten routes and no more: `/station-runs/:id/brief`, `/sink`, `/git-credential` and `/records`, `/conversations/:id`, `/blobs`, and `POST /events` for its own report. A route opens itself to visits with `options: { auth: VISITS_TOO }`; one that does not is closed to them, so a route added later is closed without being told to be. `visit-scope.test.ts` walks every route the server has with a visit's token, and an eleventh open route fails it. What hapi refuses by itself, a missing token or a route out of scope, is answered as a problem document too (`registerProblemResponses` in `problem.ts`).
 - **Health** (`routes/health.ts`): `/healthz`, `/readyz` (can it reach Postgres; every replica that can, serves), `/version` (which says whether this instance runs the loop).
 - **Definitions** (`routes/definitions.ts`, `routes/start.ts`): the same CRUD shape for `/assembly-lines`, `/stations`, `/agent-definitions` — list latest, get, versions, one version by hash, create, new version, archive — plus `/assembly-lines/:id/start`. A line refuses to archive while it has open runs.
 - **Runs** (`routes/runs.ts`): `/assembly-runs` list (at least one filter required), get (with its bag), cancel.
@@ -32,7 +32,7 @@ See [the map](../../README.md) for the whole path an event takes.
 - **The loop** (`engine/loop.ts`): runs the dispatcher and the sweeper on the one instance holding the floor's lease, a Postgres advisory lock. Each pass checks the lease is still alive first, since Postgres drops it silently with the connection; a pass that throws is logged and tried again. `stop()` waits for the pass in flight and releases the lease, so another instance takes over at once. An instance without the lease still serves the API; it only leaves the loop to the one that has it.
 - **Validation** (`schemas.ts`, `parse.ts`): zod mirrors of `@floor/store`'s definition bodies; `parseBody` collects every error, not just the first.
 - **Errors** (`problem.ts`): RFC 9457 `application/problem+json`.
-- **Costs** (`routes/costs.ts`): `GET /costs`, service token only (a visit token gets 403) — at least one of `repo`/`line`/`station`/`since`/`until` and a `group` (`day`/`line`/`station`/`model`) are required; returns cost, tokens in/out, visit count and visits missing cost, per `CostsStore.summary`.
+- **Costs** (`routes/costs.ts`): `GET /costs`, a service's alone like every route that does not say otherwise — at least one of `repo`/`line`/`station`/`since`/`until` and a `group` (`day`/`line`/`station`/`model`) are required; returns cost, tokens in/out, visit count and visits missing cost, per `CostsStore.summary`.
 
 ## Not yet here
 

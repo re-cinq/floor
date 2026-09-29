@@ -38,6 +38,8 @@ kubectl create secret generic floor-postgres \
 
 `serviceToken` is how every client — lore, a worker, you — authenticates. `visitTokenSecret` signs
 the short-lived token one visit gets, which is how a pod proves it is that visit and no other.
+That token opens the visit's own brief, records, files and report, and nothing else: it cannot
+read a definition, start a run or claim work.
 
 Then install:
 
@@ -57,7 +59,8 @@ helm install floor deploy/chart \
 [ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem)'s controller — the thing that
 actually runs an agent pod. Leave it off only if another install on the cluster already runs it.
 
-A migration Job runs on install and on every upgrade; it creates the six tables.
+A migration Job runs on install and on every upgrade; it creates the six tables. The chart
+refuses an install with no `version` or no `api.existingSecret`, before anything is applied.
 
 **Check it:**
 
@@ -141,6 +144,16 @@ node packages/pipeline/dist/cli.js import my-line.yaml --floor https://floor.exa
 Importing the same file twice changes nothing: a version *is* its content, so re-importing an
 unchanged file is not a new version. A folder of them, applied in name order and each once, is
 `migrate <dir>`.
+
+To have floor seeded at every deploy, put the files in a ConfigMap and name it:
+
+```bash
+kubectl create configmap floor-pipelines --from-file=pipelines/
+helm upgrade floor deploy/chart --reuse-values --set pipelines.existingConfigMap=floor-pipelines
+```
+
+A job then runs `migrate` over them after each install and upgrade, once the floor answers ready.
+A file that ran is not run again, and one changed since fails the job: a change is a new file.
 
 To bring an assembly line over from lore instead of writing one, convert it:
 

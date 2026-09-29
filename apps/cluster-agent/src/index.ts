@@ -39,6 +39,8 @@ async function main(): Promise<void> {
   });
 
   healthServer.close();
+  // A probe may hold its connection open, and close() alone waits for it.
+  healthServer.closeAllConnections();
   console.log("[cluster-agent] stopped");
 }
 
