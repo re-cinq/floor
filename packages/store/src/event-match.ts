@@ -1,4 +1,5 @@
 // Pure: what an event from outside means to one line — whether it starts it, with which items, and which waiting node it answers.
+import { canonicalRepo, gitRefOf } from "./repo-name.js";
 import { enforce } from "./refusal.js";
 import { renderTemplate } from "./template.js";
 import type { Item, LineBody, WhenValue } from "./types.js";
@@ -38,19 +39,12 @@ function startItem(line: LineBody, name: string, ref: string, eventName: string)
 export function repoFrom(startItems: Record<string, Item>, payload: Payload): string {
   const gitItem = Object.values(startItems).find((startItem) => startItem.kind === "git");
 
-  if (gitItem) return repoOf(gitItem.ref);
+  if (gitItem) return gitRefOf(gitItem.ref).repo;
   const carried = payload.repo ?? payload.repository;
 
   enforce(typeof carried === "string" && carried.length > 0, "the event names no repo: no git argument, and no repo in its payload");
 
-  return carried;
-}
-
-// A git item's ref is "host/owner/name@branch".
-function repoOf(ref: string): string {
-  const [repo] = ref.split("@");
-
-  return repo;
+  return canonicalRepo(carried);
 }
 
 /** One answer per node at most: the first of its `reports` this event satisfies. */

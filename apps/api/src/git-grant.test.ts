@@ -23,6 +23,10 @@ describe("gitNeedFor", () => {
     expect(gitNeedFor([READ], "lore")).toBeUndefined();
   });
 
+  it("finds re-cinq/floor for a pod that asks for re-cinq/Floor", () => {
+    expect(gitNeedFor([READ, WRITE], "re-cinq/Floor")).toEqual(WRITE);
+  });
+
   it("picks write when the same repository is needed both ways", () => {
     const written: DispatchNeed = { ...READ, name: "workspace", access: "write" };
 

@@ -1,4 +1,5 @@
 // What a machine needs to run one visit (docs/entities/station.md, "agent"): the frozen brief again, but structured, since a Kubernetes manifest wants each need's kind, path and access, not its text.
+import { gitRefOf } from "./repo-name.js";
 import type { Pool } from "pg";
 import type { AssemblyRunStore } from "./assembly-run-store.js";
 import type { DefinitionsStore } from "./definitions.js";
@@ -64,9 +65,7 @@ function placedAt(path: string, spec: NeedSpec, source: { held: Item; baseUrl: s
 
 // A git item's ref is "host/owner/name@branch"; the sha, when the item carries one, is what the visit was promised.
 function cloneOf(held: Item): { repoUrl: string; ref: string } {
-  const split = held.ref.lastIndexOf("@");
-  const repo = split < 0 ? held.ref : held.ref.slice(0, split);
-  const branch = split < 0 ? "HEAD" : held.ref.slice(split + 1);
+  const { repo, branch = "HEAD" } = gitRefOf(held.ref);
 
   return { repoUrl: `https://${repo}`, ref: held.sha ?? branch };
 }

@@ -209,6 +209,14 @@ push it.
 post-review station posts reviews that ask for changes. Without `sender_type`
 in the line's `when`, each of those would start a reply to itself.
 
+**A repository's name is kept lowered.** GitHub reads `re-cinq/Otto` and
+`re-cinq/otto` as one repository, and says `Otto` in its webhooks whatever a
+person typed. The store lowers the name where a run is written and where one
+is looked for, so both find the same run. A branch is kept as written: git
+reads its case. So is a value such as a pull request's address, which the
+floor does not know to be an address. Runs written before this keep the
+spelling they had.
+
 **The visit token is in the Agent resource, in the clear.** The subsystem
 reads the broker's credential from the Agent's parameters and has no secret
 reference for it. The token opens one visit's files and one visit's

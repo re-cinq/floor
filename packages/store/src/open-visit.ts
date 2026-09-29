@@ -1,5 +1,6 @@
 // Resolution at open (docs/assembly_run_storage.md, "Resolution at open"): station, agent definition and variant, needs from the bag, conversation, failure context, deadline.
 
+import { forRepo } from "./repo-name.js";
 import type { Pool } from "pg";
 import { DefinitionsStore } from "./definitions.js";
 import { Refusal, enforce } from "./refusal.js";
@@ -125,8 +126,7 @@ export class OpenVisitResolver {
     const row = await this.deps.definitions.latest<AgentDefinitionBody>("agent_definition", station.agentDefinition);
 
     enforce(row, `no agent definition "${station.agentDefinition}"`);
-    const variants = row.body.variants;
-    const merged = mergeAgentSettings(row.body.settings, variants?.[repo]);
+    const merged = mergeAgentSettings(row.body.settings, forRepo(row.body.variants, repo));
 
     return { hash: row.hash, body: merged };
   }

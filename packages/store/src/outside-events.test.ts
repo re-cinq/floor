@@ -123,6 +123,40 @@ describe("OutsideEvents.runFor", () => {
 
     expect(await outside().runFor(SUBJECT)).toBeNull();
   });
+
+  it("finds a run on re-cinq/lore for an event that spells it re-cinq/Lore", async () => {
+    const run = await waitingOnMerge();
+
+    const found = await outside().runFor({ ...SUBJECT, repo: "github.com/re-cinq/Lore" });
+
+    expect(found?.id).toBe(run.id);
+  });
+});
+
+describe("a repository spelled two ways", () => {
+  it("is one repository: a second pull request event joins the run the first one started", async () => {
+    await seed();
+    const [first] = await outside().startLines({ name: OPENED, payload: PR_OPENED });
+    const [second] = await outside().startLines({ name: OPENED, payload: { ...PR_OPENED, repository: "github.com/re-cinq/Lore" } });
+
+    expect({ joined: second!.joined, run: second!.run.id }).toEqual({ joined: true, run: first!.run.id });
+  });
+
+  it("is kept lowered on the run, and in the git item it was started with", async () => {
+    await seed();
+    const [started] = await outside().startLines({ name: OPENED, payload: { ...PR_OPENED, repository: "github.com/re-cinq/Lore", head_ref: "Feat" } });
+    const bag = await store().bag(started!.run.id);
+
+    expect({ repo: started!.run.repo, item: bag.repo.ref }).toEqual({ repo: "github.com/re-cinq/lore", item: "github.com/re-cinq/lore@Feat" });
+  });
+
+  it("is found by either spelling when runs are listed", async () => {
+    await seed();
+    const [started] = await outside().startLines({ name: OPENED, payload: PR_OPENED });
+    const listed = await store().list({ repo: "github.com/RE-CINQ/lore" }, { limit: 10 });
+
+    expect(listed.items.map((run) => run.id)).toEqual([started!.run.id]);
+  });
 });
 
 describe("OutsideEvents.answer", () => {
