@@ -3,10 +3,10 @@ name: Publish
 # Publishes a version: the image to ghcr.io/re-cinq/floor, the wire contracts, the client, the
 # station SDK and the pipeline tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
 #
-# Publishing a GitHub Release is what starts this file. The release carries the `vX.Y.Z` tag
-# and the notes, and the tag is the version: the packages carry a placeholder on main, stamped
-# just before they are built, so a release is one act and no commit ever bumps a version.
-# Draft releases fire nothing, and a prerelease is refused.
+# Pushing a `vX.Y.Z` tag is what starts this file, and the tag is the version: the packages carry
+# a placeholder on main, stamped just before they are built, so a release is one act and no
+# commit ever bumps a version. Any other tag is refused. The GitHub Release, with generated
+# notes, is written at the end, once everything the tag names is out.
 #
 # npm's auth is tokenless: Trusted Publishing mints a short-lived credential from the GitHub
 # OIDC token, so no NPM_TOKEN secret exists here. The trusted publisher is registered, for each
@@ -15,16 +15,15 @@ name: Publish
 # nothing to attach it to: the first version of each package is published by hand
 # (docs/releasing.md).
 #
-# The npm publish is staged rather than direct. The tarball and its provenance reach the
-# registry, but the version is not installable until a maintainer approves the stage with 2FA:
-# the package page's Versions tab, or `npm stage list` then `npm stage approve <id>`. That is
-# the only brake there is on the one step here that cannot be undone.
+# The npm publish is direct: a version is installable the moment it is published, and a version
+# published to npm is there for good. The brake is in front of the tag, not behind it — the
+# tagged commit must be on main, and main takes a pull request.
 on:
-  release:
-    types: [published]
-  # The way back in when a publish fails after the release already exists. Select the release's
-  # tag, not a branch: the first job refuses anything that is not a vMAJOR.MINOR.PATCH tag.
-  # What was published before the failure is left as it is, and the rest is published.
+  push:
+    tags: ["v*"]
+  # The way back in when a publish fails after the tag already exists. Select the tag, not a
+  # branch: the first job refuses anything that is not a vMAJOR.MINOR.PATCH tag. What was
+  # published before the failure is left as it is, and the rest is published.
   workflow_dispatch:
 
 # One release at a time, in order, and never cut short half way.
@@ -44,7 +43,6 @@ env:
 jobs:
   release-tag:
     name: Release tag names a version on main
-    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -58,7 +56,7 @@ jobs:
       - name: Release tag names a stable version
         id: version
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: echo "version=$(./scripts/release-version.sh --check "${RELEASE_TAG}")" >> "$GITHUB_OUTPUT"
 
       # main is the trust boundary: it takes a pull request. A release can be cut against any
@@ -138,15 +136,15 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
-      # Trusted publishing needs npm >= 11.5.1 and `npm stage` needs >= 11.15.0; Node 22 ships
-      # an older npm. Pinned to the 11 line and not `latest`: this is the job holding
-      # id-token: write, and `latest` lets a major nobody here has run decide how it behaves.
-      - name: Upgrade npm for OIDC trusted publishing and staging
-        run: npm install -g npm@^11.15.0
+      # Trusted publishing needs npm >= 11.5.1; Node 22 ships an older npm. Pinned to the 11
+      # line and not `latest`: this is the job holding id-token: write, and `latest` lets a
+      # major nobody here has run decide how it behaves.
+      - name: Upgrade npm for OIDC trusted publishing
+        run: npm install -g npm@^11.5.1
 
       - name: Set the version from the release tag
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: ./scripts/release-version.sh "${RELEASE_TAG}"
 
       - name: Install (no build)
@@ -159,7 +157,7 @@ jobs:
       - name: Pack lists carry the packages and nothing else
         run: node scripts/check-pack-list.mjs packages/contracts packages/client packages/station packages/pipeline
 
-      - name: Stage the versions on npm
+      - name: Publish the versions to npm
         env:
           VERSION: ${{ needs.release-tag.outputs.version }}
         run: |
@@ -168,18 +166,16 @@ jobs:
             name="$(node -p "require('./${package}/package.json').name")"
             # A run started again after it failed half way publishes what is left.
             if npm view "${name}@${VERSION}" version >/dev/null 2>&1; then
-              echo "${name}@${VERSION} is on the registry already" | tee -a stage.log
+              echo "${name}@${VERSION} is on the registry already" | tee -a publish.log
               continue
             fi
-            (cd "${package}" && npm stage publish --access public --provenance --ignore-scripts) 2>&1 | tee -a stage.log
+            (cd "${package}" && npm publish --access public --provenance --ignore-scripts) 2>&1 | tee -a publish.log
           done
           {
-            echo "## Staged on npm - a maintainer must approve each before anyone can install it"
-            echo
-            echo "The package page's Versions tab -> Approve, with 2FA. Or: \`npm stage list\`, then \`npm stage approve <id>\`."
+            echo "## Published to npm"
             echo
             echo '```'
-            cat stage.log
+            cat publish.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -192,3 +188,22 @@ jobs:
     with:
       version: ${{ needs.release-tag.outputs.version }}
     secrets: inherit
+
+  # The record of what went out, written last so it never names a version that failed to
+  # publish. A run started again by hand finds the release there and leaves it.
+  release:
+    name: Write the GitHub Release
+    needs: [release-tag, image, packages, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Release notes for the tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release view "${TAG}" >/dev/null 2>&1 || gh release create "${TAG}" --verify-tag --generate-notes

@@ -438,12 +438,14 @@ Nothing reaches a pod. The subsystem ships the same rules for its own
 namespace, and the floor runs its agents in another. What lore's agents call
 inside the cluster is not known to this chart, so it is a value.
 
-**A release is a GitHub Release, and the tag is the version.** As
-HALEngine and bowman-ui do it. Publishing the release starts `publish.yml`:
-the tag is checked, the gates run again on the tagged commit, and then the
-image, the four npm packages and the deploy. The packages carry a placeholder
+**A release is a pushed `vX.Y.Z` tag, and the tag is the version.** Pushing
+the tag starts `publish.yml`: the tag is checked, the gates run again on the
+tagged commit, and then the image, the four npm packages, the deploy, and
+last the GitHub Release with its notes. The packages carry a placeholder
 version on `main` and are stamped from the tag, so no commit bumps a
-version. A pushed tag alone publishes nothing.
+version. It was a published GitHub Release that started it, as HALEngine and
+bowman-ui do; a release is now one push, with nothing to click after
+(2026-09-30).
 
 **The npm packages are `@re-cinq/floor-contracts`, `@re-cinq/floor-client`,
 `@re-cinq/floor-station` and `@re-cinq/floor-pipeline`.** The last two were
@@ -452,12 +454,14 @@ version. A pushed tag alone publishes nothing.
 not published keep `@floor`. They are licensed Apache-2.0, as every package
 re:cinq publishes is.
 
-**npm is published without a token, and staged.** Trusted Publishing trades
+**npm is published without a token, directly.** Trusted Publishing trades
 the workflow's OIDC token for a credential, so the repository holds no npm
-secret. A staged version is not installable until a maintainer approves it
-with 2FA, which is the only brake on a publish that cannot be taken back.
-The first version of each package is published by hand, since a trusted
-publisher is registered on a package that exists.
+secret. The versions were staged at first, each waiting for a maintainer's
+2FA before anyone could install it; that hand was the one step of a release
+that was not automatic, and the brake now sits in front of the tag instead:
+the tagged commit must be on `main`, and `main` takes a pull request
+(2026-09-30). The first version of each package is published by hand, since
+a trusted publisher is registered on a package that exists.
 
 **`latest` is main's.** A release publishes `1.2.3` and `1.2` and leaves the
 image `latest` where `main` put it. A release of an older commit would
