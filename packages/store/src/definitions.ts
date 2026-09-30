@@ -28,13 +28,18 @@ export interface DefinitionsStoreDeps {
 export class DefinitionsStore {
   constructor(private readonly deps: DefinitionsStoreDeps) {}
 
-  /** Idempotent on content: putting the same body twice returns the same hash, created:false the second time. */
+  /** Idempotent on content: putting the same body twice returns the same hash, created:false the second time. What was put last is the latest, so putting a body the id held BEFORE a newer one brings that version to the front again (its created_at moves; the row and its hash do not), and that counts as created: the id's latest changed. */
   async put<Body>(kind: DefinitionKind, id: string, body: Body, createdBy?: string): Promise<PutResult> {
     const hash = definitionHash(body);
     const { rows } = await this.deps.connection.query(
       `insert into definitions (kind, id, hash, body, created_by)
        values ($1, $2, $3, $4::jsonb, $5)
-       on conflict (kind, id, hash) do nothing
+       on conflict (kind, id, hash) do update set created_at = now(), archived_at = null
+         where exists (
+           select 1 from definitions newer
+           where newer.kind = excluded.kind and newer.id = excluded.id
+             and newer.archived_at is null and newer.created_at > definitions.created_at
+         ) or definitions.archived_at is not null
        returning hash`,
       [kind, id, hash, JSON.stringify(body), createdBy ?? null],
     );

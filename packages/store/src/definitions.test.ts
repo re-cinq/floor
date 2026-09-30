@@ -33,6 +33,23 @@ describe("DefinitionsStore.put", () => {
     expect(second.created).toBe(false);
   });
 
+  it("makes a body the id held before a newer one the latest again, and reports it created", async () => {
+    await store().put("station", "review", { kind: "agent" });
+    await store().put("station", "review", { kind: "service" });
+    const back = await store().put("station", "review", { kind: "agent" });
+    const latest = await store().latest<{ kind: string }>("station", "review");
+
+    expect({ created: back.created, latest: latest?.body.kind }).toEqual({ created: true, latest: "agent" });
+  });
+
+  it("keeps the hash of a version brought to the front again", async () => {
+    const first = await store().put("station", "review", { kind: "agent" });
+    await store().put("station", "review", { kind: "service" });
+    const back = await store().put("station", "review", { kind: "agent" });
+
+    expect(back.hash).toBe(first.hash);
+  });
+
   it("returns a different hash for a changed body", async () => {
     const first = await store().put("station", "review", { kind: "agent" });
     const second = await store().put("station", "review", { kind: "service" });
