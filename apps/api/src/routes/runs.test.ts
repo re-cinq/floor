@@ -142,6 +142,42 @@ describe("GET /assembly-runs since", () => {
   });
 });
 
+describe("GET /assembly-runs newest first", () => {
+  interface RunsPage {
+    items: { id: string; createdAt: string }[];
+    nextCursor: string | null;
+  }
+
+  async function wirePage(query: string): Promise<{ statusCode: number; page: RunsPage }> {
+    const response = await injectJson(server(), { method: "GET", url: `/assembly-runs?since=2020-01-01&${query}`, headers: authHeaders() });
+
+    return { statusCode: response.statusCode, page: JSON.parse(response.rawPayload.toString()) as RunsPage };
+  }
+
+  it("lists the run started 03-03 before the run started 03-01, each with its createdAt, and pages on with the cursor it returned", async () => {
+    const older = await startedRunId("https://pr/1");
+    const newer = await startedRunId("https://pr/2");
+
+    await deps().pool.query("update assembly_runs set created_at = '2026-03-01T10:00:00Z' where id = $1", [older]);
+    await deps().pool.query("update assembly_runs set created_at = '2026-03-03T10:00:00Z' where id = $1", [newer]);
+    const { page: first } = await wirePage("limit=1");
+    const { page: second } = await wirePage(`limit=1&cursor=${first.nextCursor}`);
+
+    expect([first.items, second.items]).toMatchObject([
+      [{ id: newer, createdAt: "2026-03-03T10:00:00.000Z" }],
+      [{ id: older, createdAt: "2026-03-01T10:00:00.000Z" }],
+    ]);
+  });
+
+  it("returns 400 for a cursor that is a bare run id", async () => {
+    const runId = await startedRunId("https://pr/1");
+
+    const { statusCode } = await wirePage(`cursor=${runId}`);
+
+    expect(statusCode).toBe(400);
+  });
+});
+
 describe("GET /assembly-runs/:id currentNode and cost", () => {
   const COUNTED = { kind: "llm_call" as const, body: { costUsd: 2, usage: { input_tokens: 5, output_tokens: 7 } }, occurredAt: new Date("2026-01-01T00:00:00Z") };
 

@@ -105,6 +105,7 @@ interface Run {
   subjectKey: string | null;       // from the argument marked `subject`: "<arg>:<value>"
   startItems: Record<string, Item>;
   outcome: string | null;          // null while open; success | failed | iteration_max | error | cancelled
+  createdAt: Date;                 // when the run began: the order of the run list
   finishedAt: Date | null;
 }
 

@@ -22,6 +22,7 @@ of items stations pass along, is derived from those visits.
 | `subjectKey` | what the run works on; at most one open run per `(repo, subjectKey)` |
 | `startItems` | the arguments and line-shipped files; the seed of the bag |
 | `outcome` | empty while the run is open; then `success`, `failed`, `iteration_max`, `error` or `cancelled` |
+| `createdAt` | when the run began; the run list is ordered by it, newest first |
 | `finishedAt` | empty while the run is open |
 
 ## Station run (a visit)

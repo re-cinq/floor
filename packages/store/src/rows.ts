@@ -17,7 +17,13 @@ export interface RunRow {
   start_items: Record<string, Item>;
   outcome: string | null;
   reason: string | null;
+  created_at: Date;
   finished_at: Date | null;
+}
+
+/** A run as the list reads it: with the position the next page starts after. */
+export interface ListedRunRow extends RunRow {
+  cursor_created_at: string;
 }
 
 export interface StationRunRow {
@@ -45,6 +51,7 @@ export function toRun(row: RunRow): Run {
     startItems: row.start_items,
     outcome: row.outcome,
     reason: row.reason,
+    createdAt: row.created_at,
     finishedAt: row.finished_at,
   };
 }
