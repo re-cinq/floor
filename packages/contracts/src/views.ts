@@ -10,6 +10,7 @@ export interface RunFields<Time> {
   startItems: Record<string, Item>;
   outcome: string | null;
   reason: string | null;
+  createdAt: Time;
   finishedAt: Time | null;
 }
 

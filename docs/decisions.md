@@ -338,6 +338,19 @@ back with its cursor and replays from the journal.
 person's word to a running agent. Answering now, instead of ignoring or
 closing, means giving it a meaning later breaks no client.
 
+**A run list is ordered by when the run began, and the cursor carries both
+columns.** The list said newest first and ordered by `id`, but a run's id is
+a random uuid, so a page of fifty was an arbitrary fifty and the cursor
+walked them in no order anyone could name. Ids never were an order. The list
+is now `created_at desc, id desc`, the order of the index that was already
+there, and the cursor is the last run's `(created_at, id)`, so two runs
+created at the same instant are neither repeated nor skipped at a page
+boundary. The timestamp travels as Postgres wrote it, microseconds included:
+through a JS `Date` it would lose them and put a run back on the page it had
+just left. The cursor is an opaque string the client hands back unchanged,
+and one the floor did not make is refused 400. A run carries `createdAt` on
+the wire, since a client that orders by it has to be able to read it.
+
 ## Operations
 
 **The subsystem is installed in the floor's own namespace**, `floor-agents`.

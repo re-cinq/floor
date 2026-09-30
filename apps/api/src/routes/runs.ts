@@ -1,7 +1,7 @@
 // Assembly runs (docs/api_sketch.md, "Assembly runs"): read-only plus cancel; a run is otherwise only created by start.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { z } from "zod";
-import type { RunFilter } from "@floor/store";
+import { Refusal, type RunFilter } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { parseBody } from "../parse.js";
 import { badRequest, notFound } from "../problem.js";
@@ -24,7 +24,13 @@ async function list(deps: Deps, request: Request, toolkit: ResponseToolkit) {
 
   if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: line, repo, subject, open, or since");
 
-  return deps.runs.list(filter, { limit: limitOf(query.limit), cursor: query.cursor });
+  try {
+    return await deps.runs.list(filter, { limit: limitOf(query.limit), cursor: query.cursor });
+  } catch (error) {
+    if (!(error instanceof Refusal)) throw error;
+
+    return badRequest(toolkit, error.message);
+  }
 }
 
 async function getOne(deps: Deps, request: Request, toolkit: ResponseToolkit) {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Refusal } from "./refusal.js";
 import { FIXED_NOW, setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
 
 const { pool, store, seedReviewLine, openEntryVisit } = setupStoreFixture();
@@ -76,6 +77,89 @@ describe("AssemblyRunStore.list since", () => {
     const page = await store().list({ since: AFTER_THE_RUNS }, { limit: 10 });
 
     expect(page.items).toEqual([]);
+  });
+});
+
+async function startRunsCreatedAt(createdAts: Date[]): Promise<string[]> {
+  await seedReviewLine();
+  const runIds: string[] = [];
+
+  for (const [index, createdAt] of createdAts.entries()) {
+    const runId = await startRunOn("github.com/a/a", `https://github.com/a/a/pull/${index + 1}`);
+
+    await backdateRun(runId, createdAt);
+    runIds.push(runId);
+  }
+
+  return runIds;
+}
+
+async function idsOfEveryPage(limit: number): Promise<string[][]> {
+  const pages: string[][] = [];
+  let cursor: string | undefined;
+
+  do {
+    const page = await store().list({ since: BEFORE_THE_RUNS }, { limit, cursor });
+
+    pages.push(page.items.map((run) => run.id));
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+
+  return pages;
+}
+
+describe("AssemblyRunStore.list order and cursor", () => {
+  const OLDEST = new Date("2026-03-01T10:00:00Z");
+  const MIDDLE = new Date("2026-03-02T10:00:00Z");
+  const NEWEST = new Date("2026-03-03T10:00:00Z");
+
+  it("returns runs created 03-01, 03-02 and 03-03 newest first, whatever their ids", async () => {
+    const [oldest, middle, newest] = await startRunsCreatedAt([OLDEST, MIDDLE, NEWEST]);
+
+    const page = await store().list({ since: BEFORE_THE_RUNS }, { limit: 10 });
+
+    expect(page.items.map((run) => run.id)).toEqual([newest, middle, oldest]);
+  });
+
+  it("carries the time each run was created as createdAt", async () => {
+    const [runId] = await startRunsCreatedAt([MIDDLE]);
+
+    const run = await store().get(runId);
+
+    expect(run?.createdAt).toEqual(MIDDLE);
+  });
+
+  it("pages limit 2 into the two newest, then the oldest, then nextCursor null", async () => {
+    const [oldest, middle, newest] = await startRunsCreatedAt([OLDEST, MIDDLE, NEWEST]);
+
+    const pages = await idsOfEveryPage(2);
+
+    expect(pages).toEqual([[newest, middle], [oldest]]);
+  });
+
+  it("returns two runs created at the same instant exactly once across a page boundary", async () => {
+    const runIds = await startRunsCreatedAt([OLDEST, MIDDLE, MIDDLE]);
+
+    const pages = await idsOfEveryPage(2);
+
+    expect(pages.flat().toSorted()).toEqual(runIds.toSorted());
+  });
+
+  it("keeps runs created within one millisecond in order across a page boundary", async () => {
+    const [first, second, third] = await startRunsCreatedAt([OLDEST, OLDEST, OLDEST]);
+
+    await pool().query("update assembly_runs set created_at = '2026-03-01 10:00:00.000123+00' where id = $1", [first]);
+    await pool().query("update assembly_runs set created_at = '2026-03-01 10:00:00.000456+00' where id = $1", [second]);
+    await pool().query("update assembly_runs set created_at = '2026-03-01 10:00:00.000789+00' where id = $1", [third]);
+    const pages = await idsOfEveryPage(1);
+
+    expect(pages.flat()).toEqual([third, second, first]);
+  });
+
+  it.each(["not-a-cursor", "0f3c9d2e-7b1a-4c5d-8e6f-1a2b3c4d5e6f", "MjAyNi0wMy0wMV9ub3QtYS11dWlk"])("refuses the cursor %s", async (cursor) => {
+    await seedReviewLine();
+
+    await expect(store().list({ since: BEFORE_THE_RUNS }, { limit: 2, cursor })).rejects.toThrow(new Refusal("malformed cursor"));
   });
 });
 
