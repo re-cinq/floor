@@ -2,7 +2,7 @@
   "name": "@floor/cluster-agent",
   "version": "0.1.0",
   "private": true,
-  "description": "Claims station_run.dispatch and station_run.abort events by tag and turns them into ai-agent-subsystem Agent custom resources \u2014 the only process in this deployment that talks to a given cluster's Kubernetes API. Standalone this is one instance pointed at minikube; inside lore, cluster agents per cluster. Ported from lore's @re-cinq/lore-cluster-agent (kube-clients.ts, kube-agent-api.ts, k8s-errors.ts, the read-modify-replace Secret writer, the poll-loop and claim-loop shape) and adapted: lore watches Agent CRs for terminal status and reports through a separate event; here the pod's own supervisor streams straight to the Floor's sink (docs/assembly_run_storage.md, \"the agent kind runs on the ai-agent-subsystem\"), so this agent only creates and deletes CRs, it never watches them. The dispatch payload maps a Brief onto the AgentDefinition + Station + Agent triple per docs/entities/station.md's table.",
+  "description": "Claims station_run.dispatch and station_run.abort events by tag and turns them into ai-agent-subsystem Agent custom resources — the only process in this deployment that talks to a given cluster's Kubernetes API. Standalone this is one instance pointed at minikube; inside lore, cluster agents per cluster. Ported from lore's @re-cinq/lore-cluster-agent (kube-clients.ts, kube-agent-api.ts, k8s-errors.ts, the read-modify-replace Secret writer, the poll-loop and claim-loop shape) and adapted: lore watches Agent CRs for terminal status and reports through a separate event; here the pod's own supervisor streams straight to the Floor's sink (docs/assembly_run_storage.md, \"the agent kind runs on the ai-agent-subsystem\"), so this agent only creates and deletes CRs, it never watches them. The dispatch payload maps a Brief onto the AgentDefinition + Station + Agent triple per docs/entities/station.md's table.",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",
-    "@re-cinq/agent-contracts": "^0.11.6",
+    "@re-cinq/agent-contracts": "^0.11.8",
     "@re-cinq/floor-client": "*",
     "@re-cinq/floor-contracts": "*"
   },

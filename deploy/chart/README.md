@@ -52,7 +52,7 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
 - `pipelines.existingConfigMap` — a ConfigMap you keep, holding one YAML file a pipeline. Empty
   (the default) renders no seed Job. See [Seeding pipelines](#seeding-pipelines).
 - `subsystem.*` — the ai-agent-subsystem's controller and CRDs, off by default. `subsystem.version`
-  is checked against `subsystem.supportedVersions` (today: `v0.11.6` only) — add to that list
+  is checked against `subsystem.supportedVersions` (today: `v0.11.6` and `v0.11.8`) — add to that list
   before pointing the chart at a newer vendored `controller.yaml`.
 
 ## Walked on minikube
