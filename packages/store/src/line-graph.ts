@@ -1,12 +1,16 @@
 // Pure graph primitives shared by every line check: outgoing edges by source, and reachability with an optional set of nodes that stop the walk from going any further.
-import type { LineBody } from "./types.js";
+import type { LineBody, LineEdge } from "./types.js";
 
-export function edgesByFrom(line: LineBody): Map<string, string[]> {
+export function goingOutOf(edges: readonly LineEdge[]): Map<string, string[]> {
   const goingOut = new Map<string, string[]>();
 
-  for (const edge of line.edges) goingOut.set(edge.from, [...(goingOut.get(edge.from) ?? []), edge.to]);
+  for (const edge of edges) goingOut.set(edge.from, [...(goingOut.get(edge.from) ?? []), edge.to]);
 
   return goingOut;
+}
+
+export function edgesByFrom(line: LineBody): Map<string, string[]> {
+  return goingOutOf(line.edges);
 }
 
 /** Every node reached by walking `goingOut` from `sources`. A blocked node is recorded as reached but never expanded past. */

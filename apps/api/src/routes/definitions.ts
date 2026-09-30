@@ -46,8 +46,9 @@ function registerKindRoutes<Body>(server: Server, deps: Deps, routes: KindRoutes
 
 async function validateLineBody(deps: Deps, body: LineBody): Promise<string[]> {
   const stations = await deps.definitions.listLatest<StationBody>("station");
+  const bodies = new Map(stations.map((row) => [row.id, row.body]));
 
-  return validateLine(body, { stations: new Set(stations.map((row) => row.id)) });
+  return validateLine(body, { stations: new Set(bodies.keys()), bodies });
 }
 
 async function listLatest(deps: Deps, kind: DefinitionKind, request: Request) {

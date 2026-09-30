@@ -1,9 +1,12 @@
 // Pure: what makes a line body self-consistent, beyond its JSON shape — every problem, not the first.
-import { reachedFrom } from "./line-graph.js";
-import type { LineBody, LineNode } from "./types.js";
+import { goingOutOf, reachableAvoiding, reachedFrom } from "./line-graph.js";
+import { needChecks } from "./line-needs.js";
+import { bareStationOf, hasStation, isPinned, resolvedStationOf } from "./line-stations.js";
+import type { LineBody, LineNode, StationBody } from "./types.js";
 
 export interface KnownDefinitions {
   stations: Set<string>;
+  bodies?: ReadonlyMap<string, StationBody>;
 }
 
 export function validateLine(line: LineBody, known: KnownDefinitions): string[] {
@@ -16,6 +19,9 @@ export function validateLine(line: LineBody, known: KnownDefinitions): string[] 
     ...subjectArgChecks(line),
     ...stationChecks(line, known),
     ...reportChecks(line),
+    ...outcomeEdgeChecks(line, known),
+    ...cycleChecks(line, known),
+    ...needChecks(line, known.bodies),
   ];
 }
 
@@ -108,12 +114,69 @@ function reportChecks(line: LineBody): string[] {
   return markersWithReports.map((node) => `node "${node.id}" declares reports but names no station to wait at`);
 }
 
-function hasStation(node: LineNode): node is LineNode & { station: string } {
-  return Boolean(node.station);
+// Every outcome a reachable, resolvable station declares needs a way out: an exact edge, or an `always` that catches whatever has none. Pinned and unknown stations are opaque here — stationChecks already says when a name resolves nowhere at all.
+function outcomeEdgeChecks(line: LineBody, known: KnownDefinitions): string[] {
+  const bodies = known.bodies;
+
+  if (!bodies) return [];
+  const reached = reachedFrom(line);
+
+  return line.nodes
+    .filter(hasStation)
+    .filter((node) => node.id !== line.exit && reached.has(node.id))
+    .flatMap((node) => outcomesMissingEdges(line, node, bodies));
 }
 
-function bareStationOf(node: LineNode & { station: string }): string {
-  const [name] = node.station.split("@");
+function outcomesMissingEdges(line: LineBody, node: LineNode & { station: string }, bodies: ReadonlyMap<string, StationBody>): string[] {
+  const body = resolvedStationOf(node, bodies);
 
-  return name;
+  if (!body) return [];
+  const fromNode = line.edges.filter((edge) => edge.from === node.id);
+
+  if (fromNode.some((edge) => edge.on === "always")) return [];
+  const covered = new Set(fromNode.map((edge) => edge.on));
+
+  return body.outcomes.filter((outcome) => !covered.has(outcome)).map((outcome) => `node "${node.id}" has no edge for outcome "${outcome}"`);
+}
+
+// A cycle is safe when something can stop it going round forever: a spent iteration_max, or a human deciding whether to send it round again. Everything else survives the prune below, and a node still reaching itself there is an unguarded cycle. Only a station node can be flagged as part of one — a marker does no work of its own to retry, though it still carries the walk through when it sits between two stations that do.
+function cycleChecks(line: LineBody, known: KnownDefinitions): string[] {
+  const unbudgeted = goingOutOf(line.edges.filter((edge) => edge.iterationMax === undefined));
+  const guards = new Set(line.nodes.filter((node) => isCycleGuard(node, known.bodies)).map((node) => node.id));
+  const candidates = line.nodes.filter((node) => hasStation(node) && !guards.has(node.id)).map((node) => node.id);
+
+  return groupCyclicNodes(unbudgeted, guards, candidates).map(cycleMessage);
+}
+
+function isCycleGuard(node: LineNode, bodies: ReadonlyMap<string, StationBody> | undefined): boolean {
+  if (!hasStation(node)) return false;
+  if (isPinned(node)) return true;
+  if (!bodies) return false;
+  const body = bodies.get(bareStationOf(node));
+
+  return !body || body.kind === "human";
+}
+
+// Which candidates can walk back to themselves through the pruned graph, grouped so a cycle of several nodes is reported once, not once per member.
+function groupCyclicNodes(unbudgeted: Map<string, string[]>, guards: Set<string>, candidates: string[]): string[][] {
+  const reachesFromNeighbors = new Map(candidates.map((id) => [id, reachableAvoiding(unbudgeted, unbudgeted.get(id) ?? [], guards)]));
+  const cyclic = candidates.filter((id) => reachesFromNeighbors.get(id)!.has(id));
+  const seen = new Set<string>();
+  const groups: string[][] = [];
+
+  for (const id of cyclic) {
+    if (seen.has(id)) continue;
+    const group = cyclic.filter((other) => other === id || (reachesFromNeighbors.get(id)!.has(other) && reachesFromNeighbors.get(other)!.has(id)));
+
+    group.forEach((member) => seen.add(member));
+    groups.push(group);
+  }
+
+  return groups;
+}
+
+function cycleMessage(members: string[]): string {
+  const names = members.map((id) => `"${id}"`).join(", ");
+
+  return `cycle through ${names} has no iteration_max and no human node`;
 }
