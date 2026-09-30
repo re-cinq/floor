@@ -1,4 +1,4 @@
-# The ai-agent-subsystem's controller, vendored from its deploy/ at v0.11.6 (see README.md).
+# The ai-agent-subsystem's controller, vendored from its deploy/ at v0.11.8 (see README.md).
 # __NAMESPACE__, __CONTROLLER_IMAGE__ and __AGENT_IMAGE__ are filled by scripts/setup-minikube-agents.sh.
 apiVersion: v1
 kind: ServiceAccount
