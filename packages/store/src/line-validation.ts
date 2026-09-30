@@ -1,4 +1,5 @@
 // Pure: what makes a line body self-consistent, beyond its JSON shape — every problem, not the first.
+import { reachedFrom } from "./line-graph.js";
 import type { LineBody, LineNode } from "./types.js";
 
 export interface KnownDefinitions {
@@ -75,34 +76,6 @@ function reachabilityChecks(line: LineBody): string[] {
 
   return stranded.map((node) => `node "${node.id}" is not reachable from entry "${line.entry}"`);
 }
-
-// From the entry, and from every node the line starts by a name of its own: a person or an outside system arrives there without an edge, and what it leads to is reached too.
-function reachedFrom(line: LineBody): Set<string> {
-  const goingOut = edgesByFrom(line);
-  const startedByName = line.nodes.filter((node) => node.start);
-  const entered = [line.entry, ...startedByName.map((node) => node.id)];
-  const reached = new Set(entered);
-  const pending = [...entered];
-
-  while (pending.length > 0) {
-    const arrivedAt = goingOut.get(pending.pop()!) ?? [];
-    const fresh = arrivedAt.filter((to) => !reached.has(to));
-
-    fresh.forEach((to) => reached.add(to));
-    pending.push(...fresh);
-  }
-
-  return reached;
-}
-
-function edgesByFrom(line: LineBody): Map<string, string[]> {
-  const goingOut = new Map<string, string[]>();
-
-  for (const edge of line.edges) goingOut.set(edge.from, [...(goingOut.get(edge.from) ?? []), edge.to]);
-
-  return goingOut;
-}
-
 
 function startArgChecks(line: LineBody): string[] {
   const declared = new Set(Object.keys(line.args));
