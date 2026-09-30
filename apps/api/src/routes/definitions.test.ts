@@ -171,35 +171,45 @@ describe("POST /assembly-lines semantic validation", () => {
     await injectJson(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: STATION_BODY });
   }
 
-  it("returns 400 with every problem for a line naming an unknown station", async () => {
-    const line = {
+  function lineNaming(station: string): object {
+    return {
       id: "code-review",
-      entry: "review",
+      entry: STATION_ID,
       exit: "done",
       args: {},
-      nodes: [{ id: "review", station: "missing" }, { id: "done" }],
-      edges: [{ from: "review", to: "done", on: "success" }],
+      nodes: [{ id: STATION_ID, station }, { id: "done" }],
+      edges: [{ from: STATION_ID, to: "done", on: "success" }],
     };
+  }
 
-    const response = await injectJson<{ errors?: string[] }>(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: line });
+  it("returns 400 with every problem for a line naming an unknown station", async () => {
+    const response = await injectJson<{ errors?: string[] }>(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: lineNaming("missing") });
 
     expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({ statusCode: 400, errors: [`node "review" names unknown station "missing"`] });
   });
 
   it("accepts a line naming a station that was put first", async () => {
     await putStation();
-    const line = {
-      id: "code-review",
-      entry: STATION_ID,
-      exit: "done",
-      args: {},
-      nodes: [{ id: STATION_ID, station: STATION_ID }, { id: "done" }],
-      edges: [{ from: STATION_ID, to: "done", on: "success" }],
-    };
 
-    const response = await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: line });
+    const response = await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: lineNaming(STATION_ID) });
 
     expect(response.statusCode).toBe(201);
+  });
+
+  it("returns 400 with both a missing outcome edge and an unmet need", async () => {
+    await injectJson(server(), {
+      method: "POST",
+      url: "/stations",
+      headers: authHeaders(),
+      payload: { id: STATION_ID, kind: "agent", agentDefinition: "reviewer", outcomes: ["success", "changes_requested"], needs: [{ name: "target", kind: "value" }], produces: [] },
+    });
+
+    const response = await injectJson<{ errors?: string[] }>(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: lineNaming(STATION_ID) });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({
+      statusCode: 400,
+      errors: [`node "review" has no edge for outcome "changes_requested"`, `node "review" needs "target", which is not seeded at start and not produced on every path into it`],
+    });
   });
 
   it("PUT /assembly-lines/:id returns 400 with every problem", async () => {

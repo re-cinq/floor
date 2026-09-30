@@ -129,8 +129,8 @@ describe("convertLine: lore's code-review", () => {
     expect(converted.agentDefinitions.map((definition) => definition.id)).toEqual(["code-review--claude-sonnet-4-6"]);
   });
 
-  it("has nothing left for a person to decide", () => {
-    expect(codeReview().notes).toEqual([]);
+  it("notes the floor's own refusal: post-review has no edge for its failed outcome", () => {
+    expect(codeReview().notes).toEqual([`the floor would refuse this line: node "post-review" has no edge for outcome "failed"`]);
   });
 });
 
@@ -159,11 +159,13 @@ describe("convertLine: what lore's planning line uses", () => {
     expect(validate).toEqual({ id: "validate", start: "manual.feature-planning.validate" });
   });
 
-  it("says what it could not read, for each thing", () => {
+  it("says what it could not read, and what the floor would refuse, for each thing", () => {
     expect(planning().notes).toEqual([
       'node "validate": recipe "missing-recipe" was not found, so the node is a marker',
       'node "issues": service station "issues" has no needs or produces yet; what lore\'s job read and wrote is in its code, not in the line',
       'line "feature-planning": nothing is known of what starts it or what lore\'s floor did around it; it has the default arguments and no start event',
+      'the floor would refuse this line: node "analyze" needs "plan_id", which is not seeded at start and not produced on every path into it',
+      'the floor would refuse this line: node "author" needs "plan_id", which is not seeded at start and not produced on every path into it',
     ]);
   });
 });
@@ -209,7 +211,10 @@ describe("convertLine: lore's code-review-reply", () => {
     expect(lineOf(reply()).start).toMatchObject({ on: ["github.pull_request_review.submitted"], when: { review_state: "changes_requested", sender_type: "User", sender_trusted: true } });
   });
 
-  it("has nothing left to say", () => {
-    expect(reply().notes).toEqual([]);
+  it("notes the floor's own refusal: read-review and post-reply have no edge for their failed outcome", () => {
+    expect(reply().notes).toEqual([
+      `the floor would refuse this line: node "read-review" has no edge for outcome "failed"`,
+      `the floor would refuse this line: node "post-reply" has no edge for outcome "failed"`,
+    ]);
   });
 });

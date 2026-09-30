@@ -120,11 +120,10 @@ function outcomeEdgeChecks(line: LineBody, known: KnownDefinitions): string[] {
 
   if (!bodies) return [];
   const reached = reachedFrom(line);
+  const stationNodes = line.nodes.filter(hasStation);
+  const checkedNodes = stationNodes.filter((node) => node.id !== line.exit && reached.has(node.id));
 
-  return line.nodes
-    .filter(hasStation)
-    .filter((node) => node.id !== line.exit && reached.has(node.id))
-    .flatMap((node) => outcomesMissingEdges(line, node, bodies));
+  return checkedNodes.flatMap((node) => outcomesMissingEdges(line, node, bodies));
 }
 
 function outcomesMissingEdges(line: LineBody, node: LineNode & { station: string }, bodies: ReadonlyMap<string, StationBody>): string[] {
@@ -135,17 +134,21 @@ function outcomesMissingEdges(line: LineBody, node: LineNode & { station: string
 
   if (fromNode.some((edge) => edge.on === "always")) return [];
   const covered = new Set(fromNode.map((edge) => edge.on));
+  const missing = body.outcomes.filter((outcome) => !covered.has(outcome));
 
-  return body.outcomes.filter((outcome) => !covered.has(outcome)).map((outcome) => `node "${node.id}" has no edge for outcome "${outcome}"`);
+  return missing.map((outcome) => `node "${node.id}" has no edge for outcome "${outcome}"`);
 }
 
 // A cycle is safe when something can stop it going round forever: a spent iteration_max, or a human deciding whether to send it round again. Everything else survives the prune below, and a node still reaching itself there is an unguarded cycle. Only a station node can be flagged as part of one — a marker does no work of its own to retry, though it still carries the walk through when it sits between two stations that do.
 function cycleChecks(line: LineBody, known: KnownDefinitions): string[] {
   const unbudgeted = goingOutOf(line.edges.filter((edge) => edge.iterationMax === undefined));
-  const guards = new Set(line.nodes.filter((node) => isCycleGuard(node, known.bodies)).map((node) => node.id));
-  const candidates = line.nodes.filter((node) => hasStation(node) && !guards.has(node.id)).map((node) => node.id);
+  const guardNodes = line.nodes.filter((node) => isCycleGuard(node, known.bodies));
+  const guards = new Set(guardNodes.map((node) => node.id));
+  const stationNodes = line.nodes.filter((node) => hasStation(node) && !guards.has(node.id));
+  const candidates = stationNodes.map((node) => node.id);
+  const groups = groupCyclicNodes(unbudgeted, guards, candidates);
 
-  return groupCyclicNodes(unbudgeted, guards, candidates).map(cycleMessage);
+  return groups.map(cycleMessage);
 }
 
 function isCycleGuard(node: LineNode, bodies: ReadonlyMap<string, StationBody> | undefined): boolean {
