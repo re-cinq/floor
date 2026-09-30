@@ -4,6 +4,7 @@ import type { Deps } from "./deps.js";
 import { registerLiveSocket } from "./live/live-socket.js";
 import { registerProblemResponses } from "./problem.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerMetricsRoutes } from "./routes/metrics.js";
 import { registerDefinitionRoutes } from "./routes/definitions.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerStationRunRoutes } from "./routes/station-runs.js";
@@ -37,6 +38,7 @@ export async function buildServer(deps: Deps, holdsLease: () => boolean): Promis
   registerAuth(server, { serviceToken: deps.config.serviceToken, visitTokenSecret: deps.config.visitTokenSecret, now: deps.now });
   registerProblemResponses(server);
   registerHealthRoutes(server, { pool: deps.pool, holdsLease });
+  registerMetricsRoutes(server, deps, { holdsLease });
   registerSkillRoutes(server);
   for (const register of ROUTES) register(server, deps);
   registerLiveSocket(server, deps);

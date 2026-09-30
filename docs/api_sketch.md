@@ -57,6 +57,21 @@ GET    /healthz                          // process up
 GET    /readyz                           // can reach its database; 503 otherwise. Every such instance serves
 GET    /version                          // build sha, schema version, and whether this instance runs the loop
 
+## Metrics
+
+GET    /metrics                          // unauthenticated, like /healthz; Prometheus text exposition (`text/plain; version=0.0.4`), scraped by Google Managed Prometheus
+
+Every number is a fresh query against `assembly_runs`/`station_runs`/`events`, never a per-process counter — two api
+replicas would each only see their own traffic, and the tables are the shared source of truth:
+
+- `floor_runs_open` — `assembly_runs` with no `finished_at` yet
+- `floor_runs_settled_total{outcome="..."}` — settled runs grouped by outcome, as of this scrape (a gauge snapshot of a total, not a monotonic counter)
+- `floor_visits_open` — `station_runs` with no `report` yet
+- `floor_visits_overdue` — open visits past their `deadline`
+- `floor_events_queue_depth` — events not yet acked, dead, or dropped (the `events_claimable` condition)
+- `floor_events_dead_total` — events with a `dead_at`
+- `floor_loop_holds_lease` — 1 if this replica runs the floor's loop, else 0
+
 ## Assembly lines - blueprints for assembly runs
 
 GET    /assembly-lines                   // filter on name

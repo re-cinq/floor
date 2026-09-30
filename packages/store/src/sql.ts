@@ -51,8 +51,11 @@ export async function settleRun(client: PoolClient, settle: SettleInput): Promis
   );
 
   enforce(rows[0], `run "${settle.runId}" is already finished`);
+  const settled = toRun(rows[0]);
 
-  return toRun(rows[0]);
+  console.log(`floor store: run ${settled.id} settled as ${settled.outcome}`);
+
+  return settled;
 }
 
 export interface OpenVisitRow {
@@ -134,8 +137,11 @@ export async function writeReport(client: PoolClient, write: WriteReportInput): 
   const stored = rows[0] as StationRunRow;
 
   requireEqualReport(write.visitId, stored.report as Report, write.report);
+  const visit = toVisit(stored);
 
-  return toVisit(stored);
+  console.log(`floor store: visit ${visit.id} reported ${visit.report?.outcome}`);
+
+  return visit;
 }
 
 // Structural, not JSON.stringify: Postgres's jsonb does not preserve key insertion order, so two semantically equal reports can round-trip with their keys in a different order.
@@ -205,6 +211,56 @@ export async function overdueVisitRows(client: Queryable, now: Date): Promise<Vi
   const { rows } = await client.query(`select * from station_runs where report is null and deadline < $1`, [now]);
 
   return rows.map(toVisit);
+}
+
+export interface OutcomeCount {
+  outcome: string;
+  count: number;
+}
+
+export interface RunMetrics {
+  openRuns: number;
+  settledByOutcome: OutcomeCount[];
+  openVisits: number;
+  overdueVisits: number;
+}
+
+/** For GET /metrics (docs/api_sketch.md, "Metrics"): every number counted fresh from assembly_runs/station_runs, in parallel, on every scrape — never a per-process counter. */
+export async function runMetricsSnapshot(client: Queryable, now: Date): Promise<RunMetrics> {
+  const [openRuns, settledByOutcome, openVisits, overdueVisits] = await Promise.all([
+    openRunCount(client),
+    settledRunCounts(client),
+    openVisitCount(client),
+    overdueVisitCount(client, now),
+  ]);
+
+  return { openRuns, settledByOutcome, openVisits, overdueVisits };
+}
+
+function openRunCount(client: Queryable): Promise<number> {
+  return countOf(client, `select count(*) as count from assembly_runs where finished_at is null`);
+}
+
+async function settledRunCounts(client: Queryable): Promise<OutcomeCount[]> {
+  const { rows } = await client.query<{ outcome: string; count: string }>(
+    `select outcome, count(*) as count from assembly_runs where outcome is not null group by outcome`,
+  );
+
+  return rows.map((row) => ({ outcome: row.outcome, count: Number(row.count) }));
+}
+
+function openVisitCount(client: Queryable): Promise<number> {
+  return countOf(client, `select count(*) as count from station_runs where report is null`);
+}
+
+function overdueVisitCount(client: Queryable, now: Date): Promise<number> {
+  return countOf(client, `select count(*) as count from station_runs where report is null and deadline < $1`, [now]);
+}
+
+async function countOf(client: Queryable, countSql: string, values: unknown[] = []): Promise<number> {
+  const { rows } = await client.query<{ count: string }>(countSql, values);
+
+  return Number(rows[0]!.count);
 }
 
 export interface NodeVisitCount {

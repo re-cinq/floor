@@ -29,8 +29,10 @@ import {
   openVisitRows,
   pricedCallExists,
   overdueVisitRows,
+  runMetricsSnapshot,
   settleRun,
   writeReport,
+  type RunMetrics,
 } from "./sql.js";
 import type { Item, LineBody, LineNode, Report, Run, Visit } from "./types.js";
 
@@ -362,6 +364,10 @@ export class AssemblyRunStore {
   /** Every open visit whose deadline has passed, for a sweep to fail as a timeout. A human visit never has a deadline, so it never sweeps. */
   async overdueVisits(now: Date): Promise<Visit[]> {
     return overdueVisitRows(this.deps.pool, now);
+  }
+
+  async metrics(now: Date): Promise<RunMetrics> {
+    return runMetricsSnapshot(this.deps.pool, now);
   }
 
   async visit(visitId: string): Promise<Visit | null> {
