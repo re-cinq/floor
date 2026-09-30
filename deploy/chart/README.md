@@ -228,6 +228,7 @@ own.
 | variable | `FLOOR_NAMESPACE` | optional; `floor` when unset |
 | variable | `FLOOR_PULL_SECRET` | optional; `ghcr` when unset |
 | variable | `FLOOR_PIPELINES_CONFIGMAP` | optional; `pipelines.existingConfigMap`. Unset seeds nothing |
+| variable | `FLOOR_GIT_CREDENTIAL_URL` | optional; `api.gitCredentialUrl`. Unset leaves no provider, so a visit that would write to a repository is not dispatched. Its token is the `gitCredentialToken` key of `FLOOR_API_SECRET` |
 | variable | `FLOOR_API_SECRET`, `FLOOR_POSTGRES_SECRET`, `FLOOR_POSTGRES_SECRET_KEY` | optional; the Secret names, defaulting to `floor-api`, `floor-postgres` and `connectionString` |
 
 **A Postgres must exist before the first deploy.** This chart never deploys one, and the

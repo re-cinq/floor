@@ -76,6 +76,7 @@ jobs:
           POSTGRES_SECRET: ${{ vars.FLOOR_POSTGRES_SECRET || 'floor-postgres' }}
           POSTGRES_SECRET_KEY: ${{ vars.FLOOR_POSTGRES_SECRET_KEY || 'connectionString' }}
           PIPELINES_CONFIGMAP: ${{ vars.FLOOR_PIPELINES_CONFIGMAP }}
+          GIT_CREDENTIAL_URL: ${{ vars.FLOOR_GIT_CREDENTIAL_URL }}
         run: |
           # Helm owns the custom resource definitions it installs. Where another install already
           # owns them, which on a shared cluster is lore's own agent subsystem, applying them
@@ -96,9 +97,18 @@ jobs:
             pipelines=(--set "pipelines.existingConfigMap=${PIPELINES_CONFIGMAP}")
           fi
 
+          # Who mints a git credential when a pod asks: lore, where there is one. Every deploy
+          # writes the values afresh, so a provider set by hand is gone at the next one unless it
+          # is named here. Its token is the `gitCredentialToken` key of the api's own secret.
+          git_credentials=()
+          if [ -n "${GIT_CREDENTIAL_URL}" ]; then
+            git_credentials=(--set "api.gitCredentialUrl=${GIT_CREDENTIAL_URL}")
+          fi
+
           helm upgrade --install floor deploy/chart \
             "${skip_crds[@]}" \
             "${pipelines[@]}" \
+            "${git_credentials[@]}" \
             --namespace "${NAMESPACE}" --create-namespace \
             --set-string version="${VERSION}" \
             --set image.repository="${IMAGE}" \
