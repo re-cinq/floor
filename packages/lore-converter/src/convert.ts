@@ -45,7 +45,8 @@ export function convertLine(line: LoreLine, recipes: Partial<Record<string, Lore
 
 // What this floor would refuse the line for, were it put as it is.
 function refusals(body: LineBody, stations: Named<StationBody>[]): string[] {
-  const problems = validateLine(body, { stations: new Set(stations.map((station) => station.id)) });
+  const bodies = new Map(stations.map((station) => [station.id, station.body]));
+  const problems = validateLine(body, { stations: new Set(bodies.keys()), bodies });
 
   return problems.map((problem) => `the floor would refuse this line: ${problem}`);
 }

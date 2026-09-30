@@ -36,8 +36,11 @@ The line loader and schema (`loader.ts`, `assembly-line-schema.ts`,
 `assembly-line-validate.ts`) are not in this package. They belong to the
 line-authoring layer described in
 [docs/entities/assembly-line.md](../../docs/entities/assembly-line.md) —
-start events, `bind`, the `subject` argument mark, needs-coverage validation
-— which has no counterpart in lore's schema and is not yet built.
+start events, `bind`, the `subject` argument mark — which has no
+counterpart in lore's schema. That doc's "Validation at creation" is built
+in full except for the `git`-write review-gate check (a node whose station
+needs `git` `access: write` must have a review or human node on every path
+in, unless it is the first writer), which waits on a separate decision.
 
 ## Tests
 
