@@ -14,7 +14,8 @@ import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
 import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
 import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
 import { enforceFilesExist, lineToStart } from "./start-line.js";
-import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type Queryable, type VisitFilter } from "./rows.js";
+import { encodeRunCursor } from "./run-cursor.js";
+import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type ListedRunRow, type Queryable, type VisitFilter } from "./rows.js";
 import {
   claimedDispatchTags,
   closeOpenHumanVisits,
@@ -141,9 +142,9 @@ export class AssemblyRunStore {
   async list(filter: RunFilter, page: Page): Promise<PageOf<Run>> {
     const { text, values } = listQuery(filter, page);
     const { rows } = await this.deps.pool.query(text, values);
-    const runs = rows.map((row) => toRun(row));
+    const last: ListedRunRow | undefined = rows.at(-1);
 
-    return { items: runs, nextCursor: rows.length === page.limit ? String(runs.at(-1)?.id) : null };
+    return { items: rows.map((row) => toRun(row)), nextCursor: last && rows.length === page.limit ? encodeRunCursor({ createdAt: last.cursor_created_at, id: last.id }) : null };
   }
 
   async cancel(runId: string, reason: string): Promise<Run> {

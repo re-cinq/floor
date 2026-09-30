@@ -3,6 +3,7 @@
 import { canonicalItems, canonicalRepo } from "./repo-name.js";
 import type { PoolClient } from "pg";
 import { Refusal, enforce } from "./refusal.js";
+import { decodeRunCursor, type RunPosition } from "./run-cursor.js";
 import { addCondition, toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
 import type { Report, Run, Visit } from "./types.js";
 import type { OpenContext } from "./open-visit.js";
@@ -167,12 +168,18 @@ export function listQuery(filter: RunFilter, page: Page): { text: string; values
   addCondition(conditions, values, "subject_key = $%", filter.subjectKey);
   addCondition(conditions, values, "created_at >= $%", filter.since);
   if (filter.open !== undefined) conditions.push(filter.open ? "finished_at is null" : "finished_at is not null");
-  if (page.cursor) addCondition(conditions, values, "id < $%", page.cursor);
+  if (page.cursor) conditions.push(afterCursor(values, decodeRunCursor(page.cursor)));
   values.push(page.limit);
 
   const where = conditions.length > 0 ? `where ${conditions.join(" and ")}` : "";
 
-  return { text: `select * from assembly_runs ${where} order by id desc limit $${values.length}`, values };
+  return { text: `select *, created_at::text as cursor_created_at from assembly_runs ${where} order by created_at desc, id desc limit $${values.length}`, values };
+}
+
+function afterCursor(values: unknown[], position: RunPosition): string {
+  values.push(position.createdAt, position.id);
+
+  return `(created_at, id) < ($${values.length - 1}::timestamptz, $${values.length}::uuid)`;
 }
 
 /** Which of these hashes the blobs table actually holds, for a line's `files` to be checked against before a run starts on them. */

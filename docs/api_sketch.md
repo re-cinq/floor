@@ -28,7 +28,9 @@ each entity has its own page under [entities/](entities/).
 - **Errors.** RFC 9457 problem details, `application/problem+json`. A refused
   write returns 409 and names the resource holding it in `detail`.
 - **Pagination.** Every list takes `limit` (default 50, max 200) and an
-  opaque `cursor`. Lists are ordered newest first on `(created_at, id)`.
+  opaque `cursor`, a string to hand back unchanged. The run list is ordered
+  newest first on `(created_at, id)` and its cursor holds both, so a page
+  never repeats or skips a run; a cursor the floor did not return is 400.
   Lists marked *filter required* return 400 without one. *Built for runs,
   records and the events feed; the other lists return everything.*
 - **Creates are idempotent by their natural key**, not by a header. A run by
@@ -77,7 +79,8 @@ That is how a PR opening starts a review and a schedule starts a sweep.
 
 ## Assembly runs - one execution of a line, walked on events
 
-GET    /assembly-runs                    // filter required: line, open, repo, subject, since (a created_at floor; cursor pages)
+GET    /assembly-runs                    // filter required: line, open, repo, subject, since (a created_at floor); newest first on (created_at, id),
+                                         // each run with its createdAt; `cursor` is opaque, and one that is not a cursor this returned is 400
 GET    /assembly-runs/:id                // run + bag + currentNode (the open visit's node, else the last opened; null) + cost (null if nothing counted)
 POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops its queued events, aborts open visits
 
