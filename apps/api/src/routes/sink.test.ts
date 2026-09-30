@@ -31,7 +31,7 @@ const REVIEW_STATION: StationBody = {
 const LORE_MCP = { name: "lore", transport: "http", url: "http://gateway.test/mcp", headers_secret: "lore-mcp-auth" };
 
 const REVIEWER = {
-  settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", timeoutMinutes: 20, config: { skills: ["review"], disallowed_tools: ["Bash(npm:*)"], env: { LOG: "1" }, permission_mode: "auto", max_turns: 12, skills_source: "http://registry.test/skills", mcp_servers: [LORE_MCP] } },
+  settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", timeoutMinutes: 20, config: { skills: ["review"], disallowed_tools: ["Bash(npm:*)"], env: { LOG: "1" }, permission_mode: "auto", max_turns: 12, pod_resources: { requests: { cpu: "250m", memory: "512Mi" }, limits: { memory: "1Gi" } }, skills_source: "http://registry.test/skills", mcp_servers: [LORE_MCP] } },
 };
 
 interface Brief {
@@ -118,6 +118,12 @@ describe("GET /station-runs/:id/brief", () => {
       skillsSource: "http://registry.test/skills",
       mcpServers: [{ name: "lore", transport: "http", url: "http://gateway.test/mcp", headersSecret: "lore-mcp-auth" }],
     });
+  });
+
+  it("carries the definition's pod resources into the brief", async () => {
+    const { brief } = await reviewDispatched();
+
+    expect(brief.settings).toMatchObject({ podResources: { requests: { cpu: "250m", memory: "512Mi" }, limits: { memory: "1Gi" } } });
   });
 
   it("mints a token that reaches the visit's own sink", async () => {

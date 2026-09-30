@@ -255,8 +255,32 @@ describe("POST /agent-definitions", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("takes pod resources with requests and limits as Kubernetes quantities", async () => {
+    const response = await putWithConfig({ pod_resources: { requests: { cpu: "250m", memory: "512Mi" }, limits: { cpu: "1", memory: "1Gi" } } });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("refuses a pod resource the pod has no use for, naming it", async () => {
+    const response = await putWithConfig({ pod_resources: { requests: { gpu: "1" } } });
+
+    expect(response).toMatchObject({ statusCode: 400, result: { errors: [expect.stringContaining("settings.config.pod_resources.requests")] } });
+  });
+
+  it.each(["", 2, "lots"])("refuses the pod resource value %j, which is not a quantity", async (value) => {
+    const response = await putWithConfig({ pod_resources: { limits: { memory: value } } });
+
+    expect(response).toMatchObject({ statusCode: 400, result: { errors: [expect.stringContaining("settings.config.pod_resources.limits.memory")] } });
+  });
+
+  it("refuses a pod resources key that is neither requests nor limits", async () => {
+    const response = await putWithConfig({ pod_resources: { request: { cpu: "1" } } });
+
+    expect(response.statusCode).toBe(400);
+  });
+
   it("keeps a config key it has no use for", async () => {
-    const response = await putWithConfig({ pod_resources: { memory: "2Gi" } });
+    const response = await putWithConfig({ workdir: "/work" });
 
     expect(response.statusCode).toBe(201);
   });

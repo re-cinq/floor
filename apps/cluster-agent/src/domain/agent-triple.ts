@@ -8,7 +8,7 @@ import type {
   OutputSpec,
   Station,
 } from "@re-cinq/agent-contracts";
-import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, ProduceSpec } from "@re-cinq/floor-contracts";
+import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, PodResources, ProduceSpec } from "@re-cinq/floor-contracts";
 import { environmentOf } from "./pod-environment.js";
 import { promptParameters } from "./prompt-parameters.js";
 
@@ -163,9 +163,16 @@ function buildStation(name: string, input: DispatchBrief): Station {
       // Never 0. At 0 the controller deletes a finished Agent at once, then reconciles the copy still in its cache and runs the job a second time. The triple is deleted when the visit's abort is claimed.
       successfulRunsHistoryLimit: 1,
       failedRunsHistoryLimit: 1,
-      template: { spec: { containers: [{ name: "agent", image: input.settings.image }] } },
+      template: { spec: { containers: [agentContainer(input.settings)] } },
     },
   };
+}
+
+// No `resources` key at all when the definition sets none: the runtime's own default then applies.
+function agentContainer(settings: DispatchSettings): { name: string; image: string; resources?: PodResources } {
+  const container = { name: "agent", image: settings.image };
+
+  return settings.podResources ? { ...container, resources: settings.podResources } : container;
 }
 
 function buildAgent(name: string, input: DispatchBrief): Agent {

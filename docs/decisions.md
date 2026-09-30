@@ -96,10 +96,16 @@ same split can be added here later, with definitions naming a server and
 the cluster saying where it is, without breaking one written this way.
 
 **What reads `config`.** `skills`, `skills_source`, `mcp_servers`,
-`disallowed_tools`, `env`, `permission_mode`, `max_turns` and
-`model_secret_key`, under the names lore uses, so a converted definition
+`disallowed_tools`, `env`, `permission_mode`, `max_turns`,
+`model_secret_key` and `pod_resources`, under the names lore uses, so a converted definition
 needs no renaming. They are checked when a definition is put, so a mistake
 is refused then and not found by a pod.
+
+**A definition sizes its own pod.** `pod_resources` on the definition's
+config becomes the `resources` of the agent's container. Unset, the
+subsystem's default applies; the floor holds no default of its own, since
+what a pod needs is the agent's business and what a cluster can give is the
+operator's.
 
 ## Converting lore
 

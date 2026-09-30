@@ -33,6 +33,7 @@ export type {
   GitCredential,
   GitNeed,
   McpServerSettings,
+  PodResources,
   MigrationBody,
   Problem,
   PutResult,
