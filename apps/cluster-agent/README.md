@@ -89,6 +89,11 @@ The loop rests 5 seconds after finding nothing, growing to a minute while
 nothing keeps coming; `FLOOR_CLAIM_IDLE_MS` and `FLOOR_CLAIM_MAX_IDLE_MS`
 change both. On a laptop a lower ceiling makes clean-up after a visit prompt.
 
+Otherwise this agent logs only on error, on stop, and on a fatal crash, which after hours of quiet
+traffic reads the same as wedged. So every tick, `[cluster-agent] alive, ...` says what that tick
+last claimed (or that it found nothing) — rate-limited to once a minute (`domain/liveness.ts`) so
+the idle backoff above, much faster than a minute, never floods the log.
+
 On SIGTERM or SIGINT the agent stops claiming: an idle sleep is cut short, and a dispatch already
 in flight is finished and acked before the loop returns, the health server closes and the process
 exits with code 0. The chart gives the pod 60 seconds for that, and every request to the Floor
@@ -132,6 +137,8 @@ reach the Floor through the same sink).
 
 The tests cover the pure CR-mapping table (`domain/agent-triple.test.ts`), the two
 Kubernetes IO seams against a fake client
-(`kube/agent-resources.test.ts`, `kube/secret-writer.test.ts`), and the
+(`kube/agent-resources.test.ts`, `kube/secret-writer.test.ts`), the
 claim loop's dispatch/abort/backoff behaviour against a fake Floor client
-(`claim-loop.test.ts`).
+(`claim-loop.test.ts`, which also covers the liveness log's once-a-minute
+rate limit), and that rate limit's own pure rule
+(`domain/liveness.test.ts`).

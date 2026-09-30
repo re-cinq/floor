@@ -260,3 +260,36 @@ describe("runClaimLoop: stopping", () => {
     });
   });
 });
+
+async function aliveLogCount(nowValues: number[]): Promise<number> {
+  let ticks = 0;
+  const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+  await runClaimLoop({
+    floor: fakeFloor().client,
+    resources: fakeResources(),
+    secrets: fakeSecrets(),
+    tags: [],
+    now: () => nowValues[Math.min(ticks, nowValues.length - 1)]!,
+    sleep: async () => {
+      ticks += 1;
+    },
+    running: () => ticks < nowValues.length,
+  });
+  const { calls } = logSpy.mock;
+  const aliveLogs = calls.filter(([line]) => typeof line === "string" && line.includes("alive"));
+
+  logSpy.mockRestore();
+
+  return aliveLogs.length;
+}
+
+describe("runClaimLoop: liveness log", () => {
+  it("logs alive once across two quick ticks inside the same minute", async () => {
+    expect(await aliveLogCount([0, 1_000])).toBe(1);
+  });
+
+  it("logs alive again once a minute has passed between ticks", async () => {
+    expect(await aliveLogCount([0, 60_000])).toBe(2);
+  });
+});

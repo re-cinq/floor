@@ -61,6 +61,7 @@ export {
   type PageOf,
   type AssemblyRunStoreDeps,
 } from "./assembly-run-store.js";
+export type { OutcomeCount, RunMetrics } from "./sql.js";
 export type { VisitFilter } from "./rows.js";
 export type {
   Item,

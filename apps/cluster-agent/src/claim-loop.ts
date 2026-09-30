@@ -7,6 +7,7 @@ import type { FloorClient } from "@re-cinq/floor-client";
 import type { ClaimedEvent } from "@re-cinq/floor-contracts";
 import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js";
 import { modelSecretKeyFor, type KeyByFamily } from "./domain/model-secret.js";
+import { describeClaimTick, dueForLivenessLog } from "./domain/liveness.js";
 
 export interface ClaimLoopDeps {
   floor: FloorClient;
@@ -24,6 +25,8 @@ export interface ClaimLoopDeps {
   running?: () => boolean;
   /** Told of what the loop survives: a floor it could not reach. */
   onError?: (error: unknown) => void;
+  /** Epoch ms; defaults to `Date.now`, injectable so the liveness log's once-a-minute rate limit is testable without the wall clock. */
+  now?: () => number;
 }
 
 export type ClaimTickOutcome =
@@ -51,15 +54,29 @@ export function authorizationHeader(token: string): string {
 export async function runClaimLoop(deps: ClaimLoopDeps): Promise<void> {
   const secretName = deps.secretName ?? DEFAULT_SECRET_NAME;
   const claimLimit = deps.claimLimit ?? DEFAULT_CLAIM_LIMIT;
+  const now = deps.now ?? Date.now;
+  let lastLoggedAt: number | null = null;
 
   await runPollLoop<ClaimTickOutcome[]>({
     tick: () => claimTick(deps, secretName, claimLimit),
+    onOutcome: (outcomes) => {
+      lastLoggedAt = logLivenessIfDue(outcomes, lastLoggedAt, now());
+    },
     delayFor: (outcomes, idleTicks) =>
       outcomes.length === 0 ? backoffDelay(deps.idleMs ?? DEFAULT_IDLE_MS, idleTicks, deps.maxIdleMs ?? DEFAULT_MAX_IDLE_MS) : 0,
     isIdle: (outcomes) => outcomes.length === 0,
     sleep: deps.sleep,
     running: deps.running,
   } satisfies PollLoopDeps<ClaimTickOutcome[]>);
+}
+
+// At most once a minute (dueForLivenessLog), or 11+ hours of silence reads the same as wedged whether or not it is.
+function logLivenessIfDue(outcomes: ClaimTickOutcome[], lastLoggedAt: number | null, now: number): number | null {
+  if (!dueForLivenessLog(lastLoggedAt, now)) return lastLoggedAt;
+
+  console.log(`[cluster-agent] alive, ${describeClaimTick(outcomes)}`);
+
+  return now;
 }
 
 async function claimTick(

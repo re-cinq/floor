@@ -209,6 +209,22 @@ export class EventStore {
     return rows[0] ? toEvent(rows[0]) : null;
   }
 
+  /** For GET /metrics: due, unclaimed-or-not work, the same condition as the `events_claimable` index (not_before is a scheduling detail, not queue depth). */
+  async claimableCount(): Promise<number> {
+    const { rows } = await this.deps.connection.query<{ count: string }>(
+      `select count(*) as count from events where acked_at is null and dead_at is null and dropped_at is null`,
+    );
+
+    return Number(rows[0]!.count);
+  }
+
+  /** For GET /metrics: every event that gave up rather than being retried. */
+  async deadCount(): Promise<number> {
+    const { rows } = await this.deps.connection.query<{ count: string }>(`select count(*) as count from events where dead_at is not null`);
+
+    return Number(rows[0]!.count);
+  }
+
   async get(id: string): Promise<FloorEvent | null> {
     const { rows } = await this.deps.connection.query(`select * from events where id = $1`, [id]);
 

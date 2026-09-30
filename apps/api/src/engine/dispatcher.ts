@@ -122,13 +122,11 @@ export class Dispatcher {
 
   // The walk posts an iteration; a person or an outside system does not, and that is what makes it a start by hand.
   private async open(start: NodeStart): Promise<void> {
-    if (start.iteration) {
-      await this.deps.runs.openVisit(start.runId, start.nodeId, start.iteration);
+    const opened = start.iteration
+      ? await this.deps.runs.openVisit(start.runId, start.nodeId, start.iteration)
+      : await this.deps.runs.openVisitByHand(start.runId, start.nodeId, start.requestedBy);
 
-      return;
-    }
-
-    await this.deps.runs.openVisitByHand(start.runId, start.nodeId, start.requestedBy);
+    if (opened.created) console.log(`floor dispatcher: run ${start.runId} opened node ${start.nodeId}`);
   }
 
   // A node the store refuses to open would leave its run with nothing open and nothing queued, waiting forever.
