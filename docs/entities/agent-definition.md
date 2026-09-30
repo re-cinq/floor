@@ -28,9 +28,17 @@ configured to do it.
 | `settings.timeout_minutes` | the work budget of a visit |
 | `settings.image` | the execution image |
 | `settings.tags` | which cluster agents may run it; a claimer must offer all of them |
-| `settings.config` | open object, checked when the definition is put. Read today, under lore's names: `skills`, `skills_source`, `mcp_servers`, `disallowed_tools`, `env`, `permission_mode` (`bypass` when absent), `max_turns`, `model_secret_key`. Anything else is kept and unused. Not built yet: `pod_resources`, `command`, `workdir` |
+| `settings.config` | open object, checked when the definition is put. Read today, under lore's names: `skills`, `skills_source`, `mcp_servers`, `disallowed_tools`, `env`, `permission_mode` (`bypass` when absent), `max_turns`, `model_secret_key`, `pod_resources`. Anything else is kept and unused. Not built yet: `command`, `workdir` |
 | `settings.prices` | model → what it costs, in US dollars for a million tokens: `inputPerMillion`, `outputPerMillion`, and `cacheReadPerMillion`, `cacheWritePerMillion` where the cache is priced apart |
 | `variants` | `host/owner/name` → partial settings merged over the defaults, per field, per key inside `config`, and per model inside `prices` |
+
+`pod_resources` sizes the agent's pod: `{ requests?, limits? }`, each holding
+any of `cpu`, `memory` and `ephemeral-storage` as a Kubernetes quantity
+(`250m`, `1`, `512Mi`, `2Gi`). Any other resource name, any other key, or a
+value that is not a quantity is refused when the definition is put. It
+reaches the cluster agent in the brief's settings as `podResources` and
+becomes the `resources` of the pod's `agent` container. Unset, the container
+carries none and the subsystem's default applies.
 
 The model's API key is not here. The floor names a model; the cluster agent
 owns the secret for that model family, in its own cluster. A definition

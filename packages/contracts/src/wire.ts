@@ -59,6 +59,13 @@ export interface ExecutorSettings {
   env?: Record<string, string>;
   permissionMode?: "auto" | "bypass";
   maxTurns?: number;
+  podResources?: PodResources;
+}
+
+/** Kubernetes quantities by resource name (`cpu`, `memory`, `ephemeral-storage`), as the agent's container is asked for and held to. */
+export interface PodResources {
+  requests?: Record<string, string>;
+  limits?: Record<string, string>;
 }
 
 export type BriefSettings = ExecutorSettings & { model?: string; prompt: string; image: string };

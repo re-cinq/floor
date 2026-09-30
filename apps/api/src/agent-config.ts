@@ -15,6 +15,14 @@ const mcpServer = z
     message: "a stdio server needs a command, any other a url",
   });
 
+const KUBERNETES_QUANTITY = /^\d+(\.\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$/;
+
+const quantity = z.string().regex(KUBERNETES_QUANTITY, "a Kubernetes quantity such as 250m, 1, 512Mi or 2Gi");
+
+const resourceQuantities = z.strictObject({ cpu: quantity.optional(), memory: quantity.optional(), "ephemeral-storage": quantity.optional() });
+
+const podResources = z.strictObject({ requests: resourceQuantities.optional(), limits: resourceQuantities.optional() });
+
 export const agentConfigSchema = z.looseObject({
   skills: z.array(z.string()).optional(),
   skills_source: z.url().optional(),
@@ -24,6 +32,7 @@ export const agentConfigSchema = z.looseObject({
   permission_mode: z.enum(["auto", "bypass"]).optional(),
   max_turns: z.number().int().positive().optional(),
   model_secret_key: z.string().min(1).optional(),
+  pod_resources: podResources.optional(),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
@@ -36,6 +45,7 @@ export interface ExecutorSettings {
   env?: Record<string, string>;
   permissionMode?: "auto" | "bypass";
   maxTurns?: number;
+  podResources?: AgentConfig["pod_resources"];
 }
 
 /** The same settings under the names the floor's own wire uses. */
@@ -48,5 +58,6 @@ export function executorSettings(config: AgentConfig): ExecutorSettings {
     env: config.env,
     permissionMode: config.permission_mode,
     maxTurns: config.max_turns,
+    podResources: config.pod_resources,
   };
 }

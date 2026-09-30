@@ -206,6 +206,19 @@ describe("buildAgentTriple", () => {
     expect(agentDefinition.spec).toMatchObject({ permission_mode: "auto", max_turns: 12 });
   });
 
+  it("sizes the agent container as the brief's pod resources say", () => {
+    const podResources = { requests: { cpu: "250m", memory: "512Mi" }, limits: { cpu: "1", memory: "1Gi" } };
+    const { station } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i", podResources } }));
+
+    expect(station.spec?.template).toEqual({ spec: { containers: [{ name: "agent", image: "i", resources: podResources }] } });
+  });
+
+  it("leaves the agent container without resources when the brief has none, so the runtime default applies", () => {
+    const { station } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i" } }));
+
+    expect(station.spec?.template).toEqual({ spec: { containers: [{ name: "agent", image: "i" }] } });
+  });
+
   it("omits conversation entirely on a fresh visit", () => {
     const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new", save: false } }));
     const resources = agentDefinition.spec?.resources;
