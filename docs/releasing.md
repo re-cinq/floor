@@ -1,18 +1,18 @@
 # Releasing
 
 A release is a version of five things, published together: the image, the wire contracts, the
-client, the station SDK and the pipeline tool. Publishing a GitHub Release is the whole act.
-No commit bumps a version.
+client, the station SDK and the pipeline tool. Pushing a `vX.Y.Z` tag is the whole act.
+No commit bumps a version, and nothing waits for a hand afterwards.
 
 ## What a release publishes
 
 | | where | as |
 |---|---|---|
 | the image | `ghcr.io/re-cinq/floor` | `1.2.3` and `1.2` |
-| the wire contracts | npm, `@re-cinq/floor-contracts` | `1.2.3`, staged |
-| the client | npm, `@re-cinq/floor-client` | `1.2.3`, staged |
-| the station SDK | npm, `@re-cinq/floor-station` | `1.2.3`, staged |
-| the pipeline tool | npm, `@re-cinq/floor-pipeline` | `1.2.3`, staged |
+| the wire contracts | npm, `@re-cinq/floor-contracts` | `1.2.3` |
+| the client | npm, `@re-cinq/floor-client` | `1.2.3` |
+| the station SDK | npm, `@re-cinq/floor-station` | `1.2.3` |
+| the pipeline tool | npm, `@re-cinq/floor-pipeline` | `1.2.3` |
 | the deploy | the cluster the repository names | the image `1.2.3` |
 
 A commit to `main` publishes no version. It publishes the image under its short SHA and
@@ -21,24 +21,23 @@ A commit to `main` publishes no version. It publishes the image under its short 
 ## Cutting one
 
 ```
-gh release create v1.2.3 --target main --generate-notes
+git fetch origin && git tag v1.2.3 origin/main && git push origin v1.2.3
 ```
-
-Or on GitHub: Releases, Draft a new release, a new tag `v1.2.3` on `main`, Publish.
 
 That starts `.github/workflows/publish.yml`:
 
 1. **The tag is checked.** It is `v`, three numbers and nothing more, and its commit is on
-   `main`. A prerelease is refused, and a draft starts nothing.
+   `main`. Any other tag is refused.
 2. **The gates run again**, against the tagged commit: every job of `ci.yml`. A tag points at
    whatever its author chose, so a green `main` says nothing about it.
-3. **The image is built and pushed**, and **the packages are staged on npm**.
+3. **The image is built and pushed**, and **the packages are published to npm**, installable
+   at once.
 4. **The image is deployed**, once the repository names a cluster.
+5. **The GitHub Release is written**, with generated notes, last: it never names a version
+   that failed to publish.
 
-Then **approve the four staged versions**: nobody can install them before. On each package's
-page on npmjs.com, the Versions tab, Approve, with 2FA. Or `npm stage list`, then
-`npm stage approve <id>`. That approval is the only brake on the one step that cannot be taken
-back: a version published to npm is there for good.
+A version published to npm is there for good, so the brake is in front of the tag: the tagged
+commit must be on `main`, and `main` takes a pull request.
 
 ## The version is the tag
 
@@ -76,19 +75,19 @@ Then, for each of the four packages, on npmjs.com: Settings, Trusted Publisher, 
 | repository | `floor` |
 | workflow filename | `publish.yml` |
 
-Then cut the GitHub Release for the same version. The workflow finds all four packages on the
-registry already, leaves them, and publishes the image.
+Then push the tag for the same version. The workflow finds all four packages on the registry
+already, leaves them, and publishes the image.
 
 **The publisher is registered against the workflow's file name.** Renaming or moving
 `publish.yml` breaks publishing until it is registered again.
 
 ## When a release fails half way
 
-Run `Publish` again by hand, from the Actions tab, **on the release's tag** and not on a branch.
+Run `Publish` again by hand, from the Actions tab, **on the tag** and not on a branch.
 What reached a registry before the failure is left as it is: the image is pushed again under
 the same tags, and a package whose version is on npm already is skipped.
 
 ## What `latest` is
 
 The image `latest` is what `main` last built. A release does not move it: a release of an older
-commit would move it backwards. On npm, `latest` is the last version approved.
+commit would move it backwards. On npm, `latest` is the last version published.

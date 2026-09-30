@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The GitHub Release's tag is the version. The packages carry a placeholder on main; this stamps
+# The pushed tag is the version. The packages carry a placeholder on main; this stamps
 # the tag's version into them just before they are built, so a release is one act and no commit
 # ever bumps a version. It prints the version, and with --check that is all it does:
 # publish.yml's first job runs it so that a bad tag fails in seconds.
