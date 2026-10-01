@@ -187,10 +187,10 @@ export class EventStore {
     return rows.map(toEvent);
   }
 
-  /** Drops every unresolved event of this name; a claimed one is left for its worker to fail or ack. */
+  /** Drops every unresolved event of this name, and frees its dedupe key because what replaces it may need that key; a claimed one is left for its worker to fail or ack. */
   async dropByName(name: string): Promise<void> {
     await this.deps.connection.query(
-      `update events set dropped_at = now()
+      `update events set dropped_at = now(), dedupe_key = null
        where name = $1 and acked_at is null and dead_at is null and dropped_at is null and claimed_at is null`,
       [name],
     );
