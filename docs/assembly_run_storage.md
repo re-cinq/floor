@@ -34,6 +34,9 @@ This is all a station author sees. Two shapes and one function.
 
 ```ts
 interface Brief {
+  visitId: string;
+  runId: string;                   // the assembly run this visit belongs to
+  lineId: string;                  // the assembly line that run walks
   needs: Record<string, string>;   // name -> the value, or a URL to fetch, per the declared kind
   iteration: number;
 }
@@ -47,6 +50,13 @@ interface Report {
 
 type Handle = (brief: Brief) => Promise<Report>;
 ```
+
+A station is told which run it works for. `runId` is what to key on when
+something must outlive the visit: a claim stored under the run is found
+again by a retried visit, where one stored under `visitId` is not. It is
+also what a link to the run is made of, and what an operator searches a log
+by. An agent station gets the same two as prompt parameters, `{run_id}` and
+`{line_id}`; a value need of the same name wins over them.
 
 `cancelled` is an outcome no station can report; only the store writes it.
 A report is retried by its sender until the deadline, which is safe because
