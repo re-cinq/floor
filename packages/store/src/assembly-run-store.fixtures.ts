@@ -64,6 +64,8 @@ export interface StoreFixture {
   definitions: () => DefinitionsStore;
   events: () => EventStore;
   seedReviewLine: (line?: LineBody) => Promise<void>;
+  /** A one-node line, "digest", whose entry is its exit: a run of it needs no station. */
+  seedDigestLine: (args?: LineBody["args"]) => Promise<void>;
   openEntryVisit: (line?: LineBody) => Promise<{ runId: string; visitId: string }>;
   reviewSucceedsIntoRetrospective: () => Promise<RetrospectiveOpened>;
 }
@@ -80,7 +82,11 @@ export function setupStoreFixture(): StoreFixture {
     await definitions().put("agent_definition", "reviewer", REVIEWER_AGENT_DEFINITION);
   };
 
-  return { pool, store, definitions, events, seedReviewLine, ...buildScenarios(store, events, seedReviewLine) };
+  const seedDigestLine = async (args: LineBody["args"] = {}): Promise<void> => {
+    await definitions().put("line", "digest", { entry: "done", exit: "done", args, nodes: [{ id: "done" }], edges: [] } satisfies LineBody);
+  };
+
+  return { pool, store, definitions, events, seedReviewLine, seedDigestLine, ...buildScenarios(store, events, seedReviewLine) };
 }
 
 function registerPoolLifecycle(): () => PgPool {

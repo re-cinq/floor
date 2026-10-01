@@ -1,7 +1,6 @@
 // Cost rollups (docs/assembly_run_storage.md, "Costs"): sums over station_run_records' llm_call rows, grouped in SQL, never in JavaScript.
-import { canonicalRepo } from "./repo-name.js";
 import type { Pool, PoolClient } from "pg";
-import { addCondition } from "./rows.js";
+import { addCondition, addRepoCondition } from "./rows.js";
 
 export interface CostsFilter {
   /** One assembly run: what one review cost, say. */
@@ -68,7 +67,7 @@ function whereClauseFor(filter: CostsFilter): { where: string; values: unknown[]
   const values: unknown[] = [];
 
   addCondition(conditions, values, "ar.id = $%", filter.runId);
-  addCondition(conditions, values, "ar.repo = $%", filter.repo && canonicalRepo(filter.repo));
+  addRepoCondition(conditions, values, "ar.repo", filter.repo);
   addCondition(conditions, values, "ar.line_id = $%", filter.lineId);
   addCondition(conditions, values, "d.id = $%", filter.station);
   addCondition(conditions, values, "sr.opened_at >= $%", filter.since);

@@ -1,13 +1,13 @@
 // The mutations and list query behind the store: one statement each, plus the compare-and-set report write.
 
-import { canonicalItems, canonicalRepo, canonicalRepoOrNull } from "./repo-name.js";
+import { canonicalItems, canonicalRepoOrNull } from "./repo-name.js";
 import type { PoolClient } from "pg";
 import { Refusal, enforce } from "./refusal.js";
 import { decodeRunCursor, type RunPosition } from "./run-cursor.js";
-import { addCondition, toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
+import { addCondition, addRepoCondition, toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
 import type { Report, Run, Visit } from "./types.js";
 import type { OpenContext } from "./open-visit.js";
-import type { Page, RunFilter, StartRunInput } from "./assembly-run-store.js";
+import type { Page, RunFilter, StartRunInput } from "./run-shapes.js";
 
 export async function insertRun(
   client: PoolClient,
@@ -182,7 +182,7 @@ export function listQuery(filter: RunFilter, page: Page): { text: string; values
   const values: unknown[] = [];
 
   addCondition(conditions, values, "line_id = $%", filter.lineId);
-  addRepoCondition(conditions, values, filter.repo);
+  addRepoCondition(conditions, values, "repo", filter.repo);
   addCondition(conditions, values, "subject_key = $%", filter.subjectKey);
   addCondition(conditions, values, "created_at >= $%", filter.since);
   if (filter.open !== undefined) conditions.push(filter.open ? "finished_at is null" : "finished_at is not null");
@@ -192,11 +192,6 @@ export function listQuery(filter: RunFilter, page: Page): { text: string; values
   const where = conditions.length > 0 ? `where ${conditions.join(" and ")}` : "";
 
   return { text: `select *, created_at::text as cursor_created_at from assembly_runs ${where} order by created_at desc, id desc limit $${values.length}`, values };
-}
-
-function addRepoCondition(conditions: string[], values: unknown[], repo: string | null | undefined): void {
-  if (repo === null) conditions.push("repo is null");
-  if (typeof repo === "string") addCondition(conditions, values, "repo = $%", canonicalRepo(repo));
 }
 
 function afterCursor(values: unknown[], position: RunPosition): string {

@@ -89,9 +89,10 @@ export class DispatchBriefs {
     const run = await this.deps.runs.get(visit.runId);
 
     enforce(run, `run "${visit.runId}" is gone`);
-    const needs = dispatchNeeds({ station: station.body, bind: await this.bindOf(visit, run), bag: await this.deps.runs.bag(visit.runId), frozen: visit.brief.needs, baseUrl });
+    const [bind, bag, conversation] = await Promise.all([this.bindOf(visit, run), this.deps.runs.bagOf(run), this.conversationOf(visit, station.body)]);
+    const needs = dispatchNeeds({ station: station.body, bind, bag, frozen: visit.brief.needs, baseUrl });
 
-    return { visit, lineId: run.lineId, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation: await this.conversationOf(visit, station.body) };
+    return { visit, lineId: run.lineId, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation };
   }
 
   private async bindOf(visit: Visit, run: Run): Promise<Record<string, string> | undefined> {

@@ -9,7 +9,7 @@ import {
   startItems,
 } from "./assembly-run-store.fixtures.js";
 
-const { store, definitions, events, seedReviewLine, openEntryVisit, reviewSucceedsIntoRetrospective } = setupStoreFixture();
+const { store, definitions, events, seedReviewLine, seedDigestLine, openEntryVisit, reviewSucceedsIntoRetrospective } = setupStoreFixture();
 
 describe("AssemblyRunStore.start", () => {
   it("writes a run referencing the line's latest version", async () => {
@@ -85,7 +85,7 @@ describe("AssemblyRunStore.start", () => {
   });
 
   it("gives a run with a null repo on a line declaring no git argument", async () => {
-    await seedDigestLine({});
+    await seedDigestLine();
 
     const { run } = await store().start({ lineId: "digest", repo: null, startItems: {} });
 
@@ -225,7 +225,3 @@ describe("AssemblyRunStore.openVisit", () => {
     expect(run!.outcome).toBe("success");
   });
 });
-
-async function seedDigestLine(args: LineBody["args"]): Promise<void> {
-  await definitions().put("line", "digest", { entry: "done", exit: "done", args, nodes: [{ id: "done" }], edges: [] } satisfies LineBody);
-}
