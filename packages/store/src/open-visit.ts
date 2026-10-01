@@ -119,7 +119,7 @@ export class OpenVisitResolver {
 
   private async resolveAgentSettings(
     station: StationBody,
-    repo: string,
+    repo: string | null,
   ): Promise<{ hash: string; body: AgentSettings } | null> {
     if (station.kind !== "agent") return null;
     enforce(station.agentDefinition, `agent station has no agent_definition`);
@@ -201,13 +201,13 @@ interface ConversationCandidate {
 
 async function conversationCandidates(
   connection: Queryable,
-  repo: string,
+  repo: string | null,
   nodeId: string,
 ): Promise<ConversationCandidate[]> {
   const { rows } = await connection.query(
     `select s.assembly_run_id as run_id, s.session_ref
      from station_runs s join assembly_runs r on r.id = s.assembly_run_id
-     where r.repo = $1 and s.node_id = $2 and s.outcome is not null and s.outcome <> 'failed'
+     where r.repo is not distinct from $1 and s.node_id = $2 and s.outcome is not null and s.outcome <> 'failed'
        and s.session_ref is not null
      order by s.id desc`,
     [repo, nodeId],

@@ -18,8 +18,8 @@ of items stations pass along, is derived from those visits.
 |---|---|
 | `id` | uuid |
 | `lineId`, `lineHash` | which line, which version |
-| `repo` | `host/owner/name`; selects agent definition variants |
-| `subjectKey` | what the run works on; at most one open run per `(repo, subjectKey)` |
+| `repo` | `host/owner/name`; selects agent definition variants. Empty for a run that belongs to no repository: one started with none on a line that has no `git` argument |
+| `subjectKey` | what the run works on; at most one open run per `(repo, subjectKey)`, runs with no repo counted together |
 | `startItems` | the arguments and line-shipped files; the seed of the bag |
 | `outcome` | empty while the run is open; then `success`, `failed`, `iteration_max`, `error` or `cancelled` |
 | `createdAt` | when the run began; the run list is ordered by it, newest first |

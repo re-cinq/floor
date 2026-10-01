@@ -35,16 +35,14 @@ function startItem(line: LineBody, name: string, ref: string, eventName: string)
   return { kind: spec.kind, ref, by: eventName };
 }
 
-/** The run's repo: the one its `git` argument names, else the one the payload carries. */
-export function repoFrom(startItems: Record<string, Item>, payload: Payload): string {
+/** The run's repo: the one its `git` argument names, else the one the payload carries, else none. */
+export function repoFrom(startItems: Record<string, Item>, payload: Payload): string | null {
   const gitItem = Object.values(startItems).find((startItem) => startItem.kind === "git");
 
   if (gitItem) return gitRefOf(gitItem.ref).repo;
   const carried = payload.repo ?? payload.repository;
 
-  enforce(typeof carried === "string" && carried.length > 0, "the event names no repo: no git argument, and no repo in its payload");
-
-  return canonicalRepo(carried);
+  return typeof carried === "string" && carried.length > 0 ? canonicalRepo(carried) : null;
 }
 
 /** One answer per node at most: the first of its `reports` this event satisfies. */

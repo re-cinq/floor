@@ -20,9 +20,11 @@ export function registerRunRoutes(server: Server, deps: Deps): void {
 
 async function list(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const query = request.query as Record<string, string | undefined>;
-  const filter: RunFilter = { lineId: query.line, repo: query.repo, subjectKey: query.subject, open: openFilter(query.open), since: dateOf(query.since) };
+  if (query.withoutRepo === "true" && query.repo !== undefined) return badRequest(toolkit, "withoutRepo and repo cannot be asked for together");
 
-  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: line, repo, subject, open, or since");
+  const filter: RunFilter = { lineId: query.line, repo: repoOf(query), subjectKey: query.subject, open: openFilter(query.open), since: dateOf(query.since) };
+
+  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: line, repo, withoutRepo, subject, open, or since");
 
   try {
     return await deps.runs.list(filter, { limit: limitOf(query.limit), cursor: query.cursor });
@@ -58,6 +60,12 @@ function hasFilter(filter: RunFilter): boolean {
   const given = [filter.lineId, filter.repo, filter.subjectKey, filter.open, filter.since];
 
   return given.some((value) => value !== undefined);
+}
+
+function repoOf(query: Record<string, string | undefined>): string | null | undefined {
+  if (query.withoutRepo === "true") return null;
+
+  return query.repo;
 }
 
 function openFilter(value: string | undefined): boolean | undefined {

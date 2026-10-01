@@ -12,7 +12,7 @@ export interface RunRow {
   id: string;
   line_id: string;
   line_hash: string;
-  repo: string;
+  repo: string | null;
   subject_key: string | null;
   start_items: Record<string, Item>;
   outcome: string | null;

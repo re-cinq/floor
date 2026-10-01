@@ -357,6 +357,19 @@ just left. The cursor is an opaque string the client hands back unchanged,
 and one the floor did not make is refused 400. A run carries `createdAt` on
 the wire, since a client that orders by it has to be able to read it.
 
+**A run with no repository has a null `repo`, and null is a repo of its
+own.** Some work belongs to no repository: a tick that fans out, a run per
+Slack channel, an org-wide sweep. Such a run used to carry a made-up repo, or
+was refused. An empty string was the cheap way, since the unique index on
+`(repo, subject_key)` would have gone on working untouched; it was not taken,
+because every reader would then have to know that `""` means "none". The
+index is `nulls not distinct` instead, which needs Postgres 15, so two
+repo-less starts on one subject join as two starts on one repo do. A line
+with a `git` argument is refused a start without a repo, since its stations
+would have nothing to clone. The run list asks for these runs with
+`withoutRepo=true` and not with an empty `repo`, so a caller who sends an
+empty string by accident is not answered with them.
+
 ## Operations
 
 **The subsystem is installed in the floor's own namespace**, `floor-agents`.

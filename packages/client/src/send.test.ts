@@ -63,6 +63,14 @@ describe("a request the client sends", () => {
 
     expect(asked[0]?.url).toBe("http://floor.test/assembly-runs?repo=github.com%2Fre-cinq%2Flore&open=true");
   });
+
+  it("asks for the runs with no repo as withoutRepo=true", async () => {
+    const { asked, client } = floorAnswering([{ status: 200, body: { items: [], nextCursor: null } }]);
+
+    await client.runs.list({ withoutRepo: true });
+
+    expect(asked[0]?.url).toBe("http://floor.test/assembly-runs?withoutRepo=true");
+  });
 });
 
 describe("what the client makes of a refusal", () => {

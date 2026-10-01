@@ -8,7 +8,7 @@ import { getWith } from "./rows.js";
 import { nodeVisitCount, openRunBySubject } from "./sql.js";
 import type { LineBody, Run, Visit } from "./types.js";
 
-export type RunRef = { runId: string } | { subjectKey: string; repo: string };
+export type RunRef = { runId: string } | { subjectKey: string; repo: string | null };
 
 export interface OutsideEvent {
   name: string;
@@ -24,7 +24,7 @@ export interface OutsideEventsDeps {
 export class OutsideEvents {
   constructor(private readonly deps: OutsideEventsDeps) {}
 
-  /** The run an event acts on: by id, or the open run holding that subject on that repo. */
+  /** The run an event acts on: by id, or the open run holding that subject on that repo, or among the runs that have no repo when it is null. */
   async runFor(ref: RunRef): Promise<Run | null> {
     if ("runId" in ref) return getWith(this.deps.pool, ref.runId);
 
