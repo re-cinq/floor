@@ -37,6 +37,14 @@ export type Transition =
 
 const DEFAULT_MAX_NODES = 200;
 
+/** The exit and the fail node are both terminal: a walk that arrives at either stops there. */
+export function isTerminalNode(
+  assemblyLine: Pick<WalkGraph, "exit" | "fail">,
+  nodeId: string,
+): boolean {
+  return nodeId === assemblyLine.exit || nodeId === assemblyLine.fail;
+}
+
 // The executor's edge rule: exact-outcome match preferred over `always`; null when nothing matches.
 export function selectEdge(
   assemblyLine: WalkGraph,
