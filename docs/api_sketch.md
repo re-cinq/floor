@@ -313,7 +313,7 @@ Service token only.
 GET    /schedules
 GET    /schedules/:id                    // includes the pending event's availableAt
 POST   /schedules                        // enqueues the first occurrence
-PUT    /schedules/:id                    // updates the one pending event
+PUT    /schedules/:id                    // replaces the one pending event with one carrying the new body, whether or not the cron changed
 DELETE /schedules/:id                    // drops the one pending event
 POST   /schedules/:id/trigger            // enqueue one extra instance now
 

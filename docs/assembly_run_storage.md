@@ -497,6 +497,12 @@ event, and the schedule goes on: the refusal costs one tick. A tick that is
 retried enqueues the same occurrence again, which its dedupe key makes the
 same event.
 
+**A dropped tick gives up its dedupe key.** Putting a schedule again drops
+its pending tick and enqueues a new one, and with the cron unchanged the
+new one is due at the same occurrence, under the same key. Were the dropped
+row to keep the key, the enqueue would find it, insert nothing, and leave
+the schedule with no pending event at all.
+
 **Retention.** The events of a run are kept while it is open and for 30
 days after it settles. The age counts from the run settling, never from
 the event: an old event of a run still open stays, and a run that settled
