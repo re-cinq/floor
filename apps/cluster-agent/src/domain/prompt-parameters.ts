@@ -1,4 +1,4 @@
-// What fills a prompt's `{placeholders}`: each value need under its own name, and `{<name>_path}` for everything that has a place in the workspace, so a prompt never has to know where the workspace is.
+// What fills a prompt's `{placeholders}`: each value need under its own name, and `{<name>_path}` for everything that has a place in the workspace, so a prompt never has to know where the workspace is. The run's own two, `{run_id}` and `{line_id}`, are added where the triple is built, beneath these: a value need of the same name wins.
 import { posix } from "node:path";
 import type { DispatchNeed, DispatchProduce } from "./agent-triple.js";
 

@@ -24,6 +24,10 @@ export type DispatchMcpServer = McpServerSettings;
 export interface DispatchBrief {
   /** The station run id; also the name given to all three resources. */
   visitId: string;
+  /** The run this visit works for. */
+  runId: string;
+  /** The assembly line that run walks. */
+  lineId: string;
   /** The Floor's own base URL, reachable from the pod (docs/dev_loop.md: `host.minikube.internal` in dev). */
   floorBaseUrl: string;
   /** The visit token, already written to `secretName` under this key by the caller; referenced as every `headers_secret` here. */
@@ -188,10 +192,14 @@ function buildAgent(name: string, input: DispatchBrief): Agent {
       taskId: input.visitId,
       targetRepo: gitNeed ? repoOwnerName(gitNeed.repoUrl) : undefined,
       branch: gitNeed?.ref,
-      parameters: { ...promptParameters(input.needs, input.produces), ...brokerParameters(input, gitNeed) },
+      parameters: { ...runParameters(input), ...promptParameters(input.needs, input.produces), ...brokerParameters(input, gitNeed) },
       files: fileNeeds.map((need) => ({ path: need.path, url: need.url, headers_secret: input.tokenSecretKey })),
     },
   };
+}
+
+function runParameters(input: DispatchBrief): Record<string, string> {
+  return { run_id: input.runId, line_id: input.lineId };
 }
 
 // The subsystem lifts these two out of the parameters and into the clone's credential helper, which asks the floor for a token when git authenticates. They go last, so no value need can take their names.

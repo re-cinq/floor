@@ -5,7 +5,7 @@ import type { AssemblyRunStore } from "./assembly-run-store.js";
 import type { DefinitionsStore } from "./definitions.js";
 import { enforce } from "./refusal.js";
 import type { BriefNeed } from "@re-cinq/floor-contracts";
-import type { AgentSettings, Item, LineBody, NeedSpec, ProduceSpec, StationBody, Visit } from "./types.js";
+import type { AgentSettings, Item, LineBody, NeedSpec, ProduceSpec, Run, StationBody, Visit } from "./types.js";
 
 export type DispatchNeed = BriefNeed;
 
@@ -14,6 +14,7 @@ export type DispatchConversation = { mode: "new"; save: boolean } | { mode: "con
 
 export interface DispatchBrief {
   visit: Visit;
+  lineId: string;
   station: StationBody;
   settings: AgentSettings | null;
   needs: DispatchNeed[];
@@ -85,15 +86,16 @@ export class DispatchBriefs {
     const station = await this.deps.definitions.byHashOnly<StationBody>("station", visit.stationHash);
 
     enforce(station, `station "${visit.stationHash}" is gone`);
-    const needs = dispatchNeeds({ station: station.body, bind: await this.bindOf(visit), bag: await this.deps.runs.bag(visit.runId), frozen: visit.brief.needs, baseUrl });
+    const run = await this.deps.runs.get(visit.runId);
 
-    return { visit, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation: await this.conversationOf(visit, station.body) };
+    enforce(run, `run "${visit.runId}" is gone`);
+    const needs = dispatchNeeds({ station: station.body, bind: await this.bindOf(visit, run), bag: await this.deps.runs.bag(visit.runId), frozen: visit.brief.needs, baseUrl });
+
+    return { visit, lineId: run.lineId, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation: await this.conversationOf(visit, station.body) };
   }
 
-  private async bindOf(visit: Visit): Promise<Record<string, string> | undefined> {
-    const run = await this.deps.runs.get(visit.runId);
-    const line = run ? await this.deps.definitions.byHash<LineBody>("line", run.lineId, run.lineHash) : null;
-
+  private async bindOf(visit: Visit, run: Run): Promise<Record<string, string> | undefined> {
+    const line = await this.deps.definitions.byHash<LineBody>("line", run.lineId, run.lineHash);
     const nodes = line?.body.nodes ?? [];
 
     return nodes.find((node) => node.id === visit.nodeId)?.bind;
