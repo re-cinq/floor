@@ -17,6 +17,8 @@ for await (const frame of floor.runs.watch(run.id)) {
 }
 ```
 
+`repo` is left out for a line with no `git` argument, and the run then has none: `run.repo` is `null`. `floor.runs.list({ withoutRepo: true })` lists those runs.
+
 ## Where this fits
 
 The one way anything reaches a floor from outside it. [`apps/cluster-agent`](../../apps/cluster-agent/README.md), [`@re-cinq/floor-station`](../station/README.md), [`@re-cinq/floor-pipeline`](../pipeline/README.md) and the lore converter all talk to a floor through this, and so does lore. It links no part of the floor's own storage — only [`@re-cinq/floor-contracts`](../contracts/README.md), for the shapes — so a floor's database is not reachable through it even by accident.

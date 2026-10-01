@@ -84,8 +84,8 @@ describe("repoFrom", () => {
     expect(repoFrom({}, { repo: "github.com/re-cinq/lore" })).toBe("github.com/re-cinq/lore");
   });
 
-  it("refuses an event naming no repo at all", () => {
-    expect(() => repoFrom({}, {})).toThrow(/names no repo/);
+  it("answers no repo for an event with no git argument and no repo in its payload", () => {
+    expect(repoFrom({}, {})).toBeNull();
   });
 });
 

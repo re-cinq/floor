@@ -38,7 +38,7 @@ import type { Item, LineBody, LineNode, Report, Run, Visit } from "./types.js";
 
 export interface StartRunInput {
   lineId: string;
-  repo: string;
+  repo: string | null;
   startItems: Record<string, Item>;
   /** Starts at a node other than the line's entry; the node must exist. */
   entry?: string;
@@ -58,7 +58,8 @@ export interface OpenVisitResult {
 
 export interface RunFilter {
   lineId?: string;
-  repo?: string;
+  /** `null` asks for the runs that have no repo. */
+  repo?: string | null;
   subjectKey?: string;
   open?: boolean;
   /** A floor on when the run was created. */
@@ -105,7 +106,7 @@ export class AssemblyRunStore {
   async start(input: StartRunInput): Promise<StartResult> {
     const line = await lineToStart(this.definitions, input);
 
-    enforceStartArgs(line.body.args, input.startItems);
+    enforceStartArgs(line.body.args, input);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
     await enforceFilesExist(this.deps.pool, line.body.files);
     const startItems = foldLineFiles(line.body.files, input.startItems);
@@ -399,5 +400,3 @@ function settleInputFor(runId: string, transition: Transition, now: Date): { run
 
   return { runId, outcome, reason, now };
 }
-
-
