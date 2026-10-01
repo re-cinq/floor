@@ -36,6 +36,6 @@ describe("GET /version", () => {
   it("returns a schema version", async () => {
     const response = await injectJson<{ schemaVersion: number }>(server(), { method: "GET", url: "/version" });
 
-    expect(response.result.schemaVersion).toBe(2);
+    expect(response.result.schemaVersion).toBe(3);
   });
 });

@@ -5,7 +5,7 @@ export interface RunFields<Time> {
   id: string;
   lineId: string;
   lineHash: string;
-  repo: string;
+  repo: string | null;
   subjectKey: string | null;
   startItems: Record<string, Item>;
   outcome: string | null;

@@ -82,9 +82,11 @@ POST   /assembly-lines                   // create a line (first version); 400 w
 PUT    /assembly-lines/:id               // does NOT mutate; creates a new version, returns its hash
 DELETE /assembly-lines/:id               // archives; 409 while runs are open on it
 
-POST   /assembly-lines/:id/start         // body: repo, startItems, optional entry, optional lineHash (a version of the
+POST   /assembly-lines/:id/start         // body: startItems, optional repo, optional entry, optional lineHash (a version of the
                                          // line; absent means the latest). 201, or, if an open run already holds the
-                                         // subject, that run (200, joined: true). 400 naming every arg the line declares
+                                         // subject, that run (200, joined: true). `repo` may be left out for a line with
+                                         // no `git` argument, and the run then has none (`repo: null`); a line with a
+                                         // `git` argument is refused without it, 400. 400 naming every arg the line declares
                                          // that startItems lacks or holds as another kind, or a lineHash that is not a
                                          // version of the line, or names a version of an archived line; a start item
                                          // the line does not declare is kept
@@ -92,9 +94,17 @@ POST   /assembly-lines/:id/start         // body: repo, startItems, optional ent
 A run is also started by an **event**, when the line declares `start.on`.
 That is how a PR opening starts a review and a schedule starts a sweep.
 
+**When a run has a repo.** A run's repo is the one its line's `git` argument
+names; else the one the start names (`repo` in the body, `repo` or
+`repository` in an event's payload); else none, and the run's `repo` is
+null. So a schedule whose payload names no repo starts a line that has no
+`git` argument, and that is all a tick that fans out needs: its one service
+station starts the runs that are due.
+
 ## Assembly runs - one execution of a line, walked on events
 
-GET    /assembly-runs                    // filter required: line, open, repo, subject, since (a created_at floor); newest first on (created_at, id),
+GET    /assembly-runs                    // filter required: line, open, repo, withoutRepo, subject, since (a created_at floor); newest first on (created_at, id),
+                                         // `withoutRepo=true` lists the runs that have no repo, and is refused together with `repo`;
                                          // each run with its createdAt; `cursor` is opaque, and one that is not a cursor this returned is 400
 GET    /assembly-runs/:id                // run + bag + currentNode (the open visit's node, else the last opened; null) + cost (null if nothing counted)
 POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops its queued events, aborts open visits
@@ -243,7 +253,8 @@ GET    /events                           // at least one of since (cursor), name
                                          // Poll it, no SSE
 GET    /events/:id
 POST   /events                           // body: name, payload, optional dedupeKey, availableAt, runId. A payload
-                                         // naming a run does so by `runId`, or by `subjectKey` and `repo`.
+                                         // naming a run does so by `runId`, or by `subjectKey` and `repo`
+                                         // (a `subjectKey` alone names a run that has no repo).
                                          // A visit token may post only `station_run.reported`, for its own visit.
                                          // A report is stamped with the run of the visit it names
 

@@ -89,7 +89,7 @@ export const agentDefinitionBodySchema = z.object({
 const startItem = z.object({ kind: itemKind, ref: z.string(), by: z.string(), sha: z.string().optional() });
 
 export const startRunSchema = z.object({
-  repo: z.string(),
+  repo: z.string().optional().transform((repo) => repo ?? null),
   startItems: z.record(z.string(), startItem),
   entry: z.string().optional(),
   lineHash: z.string().optional(),

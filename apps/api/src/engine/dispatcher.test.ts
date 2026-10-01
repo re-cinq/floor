@@ -296,6 +296,17 @@ describe("Dispatcher: schedule ticks", () => {
     expect(runs.items).toHaveLength(1);
   });
 
+  it("starts a run with no repo when the schedule's payload names none and the line has no git argument", async () => {
+    await deps().definitions.put("line", "on-nightly", TICK_LINE);
+    await deps().schedules.put("nightly", { cron: "0 0 * * *", payload: {} });
+    await deps().schedules.trigger("nightly");
+
+    await tickUntilIdle();
+    const runs = await deps().runs.list({ lineId: "on-nightly" }, { limit: 10 });
+
+    expect(runs.items.map((run) => run.repo)).toEqual([null]);
+  });
+
   it("enqueues no further tick for a schedule archived before an in-flight tick of its is handled", async () => {
     await deps().schedules.put("nightly", SCHEDULE_BODY);
     const pending = (await deps().schedules.pending("nightly"))!;

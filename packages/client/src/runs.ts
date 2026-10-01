@@ -7,7 +7,8 @@ import { watchRun, type RunWatch, type WatchOptions } from "./live.js";
 const HTTP_NOT_FOUND = 404;
 
 export interface StartRun {
-  repo: string;
+  /** Left out for a line with no `git` argument: the run then belongs to no repository, and its `repo` is null. */
+  repo?: string;
   startItems: Record<string, Item>;
   /** Starts somewhere other than the line's entry; the node must exist. */
   entry?: string;
