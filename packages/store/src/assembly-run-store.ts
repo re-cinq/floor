@@ -35,45 +35,11 @@ import {
   type RunMetrics,
 } from "./sql.js";
 import type { Item, LineBody, LineNode, Report, Run, Visit } from "./types.js";
-
-export interface StartRunInput {
-  lineId: string;
-  repo: string | null;
-  startItems: Record<string, Item>;
-  /** Starts at a node other than the line's entry; the node must exist. */
-  entry?: string;
-  /** Pins a version of the line; absent means the latest. */
-  lineHash?: string;
-}
-
-export interface StartResult {
-  run: Run;
-  joined: boolean;
-}
+import type { Page, PageOf, RunFilter, StartResult, StartRunInput } from "./run-shapes.js";
 
 export interface OpenVisitResult {
   visit: Visit;
   created: boolean;
-}
-
-export interface RunFilter {
-  lineId?: string;
-  /** `null` asks for the runs that have no repo. */
-  repo?: string | null;
-  subjectKey?: string;
-  open?: boolean;
-  /** A floor on when the run was created. */
-  since?: Date;
-}
-
-export interface Page {
-  limit: number;
-  cursor?: string;
-}
-
-export interface PageOf<T> {
-  items: T[];
-  nextCursor: string | null;
 }
 
 export interface AssemblyRunStoreDeps {
@@ -188,9 +154,12 @@ export class AssemblyRunStore {
     const run = await this.get(runId);
 
     enforce(run, `no run "${runId}"`);
-    const visits = await this.visits(runId);
 
-    return foldBag(this.definitions, run.startItems, visits);
+    return this.bagOf(run);
+  }
+
+  async bagOf(run: Run): Promise<Record<string, Item>> {
+    return foldBag(this.definitions, run.startItems, await this.visits(run.id));
   }
 
   async next(runId: string): Promise<Transition> {

@@ -1,6 +1,7 @@
 // Events from outside the walk (docs/assembly_run_storage.md, "Starting a run", "An event may answer for a person"): they start lines that declare them, and answer nodes that wait on them.
 import type { Pool } from "pg";
-import type { AssemblyRunStore, StartResult } from "./assembly-run-store.js";
+import type { AssemblyRunStore } from "./assembly-run-store.js";
+import type { StartResult } from "./run-shapes.js";
 import type { DefinitionRow, DefinitionsStore } from "./definitions.js";
 import { answersOf, repoFrom, startItemsFrom, startsOn, type Payload } from "./event-match.js";
 import { Refusal, enforce } from "./refusal.js";
