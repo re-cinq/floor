@@ -258,9 +258,15 @@ POST   /events/:id/fail                  // body: error, permanent; requeues wit
 ## Schedules - predefined events on a cadence
 
 A schedule is a name, a cron and an event payload, and holds exactly one
-pending event. Acking its tick enqueues the next occurrence. A line that
-declares `start.on: schedule.<name>.tick` is what the tick starts. Service
-token only.
+pending event. Handling its tick enqueues the next occurrence first, and
+only then starts what the tick starts: an assembly line that declares
+`start.on: schedule.<name>.tick`. So a schedule outlives a refused tick. A
+tick whose assembly line cannot start (a `start.args` template the payload
+cannot fill, an argument the line does not declare) is dead-lettered with
+the refusal as its `lastError`, and costs that tick alone: the next
+occurrence is already pending. A tick retried after any other error
+enqueues nothing twice, since an occurrence is one event by its dedupe key.
+Service token only.
 
 GET    /schedules
 GET    /schedules/:id                    // includes the pending event's availableAt
