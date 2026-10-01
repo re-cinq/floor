@@ -154,7 +154,7 @@ function walkFromLastHandRun(
   assemblyLine: WalkGraph,
   visits: readonly NodeVisit[],
 ): Walk {
-  const walk = freshWalk(assemblyLine);
+  const walk = freshWalk(assemblyLine, visits);
   const index = lastHandRun(visits);
 
   if (index < 0) {
@@ -174,10 +174,13 @@ function lastHandRun(
   return visits.findLastIndex((visit) => visit.requestedBy);
 }
 
-// A walk that has not started: at the entry node, on its first iteration, having spent nothing. Every replay begins here — the history is what moves it, so nothing is carried over between calls.
-function freshWalk(assemblyLine: WalkGraph): Walk {
+// A walk that has not moved: on its first iteration, having spent nothing, at the node the run was started at. That is the node of its first visit — a start may name a node other than the line's entry — and the line's entry for a run with no visit yet. Every replay begins here — the history is what moves it, so nothing is carried over between calls.
+function freshWalk(
+  assemblyLine: WalkGraph,
+  visits: readonly Pick<NodeVisit, "nodeId">[],
+): Walk {
   return {
-    state: { currentId: assemblyLine.entry, iteration: 1 },
+    state: { currentId: visits[0]?.nodeId ?? assemblyLine.entry, iteration: 1 },
     accounting: {
       backEdgeCounts: new Map(),
       highestIteration: new Map(),
