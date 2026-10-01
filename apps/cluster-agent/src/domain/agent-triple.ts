@@ -8,9 +8,9 @@ import type {
   OutputSpec,
   Station,
 } from "@re-cinq/agent-contracts";
-import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, PodResources, ProduceSpec } from "@re-cinq/floor-contracts";
+import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, PodResources, ProduceSpec, VisitBrief } from "@re-cinq/floor-contracts";
 import { environmentOf } from "./pod-environment.js";
-import { promptParameters } from "./prompt-parameters.js";
+import { promptParameters, runParameters } from "./prompt-parameters.js";
 
 export type DispatchNeed = BriefNeed;
 export type DispatchProduce = ProduceSpec;
@@ -21,17 +21,11 @@ export type DispatchSettings = BriefSettings;
 
 export type DispatchMcpServer = McpServerSettings;
 
-export interface DispatchBrief {
-  /** The station run id; also the name given to all three resources. */
-  visitId: string;
-  /** The run this visit works for. */
-  runId: string;
-  /** The assembly line that run walks. */
-  lineId: string;
-  /** The node of that line this visit is a pass at. */
-  nodeId: string;
-  /** The Floor's own base URL, reachable from the pod (docs/dev_loop.md: `host.minikube.internal` in dev). */
-  floorBaseUrl: string;
+// The brief as the floor sends it, its `visitId` also the name given to all three resources, plus what the cluster agent settles itself. Its `floorBaseUrl` is the floor as the pod reaches it (docs/dev_loop.md: `host.minikube.internal` in dev).
+export type DispatchBrief = Pick<
+  VisitBrief,
+  "visitId" | "runId" | "lineId" | "nodeId" | "floorBaseUrl" | "deadlineMinutes" | "needs" | "produces" | "conversation"
+> & {
   /** The visit token, already written to `secretName` under this key by the caller; referenced as every `headers_secret` here. */
   tokenSecretKey: string;
   /** The visit token itself: what the pod's git credential helper presents to the floor. */
@@ -39,12 +33,8 @@ export interface DispatchBrief {
   /** The `agent-secrets` key holding the API key for this visit's model family; omitted when the model needs none. */
   modelSecretKey?: string;
   secretName: string;
-  deadlineMinutes: number;
   settings: DispatchSettings;
-  needs: DispatchNeed[];
-  produces: DispatchProduce[];
-  conversation: Conversation;
-}
+};
 
 export interface AgentTriple {
   agentDefinition: AgentDefinition;
@@ -198,10 +188,6 @@ function buildAgent(name: string, input: DispatchBrief): Agent {
       files: fileNeeds.map((need) => ({ path: need.path, url: need.url, headers_secret: input.tokenSecretKey })),
     },
   };
-}
-
-function runParameters(input: DispatchBrief): Record<string, string> {
-  return { run_id: input.runId, line_id: input.lineId, node_id: input.nodeId };
 }
 
 // The subsystem lifts these two out of the parameters and into the clone's credential helper, which asks the floor for a token when git authenticates. They go last, so no value need can take their names.
