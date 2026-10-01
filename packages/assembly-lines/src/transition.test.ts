@@ -182,3 +182,37 @@ describe("getNextTransition", () => {
     });
   });
 });
+
+describe("getNextTransition on a run started at a node other than the line's entry", () => {
+  it("launches review after a run entered at validate reports success, rather than diverging from implement", () => {
+    expect(getNextTransition(reviewLoop, [visit("validate", 1, "success")])).toEqual({
+      kind: "launch",
+      nodeId: "review",
+      iteration: 1,
+    });
+  });
+
+  it("awaits while the visit the run entered at, validate, is still open", () => {
+    expect(getNextTransition(reviewLoop, [visit("validate", 1, null)])).toEqual({ kind: "await" });
+  });
+
+  it("walks on from the entered node across later visits: validate, review, then implement at iteration 1", () => {
+    const visits = [visit("validate", 1, "success"), visit("review", 1, "changes_requested")];
+
+    expect(getNextTransition(reviewLoop, visits)).toEqual({
+      kind: "launch",
+      nodeId: "implement",
+      iteration: 1,
+    });
+  });
+
+  it("still fails a later row that is not where the walk got to", () => {
+    const visits = [visit("validate", 1, "success"), visit("implement", 1, "success")];
+
+    expect(getNextTransition(reviewLoop, visits)).toMatchObject({
+      kind: "fail",
+      outcome: "error",
+      reason: expect.stringContaining('recorded "implement" iter 1, expected "review" iter 1'),
+    });
+  });
+});
