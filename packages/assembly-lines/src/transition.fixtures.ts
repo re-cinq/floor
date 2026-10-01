@@ -91,6 +91,22 @@ export const twoWaysBack: WalkGraph = {
   ],
 };
 
+export const postOrFail: WalkGraph = {
+  name: "post-or-fail",
+  entry: "post",
+  exit: "done",
+  fail: "failed",
+  nodes: [
+    { id: "post", kind: "service" },
+    { id: "done" },
+    { id: "failed" },
+  ],
+  edges: [
+    { from: "post", to: "done", on: "success" },
+    { from: "post", to: "failed", on: "failed" },
+  ],
+};
+
 const THIRD_ROUND = 3;
 
 // Two full implement/validate/review rounds, each ending in changes_requested, plus round 3's setup — shared by the iteration_max test and the hand-run test that diverges from it only in the final visit.

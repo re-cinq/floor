@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateLine } from "./line-validation.js";
-import type { LineBody } from "./types.js";
+import type { LineBody, LineEdge } from "./types.js";
 
 const NO_STATIONS = { stations: new Set<string>() };
 
@@ -14,6 +14,21 @@ function cycleLine(exit: string, second: string): LineBody {
       { from: "start", to: second, on: "x" },
       { from: second, to: "start", on: "y" },
     ],
+  };
+}
+
+function failNamedLine(fail: string): LineBody {
+  return { entry: "post", exit: "done", fail, args: {}, nodes: [{ id: "post" }, { id: "done" }], edges: [{ from: "post", to: "done", on: "success" }] };
+}
+
+function failRoutedLine(...extraEdges: LineEdge[]): LineBody {
+  return {
+    entry: "post",
+    exit: "done",
+    fail: "failed",
+    args: {},
+    nodes: [{ id: "post" }, { id: "done" }, { id: "failed" }],
+    edges: [{ from: "post", to: "done", on: "success" }, { from: "post", to: "failed", on: "failed" }, ...extraEdges],
   };
 }
 
@@ -32,6 +47,21 @@ describe("validateLine", () => {
     const line: LineBody = { entry: "done", exit: "done", args: {}, nodes: [{ id: "done" }], edges: [{ from: "missing", to: "done", on: "x" }] };
 
     expect(validateLine(line, NO_STATIONS)).toEqual([`edge 0: from "missing" is not a node`]);
+  });
+
+  it("fail not a node", () => {
+    expect(validateLine(failNamedLine("missing"), NO_STATIONS)).toEqual([`fail "missing" is not a node`]);
+  });
+
+  it("fail is also the exit", () => {
+    expect(validateLine(failNamedLine("done"), NO_STATIONS)).toEqual([`fail "done" is also the exit`]);
+  });
+
+  it("fail is also the entry", () => {
+    expect(validateLine(failNamedLine("post"), NO_STATIONS)).toEqual([
+      `fail "post" is also the entry`,
+      `edge 0: fail "post" cannot have an outgoing edge`,
+    ]);
   });
 
   it("edge to not a node", () => {
@@ -56,6 +86,10 @@ describe("validateLine", () => {
     expect(validateLine(cycleLine("end", "end"), NO_STATIONS)).toEqual([`edge 1: exit "end" cannot have an outgoing edge`]);
   });
 
+  it("edge leaves fail", () => {
+    expect(validateLine(failRoutedLine({ from: "failed", to: "done", on: "always" }), NO_STATIONS)).toEqual([`edge 2: fail "failed" cannot have an outgoing edge`]);
+  });
+
   it("node has no outgoing edge", () => {
     const line: LineBody = {
       entry: "start",
@@ -66,6 +100,10 @@ describe("validateLine", () => {
     };
 
     expect(validateLine(line, NO_STATIONS)).toEqual([`node "middle" has no outgoing edge`]);
+  });
+
+  it("fail node needs no outgoing edge", () => {
+    expect(validateLine(failRoutedLine(), NO_STATIONS)).toEqual([]);
   });
 
   it("start arg not declared", () => {
