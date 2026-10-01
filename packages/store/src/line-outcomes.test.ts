@@ -32,6 +32,22 @@ describe("validateLine, outcome-edge coverage", () => {
     expect(validateLine(lineWithEdge("reviewer", "always"), known(["success", "changes_requested"]))).toEqual([]);
   });
 
+  it("accepts a fail node that names a station, with no edge for its outcomes", () => {
+    const line: LineBody = {
+      entry: "review",
+      exit: "done",
+      fail: "failed",
+      args: {},
+      nodes: [{ id: "review", station: "reviewer" }, { id: "done" }, { id: "failed", station: "reviewer" }],
+      edges: [
+        { from: "review", to: "done", on: "success" },
+        { from: "review", to: "failed", on: "failed" },
+      ],
+    };
+
+    expect(validateLine(line, known(["success"]))).toEqual([]);
+  });
+
   it("skips a node whose station is pinned by hash", () => {
     expect(validateLine(lineWithEdge("reviewer@abc123", "success"), known(["success", "changes_requested"]))).toEqual([]);
   });

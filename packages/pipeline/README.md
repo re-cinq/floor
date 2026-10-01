@@ -76,6 +76,7 @@ schedules:
   nightly: { cron: "0 3 * * *", payload: { pr_url: https://pr/1 } }
 ```
 
+- **A line may name a `fail` node beside its `exit`**: `fail: failed`, with `- { id: failed }` among its nodes. A run that an edge leads there settles as `failed`. Written back, it comes right after `exit`.
 - **The floor's own fields change spelling**, `timeout_minutes` to `timeoutMinutes`. Names a person chose do not: a model's name, a repository's, a key of `config` or of `env`.
 - **A file a line ships is in the file by its content.** Text as it is; anything else as `{ base64: ... }`. The floor keeps it by its hash, and a hash is no backup.
 - **A station two lines use is in both files.** Put twice with the same content, it is one version.

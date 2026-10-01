@@ -39,8 +39,9 @@ each entity has its own page under [entities/](entities/).
 - **Type safety.** Definitions, run arguments and event payloads are typed
   schemas. A failing POST returns 400 with every error, not the first. An
   assembly line is also checked for what it refers to: entry, exit and every
-  edge name a real node, every node but the exit has an outgoing edge, and
-  every node's station is a known one.
+  edge name a real node, every node but the exit and the fail node has an
+  outgoing edge, and every node's station is a known one. A line may name a
+  `fail` node beside its `exit`: a run arriving there settles as `failed`.
 - **Field names.** Request and response bodies are `camelCase`: `runId`,
   `dedupeKey`, `availableAt`, `startItems`.
 - **Tenancy is the database.** One floor serves one tenant. Lore gives each

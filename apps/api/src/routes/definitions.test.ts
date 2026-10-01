@@ -196,6 +196,24 @@ describe("POST /assembly-lines semantic validation", () => {
     expect(response.statusCode).toBe(201);
   });
 
+  it("keeps the fail node a line was posted with", async () => {
+    await injectJson(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: { ...STATION_BODY, outcomes: ["success", "failed"] } });
+    const line = {
+      ...lineNaming(STATION_ID),
+      fail: "failed",
+      nodes: [{ id: STATION_ID, station: STATION_ID }, { id: "done" }, { id: "failed" }],
+      edges: [
+        { from: STATION_ID, to: "done", on: "success" },
+        { from: STATION_ID, to: "failed", on: "failed" },
+      ],
+    };
+
+    const posted = await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: line });
+    const stored = await injectJson(server(), { method: "GET", url: "/assembly-lines/code-review", headers: authHeaders() });
+
+    expect({ posted: posted.statusCode, stored: stored.result }).toMatchObject({ posted: 201, stored: { body: { fail: "failed" } } });
+  });
+
   it("returns 400 with both a missing outcome edge and an unmet need", async () => {
     await injectJson(server(), {
       method: "POST",
