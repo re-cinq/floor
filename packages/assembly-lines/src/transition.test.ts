@@ -80,11 +80,11 @@ describe("getNextTransition", () => {
     expect(getNextTransition(reviewLoop, visits)).toEqual({ kind: "finish" });
   });
 
-  it("fails with iteration_max when a back-edge exceeds its budget", () => {
+  it("halts with iteration_max when a back-edge exceeds its budget", () => {
     const visits = [...twoRoundsThenThirdRoundSetup(), visit("review", 3, "changes_requested")];
 
     expect(getNextTransition(reviewLoop, visits)).toMatchObject({
-      kind: "fail",
+      kind: "halt",
       outcome: "iteration_max",
     });
   });
@@ -98,25 +98,25 @@ describe("getNextTransition", () => {
     ];
 
     expect(getNextTransition(alwaysLoop, visits)).toMatchObject({
-      kind: "fail",
+      kind: "halt",
       outcome: "iteration_max",
     });
   });
 
-  it("fails with a no-edge error when no edge matches the outcome", () => {
+  it("halts with a no-edge error when no edge matches the outcome", () => {
     const transition = getNextTransition(reviewLoop, [visit("implement", 1, "failed")]);
 
     expect(transition).toMatchObject({
-      kind: "fail",
+      kind: "halt",
       outcome: "error",
       reason: expect.stringContaining('no edge from "implement" for outcome "failed"'),
     });
   });
 
-  it("fails when the visit history exceeds maxNodes", () => {
+  it("halts when the visit history exceeds maxNodes", () => {
     const transition = getNextTransition(reviewLoop, [visit("implement", 1, "success")], 1);
 
-    expect(transition).toMatchObject({ kind: "fail", outcome: "error" });
+    expect(transition).toMatchObject({ kind: "halt", outcome: "error" });
   });
 
   it("counts only the visits since a person last acted toward maxNodes (a human station gates every pass of a human loop, so its length is not a runaway)", () => {
@@ -146,16 +146,16 @@ describe("getNextTransition", () => {
       getNextTransition(humanLoop, [...visits, visit("draft", 3, "success")], 1),
     ]).toMatchObject([
       { kind: "launch", nodeId: "draft", iteration: 3 },
-      { kind: "fail", outcome: "error" },
+      { kind: "halt", outcome: "error" },
     ]);
   });
 
-  it("fails when a recorded node's iteration diverges from the recomputed walk (implement@1 succeeded but next row persisted as validate@2)", () => {
+  it("halts when a recorded node's iteration diverges from the recomputed walk (implement@1 succeeded but next row persisted as validate@2)", () => {
     const visits = [visit("implement", 1, "success"), visit("validate", 2, "success")];
     const transition = getNextTransition(reviewLoop, visits);
 
     expect(transition).toMatchObject({
-      kind: "fail",
+      kind: "halt",
       outcome: "error",
       reason: expect.stringContaining("diverge"),
     });
@@ -184,19 +184,19 @@ describe("getNextTransition", () => {
 });
 
 describe("getNextTransition on a line with a fail node", () => {
-  it("fails with outcome failed when post reports failed and its edge leads to the fail node", () => {
+  it("halts with outcome failed when post reports failed and its edge leads to the fail node", () => {
     expect(getNextTransition(postOrFail, [visit("post", 1, "failed")])).toEqual({
-      kind: "fail",
+      kind: "halt",
       outcome: "failed",
       reason: 'AssemblyLine post-or-fail: node "post" reported "failed"',
     });
   });
 
-  it("fails with outcome failed when post reports success and an always edge leads to the fail node", () => {
+  it("halts with outcome failed when post reports success and an always edge leads to the fail node", () => {
     const alwaysFails: WalkGraph = { ...postOrFail, edges: [{ from: "post", to: "failed", on: "always" }] };
 
     expect(getNextTransition(alwaysFails, [visit("post", 1, "success")])).toEqual({
-      kind: "fail",
+      kind: "halt",
       outcome: "failed",
       reason: 'AssemblyLine post-or-fail: node "post" reported "success"',
     });
@@ -230,11 +230,11 @@ describe("getNextTransition on a run started at a node other than the line's ent
     });
   });
 
-  it("still fails a later row that is not where the walk got to", () => {
+  it("still halts on a later row that is not where the walk got to", () => {
     const visits = [visit("validate", 1, "success"), visit("implement", 1, "success")];
 
     expect(getNextTransition(reviewLoop, visits)).toMatchObject({
-      kind: "fail",
+      kind: "halt",
       outcome: "error",
       reason: expect.stringContaining('recorded "implement" iter 1, expected "review" iter 1'),
     });

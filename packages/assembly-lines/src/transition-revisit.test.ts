@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { getNextTransition, type WalkGraph, type NodeVisit } from "./transition.js";
 import { visit, reviewLoop, twoWaysBack, twoRoundsThenThirdRoundSetup } from "./transition.fixtures.js";
 
-describe("rework: a station's objection routes back to the step that fed it, then fails rather than looping", () => {
+describe("rework: a station's objection routes back to the step that fed it, then halts rather than looping", () => {
   const decompose: WalkGraph = {
     name: "decompose-issues",
     entry: "decompose",
@@ -33,14 +33,14 @@ describe("rework: a station's objection routes back to the step that fed it, the
     });
   });
 
-  it("fails once that edge's budget is spent on the second round", () => {
+  it("halts once that edge's budget is spent on the second round", () => {
     const visits = [
       ...oneRoundOfObjection,
       { nodeId: "decompose", iteration: 2, outcome: "success" },
       { nodeId: "issues", iteration: 2, outcome: "changes_requested" },
     ];
 
-    expect(getNextTransition(decompose, visits).kind).toBe("fail");
+    expect(getNextTransition(decompose, visits).kind).toBe("halt");
   });
 });
 
@@ -69,7 +69,7 @@ describe("getNextTransition — a revisit numbers past every prior visit", () =>
     ];
 
     expect(getNextTransition(twoWaysBack, visits)).toMatchObject({
-      kind: "fail",
+      kind: "halt",
       outcome: "iteration_max",
     });
   });
