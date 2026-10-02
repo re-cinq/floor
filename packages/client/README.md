@@ -54,6 +54,8 @@ There is no idle timeout here on purpose. A caught-up quiet run legitimately say
 
 One caveat for a relay: `visit_opened` and `visit_reported` carry the whole visit, `agentSettings` included — the model, the prompt, the image. Filter those before they reach a browser.
 
+`runs.watchFloor(options)` follows the whole floor instead of one run: `run_started` and `run_changed`, each with a run's id and nothing else. It has no cursor. The floor opens every connection with `resync`, which means "read your list again", so a watch that drops comes back with nothing to remember. It is refused without the service token and comes back from everything else.
+
 ## Testing against it
 
 Both seams are injectable and neither needs a server: `fetchFn` for HTTP, `socketFn` for the live socket. With `backoffMs: () => 0`, the whole reconnect table is unit-testable in milliseconds — see `live.test.ts`.
