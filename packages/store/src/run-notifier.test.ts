@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { setupStoreFixture, FIXED_NOW } from "./assembly-run-store.fixtures.js";
+import { setupStoreFixture, startItems, FIXED_NOW } from "./assembly-run-store.fixtures.js";
 import { createPool } from "./pg.js";
 import { connectionString } from "./pg-test-pool.js";
 import { RecordsStore } from "./records.js";
 import { LISTENER_NAME, PgRunNotifier } from "./run-notifier.js";
 
-const { pool, openEntryVisit } = setupStoreFixture();
+const { pool, store, seedReviewLine, openEntryVisit } = setupStoreFixture();
 
 const SOON_MS = 20;
 const PATIENCE_MS = 5000;
@@ -32,7 +32,7 @@ async function listeningTo(runId: string): Promise<Heard> {
   return heard;
 }
 
-function within(told: Promise<string>): Promise<string> {
+function within<Told>(told: Promise<Told>): Promise<Told | string> {
   return Promise.race([told, new Promise<string>((resolve) => setTimeout(() => resolve("nothing"), PATIENCE_MS))]);
 }
 
@@ -79,5 +79,19 @@ describe("the run notifier", () => {
     await new Promise((resolve) => setTimeout(resolve, SOON_MS));
 
     expect(told).toBe("nothing");
+  });
+});
+
+describe("the run notifier, floor-wide", () => {
+  it("tells a floor listener of a run started, by its id and the kind run_started", async () => {
+    await seedReviewLine();
+    let told = (notice: { run: string; kind: string }): void => void notice;
+    const started = new Promise<{ run: string; kind: string }>((resolve) => (told = (notice) => notice.kind === "run_started" && resolve(notice)));
+
+    notifier = new PgRunNotifier({ connectionString, retryMs: SOON_MS });
+    await notifier.subscribeFloor({ told, resync: () => undefined });
+    const { run } = await store().start({ lineId: "code-review", repo: "github.com/re-cinq/lore", startItems: startItems() });
+
+    expect(await within(started)).toEqual({ run: run.id, kind: "run_started" });
   });
 });

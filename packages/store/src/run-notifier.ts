@@ -13,9 +13,23 @@ export interface RunListener {
   resync: () => void;
 }
 
+export interface FloorNotice {
+  run: string;
+  kind: string;
+}
+
+export interface FloorListener {
+  /** Something happened in a run, anywhere on the floor. */
+  told(notice: FloorNotice): void;
+  /** Notices may have been missed, the connection having been lost: read the floor again. */
+  resync(): void;
+}
+
 export interface RunNotifier {
   /** Resolves once listening, so nothing written after it is missed. Returns how to stop. */
   subscribe(runId: string, listener: RunListener): Promise<() => void>;
+  /** Resolves once listening. Hears of every run's notices, not one's. Returns how to stop. */
+  subscribeFloor(listener: FloorListener): Promise<() => void>;
   close(): Promise<void>;
 }
 
@@ -30,6 +44,7 @@ export const LISTENER_NAME = "floor-run-listener";
 
 export class PgRunNotifier implements RunNotifier {
   private readonly listeners = new Map<string, Set<RunListener>>();
+  private readonly floorListeners = new Set<FloorListener>();
   private listening: Promise<void> | null = null;
   private client: postgres.Client | null = null;
   private schema = "";
@@ -51,9 +66,18 @@ export class PgRunNotifier implements RunNotifier {
     return () => this.forget(runId, listener);
   }
 
+  async subscribeFloor(listener: FloorListener): Promise<() => void> {
+    this.floorListeners.add(listener);
+    this.listening ??= this.listen();
+    await this.listening;
+
+    return () => void this.floorListeners.delete(listener);
+  }
+
   async close(): Promise<void> {
     this.closed = true;
     this.listeners.clear();
+    this.floorListeners.clear();
     await this.client?.end();
   }
 
@@ -80,10 +104,12 @@ export class PgRunNotifier implements RunNotifier {
 
   // A database holds more than one floor, a schema each, and a notice is the database's: one from another schema is another floor's.
   private heard(payload: string): void {
-    const told = JSON.parse(payload) as { schema: string; run: string };
+    const told = JSON.parse(payload) as { schema: string; run: string; kind?: string };
 
     if (told.schema !== this.schema) return;
     this.listeners.get(told.run)?.forEach((listener) => listener.changed());
+    if (told.kind === undefined || told.kind === "record") return;
+    this.floorListeners.forEach((listener) => listener.told({ run: told.run, kind: told.kind as string }));
   }
 
   private lost(): void {
