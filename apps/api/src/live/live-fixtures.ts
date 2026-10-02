@@ -49,8 +49,20 @@ export async function caughtUpOn(floor: Server, deps: Deps): Promise<CaughtUp> {
 
 export function watch(watching: Watching): Watched {
   const { floor, runId, after = "0", token = SERVICE_TOKEN } = watching;
+
+  return recording(`ws://localhost:${floor.info.port}/assembly-runs/${runId}/live?after=${after}`, token);
+}
+
+/** The floor-wide socket, which tells of every run by id. */
+export function watchFloor(watching: { floor: Server; token?: string }): Watched {
+  const { floor, token = SERVICE_TOKEN } = watching;
+
+  return recording(`ws://localhost:${floor.info.port}/assembly-runs/live`, token);
+}
+
+function recording(url: string, token: string): Watched {
   const headers = token ? { authorization: `Bearer ${token}` } : {};
-  const socket = new WebSocket(`ws://localhost:${floor.info.port}/assembly-runs/${runId}/live?after=${after}`, { headers });
+  const socket = new WebSocket(url, { headers });
   const frames: Told[] = [];
   const waiting: { type: string; tell: (frame: Told) => void }[] = [];
 

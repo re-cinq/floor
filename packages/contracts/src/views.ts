@@ -96,3 +96,6 @@ export type LiveFrame =
   | { type: "run_settled"; seq: number; run: RunView }
   | { type: "caught_up"; seq: number }
   | { type: "unsupported" };
+
+/** One frame of `GET /assembly-runs/live`: ids only, the reader reads what they name; `resync` is the first frame of every connection and follows any gap. */
+export type FloorFrame = { type: "run_started"; runId: string } | { type: "run_changed"; runId: string } | { type: "resync" };

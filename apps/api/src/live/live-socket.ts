@@ -1,4 +1,4 @@
-// The live channel (docs/api_sketch.md, "Live"): one WebSocket is one run, watched. lore opens one when somebody subscribes to a run and closes it when they unsubscribe; a browser never reaches the floor.
+// The live channel (docs/api_sketch.md, "Live"): one WebSocket is one run, watched, or the whole floor's runs by id. lore opens one when somebody subscribes to a run and closes it when they unsubscribe; a browser never reaches the floor.
 import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import type { Server } from "@hapi/hapi";
@@ -7,9 +7,12 @@ import { callerOf } from "../auth.js";
 import type { LiveLimits } from "../config.js";
 import type { Deps } from "../deps.js";
 import { isUuid } from "../routes/own-visit.js";
+import type { FloorFrame } from "@re-cinq/floor-contracts";
+import { FloorFeed, type FloorViewer } from "./floor-feed.js";
 import { RunFeed, type Frame, type Viewer } from "./run-feed.js";
 
 const LIVE_PATH = /^\/assembly-runs\/([^/]+)\/live$/;
+const FLOOR_PATH = "/assembly-runs/live";
 const WHOLE_NUMBER = /^\d+$/;
 
 export const BAD_CURSOR = { code: 4400, reason: "after must be a whole number" };
@@ -50,6 +53,9 @@ class LiveSocket {
 
   // Taken up even from a caller it will refuse: a close code is read by any client, a refused upgrade's status by few.
   upgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void {
+    const url = new URL(request.url ?? "/", "http://floor");
+
+    if (url.pathname === FLOOR_PATH) return this.sockets.handleUpgrade(request, socket, head, (opened) => void this.openedOnFloor(opened, request.headers.authorization));
     const asked = askedOf(request);
 
     if (!asked) return void socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n");
@@ -76,6 +82,17 @@ class LiveSocket {
 
     this.count(run.id, 1);
     socket.on("close", () => this.left(run.id, feed));
+    await feed.start().catch(() => socket.terminate());
+  }
+
+  private async openedOnFloor(socket: WebSocket, authorization: string | undefined): Promise<void> {
+    const viewer = this.viewerOn(socket);
+
+    this.hear(socket, viewer);
+    if (callerOf(authorization, { ...this.deps.config, now: this.deps.now })?.kind !== "service") return viewer.close(NO_SERVICE_TOKEN);
+    const feed = new FloorFeed(this.deps, viewer);
+
+    socket.on("close", () => feed.stop());
     await feed.start().catch(() => socket.terminate());
   }
 
@@ -110,9 +127,9 @@ class LiveSocket {
   }
 
   // A viewer that reads slower than its run writes is dropped, not waited for: what waits for it is held in the floor's own memory. It comes back with its cursor.
-  private viewerOn(socket: WebSocket): Viewer {
+  private viewerOn(socket: WebSocket): Viewer & FloorViewer {
     return {
-      send: (frame: Frame) => {
+      send: (frame: Frame | FloorFrame) => {
         if (socket.readyState !== socket.OPEN) return;
         if (socket.bufferedAmount > this.limits.bufferedBytes) return socket.terminate();
         socket.send(JSON.stringify(frame));
