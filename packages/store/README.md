@@ -101,7 +101,9 @@ See [the map](../../README.md) for what sits either side of it.
   each one stops.
 - `line-validation.ts` — `validateLine`: every semantic problem in a line
   body, not the first — entry, exit and edge endpoints name real nodes, node
-  ids are unique, every node but the exit has an outgoing edge, `start.args`
+  ids are unique, `fail` (when given) names a node that is neither the entry
+  nor the exit, every node but the exit and the fail node has an outgoing
+  edge and neither of those two has one, `start.args`
   names a declared argument, at most one argument is `subject`, and every
   node's station (its `@hash` pin stripped) is a known one.
 - `event-match.ts`, `outside-events.ts` — events from outside the walk.

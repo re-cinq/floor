@@ -12,6 +12,10 @@ has so far, it says which edge is taken next. [`packages/store`](../store/README
 caller — it asks once, inside the transaction that writes a report. It depends on nothing of ours,
 which is why its tests are plain values and no database.
 
+A walk ends in one of two places: at the line's `exit`, which is `finish`, or at its `fail`
+node when it names one, which is `fail` with outcome `failed` and a reason naming the node whose
+edge led there. Neither terminal is ever launched.
+
 See [the map](../../README.md) for how a decision here becomes work somewhere else.
 
 ## Ported from lore

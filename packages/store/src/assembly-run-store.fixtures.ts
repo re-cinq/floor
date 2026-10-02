@@ -63,8 +63,8 @@ export interface StoreFixture {
   store: () => AssemblyRunStore;
   definitions: () => DefinitionsStore;
   events: () => EventStore;
-  seedReviewLine: () => Promise<void>;
-  openEntryVisit: () => Promise<{ runId: string; visitId: string }>;
+  seedReviewLine: (line?: LineBody) => Promise<void>;
+  openEntryVisit: (line?: LineBody) => Promise<{ runId: string; visitId: string }>;
   reviewSucceedsIntoRetrospective: () => Promise<RetrospectiveOpened>;
 }
 
@@ -74,8 +74,8 @@ export function setupStoreFixture(): StoreFixture {
   const definitions = (): DefinitionsStore => new DefinitionsStore({ connection: pool() });
   const events = (): EventStore => new EventStore({ connection: pool(), now: () => FIXED_NOW });
 
-  const seedReviewLine = async (): Promise<void> => {
-    await definitions().put("line", "code-review", REVIEW_LINE);
+  const seedReviewLine = async (line: LineBody = REVIEW_LINE): Promise<void> => {
+    await definitions().put("line", "code-review", line);
     await definitions().put("station", "review", REVIEW_STATION);
     await definitions().put("agent_definition", "reviewer", REVIEWER_AGENT_DEFINITION);
   };
@@ -104,10 +104,10 @@ function registerPoolLifecycle(): () => PgPool {
 function buildScenarios(
   store: () => AssemblyRunStore,
   events: () => EventStore,
-  seedReviewLine: () => Promise<void>,
+  seedReviewLine: StoreFixture["seedReviewLine"],
 ): Pick<StoreFixture, "openEntryVisit" | "reviewSucceedsIntoRetrospective"> {
-  const openEntryVisit = async (): Promise<{ runId: string; visitId: string }> => {
-    await seedReviewLine();
+  const openEntryVisit = async (line: LineBody = REVIEW_LINE): Promise<{ runId: string; visitId: string }> => {
+    await seedReviewLine(line);
     const { run } = await store().start({ lineId: "code-review", repo: "github.com/re-cinq/lore", startItems: startItems() });
     const { visit } = await store().openVisit(run.id, "review", 1);
 

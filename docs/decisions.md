@@ -12,6 +12,18 @@ the run is settled as `error` with the refusal as its reason. The
 alternative was a run with nothing open and nothing queued, which waits
 forever and looks healthy.
 
+**A line ends a run as failed at a node, and the outcome is always
+`failed`.** A line names `fail: <node id>` beside `exit`, and a run arriving
+there settles as `failed`. Before this a line could only reach the exit,
+which is `success` whatever led there, so every line that wanted a failed
+run wrote a self-edge with `iteration_max: 1`: a retry nobody wanted, for a
+run that then settled as `iteration_max`. A node was chosen over an edge
+target that is no node (`to: "@fail"`) because it reads like the rest of a
+line body, shows on a graph, and needs no special case where edges are
+checked. The run takes `failed` and not the outcome that led there: an
+`always` edge after a `success` must not settle a failed run as `success`,
+and the outcome that did lead there is in the reason.
+
 **A start by hand is one that carries no iteration.** The plan said a start
 event *named* other than `node.<id>.start` closes open human visits. The
 kernel restarts the walk at any visit a person asked for, whatever the event

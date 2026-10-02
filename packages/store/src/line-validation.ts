@@ -31,11 +31,25 @@ function nodeNameChecks(line: LineBody): string[] {
 
   if (!ids.has(line.entry)) problems.push(`entry "${line.entry}" is not a node`);
   if (!ids.has(line.exit)) problems.push(`exit "${line.exit}" is not a node`);
+  problems.push(...failNameChecks(line, ids));
 
   line.edges.forEach((edge, index) => {
     if (!ids.has(edge.from)) problems.push(`edge ${index}: from "${edge.from}" is not a node`);
     if (!ids.has(edge.to)) problems.push(`edge ${index}: to "${edge.to}" is not a node`);
   });
+
+  return problems;
+}
+
+function failNameChecks(line: LineBody, ids: Set<string>): string[] {
+  const fail = line.fail;
+
+  if (fail === undefined) return [];
+  const problems: string[] = [];
+
+  if (!ids.has(fail)) problems.push(`fail "${fail}" is not a node`);
+  if (fail === line.exit) problems.push(`fail "${fail}" is also the exit`);
+  if (fail === line.entry) problems.push(`fail "${fail}" is also the entry`);
 
   return problems;
 }
@@ -62,14 +76,20 @@ function outgoingEdgeChecks(line: LineBody): string[] {
 
   line.edges.forEach((edge, index) => {
     if (edge.from === line.exit) problems.push(`edge ${index}: exit "${line.exit}" cannot have an outgoing edge`);
+    if (edge.from === line.fail) problems.push(`edge ${index}: fail "${line.fail}" cannot have an outgoing edge`);
     sourcesWithEdge.add(edge.from);
   });
 
   for (const node of line.nodes) {
-    if (node.id !== line.exit && !sourcesWithEdge.has(node.id)) problems.push(`node "${node.id}" has no outgoing edge`);
+    if (!endsRun(line, node.id) && !sourcesWithEdge.has(node.id)) problems.push(`node "${node.id}" has no outgoing edge`);
   }
 
   return problems;
+}
+
+// The exit and the fail node are both terminal: the walk stops there, so nothing is owed going out of them.
+function endsRun(line: LineBody, nodeId: string): boolean {
+  return nodeId === line.exit || nodeId === line.fail;
 }
 
 // A node the walk can never arrive at is dead weight the walk would never report on; a back edge still counts as arriving. Silent when the entry is not a node at all, which nodeNameChecks already says.
@@ -121,7 +141,7 @@ function outcomeEdgeChecks(line: LineBody, known: KnownDefinitions): string[] {
   if (!bodies) return [];
   const reached = reachedFrom(line);
   const stationNodes = line.nodes.filter(hasStation);
-  const checkedNodes = stationNodes.filter((node) => node.id !== line.exit && reached.has(node.id));
+  const checkedNodes = stationNodes.filter((node) => !endsRun(line, node.id) && reached.has(node.id));
 
   return checkedNodes.flatMap((node) => outcomesMissingEdges(line, node, bodies));
 }

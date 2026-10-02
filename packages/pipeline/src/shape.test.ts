@@ -137,6 +137,14 @@ describe("fileOf", () => {
     expect(Object.keys(written.line!)).toEqual(["id", "entry", "exit", "args", "files", "nodes", "edges"]);
   });
 
+  it("writes a line's fail right after its exit, whatever order the floor gave the fields in", () => {
+    const { line } = codeReview();
+    const alphabetical = Object.fromEntries(Object.entries({ ...line!.body, fail: "abandon" }).sort());
+    const written = fileOf({ ...codeReview(), line: { id: "code-review", body: alphabetical } });
+
+    expect(Object.keys(written.line!)).toEqual(["id", "entry", "exit", "fail", "args", "files", "nodes", "edges"]);
+  });
+
   it("writes an agent's prompt last, after the model it is for", () => {
     const written = fileOf(codeReview());
     const { reviewer } = written.agent_definitions!;
