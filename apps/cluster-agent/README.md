@@ -83,7 +83,11 @@ exceptions called out in its file header:
    file the station produces: its full path under `/workspace`
    (`domain/prompt-parameters.ts`). With no repo cloned the agent's working
    directory is `/`, so a prompt that says `note.md` has the agent write
-   somewhere the subsystem never looks.
+   somewhere the subsystem never looks. A prompt is also told which run it
+   works for: `{run_id}` and `{line_id}`, the visit's assembly run and that
+   run's assembly line. A value need of the same name wins, so a line that
+   hands its station a `run_id` of its own (the run that settled, say) is
+   read as it was written.
 
 The loop rests 5 seconds after finding nothing, growing to a minute while
 nothing keeps coming; `FLOOR_CLAIM_IDLE_MS` and `FLOOR_CLAIM_MAX_IDLE_MS`

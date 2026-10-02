@@ -20,9 +20,11 @@ export function registerRunRoutes(server: Server, deps: Deps): void {
 
 async function list(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const query = request.query as Record<string, string | undefined>;
-  const filter: RunFilter = { lineId: query.line, repo: query.repo, subjectKey: query.subject, open: openFilter(query.open), since: dateOf(query.since) };
+  const filter: RunFilter = { lineId: query.line, repo: repoOf(query), subjectKey: query.subject, open: openFilter(query.open), since: dateOf(query.since) };
 
-  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: line, repo, subject, open, or since");
+  if (filter.repo === null && query.repo !== undefined) return badRequest(toolkit, "withoutRepo and repo cannot be asked for together");
+
+  if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: line, repo, withoutRepo, subject, open, or since");
 
   try {
     return await deps.runs.list(filter, { limit: limitOf(query.limit), cursor: query.cursor });
@@ -37,7 +39,7 @@ async function getOne(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   const run = await deps.runs.get(request.params.id as string);
 
   if (!run) return notFound(toolkit, `no run "${request.params.id}"`);
-  const [bag, currentNode, cost] = await Promise.all([deps.runs.bag(run.id), deps.runs.currentNode(run.id), deps.costs.ofRun(run.id)]);
+  const [bag, currentNode, cost] = await Promise.all([deps.runs.bagOf(run), deps.runs.currentNode(run.id), deps.costs.ofRun(run.id)]);
 
   return { run, bag, currentNode, cost };
 }
@@ -58,6 +60,10 @@ function hasFilter(filter: RunFilter): boolean {
   const given = [filter.lineId, filter.repo, filter.subjectKey, filter.open, filter.since];
 
   return given.some((value) => value !== undefined);
+}
+
+function repoOf(query: Record<string, string | undefined>): string | null | undefined {
+  return query.withoutRepo === "true" ? null : query.repo;
 }
 
 function openFilter(value: string | undefined): boolean | undefined {

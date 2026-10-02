@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { Visit } from "./types.js";
+import type { LineBody, Visit } from "./types.js";
 import { RecordsStore, type RecordInput } from "./records.js";
-import { FIXED_NOW, setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
+import { FIXED_NOW, REVIEW_LINE, setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
 
 const { pool, store, events, seedReviewLine, openEntryVisit, reviewSucceedsIntoRetrospective } = setupStoreFixture();
+
+const FAIL_ROUTED_LINE: LineBody = {
+  ...REVIEW_LINE,
+  fail: "failed",
+  nodes: [...REVIEW_LINE.nodes, { id: "failed" }],
+  edges: REVIEW_LINE.edges.map((edge) => (edge.from === "review" && edge.on === "failed" ? { from: "review", to: "failed", on: "failed" } : edge)),
+};
 
 describe("AssemblyRunStore.report", () => {
   async function reportSuccessThenVisit(visitId: string, times: number): Promise<Visit | null> {
@@ -96,6 +103,34 @@ describe("AssemblyRunStore.report", () => {
     const run = await store().get(runId);
 
     expect(run!.outcome).toBe("iteration_max");
+  });
+
+  it("fails the run on purpose when failed is routed to the line's fail node", async () => {
+    const { runId, visitId } = await openEntryVisit(FAIL_ROUTED_LINE);
+
+    await store().report(visitId, { outcome: "failed", error: "boom" });
+    const run = await store().get(runId);
+
+    expect(run).toMatchObject({ outcome: "failed", reason: 'AssemblyLine code-review: node "review" reported "failed"' });
+  });
+
+  it("says failed, and the node that reported it, in internal.run.settled when the run ends at the fail node", async () => {
+    const { runId, visitId } = await openEntryVisit(FAIL_ROUTED_LINE);
+
+    await store().report(visitId, { outcome: "failed", error: "boom" });
+    const runEvents = await events().listByRun(runId);
+    const settled = runEvents.find((event) => event.name === "internal.run.settled");
+
+    expect(settled?.payload).toMatchObject({ runId, outcome: "failed", reason: 'AssemblyLine code-review: node "review" reported "failed"' });
+  });
+
+  it("opens no visit on the fail node", async () => {
+    const { runId, visitId } = await openEntryVisit(FAIL_ROUTED_LINE);
+
+    await store().report(visitId, { outcome: "failed", error: "boom" });
+    const visits = await store().visits(runId);
+
+    expect(visits.map((visit) => visit.nodeId)).toEqual(["review"]);
   });
 });
 

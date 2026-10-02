@@ -53,14 +53,10 @@ export {
 } from "./records.js";
 export {
   AssemblyRunStore,
-  type StartRunInput,
-  type StartResult,
   type OpenVisitResult,
-  type RunFilter,
-  type Page,
-  type PageOf,
   type AssemblyRunStoreDeps,
 } from "./assembly-run-store.js";
+export type { StartRunInput, StartResult, RunFilter, Page, PageOf } from "./run-shapes.js";
 export type { OutcomeCount, RunMetrics } from "./sql.js";
 export type { VisitFilter } from "./rows.js";
 export type {

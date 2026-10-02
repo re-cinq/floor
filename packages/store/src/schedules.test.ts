@@ -47,6 +47,16 @@ describe("SchedulesStore.put", () => {
     expect(await unresolvedCount("schedule.nightly.tick")).toBe(1);
   });
 
+  it("leaves a pending event with the new payload when put again with the same cron", async () => {
+    await schedules().put("nightly", SCHEDULE_BODY);
+    await schedules().put("nightly", { ...SCHEDULE_BODY, payload: { greeting: "bye" } });
+
+    expect(await schedules().pending("nightly")).toMatchObject({
+      availableAt: NEXT_OCCURRENCE,
+      payload: { greeting: "bye" },
+    });
+  });
+
   it("replaces the pending event's id when put again", async () => {
     await schedules().put("nightly", SCHEDULE_BODY);
     const before = (await schedules().pending("nightly"))!;
@@ -123,6 +133,14 @@ describe("SchedulesStore.remove", () => {
     await schedules().remove("nightly");
 
     expect(await schedules().pending("nightly")).toBeNull();
+  });
+
+  it("is pending again at the same occurrence when put back with the body it was removed with", async () => {
+    await schedules().put("nightly", SCHEDULE_BODY);
+    await schedules().remove("nightly");
+    await schedules().put("nightly", SCHEDULE_BODY);
+
+    expect(await schedules().pending("nightly")).toMatchObject({ availableAt: NEXT_OCCURRENCE });
   });
 });
 

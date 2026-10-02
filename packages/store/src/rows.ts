@@ -2,6 +2,7 @@
 
 import type { Pool, PoolClient } from "pg";
 import type { NodeVisit } from "@floor/assembly-lines";
+import { canonicalRepo } from "./repo-name.js";
 import type { AgentSettings, Brief, Item, Report, Run, Visit } from "./types.js";
 
 export type Queryable = Pool | PoolClient;
@@ -12,7 +13,7 @@ export interface RunRow {
   id: string;
   line_id: string;
   line_hash: string;
-  repo: string;
+  repo: string | null;
   subject_key: string | null;
   start_items: Record<string, Item>;
   outcome: string | null;
@@ -111,6 +112,12 @@ export function addCondition(conditions: string[], values: unknown[], template: 
   if (value === undefined) return;
   values.push(value);
   conditions.push(template.replace("$%", `$${values.length}`));
+}
+
+/** Undefined adds nothing, null asks for no repo, a name is matched in its canonical spelling. */
+export function addRepoCondition(conditions: string[], values: unknown[], column: string, repo: string | null | undefined): void {
+  if (repo === null) conditions.push(`${column} is null`);
+  if (typeof repo === "string") addCondition(conditions, values, `${column} = $%`, canonicalRepo(repo));
 }
 
 export async function withTransaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {

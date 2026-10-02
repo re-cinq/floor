@@ -1,4 +1,5 @@
 // Pure: what makes a line body self-consistent, beyond its JSON shape — every problem, not the first.
+import { isTerminalNode } from "@floor/assembly-lines";
 import { goingOutOf, reachableAvoiding, reachedFrom } from "./line-graph.js";
 import { needChecks } from "./line-needs.js";
 import { bareStationOf, hasStation, isPinned, resolvedStationOf } from "./line-stations.js";
@@ -10,11 +11,13 @@ export interface KnownDefinitions {
 }
 
 export function validateLine(line: LineBody, known: KnownDefinitions): string[] {
+  const ids = new Set(line.nodes.map((node) => node.id));
+
   return [
-    ...nodeNameChecks(line),
+    ...nodeNameChecks(line, ids),
     ...uniqueNodeIdChecks(line),
     ...outgoingEdgeChecks(line),
-    ...reachabilityChecks(line),
+    ...reachabilityChecks(line, ids),
     ...startArgChecks(line),
     ...subjectArgChecks(line),
     ...stationChecks(line, known),
@@ -25,12 +28,12 @@ export function validateLine(line: LineBody, known: KnownDefinitions): string[] 
   ];
 }
 
-function nodeNameChecks(line: LineBody): string[] {
-  const ids = nodeIds(line);
+function nodeNameChecks(line: LineBody, ids: Set<string>): string[] {
   const problems: string[] = [];
 
   if (!ids.has(line.entry)) problems.push(`entry "${line.entry}" is not a node`);
   if (!ids.has(line.exit)) problems.push(`exit "${line.exit}" is not a node`);
+  problems.push(...failNameChecks(line, ids));
 
   line.edges.forEach((edge, index) => {
     if (!ids.has(edge.from)) problems.push(`edge ${index}: from "${edge.from}" is not a node`);
@@ -40,8 +43,17 @@ function nodeNameChecks(line: LineBody): string[] {
   return problems;
 }
 
-function nodeIds(line: LineBody): Set<string> {
-  return new Set(line.nodes.map((node) => node.id));
+function failNameChecks(line: LineBody, ids: Set<string>): string[] {
+  const fail = line.fail;
+
+  if (fail === undefined) return [];
+  const problems: string[] = [];
+
+  if (!ids.has(fail)) problems.push(`fail "${fail}" is not a node`);
+  if (fail === line.exit) problems.push(`fail "${fail}" is also the exit`);
+  if (fail === line.entry) problems.push(`fail "${fail}" is also the entry`);
+
+  return problems;
 }
 
 function uniqueNodeIdChecks(line: LineBody): string[] {
@@ -62,20 +74,19 @@ function outgoingEdgeChecks(line: LineBody): string[] {
 
   line.edges.forEach((edge, index) => {
     if (edge.from === line.exit) problems.push(`edge ${index}: exit "${line.exit}" cannot have an outgoing edge`);
+    if (edge.from === line.fail) problems.push(`edge ${index}: fail "${line.fail}" cannot have an outgoing edge`);
     sourcesWithEdge.add(edge.from);
   });
 
   for (const node of line.nodes) {
-    if (node.id !== line.exit && !sourcesWithEdge.has(node.id)) problems.push(`node "${node.id}" has no outgoing edge`);
+    if (!isTerminalNode(line, node.id) && !sourcesWithEdge.has(node.id)) problems.push(`node "${node.id}" has no outgoing edge`);
   }
 
   return problems;
 }
 
 // A node the walk can never arrive at is dead weight the walk would never report on; a back edge still counts as arriving. Silent when the entry is not a node at all, which nodeNameChecks already says.
-function reachabilityChecks(line: LineBody): string[] {
-  const ids = nodeIds(line);
-
+function reachabilityChecks(line: LineBody, ids: Set<string>): string[] {
   if (!ids.has(line.entry)) return [];
   const reached = reachedFrom(line);
   const stranded = line.nodes.filter((node) => !reached.has(node.id));
@@ -121,7 +132,7 @@ function outcomeEdgeChecks(line: LineBody, known: KnownDefinitions): string[] {
   if (!bodies) return [];
   const reached = reachedFrom(line);
   const stationNodes = line.nodes.filter(hasStation);
-  const checkedNodes = stationNodes.filter((node) => node.id !== line.exit && reached.has(node.id));
+  const checkedNodes = stationNodes.filter((node) => !isTerminalNode(line, node.id) && reached.has(node.id));
 
   return checkedNodes.flatMap((node) => outcomesMissingEdges(line, node, bodies));
 }
@@ -162,14 +173,15 @@ function isCycleGuard(node: LineNode, bodies: ReadonlyMap<string, StationBody> |
 
 // Which candidates can walk back to themselves through the pruned graph, grouped so a cycle of several nodes is reported once, not once per member.
 function groupCyclicNodes(unbudgeted: Map<string, string[]>, guards: Set<string>, candidates: string[]): string[][] {
-  const reachesFromNeighbors = new Map(candidates.map((id) => [id, reachableAvoiding(unbudgeted, unbudgeted.get(id) ?? [], guards)]));
-  const cyclic = candidates.filter((id) => reachesFromNeighbors.get(id)!.has(id));
+  const reachesFromNeighbors = candidates.map((id) => ({ id, reaches: reachableAvoiding(unbudgeted, unbudgeted.get(id) ?? [], guards) }));
+  const cyclic = reachesFromNeighbors.filter(({ id, reaches }) => reaches.has(id));
   const seen = new Set<string>();
   const groups: string[][] = [];
 
-  for (const id of cyclic) {
+  for (const { id, reaches } of cyclic) {
     if (seen.has(id)) continue;
-    const group = cyclic.filter((other) => other === id || (reachesFromNeighbors.get(id)!.has(other) && reachesFromNeighbors.get(other)!.has(id)));
+    const mutual = cyclic.filter((other) => other.id === id || (reaches.has(other.id) && other.reaches.has(id)));
+    const group = mutual.map((other) => other.id);
 
     group.forEach((member) => seen.add(member));
     groups.push(group);

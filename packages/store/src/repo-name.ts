@@ -11,6 +11,10 @@ export function canonicalRepo(repo: string): string {
   return repo.toLowerCase();
 }
 
+export function canonicalRepoOrNull(repo: string | null): string | null {
+  return repo === null ? null : canonicalRepo(repo);
+}
+
 /** A git item's ref is "host/owner/name@branch". It is cut at the first `@`: a repository's name holds none, and a branch's may. */
 export function gitRefOf(ref: string): GitRef {
   const cut = ref.indexOf("@");
@@ -30,7 +34,9 @@ function canonicalRef(ref: string): string {
 }
 
 /** What a definition says of one repository, however the definition spells it. */
-export function forRepo<Said>(byRepo: Record<string, Said> | undefined, repo: string): Said | undefined {
+export function forRepo<Said>(byRepo: Record<string, Said> | undefined, repo: string | null): Said | undefined {
+  if (repo === null) return undefined;
+
   const found = Object.entries(byRepo ?? {}).find(([named]) => canonicalRepo(named) === canonicalRepo(repo));
 
   return found?.[1];

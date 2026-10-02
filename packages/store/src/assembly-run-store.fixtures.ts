@@ -63,8 +63,10 @@ export interface StoreFixture {
   store: () => AssemblyRunStore;
   definitions: () => DefinitionsStore;
   events: () => EventStore;
-  seedReviewLine: () => Promise<void>;
-  openEntryVisit: () => Promise<{ runId: string; visitId: string }>;
+  seedReviewLine: (line?: LineBody) => Promise<void>;
+  /** A one-node line, "digest", whose entry is its exit: a run of it needs no station. */
+  seedDigestLine: (args?: LineBody["args"]) => Promise<void>;
+  openEntryVisit: (line?: LineBody) => Promise<{ runId: string; visitId: string }>;
   reviewSucceedsIntoRetrospective: () => Promise<RetrospectiveOpened>;
 }
 
@@ -74,13 +76,17 @@ export function setupStoreFixture(): StoreFixture {
   const definitions = (): DefinitionsStore => new DefinitionsStore({ connection: pool() });
   const events = (): EventStore => new EventStore({ connection: pool(), now: () => FIXED_NOW });
 
-  const seedReviewLine = async (): Promise<void> => {
-    await definitions().put("line", "code-review", REVIEW_LINE);
+  const seedReviewLine = async (line: LineBody = REVIEW_LINE): Promise<void> => {
+    await definitions().put("line", "code-review", line);
     await definitions().put("station", "review", REVIEW_STATION);
     await definitions().put("agent_definition", "reviewer", REVIEWER_AGENT_DEFINITION);
   };
 
-  return { pool, store, definitions, events, seedReviewLine, ...buildScenarios(store, events, seedReviewLine) };
+  const seedDigestLine = async (args: LineBody["args"] = {}): Promise<void> => {
+    await definitions().put("line", "digest", { entry: "done", exit: "done", args, nodes: [{ id: "done" }], edges: [] } satisfies LineBody);
+  };
+
+  return { pool, store, definitions, events, seedReviewLine, seedDigestLine, ...buildScenarios(store, events, seedReviewLine) };
 }
 
 function registerPoolLifecycle(): () => PgPool {
@@ -104,10 +110,10 @@ function registerPoolLifecycle(): () => PgPool {
 function buildScenarios(
   store: () => AssemblyRunStore,
   events: () => EventStore,
-  seedReviewLine: () => Promise<void>,
+  seedReviewLine: StoreFixture["seedReviewLine"],
 ): Pick<StoreFixture, "openEntryVisit" | "reviewSucceedsIntoRetrospective"> {
-  const openEntryVisit = async (): Promise<{ runId: string; visitId: string }> => {
-    await seedReviewLine();
+  const openEntryVisit = async (line: LineBody = REVIEW_LINE): Promise<{ runId: string; visitId: string }> => {
+    await seedReviewLine(line);
     const { run } = await store().start({ lineId: "code-review", repo: "github.com/re-cinq/lore", startItems: startItems() });
     const { visit } = await store().openVisit(run.id, "review", 1);
 

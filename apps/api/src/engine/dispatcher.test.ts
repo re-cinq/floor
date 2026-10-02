@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LineBody, ScheduleBody, StationBody } from "@floor/store";
+import { OutsideEvents, type FloorEvent, type LineBody, type ScheduleBody, type StationBody } from "@floor/store";
 import { setupTestServer } from "../test-server.js";
 import { MARKER_LINE } from "./lines.fixtures.js";
 import { Dispatcher } from "./dispatcher.js";
@@ -34,11 +34,11 @@ async function tickUntilIdle(): Promise<void> {
   }
 }
 
-function dispatcher(): Dispatcher {
+function dispatcher(outside: OutsideEvents = deps().outside): Dispatcher {
   return new Dispatcher({
     runs: deps().runs,
     events: deps().events,
-    outside: deps().outside,
+    outside,
     schedules: deps().schedules,
     claimedBy: "floor-test",
   });
@@ -296,6 +296,17 @@ describe("Dispatcher: schedule ticks", () => {
     expect(runs.items).toHaveLength(1);
   });
 
+  it("starts a run with no repo when the schedule's payload names none and the line has no git argument", async () => {
+    await deps().definitions.put("line", "on-nightly", TICK_LINE);
+    await deps().schedules.put("nightly", { cron: "0 0 * * *", payload: {} });
+    await deps().schedules.trigger("nightly");
+
+    await tickUntilIdle();
+    const runs = await deps().runs.list({ lineId: "on-nightly" }, { limit: 10 });
+
+    expect(runs.items.map((run) => run.repo)).toEqual([null]);
+  });
+
   it("enqueues no further tick for a schedule archived before an in-flight tick of its is handled", async () => {
     await deps().schedules.put("nightly", SCHEDULE_BODY);
     const pending = (await deps().schedules.pending("nightly"))!;
@@ -315,5 +326,58 @@ describe("Dispatcher: schedule ticks", () => {
     );
 
     expect(Number(rows[0].count)).toBe(1);
+  });
+
+  const UNFILLABLE_LINE: LineBody = {
+    ...TICK_LINE,
+    args: { topic: { kind: "value" } },
+    start: { on: ["schedule.nightly.tick"], args: { topic: "{topic}" } },
+  };
+
+  class LinesOutOfReach extends OutsideEvents {
+    override startLines(): Promise<never> {
+      return Promise.reject(new Error("the database is out of reach"));
+    }
+  }
+
+  async function refusedTick(): Promise<FloorEvent> {
+    await deps().definitions.put("line", "on-nightly", UNFILLABLE_LINE);
+    await deps().definitions.put("schedule", "nightly", SCHEDULE_BODY);
+    const tick = (await deps().schedules.trigger("nightly"))!;
+
+    await tickUntilIdle();
+
+    return (await deps().events.get(tick.id))!;
+  }
+
+  it("leaves the next occurrence pending when the tick is refused for a start mapping its payload cannot fill", async () => {
+    await refusedTick();
+    const next = await deps().schedules.pending("nightly");
+
+    expect(next?.payload).toEqual({ repo: "r", scheduledFor: "2026-01-02T00:00:00.000Z" });
+  });
+
+  it("dead-letters the refused tick, naming the line and the field its payload lacks", async () => {
+    const tick = await refusedTick();
+
+    expect(tick).toMatchObject({ deadAt: deps().now(), lastError: 'line "on-nightly": a template names {topic}, which is not there to fill it' });
+  });
+
+  it("enqueues the next occurrence once when a tick that failed is handled a second time", async () => {
+    await deps().definitions.put("schedule", "nightly", SCHEDULE_BODY);
+    const tick = (await deps().schedules.trigger("nightly"))!;
+    const failing = dispatcher(new LinesOutOfReach({ pool: deps().pool, runs: deps().runs, definitions: deps().definitions }));
+
+    await failing.tick();
+    await deps().pool.query("update events set not_before = $1 where id = $2", [deps().now(), tick.id]);
+    await failing.tick();
+    const { rows } = await deps().pool.query(
+      "select attempts, payload->>'scheduledFor' as occurrence from events where name = 'schedule.nightly.tick' order by id",
+    );
+
+    expect(rows).toEqual([
+      { attempts: 2, occurrence: "2026-01-01T00:00:00.000Z" },
+      { attempts: 0, occurrence: "2026-01-02T00:00:00.000Z" },
+    ]);
   });
 });

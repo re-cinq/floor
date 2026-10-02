@@ -1,6 +1,7 @@
 // Events from outside the walk (docs/assembly_run_storage.md, "Starting a run", "An event may answer for a person"): they start lines that declare them, and answer nodes that wait on them.
 import type { Pool } from "pg";
-import type { AssemblyRunStore, StartResult } from "./assembly-run-store.js";
+import type { AssemblyRunStore } from "./assembly-run-store.js";
+import type { StartResult } from "./run-shapes.js";
 import type { DefinitionRow, DefinitionsStore } from "./definitions.js";
 import { answersOf, repoFrom, startItemsFrom, startsOn, type Payload } from "./event-match.js";
 import { Refusal, enforce } from "./refusal.js";
@@ -8,7 +9,7 @@ import { getWith } from "./rows.js";
 import { nodeVisitCount, openRunBySubject } from "./sql.js";
 import type { LineBody, Run, Visit } from "./types.js";
 
-export type RunRef = { runId: string } | { subjectKey: string; repo: string };
+export type RunRef = { runId: string } | { subjectKey: string; repo: string | null };
 
 export interface OutsideEvent {
   name: string;
@@ -24,7 +25,7 @@ export interface OutsideEventsDeps {
 export class OutsideEvents {
   constructor(private readonly deps: OutsideEventsDeps) {}
 
-  /** The run an event acts on: by id, or the open run holding that subject on that repo. */
+  /** The run an event acts on: by id, or the open run holding that subject on that repo, or among the runs that have no repo when it is null. */
   async runFor(ref: RunRef): Promise<Run | null> {
     if ("runId" in ref) return getWith(this.deps.pool, ref.runId);
 

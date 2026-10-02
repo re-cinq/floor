@@ -1,5 +1,7 @@
 export {
+  endsRun,
   getNextTransition,
+  isTerminalNode,
   selectEdge,
   visitsSinceHandRun,
   type WalkEdge,

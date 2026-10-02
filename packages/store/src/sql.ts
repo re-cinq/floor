@@ -1,13 +1,13 @@
 // The mutations and list query behind the store: one statement each, plus the compare-and-set report write.
 
-import { canonicalItems, canonicalRepo } from "./repo-name.js";
+import { canonicalItems, canonicalRepoOrNull } from "./repo-name.js";
 import type { PoolClient } from "pg";
 import { Refusal, enforce } from "./refusal.js";
 import { decodeRunCursor, type RunPosition } from "./run-cursor.js";
-import { addCondition, toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
+import { addCondition, addRepoCondition, toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
 import type { Report, Run, Visit } from "./types.js";
 import type { OpenContext } from "./open-visit.js";
-import type { Page, RunFilter, StartRunInput } from "./assembly-run-store.js";
+import type { Page, RunFilter, StartRunInput } from "./run-shapes.js";
 
 export async function insertRun(
   client: PoolClient,
@@ -20,16 +20,16 @@ export async function insertRun(
      values (gen_random_uuid(), $1, $2, $3, $4, $5::jsonb)
      on conflict (repo, subject_key) where subject_key is not null and finished_at is null do nothing
      returning *`,
-    [input.lineId, lineHash, canonicalRepo(input.repo), subjectKey, JSON.stringify(canonicalItems(input.startItems))],
+    [input.lineId, lineHash, canonicalRepoOrNull(input.repo), subjectKey, JSON.stringify(canonicalItems(input.startItems))],
   );
 
   return rows[0] ? toRun(rows[0]) : null;
 }
 
-export async function openRunBySubject(client: Queryable, repo: string, subjectKey: string): Promise<Run | null> {
+export async function openRunBySubject(client: Queryable, repo: string | null, subjectKey: string): Promise<Run | null> {
   const { rows } = await client.query(
-    `select * from assembly_runs where repo = $1 and subject_key = $2 and finished_at is null`,
-    [canonicalRepo(repo), subjectKey],
+    `select * from assembly_runs where repo is not distinct from $1 and subject_key = $2 and finished_at is null`,
+    [canonicalRepoOrNull(repo), subjectKey],
   );
 
   return rows[0] ? toRun(rows[0]) : null;
@@ -170,7 +170,7 @@ export function listQuery(filter: RunFilter, page: Page): { text: string; values
   const values: unknown[] = [];
 
   addCondition(conditions, values, "line_id = $%", filter.lineId);
-  addCondition(conditions, values, "repo = $%", filter.repo && canonicalRepo(filter.repo));
+  addRepoCondition(conditions, values, "repo", filter.repo);
   addCondition(conditions, values, "subject_key = $%", filter.subjectKey);
   addCondition(conditions, values, "created_at >= $%", filter.since);
   if (filter.open !== undefined) conditions.push(filter.open ? "finished_at is null" : "finished_at is not null");

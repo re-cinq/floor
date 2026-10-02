@@ -12,6 +12,16 @@ has so far, it says which edge is taken next. [`packages/store`](../store/README
 caller — it asks once, inside the transaction that writes a report. It depends on nothing of ours,
 which is why its tests are plain values and no database.
 
+A walk ends in one of two places: at the line's `exit`, which is `finish`, or at its `fail`
+node when it names one, which is `halt` with outcome `failed` and a reason naming the node whose
+edge led there. Neither terminal is ever launched. `isTerminalNode` is that rule for anyone else who
+needs it; the store's line validation asks it which nodes owe no outgoing edge.
+
+A transition is one of four: `launch` a node, `await` an open visit, `finish` at the exit, or `halt`,
+which is every other way a walk ends: a spent budget (`iteration_max`), an `error`, or the line's own
+fail node (`failed`). `halt` was called `fail` until a line could name a fail node; the word now means
+only the node. `endsRun` says whether a transition is one of the last two.
+
 See [the map](../../README.md) for how a decision here becomes work somewhere else.
 
 ## Ported from lore

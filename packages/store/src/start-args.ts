@@ -1,4 +1,5 @@
-import { Refusal } from "./refusal.js";
+import { gitArgNames } from "./line-args.js";
+import { Refusal, enforce } from "./refusal.js";
 import type { Item, LineArgSpec } from "./types.js";
 
 /** A refusal that carries every problem, so the caller fixes them in one go. */
@@ -8,8 +9,15 @@ export class InvalidStart extends Refusal {
   }
 }
 
-export function enforceStartArgs(args: Record<string, LineArgSpec>, startItems: Record<string, Item>): void {
-  const problems = startArgProblems(args, startItems);
+interface StartGiven {
+  lineId: string;
+  repo: string | null;
+  startItems: Record<string, Item>;
+}
+
+export function enforceStartArgs(args: Record<string, LineArgSpec>, given: StartGiven): void {
+  enforce(given.repo !== null || gitArgNames(args).length === 0, `line "${given.lineId}" has a git argument, so a start must name its repo`);
+  const problems = startArgProblems(args, given.startItems);
 
   if (problems.length > 0) throw new InvalidStart(problems);
 }

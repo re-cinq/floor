@@ -39,8 +39,9 @@ each entity has its own page under [entities/](entities/).
 - **Type safety.** Definitions, run arguments and event payloads are typed
   schemas. A failing POST returns 400 with every error, not the first. An
   assembly line is also checked for what it refers to: entry, exit and every
-  edge name a real node, every node but the exit has an outgoing edge, and
-  every node's station is a known one.
+  edge name a real node, every node but the exit and the fail node has an
+  outgoing edge, and every node's station is a known one. A line may name a
+  `fail` node beside its `exit`: a run arriving there settles as `failed`.
 - **Field names.** Request and response bodies are `camelCase`: `runId`,
   `dedupeKey`, `availableAt`, `startItems`.
 - **Tenancy is the database.** One floor serves one tenant. Lore gives each
@@ -82,9 +83,11 @@ POST   /assembly-lines                   // create a line (first version); 400 w
 PUT    /assembly-lines/:id               // does NOT mutate; creates a new version, returns its hash
 DELETE /assembly-lines/:id               // archives; 409 while runs are open on it
 
-POST   /assembly-lines/:id/start         // body: repo, startItems, optional entry, optional lineHash (a version of the
+POST   /assembly-lines/:id/start         // body: startItems, optional repo, optional entry, optional lineHash (a version of the
                                          // line; absent means the latest). 201, or, if an open run already holds the
-                                         // subject, that run (200, joined: true). 400 naming every arg the line declares
+                                         // subject, that run (200, joined: true). `repo` may be left out for a line with
+                                         // no `git` argument, and the run then has none (`repo: null`); a line with a
+                                         // `git` argument is refused without it, 400. 400 naming every arg the line declares
                                          // that startItems lacks or holds as another kind, or a lineHash that is not a
                                          // version of the line, or names a version of an archived line; a start item
                                          // the line does not declare is kept
@@ -92,9 +95,17 @@ POST   /assembly-lines/:id/start         // body: repo, startItems, optional ent
 A run is also started by an **event**, when the line declares `start.on`.
 That is how a PR opening starts a review and a schedule starts a sweep.
 
+**When a run has a repo.** A run's repo is the one its line's `git` argument
+names; else the one the start names (`repo` in the body, `repo` or
+`repository` in an event's payload); else none, and the run's `repo` is
+null. So a schedule whose payload names no repo starts a line that has no
+`git` argument, and that is all a tick that fans out needs: its one service
+station starts the runs that are due.
+
 ## Assembly runs - one execution of a line, walked on events
 
-GET    /assembly-runs                    // filter required: line, open, repo, subject, since (a created_at floor); newest first on (created_at, id),
+GET    /assembly-runs                    // filter required: line, open, repo, withoutRepo, subject, since (a created_at floor); newest first on (created_at, id),
+                                         // `withoutRepo=true` lists the runs that have no repo, and is refused together with `repo`;
                                          // each run with its createdAt; `cursor` is opaque, and one that is not a cursor this returned is 400
 GET    /assembly-runs/:id                // run + bag + currentNode (the open visit's node, else the last opened; null) + cost (null if nothing counted)
 POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops its queued events, aborts open visits
@@ -164,8 +175,8 @@ visit token.
 GET    /station-runs                     // run required; node, station, open and since (an opened_at floor) narrow it
 GET    /station-runs/:id                 // the visit + outcome + worker + deadline, and `cost`: what its agent counted and
                                          // what that cost, model by model; null for a visit nothing was counted for
-GET    /station-runs/:id/brief           // for the executor: each need with its kind, path and access, the resolved
-                                         // settings, and a freshly minted visit token. 409 once the visit is done
+GET    /station-runs/:id/brief           // for the executor: the visit's `runId` and `lineId`, each need with its kind, path
+                                         // and access, the resolved settings, and a freshly minted visit token. 409 once the visit is done
 POST   /station-runs/:id/git-credential  // { repo: "owner/name" }, visit token -> { username, password } for a repository
                                          // the visit has a git need for, read or write as the need declares. 403 for
                                          // any other repository, 501 on a floor with no provider, 502 when it refuses.
@@ -243,7 +254,8 @@ GET    /events                           // at least one of since (cursor), name
                                          // Poll it, no SSE
 GET    /events/:id
 POST   /events                           // body: name, payload, optional dedupeKey, availableAt, runId. A payload
-                                         // naming a run does so by `runId`, or by `subjectKey` and `repo`.
+                                         // naming a run does so by `runId`, or by `subjectKey` and `repo`
+                                         // (a `subjectKey` alone names a run that has no repo).
                                          // A visit token may post only `station_run.reported`, for its own visit.
                                          // A report is stamped with the run of the visit it names
 
@@ -258,14 +270,20 @@ POST   /events/:id/fail                  // body: error, permanent; requeues wit
 ## Schedules - predefined events on a cadence
 
 A schedule is a name, a cron and an event payload, and holds exactly one
-pending event. Acking its tick enqueues the next occurrence. A line that
-declares `start.on: schedule.<name>.tick` is what the tick starts. Service
-token only.
+pending event. Handling its tick enqueues the next occurrence first, and
+only then starts what the tick starts: an assembly line that declares
+`start.on: schedule.<name>.tick`. So a schedule outlives a refused tick. A
+tick whose assembly line cannot start (a `start.args` template the payload
+cannot fill, an argument the line does not declare) is dead-lettered with
+the refusal as its `lastError`, and costs that tick alone: the next
+occurrence is already pending. A tick retried after any other error
+enqueues nothing twice, since an occurrence is one event by its dedupe key.
+Service token only.
 
 GET    /schedules
 GET    /schedules/:id                    // includes the pending event's availableAt
 POST   /schedules                        // enqueues the first occurrence
-PUT    /schedules/:id                    // updates the one pending event
+PUT    /schedules/:id                    // replaces the one pending event with one carrying the new body, whether or not the cron changed
 DELETE /schedules/:id                    // drops the one pending event
 POST   /schedules/:id/trigger            // enqueue one extra instance now
 

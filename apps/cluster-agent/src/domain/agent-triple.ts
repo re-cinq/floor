@@ -8,9 +8,9 @@ import type {
   OutputSpec,
   Station,
 } from "@re-cinq/agent-contracts";
-import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, PodResources, ProduceSpec } from "@re-cinq/floor-contracts";
+import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, PodResources, ProduceSpec, VisitBrief } from "@re-cinq/floor-contracts";
 import { environmentOf } from "./pod-environment.js";
-import { promptParameters } from "./prompt-parameters.js";
+import { promptParameters, runParameters } from "./prompt-parameters.js";
 
 export type DispatchNeed = BriefNeed;
 export type DispatchProduce = ProduceSpec;
@@ -21,11 +21,11 @@ export type DispatchSettings = BriefSettings;
 
 export type DispatchMcpServer = McpServerSettings;
 
-export interface DispatchBrief {
-  /** The station run id; also the name given to all three resources. */
-  visitId: string;
-  /** The Floor's own base URL, reachable from the pod (docs/dev_loop.md: `host.minikube.internal` in dev). */
-  floorBaseUrl: string;
+// The brief as the floor sends it, its `visitId` also the name given to all three resources, plus what the cluster agent settles itself. Its `floorBaseUrl` is the floor as the pod reaches it (docs/dev_loop.md: `host.minikube.internal` in dev).
+export type DispatchBrief = Pick<
+  VisitBrief,
+  "visitId" | "runId" | "lineId" | "floorBaseUrl" | "deadlineMinutes" | "needs" | "produces" | "conversation"
+> & {
   /** The visit token, already written to `secretName` under this key by the caller; referenced as every `headers_secret` here. */
   tokenSecretKey: string;
   /** The visit token itself: what the pod's git credential helper presents to the floor. */
@@ -33,12 +33,8 @@ export interface DispatchBrief {
   /** The `agent-secrets` key holding the API key for this visit's model family; omitted when the model needs none. */
   modelSecretKey?: string;
   secretName: string;
-  deadlineMinutes: number;
   settings: DispatchSettings;
-  needs: DispatchNeed[];
-  produces: DispatchProduce[];
-  conversation: Conversation;
-}
+};
 
 export interface AgentTriple {
   agentDefinition: AgentDefinition;
@@ -188,7 +184,7 @@ function buildAgent(name: string, input: DispatchBrief): Agent {
       taskId: input.visitId,
       targetRepo: gitNeed ? repoOwnerName(gitNeed.repoUrl) : undefined,
       branch: gitNeed?.ref,
-      parameters: { ...promptParameters(input.needs, input.produces), ...brokerParameters(input, gitNeed) },
+      parameters: { ...runParameters(input), ...promptParameters(input.needs, input.produces), ...brokerParameters(input, gitNeed) },
       files: fileNeeds.map((need) => ({ path: need.path, url: need.url, headers_secret: input.tokenSecretKey })),
     },
   };

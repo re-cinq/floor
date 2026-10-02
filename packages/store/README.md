@@ -50,6 +50,9 @@ See [the map](../../README.md) for what sits either side of it.
 - `run-args.ts` — `valueArgsOf`: a run's `value` start items by name, which
   `internal.run.started` and `internal.run.settled` carry as `args`. Files
   and repositories are left out.
+- `line-args.ts` — `gitArgNames`: which of a line's arguments are of kind
+  `git`. The one place that is asked: a start with no repo is refused when
+  there is one, and a station's `git` need is checked against them.
 - `events.ts` — `EventStore`: `enqueue` (idempotent on `dedupeKey`), `claim`
   (a batch under `FOR UPDATE SKIP LOCKED`, filtered by name and, for
   `station_run.dispatch`/`abort`, by tag subset), `claimExcept` (the same
@@ -84,10 +87,12 @@ See [the map](../../README.md) for what sits either side of it.
   and repo variant, needs, conversation continuation, failure context,
   deadline, dispatch tags) behind the store.
 - `assembly-run-store.ts` — `AssemblyRunStore`: `start`, `get`, `list`,
-  `cancel`, `fail`, `bag`, `next`, `settle`, `openVisit`, `openVisitByHand`,
+  `cancel`, `fail`, `bag` (and `bagOf`, for a caller that already holds the
+  run), `next`, `settle`, `openVisit`, `openVisitByHand`,
   `nodeStartedBy`, `report`, `visits`, `visit`, `overdueVisits` (every open
   visit whose deadline has passed — a human visit's deadline is null, so it
-  never matches). Every follow-up event is written in the same transaction as the
+  never matches). What a start, a list and a page take and answer is in
+  `run-shapes.ts`, so the SQL beside the store does not import the store. Every follow-up event is written in the same transaction as the
   row that caused it (docs/assembly_run_storage.md, "Every follow-up event
   is written in the transaction that caused it"). A report on a visit
   whose dispatch a worker claimed also posts `station_run.abort`, so the
@@ -101,14 +106,18 @@ See [the map](../../README.md) for what sits either side of it.
   each one stops.
 - `line-validation.ts` — `validateLine`: every semantic problem in a line
   body, not the first — entry, exit and edge endpoints name real nodes, node
-  ids are unique, every node but the exit has an outgoing edge, `start.args`
+  ids are unique, `fail` (when given) names a node that is neither the entry
+  nor the exit, every node but the exit and the fail node has an outgoing
+  edge and neither of those two has one, `start.args`
   names a declared argument, at most one argument is `subject`, and every
   node's station (its `@hash` pin stripped) is a known one.
 - `event-match.ts`, `outside-events.ts` — events from outside the walk.
   `OutsideEvents.startLines` starts every line whose latest version declares
   the event under `start.on` (`when` is equality, `args` are templates over
   the payload); `answer` writes the outcome a waiting node's `reports`
-  declares for it; `runFor` finds the run by id, or by subject and repo. A
+  declares for it; `runFor` finds the run by id, or by subject and repo, a
+  subject alone naming a run with no repo. An event whose payload names no
+  repo starts a run with none, on a line that has no `git` argument. A
   line never starts on an internal event of its own runs.
 - `dispatch-brief.ts` — `DispatchBriefs.briefFor`: a visit's needs for a
   machine. Values come from the brief the visit froze; files and git repos

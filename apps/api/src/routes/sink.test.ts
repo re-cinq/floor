@@ -111,6 +111,12 @@ describe("GET /station-runs/:id/brief", () => {
     });
   });
 
+  it("names the run the visit belongs to and its assembly line", async () => {
+    const { runId, brief } = await reviewDispatched();
+
+    expect(brief).toMatchObject({ runId, lineId: "review" });
+  });
+
   it("passes the definition's MCP servers and skill registry to the executor", async () => {
     const { brief } = await reviewDispatched();
 

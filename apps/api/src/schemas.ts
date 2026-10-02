@@ -30,6 +30,7 @@ const lineEdge = z.object({ from: z.string(), to: z.string(), on: z.string(), it
 export const lineBodySchema = z.object({
   entry: z.string(),
   exit: z.string(),
+  fail: z.string().optional(),
   start: lineStart.optional(),
   args: z.record(z.string(), lineArgSpec),
   files: z.record(z.string(), z.string()).optional(),
@@ -89,7 +90,7 @@ export const agentDefinitionBodySchema = z.object({
 const startItem = z.object({ kind: itemKind, ref: z.string(), by: z.string(), sha: z.string().optional() });
 
 export const startRunSchema = z.object({
-  repo: z.string(),
+  repo: z.string().optional().transform((repo) => repo ?? null),
   startItems: z.record(z.string(), startItem),
   entry: z.string().optional(),
   lineHash: z.string().optional(),

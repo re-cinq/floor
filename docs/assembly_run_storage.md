@@ -34,6 +34,9 @@ This is all a station author sees. Two shapes and one function.
 
 ```ts
 interface Brief {
+  visitId: string;
+  runId: string;                   // the assembly run this visit belongs to
+  lineId: string;                  // the assembly line that run walks
   needs: Record<string, string>;   // name -> the value, or a URL to fetch, per the declared kind
   iteration: number;
 }
@@ -47,6 +50,13 @@ interface Report {
 
 type Handle = (brief: Brief) => Promise<Report>;
 ```
+
+A station is told which run it works for. `runId` is what to key on when
+something must outlive the visit: a claim stored under the run is found
+again by a retried visit, where one stored under `visitId` is not. It is
+also what a link to the run is made of, and what an operator searches a log
+by. An agent station gets the same two as prompt parameters, `{run_id}` and
+`{line_id}`; a value need of the same name wins over them.
 
 `cancelled` is an outcome no station can report; only the store writes it.
 A report is retried by its sender until the deadline, which is safe because
@@ -101,7 +111,7 @@ type Item = { kind: "value" | "file" | "git"; ref: string; by: string; sha?: str
 interface Run {
   id: string;
   lineId: string; lineHash: string;
-  repo: string;                    // host/owner/name
+  repo: string | null;             // host/owner/name; null for a run that belongs to no repository
   subjectKey: string | null;       // from the argument marked `subject`: "<arg>:<value>"
   startItems: Record<string, Item>;
   outcome: string | null;          // null while open; success | failed | iteration_max | error | cancelled
@@ -147,8 +157,15 @@ start:
 `when` compares a field's text form, so `false` in the line matches `false`
 in the payload. Only the latest version of a line is started by an event.
 The run's repo is the one its `git` argument names, else the payload's
-`repo`, else its `repository`; an event naming none starts nothing and is
-dead-lettered, naming the line.
+`repo`, else its `repository`. An event naming none starts a run with no
+repo: a tick that fans out, a run per Slack channel, an org-wide job.
+
+**A run has a repo when its assembly line has a `git` argument, or when
+whoever starts it names one; otherwise it has none**, and its `repo` is
+null. A line that declares a `git` argument is refused a start without a
+repo, through either door. A run with no repo picks no repo variant of an
+agent definition, and its stations have no git credential to ask for, as is
+already so for a station with no `git` need.
 
 **A line never starts on an internal event of its own runs.** A line
 declaring `internal.run.settled` would otherwise start again on its own
@@ -204,6 +221,16 @@ whose run it was: `runId`, `lineId`, `repo`, `subjectKey`, `outcome`,
 map of name to value, such as `{ "task_id": "42" }`. File items and
 repository items are never in it.
 
+**A line may end its run as failed.** A run settles as `success` when the
+walk arrives at the line's `exit`, whatever outcome led there. A line that
+names a `fail` node has a second ending: a walk arriving there settles the
+run as `failed`, with the reason `AssemblyLine <line>: node "<node>"
+reported "<outcome>"`, the node being the one whose edge led there. No
+visit opens on either terminal. That is the only ending a line chooses;
+`iteration_max` and `error` are the engine's own verdicts, and `cancelled`
+a person's. The outcome and the reason are on the run and in
+`internal.run.settled`.
+
 **A run that cannot go on is failed.** When the store refuses to open a
 node (a required need is not in the bag, its station is gone), the run is
 settled as `error` with the refusal as its reason. Otherwise it would have
@@ -228,6 +255,8 @@ how a merged PR or a green CI moves a waiting run on.
 
 **Finding the run.** An event acting on a run carries `runId`, or a
 `subjectKey` and its `repo`, resolved to the open run holding that subject.
+A `subjectKey` with no `repo` names the open run holding that subject among
+the runs that have no repo.
 A subject that finds no open run is acked: the run is simply not open. A
 run id that finds no run is a mistake, and the event is dead-lettered.
 
@@ -449,6 +478,18 @@ The lease is checked before every pass: Postgres drops an advisory lock
 with its connection and tells nobody. A refusal from the store is never
 retried, the event is dead at once; anything else is.
 
+**A schedule's tick enqueues its next occurrence before anything else is
+done with it.** A tick that is then refused is dead like any other refused
+event, and the schedule goes on: the refusal costs one tick. A tick that is
+retried enqueues the same occurrence again, which its dedupe key makes the
+same event.
+
+**A dropped tick gives up its dedupe key.** Putting a schedule again drops
+its pending tick and enqueues a new one, and with the cron unchanged the
+new one is due at the same occurrence, under the same key. Were the dropped
+row to keep the key, the enqueue would find it, insert nothing, and leave
+the schedule with no pending event at all.
+
 **Retention.** The events of a run are kept while it is open and for 30
 days after it settles. The age counts from the run settling, never from
 the event: an old event of a run still open stays, and a run that settled
@@ -482,7 +523,8 @@ The floor collects every cost itself.
 - `(run, node, iteration)` is unique; a redelivered start event does not
   dispatch twice.
 - A report is a compare-and-set on `report is null`.
-- `(repo, subject_key)` is unique among open runs.
+- `(repo, subject_key)` is unique among open runs, and no repo counts as a
+  repo of its own: two starts with the same subject and no repo join.
 - Nothing holds a lock across a network call.
 - A run's journal is numbered under a lock on the run, held until the
   writing transaction ends. Two visits of one run writing at once are
@@ -548,7 +590,7 @@ create table assembly_runs (
   id           uuid primary key,
   line_id      text not null,
   line_hash    text not null,
-  repo         text not null,
+  repo         text,                                -- null: the run belongs to no repository
   subject_key  text,
   start_items  jsonb not null,
   outcome      text,
@@ -556,7 +598,7 @@ create table assembly_runs (
   created_at   timestamptz not null default now(),
   finished_at  timestamptz
 );
-create unique index assembly_runs_subject_open on assembly_runs (repo, subject_key)
+create unique index assembly_runs_subject_open on assembly_runs (repo, subject_key) nulls not distinct
   where subject_key is not null and finished_at is null;
 create index assembly_runs_list on assembly_runs (created_at desc, id desc);
 

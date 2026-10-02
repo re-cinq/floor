@@ -12,6 +12,18 @@ the run is settled as `error` with the refusal as its reason. The
 alternative was a run with nothing open and nothing queued, which waits
 forever and looks healthy.
 
+**A line ends a run as failed at a node, and the outcome is always
+`failed`.** A line names `fail: <node id>` beside `exit`, and a run arriving
+there settles as `failed`. Before this a line could only reach the exit,
+which is `success` whatever led there, so every line that wanted a failed
+run wrote a self-edge with `iteration_max: 1`: a retry nobody wanted, for a
+run that then settled as `iteration_max`. A node was chosen over an edge
+target that is no node (`to: "@fail"`) because it reads like the rest of a
+line body, shows on a graph, and needs no special case where edges are
+checked. The run takes `failed` and not the outcome that led there: an
+`always` edge after a `success` must not settle a failed run as `success`,
+and the outcome that did lead there is in the reason.
+
 **A start by hand is one that carries no iteration.** The plan said a start
 event *named* other than `node.<id>.start` closes open human visits. The
 kernel restarts the walk at any visit a person asked for, whatever the event
@@ -356,6 +368,19 @@ through a JS `Date` it would lose them and put a run back on the page it had
 just left. The cursor is an opaque string the client hands back unchanged,
 and one the floor did not make is refused 400. A run carries `createdAt` on
 the wire, since a client that orders by it has to be able to read it.
+
+**A run with no repository has a null `repo`, and null is a repo of its
+own.** Some work belongs to no repository: a tick that fans out, a run per
+Slack channel, an org-wide sweep. Such a run used to carry a made-up repo, or
+was refused. An empty string was the cheap way, since the unique index on
+`(repo, subject_key)` would have gone on working untouched; it was not taken,
+because every reader would then have to know that `""` means "none". The
+index is `nulls not distinct` instead, which needs Postgres 15, so two
+repo-less starts on one subject join as two starts on one repo do. A line
+with a `git` argument is refused a start without a repo, since its stations
+would have nothing to clone. The run list asks for these runs with
+`withoutRepo=true` and not with an empty `repo`, so a caller who sends an
+empty string by accident is not answered with them.
 
 ## Operations
 
