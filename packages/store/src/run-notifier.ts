@@ -127,6 +127,7 @@ export class PgRunNotifier implements RunNotifier {
       await this.listen();
       this.retryMs = this.deps.retryMs ?? FIRST_RETRY_MS;
       this.listeners.forEach((ofRun) => ofRun.forEach((listener) => listener.resync()));
+      this.floorListeners.forEach((listener) => listener.resync());
     } catch (error) {
       this.deps.onError?.(error);
       this.lost();

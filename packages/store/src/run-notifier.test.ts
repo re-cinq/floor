@@ -94,4 +94,16 @@ describe("the run notifier, floor-wide", () => {
 
     expect(await within(started)).toEqual({ run: run.id, kind: "run_started" });
   });
+
+  it("tells a floor listener to resync once its lost connection is back", async () => {
+    let resynced = (said: string): void => void said;
+    const resyncing = new Promise<string>((resolve) => (resynced = resolve));
+
+    notifier = new PgRunNotifier({ connectionString, retryMs: SOON_MS });
+    await notifier.subscribeFloor({ told: () => undefined, resync: () => resynced("resync") });
+
+    await pool().query(`select pg_terminate_backend(pid) from pg_stat_activity where application_name = $1`, [LISTENER_NAME]);
+
+    expect(await within(resyncing)).toBe("resync");
+  });
 });
