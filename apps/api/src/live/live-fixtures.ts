@@ -1,4 +1,5 @@
 // For the live channel's tests: a real socket to a floor that really listens, and what it was sent until it closed.
+import { once } from "node:events";
 import type { Server } from "@hapi/hapi";
 import { WebSocket } from "ws";
 import type { Deps } from "../deps.js";
@@ -58,6 +59,16 @@ export function watchFloor(watching: { floor: Server; token?: string }): Watched
   const { floor, token = SERVICE_TOKEN } = watching;
 
   return recording(`ws://localhost:${floor.info.port}/assembly-runs/live`, token);
+}
+
+/** A floor watch already open and past its first `resync`, so whatever it is told next happened after it connected. */
+export async function listeningToFloor(floor: Server): Promise<Watched> {
+  const watched = watchFloor({ floor });
+
+  await once(watched.socket, "open");
+  await watched.told("resync");
+
+  return watched;
 }
 
 function recording(url: string, token: string): Watched {
