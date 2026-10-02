@@ -50,6 +50,9 @@ See [the map](../../README.md) for what sits either side of it.
 - `run-args.ts` — `valueArgsOf`: a run's `value` start items by name, which
   `internal.run.started` and `internal.run.settled` carry as `args`. Files
   and repositories are left out.
+- `line-args.ts` — `gitArgNames`: which of a line's arguments are of kind
+  `git`. The one place that is asked: a start with no repo is refused when
+  there is one, and a station's `git` need is checked against them.
 - `events.ts` — `EventStore`: `enqueue` (idempotent on `dedupeKey`), `claim`
   (a batch under `FOR UPDATE SKIP LOCKED`, filtered by name and, for
   `station_run.dispatch`/`abort`, by tag subset), `claimExcept` (the same
