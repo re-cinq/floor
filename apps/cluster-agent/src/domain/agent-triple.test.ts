@@ -4,6 +4,8 @@ import { buildAgentTriple, type DispatchBrief } from "./agent-triple.js";
 function brief(overrides: Partial<DispatchBrief> = {}): DispatchBrief {
   return {
     visitId: "abc-123",
+    runId: "run-1",
+    lineId: "line-1",
     floorBaseUrl: "http://host.minikube.internal:8080",
     tokenSecretKey: "visit-abc-123-token",
     visitToken: "visit-token-abc",
@@ -128,8 +130,22 @@ describe("buildAgentTriple", () => {
     );
 
     expect(agent.spec?.parameters).toEqual({
+      run_id: "run-1",
+      line_id: "line-1",
       pr_url: "https://github.com/re-cinq/lore/pull/412",
     });
+  });
+
+  it("names the run and the assembly line of the visit as parameters, for the prompt's placeholders", () => {
+    const { agent } = buildAgentTriple(brief({ runId: "run-7", lineId: "code-review" }));
+
+    expect(agent.spec?.parameters).toMatchObject({ run_id: "run-7", line_id: "code-review" });
+  });
+
+  it("lets a value need named run_id win over the run's own id", () => {
+    const { agent } = buildAgentTriple(brief({ runId: "run-7", needs: [{ name: "run_id", kind: "value", value: "the run that settled" }] }));
+
+    expect(agent.spec?.parameters).toMatchObject({ run_id: "the run that settled" });
   });
 
   it("watches a file produce and uploads it to the blob store", () => {

@@ -73,6 +73,10 @@ export type BriefSettings = ExecutorSettings & { model?: string; prompt: string;
 /** `GET /station-runs/:id/brief`: everything an executor needs to run one visit, and a token that reaches only this visit. */
 export interface VisitBrief {
   visitId: string;
+  /** The assembly run this visit belongs to. */
+  runId: string;
+  /** The assembly line that run walks. */
+  lineId: string;
   iteration: number;
   floorBaseUrl: string;
   token: string;

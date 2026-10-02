@@ -145,6 +145,8 @@ async function dispatch(
   await deps.secrets.setKey(secretName, tokenSecretKey(visitId), authorizationHeader(brief.token));
   const triple = buildAgentTriple({
     visitId,
+    runId: brief.runId,
+    lineId: brief.lineId,
     floorBaseUrl: brief.floorBaseUrl,
     tokenSecretKey: tokenSecretKey(visitId),
     visitToken: brief.token,

@@ -192,8 +192,8 @@ visit token.
 GET    /station-runs                     // run required; node, station, open and since (an opened_at floor) narrow it
 GET    /station-runs/:id                 // the visit + outcome + worker + deadline, and `cost`: what its agent counted and
                                          // what that cost, model by model; null for a visit nothing was counted for
-GET    /station-runs/:id/brief           // for the executor: each need with its kind, path and access, the resolved
-                                         // settings, and a freshly minted visit token. 409 once the visit is done
+GET    /station-runs/:id/brief           // for the executor: the visit's `runId` and `lineId`, each need with its kind, path
+                                         // and access, the resolved settings, and a freshly minted visit token. 409 once the visit is done
 POST   /station-runs/:id/git-credential  // { repo: "owner/name" }, visit token -> { username, password } for a repository
                                          // the visit has a git need for, read or write as the need declares. 403 for
                                          // any other repository, 501 on a floor with no provider, 502 when it refuses.
