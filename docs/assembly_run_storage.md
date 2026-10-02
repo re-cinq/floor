@@ -449,6 +449,12 @@ The lease is checked before every pass: Postgres drops an advisory lock
 with its connection and tells nobody. A refusal from the store is never
 retried, the event is dead at once; anything else is.
 
+**A schedule's tick enqueues its next occurrence before anything else is
+done with it.** A tick that is then refused is dead like any other refused
+event, and the schedule goes on: the refusal costs one tick. A tick that is
+retried enqueues the same occurrence again, which its dedupe key makes the
+same event.
+
 **Retention.** The events of a run are kept while it is open and for 30
 days after it settles. The age counts from the run settling, never from
 the event: an old event of a run still open stays, and a run that settled
