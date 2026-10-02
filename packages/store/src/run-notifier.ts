@@ -43,7 +43,7 @@ export interface PgRunNotifierDeps {
 export const LISTENER_NAME = "floor-run-listener";
 
 export class PgRunNotifier implements RunNotifier {
-  private readonly listeners = new Map<string, Set<RunListener>>();
+  private readonly runListeners = new Map<string, Set<RunListener>>();
   private readonly floorListeners = new Set<FloorListener>();
   private listening: Promise<void> | null = null;
   private client: postgres.Client | null = null;
@@ -56,10 +56,10 @@ export class PgRunNotifier implements RunNotifier {
   }
 
   async subscribe(runId: string, listener: RunListener): Promise<() => void> {
-    const ofRun = this.listeners.get(runId) ?? new Set<RunListener>();
+    const ofRun = this.runListeners.get(runId) ?? new Set<RunListener>();
 
     ofRun.add(listener);
-    this.listeners.set(runId, ofRun);
+    this.runListeners.set(runId, ofRun);
     this.listening ??= this.listen();
     await this.listening;
 
@@ -76,16 +76,16 @@ export class PgRunNotifier implements RunNotifier {
 
   async close(): Promise<void> {
     this.closed = true;
-    this.listeners.clear();
+    this.runListeners.clear();
     this.floorListeners.clear();
     await this.client?.end();
   }
 
   private forget(runId: string, listener: RunListener): void {
-    const ofRun = this.listeners.get(runId);
+    const ofRun = this.runListeners.get(runId);
 
     ofRun?.delete(listener);
-    if (ofRun?.size === 0) this.listeners.delete(runId);
+    if (ofRun?.size === 0) this.runListeners.delete(runId);
   }
 
   private async listen(): Promise<void> {
@@ -104,12 +104,12 @@ export class PgRunNotifier implements RunNotifier {
 
   // A database holds more than one floor, a schema each, and a notice is the database's: one from another schema is another floor's.
   private heard(payload: string): void {
-    const told = JSON.parse(payload) as { schema: string; run: string; kind?: string };
+    const { schema, run, kind } = JSON.parse(payload) as { schema: string; run: string; kind?: string };
 
-    if (told.schema !== this.schema) return;
-    this.listeners.get(told.run)?.forEach((listener) => listener.changed());
-    if (told.kind === undefined || told.kind === "record") return;
-    this.floorListeners.forEach((listener) => listener.told({ run: told.run, kind: told.kind as string }));
+    if (schema !== this.schema) return;
+    this.runListeners.get(run)?.forEach((listener) => listener.changed());
+    if (kind === undefined || kind === "record") return;
+    this.floorListeners.forEach((listener) => listener.told({ run, kind }));
   }
 
   private lost(): void {
@@ -126,7 +126,7 @@ export class PgRunNotifier implements RunNotifier {
     try {
       await this.listen();
       this.retryMs = this.deps.retryMs ?? FIRST_RETRY_MS;
-      this.listeners.forEach((ofRun) => ofRun.forEach((listener) => listener.resync()));
+      this.runListeners.forEach((ofRun) => ofRun.forEach((listener) => listener.resync()));
       this.floorListeners.forEach((listener) => listener.resync());
     } catch (error) {
       this.deps.onError?.(error);
