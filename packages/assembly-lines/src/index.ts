@@ -1,4 +1,5 @@
 export {
+  endsRun,
   getNextTransition,
   isTerminalNode,
   selectEdge,

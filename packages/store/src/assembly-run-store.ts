@@ -1,7 +1,7 @@
 // The one object through which a run's state is read and changed. See docs/assembly_run_storage.md, "The store", and README.md for what this file does and does not implement yet.
 
 import type { Pool, PoolClient } from "pg";
-import { getNextTransition, type Transition } from "@floor/assembly-lines";
+import { endsRun, getNextTransition, type Transition } from "@floor/assembly-lines";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
@@ -319,7 +319,7 @@ export class AssemblyRunStore {
       return;
     }
 
-    if (transition.kind === "finish" || transition.kind === "fail") {
+    if (endsRun(transition)) {
       const settle = settleInputFor(runId, transition, this.now());
 
       const settled = await settleRun(client, settle);
@@ -360,12 +360,12 @@ interface PreparedStart {
 }
 
 function settleInputFor(runId: string, transition: Transition, now: Date): { runId: string; outcome: string; reason: string | null; now: Date } {
-  if (transition.kind !== "finish" && transition.kind !== "fail") {
+  if (!endsRun(transition)) {
     throw new Refusal(`run "${runId}" is not finished`);
   }
 
   const outcome = transition.kind === "finish" ? "success" : transition.outcome;
-  const reason = transition.kind === "fail" ? transition.reason : null;
+  const reason = transition.kind === "halt" ? transition.reason : null;
 
   return { runId, outcome, reason, now };
 }
