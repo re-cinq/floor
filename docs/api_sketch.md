@@ -155,6 +155,34 @@ lore closes    at any time: that is the unsubscribe
 - A run settled before the floor kept a journal replays nothing and closes
   with 1000. Its visits and records are read over HTTP, as before.
 
+## Live - the whole floor, by id
+
+A second WebSocket, for a list of runs that stays true without being read
+again and again. It says which run started and which run changed, and
+nothing of what happened in it: whoever hears a run's id reads that run.
+lore opens one when the first person looks at its list of runs and closes
+it when the last one leaves.
+
+GET    /assembly-runs/live                   // upgrade. The service token, as `Authorization: Bearer`
+
+```
+floor sends    { type: "resync" }                 // first, once the floor listens; and after any gap: read the list again
+               { type: "run_started", runId }     // a run was created
+               { type: "run_changed", runId }     // a visit opened, a visit reported, or the run settled
+               { type: "unsupported" }            // to whatever a viewer says
+
+floor closes   1001   the floor is stopping: come back
+               4401   no service token
+lore closes    at any time: that is the unsubscribe
+```
+
+- There is no cursor. What was missed while away is not replayed: every
+  connection opens with `resync`, and the list is read again.
+- A record is never announced here. A run that writes a thousand turns
+  says nothing on this socket until its visit reports.
+- Nothing is filtered by run. lore is the one viewer, and a floor's visits
+  open and report a few times a minute, not a few times a second.
+
 ## Station runs - a single visit to a station inside a run
 
 Read-only. A visit is open until its one report arrives, and the report
@@ -286,6 +314,7 @@ services without changing this API.
 | agent output | `LORE_NODE_RESULT:`, then `REVIEW_RESULT:`, then success | lore's parser, ported; outcomes are the station's own | same |
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled`, which carries the run's value arguments in `args`, `task_id` among them |
 | live view | one WebSocket a run, `GET /assembly-runs/:id/live`, the service token | any WebSocket client | lore-api relays it over the socket its browser already has, opened on subscribe and closed on unsubscribe |
+| live list of runs | one WebSocket for the floor, `GET /assembly-runs/live`, ids only, the service token | any WebSocket client | lore-api keeps one while somebody looks at its run list, and tells each browser of the runs on its page |
 | agent context | none required | whatever the definition names | lore MCP gateway |
 
 **The converter is a deliverable**, `@floor/lore-converter`. It reads each

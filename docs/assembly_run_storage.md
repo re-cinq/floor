@@ -510,10 +510,14 @@ happens in a run, numbered 1, 2, 3 per run with no gap.
 - **A `session` record is left out.** It is the sink's own note of where a
   conversation was saved.
 - **Every entry is announced.** The trigger calls `pg_notify` on channel
-  `floor_run_feed` with the schema and the run's id, and no body: a notice
-  holds 8000 bytes. Whoever hears it reads the journal from its own cursor.
-  The notice is sent when the transaction commits, so what it announces can
-  be read.
+  `floor_run_feed` with the schema, the run's id and the entry's kind, and
+  no body: a notice holds 8000 bytes. Whoever hears it reads the journal
+  from its own cursor. The notice is sent when the transaction commits, so
+  what it announces can be read.
+- **A run starting is announced and not journalled.** A trigger on
+  `assembly_runs` sends the same notice with the kind `run_started` and
+  writes no entry: the journal is a run's, and a start is the floor's news.
+  A listener of the whole floor hears every kind but `record`.
 - **A notice is the database's, the journal is the schema's.** Floors that
   share a database, a schema each, hear each other's notices and drop them
   by the schema they name.

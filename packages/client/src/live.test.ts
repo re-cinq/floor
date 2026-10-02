@@ -1,47 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { LiveFrame } from "@re-cinq/floor-contracts";
-import { CLOSE, watchRun, type SocketFn } from "./live.js";
+import { CLOSE, watchRun } from "./live.js";
+import { fakeSockets, settled } from "./live-fixtures.js";
 import { serviceToken } from "./tokens.js";
 
 const TOKEN = serviceToken("service-token");
 
-interface Opened {
-  url: string;
-  headers: Record<string, string>;
-  say(frame: LiveFrame): void;
-  shut(code: number, reason?: string): void;
-}
-
-function fakeSockets(): { opened: Opened[]; socketFn: SocketFn } {
-  const opened: Opened[] = [];
-
-  const socketFn: SocketFn = (url, init) => {
-    const heardFrames: ((frame: string) => void)[] = [];
-    const heardCloses: ((closed: { code: number; reason: string }) => void)[] = [];
-    const shut = (code: number, reason = ""): void => heardCloses.forEach((heard) => heard({ code, reason }));
-
-    opened.push({ url, headers: init.headers, say: (frame) => heardFrames.forEach((heard) => heard(JSON.stringify(frame))), shut });
-
-    return {
-      onFrame: (heard) => heardFrames.push(heard),
-      onClosed: (heard) => heardCloses.push(heard),
-      close: (code = CLOSE.settled, reason = "") => shut(code, reason),
-    };
-  };
-
-  return { opened, socketFn };
-}
-
 function watching(after?: number) {
-  const { opened, socketFn } = fakeSockets();
+  const { opened, socketFn } = fakeSockets<LiveFrame>();
   const watch = watchRun({ url: "http://floor.test", token: TOKEN, socketFn }, "run-1", { after, backoffMs: () => 0 });
 
   return { opened, watch };
-}
-
-async function settled(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 const CAUGHT_UP: LiveFrame = { type: "caught_up", seq: 7 };
