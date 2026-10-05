@@ -1,0 +1,259 @@
+# Lore test-command manifest for re-cinq/floor
+#
+# This is a monorepo using npm workspaces. Each entry below covers one
+# workspace. The list command uses vitest's JSON reporter to enumerate
+# tests; the run command runs a single test by its native vitest id
+# (file path relative to the workspace root) with v8 coverage.
+#
+# Team: review the list/run shell commands against your actual vitest
+# version and adjust selectors as needed before enabling lore-tests CI.
+
+coverage_format: lcov
+
+list:
+  - cwd: packages/assembly-lines
+    command: >
+      npx vitest list --reporter=json 2>/dev/null
+      || npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: packages/client
+    command: >
+      npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: packages/contracts
+    command: >
+      npx vitest run --reporter=json --coverage=false --passWithNoTests 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: packages/lore-converter
+    command: >
+      npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: packages/pipeline
+    command: >
+      npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: packages/station
+    command: >
+      npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: packages/store
+    command: >
+      npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: apps/api
+    command: >
+      npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+  - cwd: apps/cluster-agent
+    command: >
+      npx vitest run --reporter=json --coverage=false 2>/dev/null
+      | node -e "
+        let d='';
+        process.stdin.on('data',c=>d+=c);
+        process.stdin.on('end',()=>{
+          try {
+            const r=JSON.parse(d);
+            const out=[];
+            for (const f of (r.testResults||[])) {
+              for (const t of (f.assertionResults||[])) {
+                out.push({
+                  id: f.testFilePath + ' > ' + t.fullName,
+                  name: t.fullName,
+                  file: f.testFilePath,
+                  startLine: t.location?.line ?? 1,
+                  endLine: t.location?.line ?? 1
+                });
+              }
+            }
+            console.log(JSON.stringify(out));
+          } catch(e) { console.log('[]'); }
+        })
+      "
+
+run:
+  # {selector} is the native vitest test id: "<file> > <full test name>"
+  # Split on the first " > " to get the file path and test name filter.
+  command: >
+    npx vitest run
+    --reporter=json
+    --coverage
+    --coverage.provider=v8
+    --coverage.reporter=lcov
+    --coverage.reportsDirectory=./coverage
+    -t {selector}

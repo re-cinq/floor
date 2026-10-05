@@ -1,0 +1,62 @@
+name: Lore test report
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  lore-tests:
+    name: run tests and report to Lore
+    runs-on: ubuntu-latest
+
+    services:
+      # @floor/store and @floor/api suites need a real Postgres.
+      # Port 5433 matches npm run db:up locally, so no URL override is needed.
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: floor
+          POSTGRES_DB: floor
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      # Cross-package suites import through dist/; build before running tests.
+      - name: Build
+        run: npm run build
+
+      - name: Fetch lore-code-trace
+        env:
+          LORE_INGEST_URL: ${{ secrets.LORE_INGEST_URL || vars.LORE_INGEST_URL }}
+        run: |
+          curl -fsSL "${LORE_INGEST_URL}/dist/lore-code-trace/linux-amd64" -o lore-code-trace
+          curl -fsSL "${LORE_INGEST_URL}/dist/lore-code-trace/checksums.txt" -o checksums.txt
+          sha256sum --check --ignore-missing checksums.txt
+          chmod +x lore-code-trace
+
+      - name: Run tests and ingest
+        env:
+          LORE_WEBHOOK_URL: ${{ vars.LORE_WEBHOOK_URL }}
+          LORE_INGEST_TOKEN: ${{ secrets.LORE_INGEST_TOKEN }}
+        run: ./lore-code-trace --post || echo "::warning::Lore test ingest failed"
