@@ -51,6 +51,14 @@ describe("POST /assembly-lines/:id/start", () => {
     expect(response).toMatchObject({ statusCode: 201, result: { run: { repo: null } } });
   });
 
+  it("returns 400 for an empty repo, which is no way to say a run has none", async () => {
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: { ...LINE_BODY, args: {} } });
+
+    const response = await injectJson<{ errors: string[] }>(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { repo: "", startItems: {} } });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({ statusCode: 400, errors: ["repo: Too small: expected string to have >=1 characters"] });
+  });
+
   it("returns 400 naming the line when the body has no repo and the line has a git argument", async () => {
     await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: { ...LINE_BODY, args: { workspace: { kind: "git" } } } });
 

@@ -87,7 +87,7 @@ POST   /assembly-lines/:id/start         // body: startItems, optional repo, opt
                                          // line; absent means the latest). 201, or, if an open run already holds the
                                          // subject, that run (200, joined: true). `repo` may be left out for a line with
                                          // no `git` argument, and the run then has none (`repo: null`); a line with a
-                                         // `git` argument is refused without it, 400. 400 naming every arg the line declares
+                                         // `git` argument is refused without it, 400, as is an empty `repo`. 400 naming every arg the line declares
                                          // that startItems lacks or holds as another kind, or a lineHash that is not a
                                          // version of the line, or names a version of an archived line; a start item
                                          // the line does not declare is kept
