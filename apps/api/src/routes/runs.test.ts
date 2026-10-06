@@ -43,6 +43,30 @@ describe("POST /assembly-lines/:id/start", () => {
     expect({ statusCode: response.statusCode, joined: response.result.joined }).toEqual({ statusCode: 201, joined: false });
   });
 
+  it("starts a run with repo null and returns 201 when the body has no repo and the line has no git argument", async () => {
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: { ...LINE_BODY, args: {} } });
+
+    const response = await injectJson<StartResult>(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { startItems: {} } });
+
+    expect(response).toMatchObject({ statusCode: 201, result: { run: { repo: null } } });
+  });
+
+  it("returns 400 for an empty repo, which is no way to say a run has none", async () => {
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: { ...LINE_BODY, args: {} } });
+
+    const response = await injectJson<{ errors: string[] }>(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { repo: "", startItems: {} } });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({ statusCode: 400, errors: ["repo: Too small: expected string to have >=1 characters"] });
+  });
+
+  it("returns 400 naming the line when the body has no repo and the line has a git argument", async () => {
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: { ...LINE_BODY, args: { workspace: { kind: "git" } } } });
+
+    const response = await injectJson(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { startItems: { workspace: { kind: "git", ref: "github.com/re-cinq/lore@main", by: "start" } } } });
+
+    expect(response).toMatchObject({ statusCode: 400, result: { detail: 'line "code-review" has a git argument, so a start must name its repo' } });
+  });
+
   it("joins an already-open run on the same subject, returning 200", async () => {
     await seedLine();
     await injectJson(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: startPayload("https://pr/1") });
@@ -95,6 +119,22 @@ describe("GET /assembly-runs", () => {
     const response = await injectJson(server(), { method: "GET", url: "/assembly-runs", headers: authHeaders() });
 
     expect(response.statusCode).toBe(400);
+  });
+
+  it("lists only the runs with no repo when withoutRepo is true", async () => {
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: { ...LINE_BODY, args: {} } });
+    await injectJson(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { repo: "github.com/re-cinq/lore", startItems: {} } });
+    await injectJson(server(), { method: "POST", url: "/assembly-lines/code-review/start", headers: authHeaders(), payload: { startItems: {} } });
+
+    const response = await injectJson(server(), { method: "GET", url: "/assembly-runs?withoutRepo=true", headers: authHeaders() });
+
+    expect(response).toMatchObject({ statusCode: 200, result: { items: [{ repo: null }] } });
+  });
+
+  it("returns 400 when withoutRepo and repo are asked for together", async () => {
+    const response = await injectJson(server(), { method: "GET", url: "/assembly-runs?withoutRepo=true&repo=github.com/re-cinq/lore", headers: authHeaders() });
+
+    expect(response).toMatchObject({ statusCode: 400, result: { detail: "withoutRepo and repo cannot be asked for together" } });
   });
 
   it("filters to one repo", async () => {

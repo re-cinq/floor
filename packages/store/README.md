@@ -112,7 +112,9 @@ See [the map](../../README.md) for what sits either side of it.
   `OutsideEvents.startLines` starts every line whose latest version declares
   the event under `start.on` (`when` is equality, `args` are templates over
   the payload); `answer` writes the outcome a waiting node's `reports`
-  declares for it; `runFor` finds the run by id, or by subject and repo. A
+  declares for it; `runFor` finds the run by id, or by subject and repo, a
+  subject alone naming a run with no repo. An event whose payload names no
+  repo starts a run with none, on a line that has no `git` argument. A
   line never starts on an internal event of its own runs.
 - `dispatch-brief.ts` — `DispatchBriefs.briefFor`: a visit's needs for a
   machine. Values come from the brief the visit froze; files and git repos

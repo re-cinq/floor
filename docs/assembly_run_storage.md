@@ -115,7 +115,7 @@ type Item = { kind: "value" | "file" | "git"; ref: string; by: string; sha?: str
 interface Run {
   id: string;
   lineId: string; lineHash: string;
-  repo: string;                    // host/owner/name
+  repo: string | null;             // host/owner/name; null for a run that belongs to no repository
   subjectKey: string | null;       // from the argument marked `subject`: "<arg>:<value>"
   startItems: Record<string, Item>;
   outcome: string | null;          // null while open; success | failed | iteration_max | error | cancelled
@@ -161,8 +161,15 @@ start:
 `when` compares a field's text form, so `false` in the line matches `false`
 in the payload. Only the latest version of a line is started by an event.
 The run's repo is the one its `git` argument names, else the payload's
-`repo`, else its `repository`; an event naming none starts nothing and is
-dead-lettered, naming the line.
+`repo`, else its `repository`. An event naming none starts a run with no
+repo: a tick that fans out, a run per Slack channel, an org-wide job.
+
+**A run has a repo when its assembly line has a `git` argument, or when
+whoever starts it names one; otherwise it has none**, and its `repo` is
+null. A line that declares a `git` argument is refused a start without a
+repo, through either door. A run with no repo picks no repo variant of an
+agent definition, and its stations have no git credential to ask for, as is
+already so for a station with no `git` need.
 
 **A line never starts on an internal event of its own runs.** A line
 declaring `internal.run.settled` would otherwise start again on its own
@@ -261,6 +268,8 @@ how a merged PR or a green CI moves a waiting run on.
 
 **Finding the run.** An event acting on a run carries `runId`, or a
 `subjectKey` and its `repo`, resolved to the open run holding that subject.
+A `subjectKey` with no `repo` names the open run holding that subject among
+the runs that have no repo.
 A subject that finds no open run is acked: the run is simply not open. A
 run id that finds no run is a mistake, and the event is dead-lettered.
 
@@ -521,7 +530,8 @@ The floor collects every cost itself.
 - `(run, node, iteration)` is unique; a redelivered start event does not
   dispatch twice.
 - A report is a compare-and-set on `report is null`.
-- `(repo, subject_key)` is unique among open runs.
+- `(repo, subject_key)` is unique among open runs, and no repo counts as a
+  repo of its own: two starts with the same subject and no repo join.
 - Nothing holds a lock across a network call.
 - A run's journal is numbered under a lock on the run, held until the
   writing transaction ends. Two visits of one run writing at once are
@@ -592,7 +602,7 @@ create table assembly_runs (
   id           uuid primary key,
   line_id      text not null,
   line_hash    text not null,
-  repo         text not null,
+  repo         text,                                -- null: the run belongs to no repository
   subject_key  text,
   start_items  jsonb not null,
   outcome      text,
@@ -600,7 +610,7 @@ create table assembly_runs (
   created_at   timestamptz not null default now(),
   finished_at  timestamptz
 );
-create unique index assembly_runs_subject_open on assembly_runs (repo, subject_key)
+create unique index assembly_runs_subject_open on assembly_runs (repo, subject_key) nulls not distinct
   where subject_key is not null and finished_at is null;
 create index assembly_runs_list on assembly_runs (created_at desc, id desc);
 

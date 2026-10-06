@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Refusal } from "./refusal.js";
 import type { LineBody } from "./types.js";
 import {
   FIXED_NOW,
@@ -57,6 +58,16 @@ describe("AssemblyRunStore.start", () => {
     expect({ id: second.run.id, joined: second.joined }).toEqual({ id: first.run.id, joined: true });
   });
 
+  it("joins the open run holding the subject when both starts have a null repo", async () => {
+    await seedDigestLine({ channel: { kind: "value", subject: true } });
+    const startItemsForChannel = { channel: { kind: "value", ref: "C123", by: "start" } } as const;
+    const first = await store().start({ lineId: "digest", repo: null, startItems: { ...startItemsForChannel } });
+
+    const second = await store().start({ lineId: "digest", repo: null, startItems: { ...startItemsForChannel } });
+
+    expect({ runId: second.run.id, joined: second.joined }).toEqual({ runId: first.run.id, joined: true });
+  });
+
   it("starts a second run for a different subject", async () => {
     await seedReviewLine();
     await store().start({ lineId: "code-review", repo: "github.com/re-cinq/lore", startItems: startItems() });
@@ -71,6 +82,22 @@ describe("AssemblyRunStore.start", () => {
     });
 
     expect(other.joined).toBe(false);
+  });
+
+  it("gives a run with a null repo on a line declaring no git argument", async () => {
+    await seedDigestLine({});
+
+    const { run } = await store().start({ lineId: "digest", repo: null, startItems: {} });
+
+    expect(await store().get(run.id)).toMatchObject({ repo: null });
+  });
+
+  it("refuses a null repo on a line declaring a git argument", async () => {
+    await seedReviewLine();
+
+    await expect(
+      store().start({ lineId: "code-review", repo: null, startItems: startItems() }),
+    ).rejects.toThrow(new Refusal('line "code-review" has a git argument, so a start must name its repo'));
   });
 
   it("refuses a line that was never put", async () => {
@@ -157,6 +184,35 @@ describe("AssemblyRunStore.openVisit", () => {
     await expect(store().openVisit(run.id, "review", 1)).rejects.toThrow(/missing required need/);
   });
 
+  it("resumes the conversation an earlier repo-less run saved under the same key value", async () => {
+    await definitions().put("line", "digest", {
+      entry: "post",
+      exit: "done",
+      args: { channel: { kind: "value" } },
+      nodes: [{ id: "post", station: "poster" }, { id: "done" }],
+      edges: [{ from: "post", to: "done", on: "success" }],
+    } satisfies LineBody);
+    await definitions().put("station", "poster", {
+      kind: "agent",
+      agentDefinition: "reviewer",
+      conversation: "continue",
+      conversationKey: "channel",
+      outcomes: ["success"],
+      needs: [{ name: "channel", kind: "value" }],
+      produces: [],
+    });
+    await definitions().put("agent_definition", "reviewer", REVIEWER_AGENT_DEFINITION);
+    const channel = { channel: { kind: "value", ref: "C123", by: "start" } } as const;
+    const earlier = await store().start({ lineId: "digest", repo: null, startItems: { ...channel } });
+    const earlierVisit = await store().openVisit(earlier.run.id, "post", 1);
+    await store().report(earlierVisit.visit.id, { outcome: "success", sessionRef: "sha256-archive" });
+    const later = await store().start({ lineId: "digest", repo: null, startItems: { ...channel } });
+
+    const laterVisit = await store().openVisit(later.run.id, "post", 1);
+
+    expect(laterVisit.visit).toMatchObject({ resumedFrom: "sha256-archive" });
+  });
+
   it("opens a marker node and reports success in the same step, without anyone reporting on it", async () => {
     const { opened } = await reviewSucceedsIntoRetrospective();
 
@@ -169,3 +225,7 @@ describe("AssemblyRunStore.openVisit", () => {
     expect(run!.outcome).toBe("success");
   });
 });
+
+async function seedDigestLine(args: LineBody["args"]): Promise<void> {
+  await definitions().put("line", "digest", { entry: "done", exit: "done", args, nodes: [{ id: "done" }], edges: [] } satisfies LineBody);
+}
