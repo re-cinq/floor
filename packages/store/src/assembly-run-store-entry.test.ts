@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Refusal } from "./refusal.js";
 import { setupStoreFixture } from "./assembly-run-store.fixtures.js";
 import type { LineBody, StationBody } from "./types.js";
 
@@ -31,11 +32,15 @@ const AUTHOR_STATION: StationBody = {
   route: "/plans",
 };
 
-async function authorAnswers(outcome: string) {
+async function seedPlanLine(): Promise<void> {
   await definitions().put("line", "plan", PLAN_LINE);
   await definitions().put("station", "plan-draft", SERVICE_STATION);
   await definitions().put("station", "plan-author", AUTHOR_STATION);
   await definitions().put("station", "plan-write", SERVICE_STATION);
+}
+
+async function authorAnswers(outcome: string) {
+  await seedPlanLine();
   const { run } = await store().start({ lineId: "plan", repo: "r", startItems: {}, entry: "author" });
   const { visit } = await store().openVisit(run.id, "author", 1);
 
@@ -58,5 +63,17 @@ describe("a run started at author, a node other than the line's entry draft", ()
     const { next } = await authorAnswers("changes_requested");
 
     expect(next).toEqual({ kind: "launch", nodeId: "draft", iteration: 1 });
+  });
+});
+
+describe("AssemblyRunStore.start at a terminal node", () => {
+  async function startAt(entry: string): Promise<unknown> {
+    await seedPlanLine();
+
+    return store().start({ lineId: "plan", repo: "r", startItems: {}, entry });
+  }
+
+  it("refuses the exit, which no visit is ever opened on", async () => {
+    await expect(startAt("done")).rejects.toThrow(new Refusal(`line "plan": node "done" ends a run, so a run cannot start there`));
   });
 });

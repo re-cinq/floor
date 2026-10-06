@@ -1,11 +1,15 @@
-// What fills a prompt's `{placeholders}`: each value need under its own name, and `{<name>_path}` for everything that has a place in the workspace, so a prompt never has to know where the workspace is. The run's own two, `{run_id}` and `{line_id}`, are added where the triple is built, beneath these: a value need of the same name wins.
+// What fills a prompt's `{placeholders}`: each value need under its own name, and `{<name>_path}` for everything that has a place in the workspace, so a prompt never has to know where the workspace is. Beneath those, the visit's own three, `{run_id}`, `{line_id}` and `{node_id}`: a value need of the same name wins.
 import { posix } from "node:path";
-import type { DispatchNeed, DispatchProduce } from "./agent-triple.js";
+import type { DispatchBrief, DispatchNeed, DispatchProduce } from "./agent-triple.js";
 
 /** Where the subsystem clones, downloads and watches. With no repo cloned the agent's own working directory is `/`, which is why a bare relative path in a prompt lands in the wrong place. */
 export const WORKSPACE = "/workspace";
 
 const PATH_SUFFIX = "_path";
+
+export function runParameters(run: Pick<DispatchBrief, "runId" | "lineId" | "nodeId">): Record<string, string> {
+  return { run_id: run.runId, line_id: run.lineId, node_id: run.nodeId };
+}
 
 export function promptParameters(needs: readonly DispatchNeed[], produces: readonly DispatchProduce[]): Record<string, string> {
   const placed = [...needs, ...produces].flatMap((entry) => placeOf(entry));

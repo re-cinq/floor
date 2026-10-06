@@ -177,7 +177,9 @@ settling, forever. Two lines can still start each other in turn; nothing
 stops that.
 
 If an open run already holds the subject, `start` returns that run. `entry`
-starts at a node other than the line's entry; the node must exist.
+starts at a node other than the line's entry; the node must exist, and it
+may not be one that ends a run — a visit opens on neither the exit nor the
+fail node, so a run cannot begin at one.
 
 A line's `files` (name to blob hash) are seeded into the run's bag at
 start, each as a `file` item `by: "line"`; a start item the caller gave
@@ -496,6 +498,12 @@ done with it.** A tick that is then refused is dead like any other refused
 event, and the schedule goes on: the refusal costs one tick. A tick that is
 retried enqueues the same occurrence again, which its dedupe key makes the
 same event.
+
+**A dropped tick gives up its dedupe key.** Putting a schedule again drops
+its pending tick and enqueues a new one, and with the cron unchanged the
+new one is due at the same occurrence, under the same key. Were the dropped
+row to keep the key, the enqueue would find it, insert nothing, and leave
+the schedule with no pending event at all.
 
 **Retention.** The events of a run are kept while it is open and for 30
 days after it settles. The age counts from the run settling, never from

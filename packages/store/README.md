@@ -50,6 +50,9 @@ See [the map](../../README.md) for what sits either side of it.
 - `run-args.ts` — `valueArgsOf`: a run's `value` start items by name, which
   `internal.run.started` and `internal.run.settled` carry as `args`. Files
   and repositories are left out.
+- `line-args.ts` — `gitArgNames`: which of a line's arguments are of kind
+  `git`. The one place that is asked: a start with no repo is refused when
+  there is one, and a station's `git` need is checked against them.
 - `events.ts` — `EventStore`: `enqueue` (idempotent on `dedupeKey`), `claim`
   (a batch under `FOR UPDATE SKIP LOCKED`, filtered by name and, for
   `station_run.dispatch`/`abort`, by tag subset), `claimExcept` (the same
@@ -84,10 +87,12 @@ See [the map](../../README.md) for what sits either side of it.
   and repo variant, needs, conversation continuation, failure context,
   deadline, dispatch tags) behind the store.
 - `assembly-run-store.ts` — `AssemblyRunStore`: `start`, `get`, `list`,
-  `cancel`, `fail`, `bag`, `next`, `settle`, `openVisit`, `openVisitByHand`,
+  `cancel`, `fail`, `bag` (and `bagOf`, for a caller that already holds the
+  run), `next`, `settle`, `openVisit`, `openVisitByHand`,
   `nodeStartedBy`, `report`, `visits`, `visit`, `overdueVisits` (every open
   visit whose deadline has passed — a human visit's deadline is null, so it
-  never matches). Every follow-up event is written in the same transaction as the
+  never matches). What a start, a list and a page take and answer is in
+  `run-shapes.ts`, so the SQL beside the store does not import the store. Every follow-up event is written in the same transaction as the
   row that caused it (docs/assembly_run_storage.md, "Every follow-up event
   is written in the transaction that caused it"). A report on a visit
   whose dispatch a worker claimed also posts `station_run.abort`, so the

@@ -33,9 +33,23 @@ export type Transition =
   | { kind: "launch"; nodeId: string; iteration: number }
   | { kind: "await" }
   | { kind: "finish" }
-  | { kind: "fail"; outcome: "iteration_max" | "error" | "failed"; reason: string };
+  | { kind: "halt"; outcome: "iteration_max" | "error" | "failed"; reason: string };
+
+type EndingTransition = Extract<Transition, { kind: "finish" | "halt" }>;
+
+export function endsRun(transition: Transition): transition is EndingTransition {
+  return transition.kind === "finish" || transition.kind === "halt";
+}
 
 const DEFAULT_MAX_NODES = 200;
+
+/** The exit and the fail node are both terminal: a walk that arrives at either stops there. */
+export function isTerminalNode(
+  assemblyLine: Pick<WalkGraph, "exit" | "fail">,
+  nodeId: string,
+): boolean {
+  return nodeId === assemblyLine.exit || nodeId === assemblyLine.fail;
+}
 
 // The executor's edge rule: exact-outcome match preferred over `always`; null when nothing matches.
 export function selectEdge(
@@ -68,7 +82,7 @@ interface Walk {
   accounting: WalkAccounting;
 }
 
-// Replay the visit history for what happens next (the sole routing definition): a revisited node bumps the iteration, and a budgeted edge additionally fails past its iterationMax.
+// Replay the visit history for what happens next (the sole routing definition): a revisited node bumps the iteration, and a budgeted edge additionally halts past its iterationMax.
 export function getNextTransition(
   assemblyLine: WalkGraph,
   visits: NodeVisit[],
@@ -88,7 +102,7 @@ export function getNextTransition(
 
   // A visit is always on record here: only a visit's outcome can carry the walk onto fail, which validation refuses as the entry.
   if (state.currentId === assemblyLine.fail) {
-    return deliberateFailure(assemblyLine, visits.at(-1)!);
+    return deliberateFailure(assemblyLine, visits.at(-1));
   }
 
   return state.currentId === assemblyLine.exit
@@ -108,7 +122,7 @@ function replayBlocked(
 
   if (unattendedVisits(assemblyLine, visits) >= maxNodes) {
     return {
-      kind: "fail",
+      kind: "halt",
       outcome: "error",
       reason: `AssemblyLine ${assemblyLine.name}: maxNodes (${maxNodes}) reached without hitting exit or a person acting`,
     };
@@ -261,7 +275,7 @@ function divergenceFailure(
   }
 
   return {
-    kind: "fail",
+    kind: "halt",
     outcome: "error",
     reason: `AssemblyLine ${assemblyLine.name}: node rows diverge from the definition (recorded "${visit.nodeId}" iter ${visit.iteration}, expected "${state.currentId}" iter ${state.iteration})`,
   };
@@ -269,19 +283,19 @@ function divergenceFailure(
 
 function noEdgeFailure(assemblyLine: WalkGraph, visit: NodeVisit): Transition {
   return {
-    kind: "fail",
+    kind: "halt",
     outcome: "error",
     reason: `AssemblyLine ${assemblyLine.name}: no edge from "${visit.nodeId}" for outcome "${visit.outcome}"`,
   };
 }
 
 // The line chose to end here: the reason names the visit whose outcome led to the fail node.
-function deliberateFailure(assemblyLine: WalkGraph, visit: NodeVisit): Transition {
-  return {
-    kind: "fail",
-    outcome: "failed",
-    reason: `AssemblyLine ${assemblyLine.name}: node "${visit.nodeId}" reported "${visit.outcome}"`,
-  };
+function deliberateFailure(assemblyLine: WalkGraph, visit: NodeVisit | undefined): Transition {
+  const why = visit
+    ? `node "${visit.nodeId}" reported "${visit.outcome}"`
+    : `the walk began at the fail node "${assemblyLine.fail}"`;
+
+  return { kind: "halt", outcome: "failed", reason: `AssemblyLine ${assemblyLine.name}: ${why}` };
 }
 
 // Moves the walk along `chosen`, or returns the Transition that ends it. A plain forward hop only sets the node; a revisit additionally bumps the iteration past the highest already recorded, which is what makes a second attempt distinguishable from the first.
@@ -321,7 +335,7 @@ function isUnbudgetedForwardHop(
   );
 }
 
-// The budget decision for a revisited/budgeted edge: an exhausted budget fails with its own reason, otherwise the edge is spent and the walk advances to its target.
+// The budget decision for a revisited/budgeted edge: an exhausted budget halts with its own reason, otherwise the edge is spent and the walk advances to its target.
 function budgetOutcome(
   assemblyLine: WalkGraph,
   visit: NodeVisit,
@@ -354,7 +368,7 @@ function budgetSpent(
   key: string,
 ): Transition {
   return {
-    kind: "fail",
+    kind: "halt",
     outcome: "iteration_max",
     reason: `AssemblyLine ${assemblyLine.name}: node "${visit.nodeId}" failed — the ${key} retry budget (${chosen.iterationMax}) is spent`,
   };

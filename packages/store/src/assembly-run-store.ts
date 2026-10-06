@@ -1,7 +1,7 @@
 // The one object through which a run's state is read and changed. See docs/assembly_run_storage.md, "The store", and README.md for what this file does and does not implement yet.
 
 import type { Pool, PoolClient } from "pg";
-import { getNextTransition, type Transition } from "@floor/assembly-lines";
+import { endsRun, getNextTransition, isTerminalNode, type Transition } from "@floor/assembly-lines";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
@@ -35,45 +35,11 @@ import {
   type RunMetrics,
 } from "./sql.js";
 import type { Item, LineBody, LineNode, Report, Run, Visit } from "./types.js";
-
-export interface StartRunInput {
-  lineId: string;
-  repo: string | null;
-  startItems: Record<string, Item>;
-  /** Starts at a node other than the line's entry; the node must exist. */
-  entry?: string;
-  /** Pins a version of the line; absent means the latest. */
-  lineHash?: string;
-}
-
-export interface StartResult {
-  run: Run;
-  joined: boolean;
-}
+import type { Page, PageOf, RunFilter, StartResult, StartRunInput } from "./run-shapes.js";
 
 export interface OpenVisitResult {
   visit: Visit;
   created: boolean;
-}
-
-export interface RunFilter {
-  lineId?: string;
-  /** `null` asks for the runs that have no repo. */
-  repo?: string | null;
-  subjectKey?: string;
-  open?: boolean;
-  /** A floor on when the run was created. */
-  since?: Date;
-}
-
-export interface Page {
-  limit: number;
-  cursor?: string;
-}
-
-export interface PageOf<T> {
-  items: T[];
-  nextCursor: string | null;
 }
 
 export interface AssemblyRunStoreDeps {
@@ -108,6 +74,8 @@ export class AssemblyRunStore {
 
     enforceStartArgs(line.body.args, input);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
+
+    enforce(!input.entry || !isTerminalNode(line.body, input.entry), `line "${input.lineId}": node "${input.entry}" ends a run, so a run cannot start there`);
     await enforceFilesExist(this.deps.pool, line.body.files);
     const startItems = foldLineFiles(line.body.files, input.startItems);
     const subjectKey = deriveSubjectKey(line.body, startItems);
@@ -188,9 +156,12 @@ export class AssemblyRunStore {
     const run = await this.get(runId);
 
     enforce(run, `no run "${runId}"`);
-    const visits = await this.visits(runId);
 
-    return foldBag(this.definitions, run.startItems, visits);
+    return this.bagOf(run);
+  }
+
+  async bagOf(run: Run): Promise<Record<string, Item>> {
+    return foldBag(this.definitions, run.startItems, await this.visits(run.id));
   }
 
   async next(runId: string): Promise<Transition> {
@@ -350,7 +321,7 @@ export class AssemblyRunStore {
       return;
     }
 
-    if (transition.kind === "finish" || transition.kind === "fail") {
+    if (endsRun(transition)) {
       const settle = settleInputFor(runId, transition, this.now());
 
       const settled = await settleRun(client, settle);
@@ -391,12 +362,12 @@ interface PreparedStart {
 }
 
 function settleInputFor(runId: string, transition: Transition, now: Date): { runId: string; outcome: string; reason: string | null; now: Date } {
-  if (transition.kind !== "finish" && transition.kind !== "fail") {
+  if (!endsRun(transition)) {
     throw new Refusal(`run "${runId}" is not finished`);
   }
 
   const outcome = transition.kind === "finish" ? "success" : transition.outcome;
-  const reason = transition.kind === "fail" ? transition.reason : null;
+  const reason = transition.kind === "halt" ? transition.reason : null;
 
   return { runId, outcome, reason, now };
 }

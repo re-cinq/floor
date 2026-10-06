@@ -1,4 +1,5 @@
 // Pure: a forward must-analysis collapsed to reachability, since the bag's transfer function never drops a name once it holds one — an overwrite keeps it present. A name is missing at a node exactly when that node is reachable from an entry without passing through any producer of it, and it is not itself seeded.
+import { gitArgNames } from "./line-args.js";
 import { edgesByFrom, reachableAvoiding, reachedFrom } from "./line-graph.js";
 import { hasStation, resolvedStationOf } from "./line-stations.js";
 import type { LineBody, LineNode, NeedSpec, StationBody } from "./types.js";
@@ -33,7 +34,7 @@ function contextOf(line: LineBody, bodies: ReadonlyMap<string, StationBody>): Ne
   return {
     bodies,
     seeds: seedNamesOf(line),
-    gitSeeds: gitSeedNamesOf(line),
+    gitSeeds: new Set(gitArgNames(line.args)),
     producers: producersOf(line, bodies),
     goingOut: edgesByFrom(line),
     startPoints: [line.entry, ...customStartIds],
@@ -43,10 +44,6 @@ function contextOf(line: LineBody, bodies: ReadonlyMap<string, StationBody>): Ne
 
 function seedNamesOf(line: LineBody): Set<string> {
   return new Set([...Object.keys(line.args), ...Object.keys(line.files ?? {})]);
-}
-
-function gitSeedNamesOf(line: LineBody): Set<string> {
-  return new Set(Object.entries(line.args).filter(([, spec]) => spec.kind === "git").map(([name]) => name));
 }
 
 // Every outgoing edge counts as carrying a produce, regardless of the outcome it fires on — this is about what a station's body declares, not any one path through it.
