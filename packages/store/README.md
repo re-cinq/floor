@@ -92,7 +92,9 @@ See [the map](../../README.md) for what sits either side of it.
   is written in the transaction that caused it"). A report on a visit
   whose dispatch a worker claimed also posts `station_run.abort`, so the
   worker lets go of whatever it holds for the visit; cancel and fail post it
-  for every open visit.
+  for every open visit. `openVisitByHand` on a finished run reopens it (`reopenRun`, then
+  `closeOpenVisits` on everything its settling left open) and posts
+  `internal.run.reopened`; another open run on its subject refuses it.
 - `start-events.ts`, `refusal.ts` — a node's start event name (its line's own
   `start:`, or `node.<id>.start`), and `Refusal`: the error for a request the
   store will never accept, as opposed to one worth retrying.

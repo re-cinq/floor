@@ -93,6 +93,9 @@ export type DefinitionRowView<Body> = DefinitionRowFields<Body, string>;
 export type LiveFrame =
   | { type: "record"; seq: number; visitId: string; nodeId: string; iteration: number; record: StationRunRecordView }
   | { type: "visit_opened" | "visit_reported"; seq: number; visit: VisitView }
-  | { type: "run_settled"; seq: number; run: RunView }
+  | { type: "run_settled" | "run_reopened"; seq: number; run: RunView }
   | { type: "caught_up"; seq: number }
   | { type: "unsupported" };
+
+/** One frame of `GET /assembly-runs/live`: ids only, the reader reads what they name; `resync` is the first frame of every connection and follows any gap. */
+export type FloorFrame = { type: "run_started"; runId: string } | { type: "run_changed"; runId: string } | { type: "resync" };

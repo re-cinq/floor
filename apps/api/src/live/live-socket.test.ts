@@ -13,6 +13,15 @@ const DEADLINE = new Date("2026-01-01T01:00:00Z");
 const NOBODY = "11111111-2222-3333-4444-555555555555";
 const TURN = { kind: "turn" as const, body: { said: "looking" }, occurredAt: FIXED_NOW };
 
+async function cancelledThenReopenedByAna(): Promise<string> {
+  const { runId } = await workStarted(deps());
+
+  await deps().runs.cancel(runId, "no longer wanted");
+  await deps().runs.openVisitByHand(runId, "work", "ana");
+
+  return runId;
+}
+
 beforeAll(async () => {
   await server().start();
 });
@@ -116,6 +125,26 @@ describe("GET /assembly-runs/:id/live, watched", () => {
     await deps().runs.cancel(runId, "no longer wanted");
 
     expect(await watch({ floor: server(), runId }).closed).toBe(1000);
+  });
+
+  it("replays a run reopened by hand past its first settling, and keeps it open", async () => {
+    const runId = await cancelledThenReopenedByAna();
+    const watched = watch({ floor: server(), runId });
+
+    await watched.told("caught_up");
+    watched.socket.close();
+
+    expect(typesOf(watched)).toEqual(["1 visit_opened", "2 run_settled", "3 run_reopened", "4 visit_reported", "5 visit_opened", "5 caught_up"]);
+  });
+
+  it("sends the run as reopened, open again", async () => {
+    const runId = await cancelledThenReopenedByAna();
+    const watched = watch({ floor: server(), runId });
+    const reopened = await watched.told("run_reopened");
+
+    watched.socket.close();
+
+    expect(reopened).toMatchObject({ seq: 3, run: { id: runId, finishedAt: null, outcome: null } });
   });
 
   it("closes with 1000 for a run that settled before it had a journal", async () => {

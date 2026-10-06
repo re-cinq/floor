@@ -5,7 +5,7 @@ export type OneOf<Fields> = {
   [Named in keyof Fields]-?: Required<Pick<Fields, Named>> & Partial<Omit<Fields, Named>>;
 }[keyof Fields];
 
-export type RunFilter = OneOf<{ line: string; repo: string; subject: string; open: boolean }>;
+export type RunFilter = OneOf<{ line: string; repo: string; subject: string; open: boolean; since: string }>;
 
 export type EventFilter = OneOf<{ since: string; name: string; run: string; stationRun: string }>;
 

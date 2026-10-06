@@ -52,7 +52,11 @@ Everything else a floor refuses throws a `FloorProblem` carrying the RFC 9457 bo
 
 There is no idle timeout here on purpose. A caught-up quiet run legitimately says nothing for minutes; the floor's own ping already finds a dead viewer, and a client-side timer would only reconnect healthy watches.
 
+A run a start by hand reopened goes on past its `run_settled`: `run_reopened` follows it, and the watch ends only at the settling the journal ends on.
+
 One caveat for a relay: `visit_opened` and `visit_reported` carry the whole visit, `agentSettings` included — the model, the prompt, the image. Filter those before they reach a browser.
+
+`runs.watchFloor(options)` follows the whole floor instead of one run: `run_started` and `run_changed`, each with a run's id and nothing else. It has no cursor. The floor opens every connection with `resync`, which means "read your list again", so a watch that drops comes back with nothing to remember. It is refused without the service token and comes back from everything else.
 
 ## Testing against it
 
