@@ -52,6 +52,25 @@ describe("the run journal", () => {
     expect(entries.at(-1)).toMatchObject({ kind: "run_settled", run: { outcome: "cancelled", reason: "no longer wanted" } });
   });
 
+  it("tells a cancelled run reopened by hand: settled, reopened, its left-open visit closed, the new one opened", async () => {
+    const { runId } = await reviewStarted();
+
+    await store().cancel(runId, "no longer wanted");
+    await store().openVisitByHand(runId, "review", "ana");
+
+    expect(told(await entriesOf(runId))).toEqual(["1 visit_opened", "2 run_settled", "3 run_reopened", "4 visit_reported", "5 visit_opened"]);
+  });
+
+  it("carries the reopened run, open again", async () => {
+    const { runId } = await reviewStarted();
+
+    await store().cancel(runId, "no longer wanted");
+    await store().openVisitByHand(runId, "review", "ana");
+    const reopened = (await entriesOf(runId)).find((entry) => entry.kind === "run_reopened");
+
+    expect(reopened).toMatchObject({ run: { id: runId, finishedAt: null, outcome: null } });
+  });
+
   it("carries a record whole, with the node it was said at", async () => {
     const { runId, visitId } = await reviewStarted();
 

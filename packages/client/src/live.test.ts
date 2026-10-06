@@ -39,6 +39,18 @@ describe("a watch over the live socket", () => {
     expect({ seen: seen.map((frame) => frame.type), ended: await watch.ended }).toEqual({ seen: ["caught_up", "run_settled"], ended: { reason: "settled" } });
   });
 
+  it("hands out a run reopened at seq 9 and holds 9 as its cursor", async () => {
+    const { opened, watch } = watching();
+
+    await settled();
+    opened[0]!.say({ type: "run_reopened", seq: 9, run: { id: "run-1" } as never });
+    const reopened = await watch[Symbol.asyncIterator]().next();
+
+    watch.stop();
+
+    expect({ type: reopened.value?.type, seq: watch.seq }).toEqual({ type: "run_reopened", seq: 9 });
+  });
+
   it("comes back at the last seq it handed out when the floor stops", async () => {
     const { opened } = watching();
 

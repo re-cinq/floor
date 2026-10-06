@@ -27,6 +27,16 @@ will never accept. The loop dead-letters such an event at once; anything
 else it retries with backoff. Before this every failure was retried eight
 times, including the ones that could not succeed.
 
+**A start by hand reopens a finished run.** Whatever it settled as, a start
+posted without an iteration takes the run back to open, closes as
+`cancelled` any visit its settling left open, and opens the node; the walk
+goes on from there and settles the run again. A person asking for a station
+on a done run means it. A new run would lose the bag and the history, and
+the subject index keeps one open run per subject, so a run whose subject
+another open run holds is refused, naming that run. The walk's own start,
+with an iteration, is still refused on a finished run: a stale walk event
+never brings one back.
+
 ## Events
 
 **`station_run.abort` means "let go", and is posted at every visit's end.**
@@ -527,6 +537,8 @@ construction refuses it a step earlier, where it cannot be written.
 
 - An event that starts a line with no subject starts it twice if its ack is
   lost after the start. A run has no dedupe key.
+- A start by hand whose ack is lost after the run it reopened has settled
+  again reopens it a second time.
 - A pod killed from outside posts nothing; its visit fails at its deadline.
 - The network policy for agent pods is rendered, installed and selects the
   pods, and has never been seen to bind: minikube's default network plugin

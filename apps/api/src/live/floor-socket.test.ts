@@ -51,4 +51,16 @@ describe("GET /assembly-runs/live, watched", () => {
     await vi.waitFor(() => expect(typesToldOf(watched, runId)).toEqual(["run_started", "run_changed", "run_changed", "run_changed"]));
     watched.socket.close();
   });
+
+  it("tells a viewer a run changed when a start by hand reopens it", async () => {
+    const { runId } = await workStarted(deps());
+
+    await deps().runs.cancel(runId, "not needed");
+    const watched = await listeningToFloor(server());
+
+    await deps().runs.openVisitByHand(runId, "work", "ana");
+
+    await vi.waitFor(() => expect(typesToldOf(watched, runId)).toEqual(["run_changed", "run_changed", "run_changed"]));
+    watched.socket.close();
+  });
 });

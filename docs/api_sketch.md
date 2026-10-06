@@ -101,7 +101,8 @@ POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops 
 
 // its visits:  GET /station-runs?run=:id        its events:  GET /events?run=:id
 // watching it as it happens:  GET /assembly-runs/:id/live, a WebSocket, below
-// retrying a failed node, or starting a node by hand, is posting that node's start event with the run id
+// retrying a failed node, or starting a node by hand, is posting that node's start event with the run id;
+// on a finished run that reopens it, unless another open run holds its subject. A subject finds open runs only
 // no POST, PUT or DELETE: runs are created by start, and they are an audit trail
 
 ## Live - one run, watched as it happens
@@ -122,11 +123,12 @@ connection comes back with the last `seq` it saw and misses nothing.
 floor sends    { type: "record",         seq, visitId, nodeId, iteration, record }   // a log, turn, llm_call or produced
                { type: "visit_opened",   seq, visit }                                // as GET /station-runs/:id, no report yet
                { type: "visit_reported", seq, visit }                                // the same visit, with its report
-               { type: "run_settled",    seq, run }                                  // always the last, then 1000
+               { type: "run_settled",    seq, run }                                  // the last, then 1000
+               { type: "run_reopened",   seq, run }                                  // a start by hand reopened it: what follows a settling
                { type: "caught_up",      seq }                                       // once: the replay is over
                { type: "unsupported" }                                               // to whatever a viewer says
 
-floor closes   1000   the run settled, now or before it was watched
+floor closes   1000   the run settled, now or before it was watched, and the journal ends there
                1001   the floor is stopping: come back with your cursor
                1011   the floor could not read the run: come back with your cursor
                4400   `after` is not a whole number
@@ -168,7 +170,7 @@ GET    /assembly-runs/live                   // upgrade. The service token, as `
 ```
 floor sends    { type: "resync" }                 // first, once the floor listens; and after any gap: read the list again
                { type: "run_started", runId }     // a run was created
-               { type: "run_changed", runId }     // a visit opened, a visit reported, or the run settled
+               { type: "run_changed", runId }     // a visit opened, a visit reported, the run settled or reopened
                { type: "unsupported" }            // to whatever a viewer says
 
 floor closes   1001   the floor is stopping: come back

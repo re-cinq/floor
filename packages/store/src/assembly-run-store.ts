@@ -7,18 +7,18 @@ import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
 import { foldBag } from "./bag.js";
 import { enforceStartArgs } from "./start-args.js";
-import { valueArgsOf } from "./run-args.js";
+import { aboutRun } from "./run-args.js";
+import { clearTheWayByHand, refuseBesideOpenRun } from "./reopen-run.js";
 import { deriveSubjectKey, foldLineFiles } from "./resolve.js";
 import { Refusal, enforce } from "./refusal.js";
 import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
 import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
-import { OpenVisitResolver, type OpenContext } from "./open-visit.js";
+import { OpenVisitResolver, type OpenContext, type OpenRequest } from "./open-visit.js";
 import { enforceFilesExist, lineToStart } from "./start-line.js";
 import { encodeRunCursor } from "./run-cursor.js";
 import { getWith, toNodeVisit, toRun, toVisit, visitsWith, withTransaction, type ListedRunRow, type Queryable, type VisitFilter } from "./rows.js";
 import {
   claimedDispatchTags,
-  closeOpenHumanVisits,
   currentNodeOf,
   deferPendingAgentDispatches,
   insertRun,
@@ -237,30 +237,35 @@ export class AssemblyRunStore {
     });
   }
 
-  async openVisit(runId: string, nodeId: string, iteration: number, requestedBy?: string): Promise<OpenVisitResult> {
+  async openVisit(runId: string, nodeId: string, iteration: number): Promise<OpenVisitResult> {
     const { run, line } = await this.lineOf(this.deps.pool, runId);
 
     enforce(!run.finishedAt, `run "${runId}" is already finished`);
-    const context = await this.openVisitResolver.resolve({ run, line, nodeId, iteration, requestedBy });
+
+    return this.openNode({ run, line, nodeId, iteration });
+  }
+
+  /** A start from outside the walk: the node's already-open visit if it has one (so a redelivered start opens nothing twice), otherwise its next iteration. A settled run is reopened, and a visit its settling left open was aborted, not opened by this start. */
+  async openVisitByHand(runId: string, nodeId: string, requestedBy: string): Promise<OpenVisitResult> {
+    const [{ run, line }, { openVisit, highestIteration }] = await Promise.all([this.lineOf(this.deps.pool, runId), nodeVisitCount(this.deps.pool, runId, nodeId)]);
+
+    if (openVisit && !run.finishedAt) return { visit: openVisit, created: false };
+
+    return this.openNode({ run, line, nodeId, iteration: highestIteration + 1, requestedBy }).catch((error: unknown) => refuseBesideOpenRun(this.deps.pool, run, error));
+  }
+
+  private async openNode(request: OpenRequest): Promise<OpenVisitResult> {
+    const context = await this.openVisitResolver.resolve(request);
 
     return withTransaction(this.deps.pool, async (client) => {
-      if (requestedBy) await closeOpenHumanVisits(client, run.id, this.now());
-      const inserted = await insertVisit(client, run.id, context);
+      if (request.requestedBy) await clearTheWayByHand(client, { runId: request.run.id, requestedBy: request.requestedBy, now: this.now(), events: this.eventsOn(client) });
+      const inserted = await insertVisit(client, request.run.id, context);
 
       if (!inserted.created) return inserted;
-      const visit = await this.dispatchOpened(client, run.id, inserted.visit, context);
+      const visit = await this.dispatchOpened(client, request.run.id, inserted.visit, context);
 
       return { visit, created: true };
     });
-  }
-
-  /** A start from outside the walk: the node's already-open visit if it has one (so a redelivered start opens nothing twice), otherwise its next iteration. */
-  async openVisitByHand(runId: string, nodeId: string, requestedBy: string): Promise<OpenVisitResult> {
-    const { openVisit, highestIteration } = await nodeVisitCount(this.deps.pool, runId, nodeId);
-
-    if (openVisit) return { visit: openVisit, created: false };
-
-    return this.openVisit(runId, nodeId, highestIteration + 1, requestedBy);
   }
 
   private async dispatchOpened(client: PoolClient, runId: string, visit: Visit, context: OpenContext): Promise<Visit> {
@@ -375,11 +380,6 @@ export class AssemblyRunStore {
 
     return rows[0] ? toVisit(rows[0]) : null;
   }
-}
-
-// What an internal event says about its run: enough for a line started by it to know whose run this was, where, and which values it was given.
-function aboutRun(run: Run): Record<string, unknown> {
-  return { runId: run.id, lineId: run.lineId, repo: run.repo, subjectKey: run.subjectKey, outcome: run.outcome, reason: run.reason, args: valueArgsOf(run.startItems) };
 }
 
 interface PreparedStart {
