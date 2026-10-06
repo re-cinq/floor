@@ -188,6 +188,7 @@ a node a person or an outside system starts.
 | a report | the next node's start event, or the settle below |
 | a report, when a worker claimed the visit's dispatch | `station_run.abort` for that visit |
 | an outcome on the run, at settle | `internal.run.settled` |
+| a finished run, reopened by a start by hand | `internal.run.reopened` |
 | a cancel, or a fail | `station_run.abort` for each open visit, and `internal.run.settled` |
 
 `station_run.abort` means "let go of this visit": a worker deletes what it
@@ -198,11 +199,12 @@ none, since nothing exists to let go of.
 
 `internal.run.settled` is what everything after a run hangs on: a failure
 notice, a check run, settling a task in lore. Each is a line that declares
-it as its start event. The floor has no hooks. Both internal events say
+it as its start event. The floor has no hooks. The internal run events say
 whose run it was: `runId`, `lineId`, `repo`, `subjectKey`, `outcome`,
 `reason`. They also carry `args`, the run's `value` start items as a flat
 map of name to value, such as `{ "task_id": "42" }`. File items and
-repository items are never in it.
+repository items are never in it. `internal.run.reopened` adds
+`requestedBy`, who started the node.
 
 **A run that cannot go on is failed.** When the store refuses to open a
 node (a required need is not in the bag, its station is gone), the run is
@@ -218,8 +220,15 @@ human node at its next iteration, which keeps the kernel's replay
 consistent. A redelivered start by hand finds the visit it already opened
 and opens nothing.
 
-> **Not built yet.** A start event for a run that has already settled is
-> refused. Retrying a node of a finished run needs a way to reopen it.
+**A start by hand reopens a finished run.** Whatever it settled as, the
+same transaction clears its `finished_at`, `outcome` and `reason`, closes as
+`cancelled` every visit its settling left open (a cancel aborts pods and
+writes no report), posts `internal.run.reopened` with who asked, and opens
+the node. The walk goes on from there and settles the run again, with a
+second `internal.run.settled`. Another open run on the same subject refuses
+it, by that run's id, and nothing changes. A start with an iteration, the
+walk's own, is still refused on a finished run. The run is named by its id:
+a subject finds open runs only.
 
 **An event may answer for a person.** A human node may declare `reports`:
 an event name, an optional `when`, and an outcome. When that event arrives
@@ -428,7 +437,7 @@ create index events_by_run on events (run_id, id);
 | `node.<id>.start` | the store | the floor |
 | `station_run.dispatch`, `station_run.abort` | the store | workers, by tag |
 | `station_run.reported` | a station, the sink | the floor |
-| `internal.run.started`, `internal.run.settled`, `internal.cost.missing` | the store | the floor, for lines that start on them |
+| `internal.run.started`, `internal.run.settled`, `internal.run.reopened`, `internal.cost.missing` | the store | the floor, for lines that start on them |
 | `schedule.<name>.tick` | the schedule | the floor |
 | `github.*`, `manual.*`, anything else | outside | the floor |
 
@@ -501,6 +510,7 @@ happens in a run, numbered 1, 2, 3 per run with no gap.
 | `visit_opened` | a visit is opened |
 | `visit_reported` | a visit's report is written |
 | `run_settled` | the run gets its `finished_at` |
+| `run_reopened` | a start by hand clears it again |
 
 - **Postgres writes it, by trigger.** Records, visits and runs are written
   in at least seven places. A trigger cannot be forgotten by the eighth.
@@ -608,7 +618,7 @@ create table station_run_records (
 create table run_feed (
   run_id      uuid   not null references assembly_runs(id) on delete cascade,
   seq         bigint not null,                      -- the cursor: 1, 2, 3 with no gap, per run
-  kind        text   not null,                      -- record | visit_opened | visit_reported | run_settled
+  kind        text   not null,                      -- record | visit_opened | visit_reported | run_settled | run_reopened
   visit_id    uuid,
   record_kind text,
   record_seq  int,

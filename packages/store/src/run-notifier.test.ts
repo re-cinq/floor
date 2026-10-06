@@ -109,6 +109,18 @@ describe("the run notifier, floor-wide", () => {
     expect(await within(started.told)).toEqual({ run: run.id, kind: "run_started" });
   });
 
+  it("tells a floor listener of a run reopened, by its id and the kind run_reopened", async () => {
+    const { runId } = await openEntryVisit();
+    const reopened = awaiting<FloorNotice>();
+
+    await store().cancel(runId, "not needed");
+    notifier = new PgRunNotifier({ connectionString, retryMs: SOON_MS });
+    await notifier.subscribeFloor({ told: (notice) => notice.kind === "run_reopened" && reopened.tell(notice), resync: () => undefined });
+    await store().openVisitByHand(runId, "review", "ana");
+
+    expect(await within(reopened.told)).toEqual({ run: runId, kind: "run_reopened" });
+  });
+
   it("tells a floor listener to resync once its lost connection is back", async () => {
     const resynced = awaiting<string>();
 

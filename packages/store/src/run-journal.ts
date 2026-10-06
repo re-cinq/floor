@@ -15,7 +15,7 @@ export type JournalEntry = Entered &
     | { kind: "record"; visit: Visit; record: StationRunRecord }
     | { kind: "visit_opened"; visit: Visit }
     | { kind: "visit_reported"; visit: Visit }
-    | { kind: "run_settled"; run: Run }
+    | { kind: "run_settled" | "run_reopened"; run: Run }
   );
 
 export interface JournalPage {
@@ -32,7 +32,7 @@ export interface RunJournalDeps {
 /* eslint-disable @typescript-eslint/naming-convention */
 interface FeedRow {
   seq: string;
-  kind: "record" | "visit_opened" | "visit_reported" | "run_settled";
+  kind: "record" | "visit_opened" | "visit_reported" | "run_settled" | "run_reopened";
   visit_id: string | null;
   record_kind: RecordKind | null;
   record_seq: number | null;
@@ -91,7 +91,7 @@ export class RunJournal {
 function entryOf(row: FeedRow, read: Read): JournalEntry[] {
   const entered = { seq: Number(row.seq), occurredAt: row.at };
 
-  if (row.kind === "run_settled") return [{ ...entered, kind: row.kind, run: read.run }];
+  if (row.kind === "run_settled" || row.kind === "run_reopened") return [{ ...entered, kind: row.kind, run: read.run }];
   const visit = read.visits.get(row.visit_id ?? "");
 
   return visit ? [aboutVisit(row, { entered, visit })] : [];

@@ -21,9 +21,9 @@ of items stations pass along, is derived from those visits.
 | `repo` | `host/owner/name`; selects agent definition variants |
 | `subjectKey` | what the run works on; at most one open run per `(repo, subjectKey)` |
 | `startItems` | the arguments and line-shipped files; the seed of the bag |
-| `outcome` | empty while the run is open; then `success`, `failed`, `iteration_max`, `error` or `cancelled` |
+| `outcome` | empty while the run is open; then `success`, `failed`, `iteration_max`, `error` or `cancelled`; empty again once a start by hand reopens it |
 | `createdAt` | when the run began; the run list is ordered by it, newest first |
-| `finishedAt` | empty while the run is open |
+| `finishedAt` | empty while the run is open, and again once it is reopened |
 
 ## Station run (a visit)
 
@@ -155,5 +155,5 @@ person or a webhook reports on it.
 | action | what happens |
 |---|---|
 | `cancel` | the run is settled as `cancelled`; its queued events are dropped; each open visit gets a `station_run.abort` for whoever claimed it |
-| retry, manual start | post the node's start event with the run id; the visit opens at the next iteration |
+| retry, manual start | post the node's start event with the run id; the visit opens at the next iteration. On a finished run the run reopens first, its left-open visits closed as `cancelled`, `internal.run.reopened` posted, and it settles again when the walk ends |
 | reaper | a visit past its deadline is reported `failed`, `error: timeout`; a dispatch nobody claimed is `failed`, `error: unclaimed` |

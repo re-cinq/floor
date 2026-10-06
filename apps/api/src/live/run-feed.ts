@@ -4,7 +4,7 @@ import type { JournalEntry, Run, RunJournal, RunNotifier, StationRunRecord, Visi
 export type Frame =
   | { type: "record"; seq: number; visitId: string; nodeId: string; iteration: number; record: StationRunRecord }
   | { type: "visit_opened" | "visit_reported"; seq: number; visit: Visit }
-  | { type: "run_settled"; seq: number; run: Run }
+  | { type: "run_settled" | "run_reopened"; seq: number; run: Run }
   | { type: "caught_up"; seq: number }
   | { type: "unsupported" };
 
@@ -35,6 +35,7 @@ export class RunFeed {
   private reading: Promise<void> | null = null;
   private hasMore = false;
   private stopped = false;
+  private settledLast = false;
   private stopListening: () => void = () => undefined;
 
   constructor(
@@ -75,6 +76,9 @@ export class RunFeed {
         this.hasMore = false;
         await this.readToTheEnd();
       }
+
+      // A run reopened by hand has a settling that was not its last, so only the journal's end can say the run is over.
+      if (this.settledLast) this.end(SETTLED);
     } catch {
       this.end(FAILED);
     }
@@ -95,7 +99,7 @@ export class RunFeed {
     if (this.stopped) return;
     this.viewing.viewer.send(frameOf(entry));
     this.cursor = entry.seq;
-    if (entry.kind === "run_settled") this.end(SETTLED);
+    this.settledLast = entry.kind === "run_settled";
   }
 
   private end(why: { code: number; reason: string }): void {
@@ -106,7 +110,7 @@ export class RunFeed {
 }
 
 export function frameOf(entry: JournalEntry): Frame {
-  if (entry.kind === "run_settled") return { type: entry.kind, seq: entry.seq, run: entry.run };
+  if ("run" in entry) return { type: entry.kind, seq: entry.seq, run: entry.run };
   if (entry.kind !== "record") return { type: entry.kind, seq: entry.seq, visit: entry.visit };
   const { id, nodeId, iteration } = entry.visit;
 
