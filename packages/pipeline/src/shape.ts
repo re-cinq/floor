@@ -73,7 +73,7 @@ function archiveOf(written: PipelineFile["archive"]): Archive {
 
 /** The order a person reads in: where a line begins before what it is given, a prompt after the model it is for. A floor hands its fields back in the alphabet's. */
 const READ_IN_ORDER = {
-  line: ["id", "entry", "exit", "start", "args", "files", "nodes", "edges"],
+  line: ["id", "entry", "exit", "fail", "start", "args", "files", "nodes", "edges"],
   station: ["kind", "agent_definition", "conversation", "conversation_key", "url", "route", "outcomes", "must_change", "needs", "produces"],
   settings: ["model", "image", "timeout_minutes", "tags", "prices", "config", "prompt"],
   schedule: ["cron", "timezone", "payload"],

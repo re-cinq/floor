@@ -206,6 +206,16 @@ map of name to value, such as `{ "task_id": "42" }`. File items and
 repository items are never in it. `internal.run.reopened` adds
 `requestedBy`, who started the node.
 
+**A line may end its run as failed.** A run settles as `success` when the
+walk arrives at the line's `exit`, whatever outcome led there. A line that
+names a `fail` node has a second ending: a walk arriving there settles the
+run as `failed`, with the reason `AssemblyLine <line>: node "<node>"
+reported "<outcome>"`, the node being the one whose edge led there. No
+visit opens on either terminal. That is the only ending a line chooses;
+`iteration_max` and `error` are the engine's own verdicts, and `cancelled`
+a person's. The outcome and the reason are on the run and in
+`internal.run.settled`.
+
 **A run that cannot go on is failed.** When the store refuses to open a
 node (a required need is not in the bag, its station is gone), the run is
 settled as `error` with the refusal as its reason. Otherwise it would have

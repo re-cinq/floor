@@ -214,7 +214,8 @@ curl -s -H "Authorization: Bearer $FLOOR_SERVICE_TOKEN" \
 ```
 
 A visit moves from opened, to claimed by a worker, to reported. When the walk reaches the exit the
-run settles, and `GET /assembly-runs/<id>` shows its outcome.
+run settles as `success`; when it reaches the line's `fail` node, if it names one, as `failed`.
+`GET /assembly-runs/<id>` shows the outcome.
 
 ## When it doesn't work
 
