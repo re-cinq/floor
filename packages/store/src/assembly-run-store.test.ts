@@ -84,6 +84,13 @@ describe("AssemblyRunStore.start", () => {
     expect(other.joined).toBe(false);
   });
 
+  it("starts at the line's own entry when a start names it, though that node is also the exit", async () => {
+    await seedDigestLine();
+    const { run } = await store().start({ lineId: "digest", repo: null, startItems: {}, entry: "done" });
+
+    expect(await store().get(run.id)).toMatchObject({ lineId: "digest" });
+  });
+
   it("gives a run with a null repo on a line declaring no git argument", async () => {
     await seedDigestLine();
 

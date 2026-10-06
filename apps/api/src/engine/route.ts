@@ -22,7 +22,7 @@ const reportedPayload = z.object({
 
 const runRef = z.union([
   z.object({ runId: z.uuid() }),
-  z.object({ subjectKey: z.string().min(1), repo: z.string().min(1).optional() }),
+  z.object({ subjectKey: z.string().min(1), repo: z.string().min(1).nullish() }),
 ]);
 
 const runEventPayload = z.object({
@@ -57,7 +57,7 @@ function routeRunEvent(payload: unknown): Route {
   return { kind: "run-event", run: refOf(run.data), ...parsed.data };
 }
 
-// zod keeps only the keys a schema names, so the ref carries nothing else of the payload; a subject naming no repo is one of the runs that have none.
+// zod keeps only the keys a schema names, so the ref carries nothing else of the payload; a subject naming no repo is one of the runs that have none, whether it leaves `repo` out or says null, which is what a floor answers for such a run.
 function refOf(parsed: z.infer<typeof runRef>): RunRef {
   if ("runId" in parsed) return parsed;
 

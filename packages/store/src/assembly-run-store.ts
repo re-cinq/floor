@@ -75,7 +75,7 @@ export class AssemblyRunStore {
     enforceStartArgs(line.body.args, input);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
 
-    enforce(!input.entry || !isTerminalNode(line.body, input.entry), `line "${input.lineId}": node "${input.entry}" ends a run, so a run cannot start there`);
+    enforce(entry.id === line.body.entry || !isTerminalNode(line.body, entry.id), `line "${input.lineId}": node "${entry.id}" ends a run, so a run cannot start there`);
     await enforceFilesExist(this.deps.pool, line.body.files);
     const startItems = foldLineFiles(line.body.files, input.startItems);
     const subjectKey = deriveSubjectKey(line.body, startItems);
