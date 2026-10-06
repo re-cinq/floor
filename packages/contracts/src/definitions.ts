@@ -62,6 +62,8 @@ export interface LineEdge {
 export interface LineBody {
   entry: string;
   exit: string;
+  /** Node that ends the run as failed on purpose; absent means no node can. */
+  fail?: string;
   start?: LineStart;
   args: Record<string, LineArgSpec>;
   /** Name -> blob hash, seeded into every run's bag at start. */

@@ -18,6 +18,7 @@ executes it.
 |---|---|
 | `name` | the id |
 | `entry`, `exit` | the first node, and the terminal marker node |
+| `fail` | optional: a second terminal marker node. A run that arrives here settles as `failed` |
 | `start` | optional: the events that start a run of this line, and how their payload maps to arguments |
 | `args` | the typed arguments `start` must be given; one may be marked `subject` |
 | `files` | files shipped with the line version, seeded into every run's bag |
@@ -76,10 +77,31 @@ An edge says: when node A finishes with outcome X, node B is next. The
 kernel picks the exact-outcome edge over `always`. Revisiting a node bumps
 its iteration; an edge with `iteration_max` fails the run once exceeded.
 
+A run ends in one of two places. An edge into the `exit` node settles it as
+`success`, whatever outcome led there. An edge into the `fail` node, when
+the line names one, settles it as `failed`, with a reason naming the node
+that was left and the outcome it reported. No visit opens on either: the
+run settles the moment the edge is taken, so a line that wants "this step
+failed, stop, and say the run failed" writes one edge and gets no retry it
+did not ask for.
+
+```yaml
+exit: done
+fail: failed
+nodes:
+  - { id: post, station: post }
+  - { id: done }
+  - { id: failed }
+edges:
+  - { from: post, to: done,   on: success }
+  - { from: post, to: failed, on: failed }     # the run settles as failed, on the first failure
+```
+
 ### Validation at creation
 
 - every edge endpoint names a real node; every node is reachable; only the
-  exit node is terminal
+  exit node and the fail node are terminal
+- `fail`, when given, names a node that is neither the entry nor the exit
 - every outcome a node's station declares has an edge
 - a cycle has an `iteration_max` somewhere, or a human node on it
 - a node whose station declares a `git` need with `access: write` has a
@@ -244,12 +266,15 @@ Three things to see here:
 
 Lore's `merge.yaml`: nine steps after a PR merges, each routing both
 `success` and `failed` onward so one failure is recorded and the line walks
-on. Every node is a service station beside lore's database.
+on. The one exception is `settle`: everything after it assumes the task is
+merged, so its failure ends the run as `failed` at the `fail` node. Every
+node is a service station beside lore's database.
 
 ```yaml
 name: merge
 entry: settle
 exit: done
+fail: not-settled
 args:
   task_id: { kind: value, subject: true }
   pr_url:  { kind: value }
@@ -264,9 +289,10 @@ nodes:
   - { id: spec-tasks,      station: spec-tasks }
   - { id: resume-planning, station: resume-planning }
   - { id: done }
+  - { id: not-settled }
 edges:
   - { from: settle,          to: spec-status,     on: success }
-  - { from: settle,          to: done,            on: failed }        # the one real precondition
+  - { from: settle,          to: not-settled,     on: failed }        # the one real precondition: the run settles as failed
   - { from: spec-status,     to: close-issue,     on: always }
   - { from: close-issue,     to: outcome-stats,   on: always }
   - { from: outcome-stats,   to: curate,          on: always }

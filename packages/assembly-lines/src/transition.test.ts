@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { selectEdge, getNextTransition, type WalkGraph } from "./transition.js";
-import { visit, reviewLoop, alwaysLoop, selfRetry, forwardOnFailed, twoRoundsThenThirdRoundSetup } from "./transition.fixtures.js";
+import { visit, reviewLoop, alwaysLoop, selfRetry, forwardOnFailed, postOrFail, twoRoundsThenThirdRoundSetup } from "./transition.fixtures.js";
 
 describe("selectEdge", () => {
   it("prefers the exact-outcome edge over always", () => {
@@ -180,6 +180,30 @@ describe("getNextTransition", () => {
       nodeId: "b",
       iteration: 1,
     });
+  });
+});
+
+describe("getNextTransition on a line with a fail node", () => {
+  it("fails with outcome failed when post reports failed and its edge leads to the fail node", () => {
+    expect(getNextTransition(postOrFail, [visit("post", 1, "failed")])).toEqual({
+      kind: "fail",
+      outcome: "failed",
+      reason: 'AssemblyLine post-or-fail: node "post" reported "failed"',
+    });
+  });
+
+  it("fails with outcome failed when post reports success and an always edge leads to the fail node", () => {
+    const alwaysFails: WalkGraph = { ...postOrFail, edges: [{ from: "post", to: "failed", on: "always" }] };
+
+    expect(getNextTransition(alwaysFails, [visit("post", 1, "success")])).toEqual({
+      kind: "fail",
+      outcome: "failed",
+      reason: 'AssemblyLine post-or-fail: node "post" reported "success"',
+    });
+  });
+
+  it("finishes when post reports success and its edge leads to the exit", () => {
+    expect(getNextTransition(postOrFail, [visit("post", 1, "success")])).toEqual({ kind: "finish" });
   });
 });
 

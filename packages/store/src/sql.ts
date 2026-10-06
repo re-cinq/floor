@@ -58,6 +58,18 @@ export async function settleRun(client: PoolClient, settle: SettleInput): Promis
   return settled;
 }
 
+/** Takes a settled run back to open; null for a run that was open already. A second open run on its subject breaks `assembly_runs_subject_open`. */
+export async function reopenRun(client: PoolClient, runId: string): Promise<Run | null> {
+  const { rows } = await client.query(
+    `update assembly_runs set finished_at = null, outcome = null, reason = null
+     where id = $1 and finished_at is not null
+     returning *`,
+    [runId],
+  );
+
+  return rows[0] ? toRun(rows[0]) : null;
+}
+
 export interface OpenVisitRow {
   stationRunId: string;
   dispatchTags: string[];
@@ -201,13 +213,20 @@ export async function blobHashesExist(client: Queryable, hashes: string[]): Prom
   return new Set(rows.map((row: { hash: string }) => row.hash));
 }
 
-/** A start from outside closes the run's open human visits first, so the kernel's replay never sees a person's node left open behind the one a person just started. No walk advance: the visit opened next is what moves the run. */
-export async function closeOpenHumanVisits(client: PoolClient, runId: string, now: Date): Promise<void> {
+export interface OpenVisitsToClose {
+  runId: string;
+  now: Date;
+  /** An open run's machine visits are still working; a reopened run's were aborted when it settled. */
+  humanOnly: boolean;
+}
+
+/** A start from outside closes the run's open visits first, so the kernel's replay never sees a node left open behind the one a person just started. No walk advance: the visit opened next is what moves the run. */
+export async function closeOpenVisits(client: PoolClient, closing: OpenVisitsToClose): Promise<void> {
   await client.query(
     `update station_runs set report = '{"outcome":"cancelled"}'::jsonb, finished_at = $2
      where assembly_run_id = $1 and report is null
-       and station_hash in (select hash from definitions where kind = 'station' and body->>'kind' = 'human')`,
-    [runId, now],
+       and (not $3 or station_hash in (select hash from definitions where kind = 'station' and body->>'kind' = 'human'))`,
+    [closing.runId, closing.now, closing.humanOnly],
   );
 }
 

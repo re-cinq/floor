@@ -30,6 +30,7 @@ const lineEdge = z.object({ from: z.string(), to: z.string(), on: z.string(), it
 export const lineBodySchema = z.object({
   entry: z.string(),
   exit: z.string(),
+  fail: z.string().optional(),
   start: lineStart.optional(),
   args: z.record(z.string(), lineArgSpec),
   files: z.record(z.string(), z.string()).optional(),

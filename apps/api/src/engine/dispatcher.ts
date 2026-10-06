@@ -61,6 +61,7 @@ export class Dispatcher {
   }
 
   private async apply(event: FloorEvent, route: Route): Promise<void> {
+    await this.advanceScheduleIfTick(event);
     if (route.kind === "invalid") throw new Refusal(route.reason);
     if (route.kind === "report") return this.report(route);
     const outside = outsideEvent(event);
@@ -68,7 +69,6 @@ export class Dispatcher {
     if (route.kind === "run-event" && (await this.startedNode(outside, route))) return;
 
     await this.deps.outside.startLines(outside);
-    await this.advanceScheduleIfTick(event);
   }
 
   // A schedule that was archived between posting this tick and handling it enqueues nothing further.

@@ -39,8 +39,9 @@ each entity has its own page under [entities/](entities/).
 - **Type safety.** Definitions, run arguments and event payloads are typed
   schemas. A failing POST returns 400 with every error, not the first. An
   assembly line is also checked for what it refers to: entry, exit and every
-  edge name a real node, every node but the exit has an outgoing edge, and
-  every node's station is a known one.
+  edge name a real node, every node but the exit and the fail node has an
+  outgoing edge, and every node's station is a known one. A line may name a
+  `fail` node beside its `exit`: a run arriving there settles as `failed`.
 - **Field names.** Request and response bodies are `camelCase`: `runId`,
   `dedupeKey`, `availableAt`, `startItems`.
 - **Tenancy is the database.** One floor serves one tenant. Lore gives each
@@ -111,7 +112,8 @@ POST   /assembly-runs/:id/cancel         // settles the run as cancelled, drops 
 
 // its visits:  GET /station-runs?run=:id        its events:  GET /events?run=:id
 // watching it as it happens:  GET /assembly-runs/:id/live, a WebSocket, below
-// retrying a failed node, or starting a node by hand, is posting that node's start event with the run id
+// retrying a failed node, or starting a node by hand, is posting that node's start event with the run id;
+// on a finished run that reopens it, unless another open run holds its subject. A subject finds open runs only
 // no POST, PUT or DELETE: runs are created by start, and they are an audit trail
 
 ## Live - one run, watched as it happens
@@ -132,11 +134,12 @@ connection comes back with the last `seq` it saw and misses nothing.
 floor sends    { type: "record",         seq, visitId, nodeId, iteration, record }   // a log, turn, llm_call or produced
                { type: "visit_opened",   seq, visit }                                // as GET /station-runs/:id, no report yet
                { type: "visit_reported", seq, visit }                                // the same visit, with its report
-               { type: "run_settled",    seq, run }                                  // always the last, then 1000
+               { type: "run_settled",    seq, run }                                  // the last, then 1000
+               { type: "run_reopened",   seq, run }                                  // a start by hand reopened it: what follows a settling
                { type: "caught_up",      seq }                                       // once: the replay is over
                { type: "unsupported" }                                               // to whatever a viewer says
 
-floor closes   1000   the run settled, now or before it was watched
+floor closes   1000   the run settled, now or before it was watched, and the journal ends there
                1001   the floor is stopping: come back with your cursor
                1011   the floor could not read the run: come back with your cursor
                4400   `after` is not a whole number
@@ -164,6 +167,34 @@ lore closes    at any time: that is the unsubscribe
   sent no turn or no settling.
 - A run settled before the floor kept a journal replays nothing and closes
   with 1000. Its visits and records are read over HTTP, as before.
+
+## Live - the whole floor, by id
+
+A second WebSocket, for a list of runs that stays true without being read
+again and again. It says which run started and which run changed, and
+nothing of what happened in it: whoever hears a run's id reads that run.
+lore opens one when the first person looks at its list of runs and closes
+it when the last one leaves.
+
+GET    /assembly-runs/live                   // upgrade. The service token, as `Authorization: Bearer`
+
+```
+floor sends    { type: "resync" }                 // first, once the floor listens; and after any gap: read the list again
+               { type: "run_started", runId }     // a run was created
+               { type: "run_changed", runId }     // a visit opened, a visit reported, the run settled or reopened
+               { type: "unsupported" }            // to whatever a viewer says
+
+floor closes   1001   the floor is stopping: come back
+               4401   no service token
+lore closes    at any time: that is the unsubscribe
+```
+
+- There is no cursor. What was missed while away is not replayed: every
+  connection opens with `resync`, and the list is read again.
+- A record is never announced here. A run that writes a thousand turns
+  says nothing on this socket until its visit reports.
+- Nothing is filtered by run. lore is the one viewer, and a floor's visits
+  open and report a few times a minute, not a few times a second.
 
 ## Station runs - a single visit to a station inside a run
 
@@ -269,9 +300,15 @@ POST   /events/:id/fail                  // body: error, permanent; requeues wit
 ## Schedules - predefined events on a cadence
 
 A schedule is a name, a cron and an event payload, and holds exactly one
-pending event. Acking its tick enqueues the next occurrence. A line that
-declares `start.on: schedule.<name>.tick` is what the tick starts. Service
-token only.
+pending event. Handling its tick enqueues the next occurrence first, and
+only then starts what the tick starts: an assembly line that declares
+`start.on: schedule.<name>.tick`. So a schedule outlives a refused tick. A
+tick whose assembly line cannot start (a `start.args` template the payload
+cannot fill, an argument the line does not declare) is dead-lettered with
+the refusal as its `lastError`, and costs that tick alone: the next
+occurrence is already pending. A tick retried after any other error
+enqueues nothing twice, since an occurrence is one event by its dedupe key.
+Service token only.
 
 GET    /schedules
 GET    /schedules/:id                    // includes the pending event's availableAt
@@ -297,6 +334,7 @@ services without changing this API.
 | agent output | `LORE_NODE_RESULT:`, then `REVIEW_RESULT:`, then success | lore's parser, ported; outcomes are the station's own | same |
 | tasks | none; `task_id` is an ordinary run argument | none | lore creates the task, starts the run, settles the task on `internal.run.settled`, which carries the run's value arguments in `args`, `task_id` among them |
 | live view | one WebSocket a run, `GET /assembly-runs/:id/live`, the service token | any WebSocket client | lore-api relays it over the socket its browser already has, opened on subscribe and closed on unsubscribe |
+| live list of runs | one WebSocket for the floor, `GET /assembly-runs/live`, ids only, the service token | any WebSocket client | lore-api keeps one while somebody looks at its run list, and tells each browser of the runs on its page |
 | agent context | none required | whatever the definition names | lore MCP gateway |
 
 **The converter is a deliverable**, `@floor/lore-converter`. It reads each

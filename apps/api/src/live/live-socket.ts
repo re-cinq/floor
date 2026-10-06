@@ -1,4 +1,4 @@
-// The live channel (docs/api_sketch.md, "Live"): one WebSocket is one run, watched. lore opens one when somebody subscribes to a run and closes it when they unsubscribe; a browser never reaches the floor.
+// The live channel (docs/api_sketch.md, "Live"): one WebSocket is one run, watched, or the whole floor's runs by id. lore opens one when somebody subscribes and closes it when they unsubscribe; a browser never reaches the floor.
 import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import type { Server } from "@hapi/hapi";
@@ -7,9 +7,12 @@ import { callerOf } from "../auth.js";
 import type { LiveLimits } from "../config.js";
 import type { Deps } from "../deps.js";
 import { isUuid } from "../routes/own-visit.js";
+import type { FloorFrame } from "@re-cinq/floor-contracts";
+import { FloorFeed, type FloorViewer } from "./floor-feed.js";
 import { RunFeed, type Frame, type Viewer } from "./run-feed.js";
 
 const LIVE_PATH = /^\/assembly-runs\/([^/]+)\/live$/;
+const FLOOR_PATH = "/assembly-runs/live";
 const WHOLE_NUMBER = /^\d+$/;
 
 export const BAD_CURSOR = { code: 4400, reason: "after must be a whole number" };
@@ -22,11 +25,8 @@ const LIMITS: LiveLimits = { viewersPerRun: 16, bufferedBytes: 4_194_304, pingMs
 /** A viewer says nothing the floor reads today, so it has no reason to say much. */
 const MAX_SAID_BYTES = 4096;
 
-interface Asked {
-  runId: string;
-  after: string;
-  authorization: string | undefined;
-}
+type Asked = { watch: "floor"; authorization: string | undefined } | { watch: "run"; runId: string; after: string; authorization: string | undefined };
+type AskedRun = Extract<Asked, { watch: "run" }>;
 
 export function registerLiveSocket(server: Server, deps: Deps): void {
   const live = new LiveSocket(deps);
@@ -54,7 +54,7 @@ class LiveSocket {
 
     if (!asked) return void socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n");
 
-    return this.sockets.handleUpgrade(request, socket, head, (opened) => void this.opened(opened, asked));
+    return this.sockets.handleUpgrade(request, socket, head, (opened) => void (asked.watch === "floor" ? this.openedOnFloor(opened, asked) : this.opened(opened, asked)));
   }
 
   close(): void {
@@ -62,7 +62,7 @@ class LiveSocket {
     this.sockets.clients.forEach((socket) => socket.close(GOING_AWAY.code, GOING_AWAY.reason));
   }
 
-  private async opened(socket: WebSocket, asked: Asked): Promise<void> {
+  private async opened(socket: WebSocket, asked: AskedRun): Promise<void> {
     const viewer = this.viewerOn(socket);
 
     this.hear(socket, viewer);
@@ -79,6 +79,17 @@ class LiveSocket {
     await feed.start().catch(() => socket.terminate());
   }
 
+  private async openedOnFloor(socket: WebSocket, asked: Asked): Promise<void> {
+    const viewer = this.viewerOn(socket);
+
+    this.hear(socket, viewer);
+    if (!this.isService(asked)) return viewer.close(NO_SERVICE_TOKEN);
+    const feed = new FloorFeed(this.deps, viewer);
+
+    socket.on("close", () => feed.stop());
+    await feed.start().catch(() => socket.terminate());
+  }
+
   // What a viewer says is reserved for a person's word to a running agent; today it is answered, and not read.
   private hear(socket: WebSocket, viewer: Viewer): void {
     this.answered.add(socket);
@@ -87,10 +98,12 @@ class LiveSocket {
     socket.on("message", () => viewer.send({ type: "unsupported" }));
   }
 
-  private refusalFor(asked: Asked): { code: number; reason: string } | null {
-    const caller = callerOf(asked.authorization, { ...this.deps.config, now: this.deps.now });
+  private isService(asked: Asked): boolean {
+    return callerOf(asked.authorization, { ...this.deps.config, now: this.deps.now })?.kind === "service";
+  }
 
-    if (caller?.kind !== "service") return NO_SERVICE_TOKEN;
+  private refusalFor(asked: AskedRun): { code: number; reason: string } | null {
+    if (!this.isService(asked)) return NO_SERVICE_TOKEN;
     if (!WHOLE_NUMBER.test(asked.after)) return BAD_CURSOR;
     const watching = this.watched.get(asked.runId) ?? 0;
 
@@ -110,9 +123,9 @@ class LiveSocket {
   }
 
   // A viewer that reads slower than its run writes is dropped, not waited for: what waits for it is held in the floor's own memory. It comes back with its cursor.
-  private viewerOn(socket: WebSocket): Viewer {
+  private viewerOn(socket: WebSocket): Viewer & FloorViewer {
     return {
-      send: (frame: Frame) => {
+      send: (frame: Frame | FloorFrame) => {
         if (socket.readyState !== socket.OPEN) return;
         if (socket.bufferedAmount > this.limits.bufferedBytes) return socket.terminate();
         socket.send(JSON.stringify(frame));
@@ -138,7 +151,10 @@ class LiveSocket {
 
 function askedOf(request: IncomingMessage): Asked | null {
   const url = new URL(request.url ?? "/", "http://floor");
+  const authorization = request.headers.authorization;
+
+  if (url.pathname === FLOOR_PATH) return { watch: "floor", authorization };
   const runId = LIVE_PATH.exec(url.pathname)?.[1];
 
-  return runId ? { runId, after: url.searchParams.get("after") ?? "0", authorization: request.headers.authorization } : null;
+  return runId ? { watch: "run", runId, after: url.searchParams.get("after") ?? "0", authorization } : null;
 }
