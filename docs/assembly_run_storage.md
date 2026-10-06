@@ -177,7 +177,9 @@ settling, forever. Two lines can still start each other in turn; nothing
 stops that.
 
 If an open run already holds the subject, `start` returns that run. `entry`
-starts at a node other than the line's entry; the node must exist.
+starts at a node other than the line's entry; the node must exist, and it
+may not be one that ends a run — a visit opens on neither the exit nor the
+fail node, so a run cannot begin at one.
 
 A line's `files` (name to blob hash) are seeded into the run's bag at
 start, each as a `file` item `by: "line"`; a start item the caller gave

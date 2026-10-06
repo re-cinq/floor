@@ -102,7 +102,7 @@ export function getNextTransition(
 
   // A visit is always on record here: only a visit's outcome can carry the walk onto fail, which validation refuses as the entry.
   if (state.currentId === assemblyLine.fail) {
-    return deliberateFailure(assemblyLine, visits.at(-1)!);
+    return deliberateFailure(assemblyLine, visits.at(-1));
   }
 
   return state.currentId === assemblyLine.exit
@@ -290,12 +290,12 @@ function noEdgeFailure(assemblyLine: WalkGraph, visit: NodeVisit): Transition {
 }
 
 // The line chose to end here: the reason names the visit whose outcome led to the fail node.
-function deliberateFailure(assemblyLine: WalkGraph, visit: NodeVisit): Transition {
-  return {
-    kind: "halt",
-    outcome: "failed",
-    reason: `AssemblyLine ${assemblyLine.name}: node "${visit.nodeId}" reported "${visit.outcome}"`,
-  };
+function deliberateFailure(assemblyLine: WalkGraph, visit: NodeVisit | undefined): Transition {
+  const why = visit
+    ? `node "${visit.nodeId}" reported "${visit.outcome}"`
+    : `the walk began at the fail node "${assemblyLine.fail}"`;
+
+  return { kind: "halt", outcome: "failed", reason: `AssemblyLine ${assemblyLine.name}: ${why}` };
 }
 
 // Moves the walk along `chosen`, or returns the Transition that ends it. A plain forward hop only sets the node; a revisit additionally bumps the iteration past the highest already recorded, which is what makes a second attempt distinguishable from the first.

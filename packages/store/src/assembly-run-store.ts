@@ -1,7 +1,7 @@
 // The one object through which a run's state is read and changed. See docs/assembly_run_storage.md, "The store", and README.md for what this file does and does not implement yet.
 
 import type { Pool, PoolClient } from "pg";
-import { endsRun, getNextTransition, type Transition } from "@floor/assembly-lines";
+import { endsRun, getNextTransition, isTerminalNode, type Transition } from "@floor/assembly-lines";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
@@ -74,6 +74,8 @@ export class AssemblyRunStore {
 
     enforceStartArgs(line.body.args, input);
     const entry = requireNode(line.body, input.entry ?? line.body.entry);
+
+    enforce(!input.entry || !isTerminalNode(line.body, input.entry), `line "${input.lineId}": node "${input.entry}" ends a run, so a run cannot start there`);
     await enforceFilesExist(this.deps.pool, line.body.files);
     const startItems = foldLineFiles(line.body.files, input.startItems);
     const subjectKey = deriveSubjectKey(line.body, startItems);

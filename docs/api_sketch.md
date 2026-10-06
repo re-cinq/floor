@@ -83,7 +83,7 @@ POST   /assembly-lines                   // create a line (first version); 400 w
 PUT    /assembly-lines/:id               // does NOT mutate; creates a new version, returns its hash
 DELETE /assembly-lines/:id               // archives; 409 while runs are open on it
 
-POST   /assembly-lines/:id/start         // body: startItems, optional repo, optional entry, optional lineHash (a version of the
+POST   /assembly-lines/:id/start         // body: startItems, optional repo, optional entry (a node that does not end a run), optional lineHash (a version of the
                                          // line; absent means the latest). 201, or, if an open run already holds the
                                          // subject, that run (200, joined: true). `repo` may be left out for a line with
                                          // no `git` argument, and the run then has none (`repo: null`); a line with a

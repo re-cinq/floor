@@ -202,6 +202,16 @@ describe("getNextTransition on a line with a fail node", () => {
     });
   });
 
+  it("halts with no visit on record when the walk began at the fail node", () => {
+    const beganAtFail: WalkGraph = { ...postOrFail, entry: "failed" };
+
+    expect(getNextTransition(beganAtFail, [])).toEqual({
+      kind: "halt",
+      outcome: "failed",
+      reason: 'AssemblyLine post-or-fail: the walk began at the fail node "failed"',
+    });
+  });
+
   it("finishes when post reports success and its edge leads to the exit", () => {
     expect(getNextTransition(postOrFail, [visit("post", 1, "success")])).toEqual({ kind: "finish" });
   });
