@@ -84,6 +84,18 @@ describe("defineStation, against a running floor", () => {
     expect(seen).toMatchObject([{ iteration: 1, needs: { issue: "412", spec: expect.stringContaining("/blobs/sha256-") } }]);
   });
 
+  it("hands the function the run its visit belongs to and that run's assembly line", async () => {
+    const seen: Brief[] = [];
+
+    const { runId } = await worked(async (brief) => {
+      seen.push(brief);
+
+      return { outcome: "success" };
+    });
+
+    expect(seen).toMatchObject([{ runId, lineId: "issues", nodeId: "work" }]);
+  });
+
   it("settles the run on the outcome the function returns", async () => {
     const { run } = await worked(succeed);
 

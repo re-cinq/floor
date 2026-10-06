@@ -144,17 +144,13 @@ async function dispatch(
 
   await deps.secrets.setKey(secretName, tokenSecretKey(visitId), authorizationHeader(brief.token));
   const triple = buildAgentTriple({
+    ...brief,
     visitId,
-    floorBaseUrl: brief.floorBaseUrl,
     tokenSecretKey: tokenSecretKey(visitId),
     visitToken: brief.token,
     modelSecretKey: brief.modelSecretKey ?? modelSecretKeyFor(settings.model, deps.modelSecretKeys),
     secretName,
-    deadlineMinutes: brief.deadlineMinutes,
     settings,
-    needs: brief.needs,
-    produces: brief.produces,
-    conversation: brief.conversation,
   });
 
   await deps.resources.apply(triple);

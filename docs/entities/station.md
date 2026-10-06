@@ -60,6 +60,10 @@ rendered by the floor, which serves no page of its own.
 
 ```ts
 interface Brief {
+  visitId: string;
+  runId: string;                     // the assembly run this visit belongs to
+  lineId: string;                    // the assembly line that run walks
+  nodeId: string;                    // the node of that line this visit is a pass at
   needs: Record<string, string>;     // the value, or a URL to fetch
   iteration: number;
 }
@@ -92,6 +96,7 @@ ai-agent-subsystem, translating the brief:
 | a `file` need | a file to download to `path` |
 | a `value` need | a parameter that fills the prompt's `{placeholder}` |
 | anything with a path | a parameter, `{<name>_path}`: where it is in the workspace |
+| the run, its assembly line and the node | three parameters, `{run_id}`, `{line_id}` and `{node_id}`; a value need of the same name wins |
 | a `file` produce | a watched path, uploaded to the blob store when the agent ends |
 | the previous conversation | restored before the agent starts, saved after |
 | turns, cost, the result | streamed to the visit's sink endpoint |

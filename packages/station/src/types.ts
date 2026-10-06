@@ -2,6 +2,12 @@
 
 export interface Brief {
   visitId: string;
+  /** The assembly run this visit belongs to: what to key on, so a retried visit finds what the first one stored. */
+  runId: string;
+  /** The assembly line that run walks. */
+  lineId: string;
+  /** The node of that line this visit is a pass at. A line may visit one station at two nodes, so state kept per node is keyed on this beside `runId`. */
+  nodeId: string;
   iteration: number;
   /** Each need by name: a value as its text, a file as the address `tools.read` fetches, a repo as `url@ref`. */
   needs: Record<string, string>;

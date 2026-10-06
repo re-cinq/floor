@@ -46,6 +46,9 @@ function briefResponse(deps: Deps, found: DispatchBrief): VisitBrief {
 
   return {
     visitId: found.visit.id,
+    runId: found.visit.runId,
+    lineId: found.lineId,
+    nodeId: found.visit.nodeId,
     iteration: found.visit.iteration,
     floorBaseUrl: deps.config.baseUrl,
     token: mintVisitToken(found.visit.id, deadline, deps.config.visitTokenSecret),
