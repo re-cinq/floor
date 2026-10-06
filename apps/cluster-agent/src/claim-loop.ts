@@ -147,6 +147,7 @@ async function dispatch(
     visitId,
     runId: brief.runId,
     lineId: brief.lineId,
+    nodeId: brief.nodeId,
     floorBaseUrl: brief.floorBaseUrl,
     tokenSecretKey: tokenSecretKey(visitId),
     visitToken: brief.token,

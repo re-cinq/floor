@@ -93,7 +93,7 @@ describe("defineStation, against a running floor", () => {
       return { outcome: "success" };
     });
 
-    expect(seen).toMatchObject([{ runId, lineId: "issues" }]);
+    expect(seen).toMatchObject([{ runId, lineId: "issues", nodeId: "work" }]);
   });
 
   it("settles the run on the outcome the function returns", async () => {

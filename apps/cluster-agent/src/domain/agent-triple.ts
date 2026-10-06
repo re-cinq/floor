@@ -28,6 +28,8 @@ export interface DispatchBrief {
   runId: string;
   /** The assembly line that run walks. */
   lineId: string;
+  /** The node of that line this visit is a pass at. */
+  nodeId: string;
   /** The Floor's own base URL, reachable from the pod (docs/dev_loop.md: `host.minikube.internal` in dev). */
   floorBaseUrl: string;
   /** The visit token, already written to `secretName` under this key by the caller; referenced as every `headers_secret` here. */
@@ -199,7 +201,7 @@ function buildAgent(name: string, input: DispatchBrief): Agent {
 }
 
 function runParameters(input: DispatchBrief): Record<string, string> {
-  return { run_id: input.runId, line_id: input.lineId };
+  return { run_id: input.runId, line_id: input.lineId, node_id: input.nodeId };
 }
 
 // The subsystem lifts these two out of the parameters and into the clone's credential helper, which asks the floor for a token when git authenticates. They go last, so no value need can take their names.

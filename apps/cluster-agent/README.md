@@ -84,8 +84,8 @@ exceptions called out in its file header:
    (`domain/prompt-parameters.ts`). With no repo cloned the agent's working
    directory is `/`, so a prompt that says `note.md` has the agent write
    somewhere the subsystem never looks. A prompt is also told which run it
-   works for: `{run_id}` and `{line_id}`, the visit's assembly run and that
-   run's assembly line. A value need of the same name wins, so a line that
+   works for: `{run_id}`, `{line_id}` and `{node_id}`, the visit's assembly
+   run, that run's assembly line, and the node of it this visit is a pass at. A value need of the same name wins, so a line that
    hands its station a `run_id` of its own (the run that settled, say) is
    read as it was written.
 

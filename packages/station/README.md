@@ -35,7 +35,7 @@ why the picture in [the map](https://github.com/re-cinq/floor/blob/main/README.m
 | | |
 |---|---|
 | claims | the dispatches tagged `station:<name>`, and only those |
-| the brief | `visitId`, `runId`, `lineId`, `iteration`, and each need by name: a value as its text, a file as an address, a repo as `url@ref`. Key what must survive a retried visit on `runId` |
+| the brief | `visitId`, `runId`, `lineId`, `nodeId`, `iteration`, and each need by name: a value as its text, a file as an address, a repo as `url@ref`. Key what must survive a retried visit on `runId`, and add `nodeId` when the state belongs to one node of the line rather than the whole run |
 | `tools.read(need)` | the bytes of a file need |
 | `tools.produce(name, bytes)` | stores a file with the floor and names it in the report |
 | `tools.modelCall(call)` | records a model call, so the floor's costs count it |

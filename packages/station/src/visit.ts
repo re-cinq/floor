@@ -34,7 +34,7 @@ async function handled(handle: Handle, brief: Brief, tools: Tools): Promise<Repo
 function briefOf(fetched: VisitBrief): Brief {
   const needs = fetched.needs.map((need) => [need.name, textOf(need)] as const);
 
-  return { visitId: fetched.visitId, runId: fetched.runId, lineId: fetched.lineId, iteration: fetched.iteration, needs: Object.fromEntries(needs) };
+  return { visitId: fetched.visitId, runId: fetched.runId, lineId: fetched.lineId, nodeId: fetched.nodeId, iteration: fetched.iteration, needs: Object.fromEntries(needs) };
 }
 
 function textOf(need: VisitBrief["needs"][number]): string {

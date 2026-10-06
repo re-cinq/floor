@@ -77,6 +77,8 @@ export interface VisitBrief {
   runId: string;
   /** The assembly line that run walks. */
   lineId: string;
+  /** The node of that line this visit is a pass at: with `runId`, what a station keys per-node state on. */
+  nodeId: string;
   iteration: number;
   floorBaseUrl: string;
   token: string;

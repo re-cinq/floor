@@ -136,10 +136,10 @@ describe("buildAgentTriple", () => {
     });
   });
 
-  it("names the run and the assembly line of the visit as parameters, for the prompt's placeholders", () => {
-    const { agent } = buildAgentTriple(brief({ runId: "run-7", lineId: "code-review" }));
+  it("names the run, the assembly line and the node of the visit as parameters, for the prompt's placeholders", () => {
+    const { agent } = buildAgentTriple(brief({ runId: "run-7", lineId: "code-review", nodeId: "review" }));
 
-    expect(agent.spec?.parameters).toMatchObject({ run_id: "run-7", line_id: "code-review" });
+    expect(agent.spec?.parameters).toMatchObject({ run_id: "run-7", line_id: "code-review", node_id: "review" });
   });
 
   it("lets a value need named run_id win over the run's own id", () => {
