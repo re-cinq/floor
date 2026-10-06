@@ -57,6 +57,7 @@ const dispatchBrief: VisitBrief = {
   visitId: "v1",
   runId: "run-1",
   lineId: "code-review",
+  nodeId: "review",
   floorBaseUrl: "http://host.minikube.internal:8080",
   token: "visit-token-abc",
   deadlineMinutes: 20,

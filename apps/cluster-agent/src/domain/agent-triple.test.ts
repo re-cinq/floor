@@ -6,6 +6,7 @@ function brief(overrides: Partial<DispatchBrief> = {}): DispatchBrief {
     visitId: "abc-123",
     runId: "run-1",
     lineId: "line-1",
+    nodeId: "node-1",
     floorBaseUrl: "http://host.minikube.internal:8080",
     tokenSecretKey: "visit-abc-123-token",
     visitToken: "visit-token-abc",
@@ -132,6 +133,7 @@ describe("buildAgentTriple", () => {
     expect(agent.spec?.parameters).toEqual({
       run_id: "run-1",
       line_id: "line-1",
+      node_id: "node-1",
       pr_url: "https://github.com/re-cinq/lore/pull/412",
     });
   });
