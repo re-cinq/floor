@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Refusal } from "./refusal.js";
 import { FIXED_NOW, setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
 
-const { pool, store, seedReviewLine, openEntryVisit } = setupStoreFixture();
+const { pool, store, definitions, seedReviewLine, openEntryVisit } = setupStoreFixture();
 
 const LONG_AGO = new Date("2020-01-01T00:00:00Z");
 const BEFORE_THE_RUNS = new Date("2019-01-01T00:00:00Z");
@@ -107,6 +107,18 @@ async function idsOfEveryPage(limit: number): Promise<string[][]> {
 
   return pages;
 }
+
+describe("AssemblyRunStore.list repo", () => {
+  it("answers only the runs with no repo for a null repo", async () => {
+    await definitions().put("line", "digest", { entry: "done", exit: "done", args: {}, nodes: [{ id: "done" }], edges: [] });
+    await store().start({ lineId: "digest", repo: "github.com/re-cinq/lore", startItems: {} });
+    await store().start({ lineId: "digest", repo: null, startItems: {} });
+
+    const page = await store().list({ repo: null }, { limit: 10 });
+
+    expect(page.items.map((run) => run.repo)).toEqual([null]);
+  });
+});
 
 describe("AssemblyRunStore.list order and cursor", () => {
   const OLDEST = new Date("2026-03-01T10:00:00Z");
