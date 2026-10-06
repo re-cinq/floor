@@ -47,6 +47,7 @@ export type {
   DefinitionRowView,
   FloorEventFields,
   FloorEventView,
+  FloorFrame,
   LiveFrame,
   RecordKind,
   RunFields,

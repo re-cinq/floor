@@ -12,6 +12,18 @@ the run is settled as `error` with the refusal as its reason. The
 alternative was a run with nothing open and nothing queued, which waits
 forever and looks healthy.
 
+**A line ends a run as failed at a node, and the outcome is always
+`failed`.** A line names `fail: <node id>` beside `exit`, and a run arriving
+there settles as `failed`. Before this a line could only reach the exit,
+which is `success` whatever led there, so every line that wanted a failed
+run wrote a self-edge with `iteration_max: 1`: a retry nobody wanted, for a
+run that then settled as `iteration_max`. A node was chosen over an edge
+target that is no node (`to: "@fail"`) because it reads like the rest of a
+line body, shows on a graph, and needs no special case where edges are
+checked. The run takes `failed` and not the outcome that led there: an
+`always` edge after a `success` must not settle a failed run as `success`,
+and the outcome that did lead there is in the reason.
+
 **A start by hand is one that carries no iteration.** The plan said a start
 event *named* other than `node.<id>.start` closes open human visits. The
 kernel restarts the walk at any visit a person asked for, whatever the event
@@ -26,6 +38,16 @@ it would have rolled the write back and lost what the agent did.
 will never accept. The loop dead-letters such an event at once; anything
 else it retries with backoff. Before this every failure was retried eight
 times, including the ones that could not succeed.
+
+**A start by hand reopens a finished run.** Whatever it settled as, a start
+posted without an iteration takes the run back to open, closes as
+`cancelled` any visit its settling left open, and opens the node; the walk
+goes on from there and settles the run again. A person asking for a station
+on a done run means it. A new run would lose the bag and the history, and
+the subject index keeps one open run per subject, so a run whose subject
+another open run holds is refused, naming that run. The walk's own start,
+with an iteration, is still refused on a finished run: a stale walk event
+never brings one back.
 
 ## Events
 
@@ -527,6 +549,8 @@ construction refuses it a step earlier, where it cannot be written.
 
 - An event that starts a line with no subject starts it twice if its ack is
   lost after the start. A run has no dedupe key.
+- A start by hand whose ack is lost after the run it reopened has settled
+  again reopens it a second time.
 - A pod killed from outside posts nothing; its visit fails at its deadline.
 - The network policy for agent pods is rendered, installed and selects the
   pods, and has never been seen to bind: minikube's default network plugin

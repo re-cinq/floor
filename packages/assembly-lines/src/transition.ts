@@ -13,6 +13,8 @@ export interface WalkGraph {
   name: string;
   entry: string;
   exit: string;
+  /** A second terminal beside `exit`: a walk that arrives here ends the run as failed on purpose. */
+  fail?: string;
   edges: readonly WalkEdge[];
   /** Node kind, so the node ceiling can tell a person's pass from a machine's; a run recorded without them counts every visit. `kind` absent = marker. */
   nodes?: readonly { id: string; kind?: StationKind }[];
@@ -31,7 +33,7 @@ export type Transition =
   | { kind: "launch"; nodeId: string; iteration: number }
   | { kind: "await" }
   | { kind: "finish" }
-  | { kind: "fail"; outcome: "iteration_max" | "error"; reason: string };
+  | { kind: "fail"; outcome: "iteration_max" | "error" | "failed"; reason: string };
 
 const DEFAULT_MAX_NODES = 200;
 
@@ -82,6 +84,11 @@ export function getNextTransition(
 
   if (failure) {
     return failure;
+  }
+
+  // A visit is always on record here: only a visit's outcome can carry the walk onto fail, which validation refuses as the entry.
+  if (state.currentId === assemblyLine.fail) {
+    return deliberateFailure(assemblyLine, visits.at(-1)!);
   }
 
   return state.currentId === assemblyLine.exit
@@ -265,6 +272,15 @@ function noEdgeFailure(assemblyLine: WalkGraph, visit: NodeVisit): Transition {
     kind: "fail",
     outcome: "error",
     reason: `AssemblyLine ${assemblyLine.name}: no edge from "${visit.nodeId}" for outcome "${visit.outcome}"`,
+  };
+}
+
+// The line chose to end here: the reason names the visit whose outcome led to the fail node.
+function deliberateFailure(assemblyLine: WalkGraph, visit: NodeVisit): Transition {
+  return {
+    kind: "fail",
+    outcome: "failed",
+    reason: `AssemblyLine ${assemblyLine.name}: node "${visit.nodeId}" reported "${visit.outcome}"`,
   };
 }
 

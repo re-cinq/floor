@@ -1,75 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { LineBody, ScheduleBody, StationBody } from "@floor/store";
+import { OutsideEvents, type FloorEvent, type LineBody, type ScheduleBody } from "@floor/store";
 import { setupTestServer } from "../test-server.js";
 import { MARKER_LINE } from "./lines.fixtures.js";
-import { Dispatcher } from "./dispatcher.js";
+import { MISSING_RUN, MISSING_VISIT, NEEDY_STATION, WORK_LINE, DispatcherScene } from "./dispatcher.fixtures.js";
 
 const { deps } = setupTestServer();
-
-const MISSING_RUN = "0b0e7d3c-6f1a-4a52-9d3e-2f6f1c1e9a01";
-const MISSING_VISIT = "5c2a9b1e-3d4f-4c6a-8b7e-9f0a1b2c3d4e";
-const MAX_TICKS = 20;
-
-const WORK_LINE: LineBody = {
-  entry: "work",
-  exit: "done",
-  args: {},
-  nodes: [
-    { id: "work", station: "work" },
-    { id: "check", station: "check", start: "manual.work.check" },
-    { id: "done" },
-  ],
-  edges: [
-    { from: "work", to: "done", on: "success" },
-    { from: "check", to: "work", on: "always" },
-  ],
-};
-
-const WORK_STATION: StationBody = { kind: "service", outcomes: ["success"], needs: [], produces: [] };
-const NEEDY_STATION: StationBody = { ...WORK_STATION, needs: [{ name: "plan", kind: "file" }] };
-
-async function tickUntilIdle(): Promise<void> {
-  for (let tick = 0; tick < MAX_TICKS; tick++) {
-    if ((await dispatcher().tick()) === 0) return;
-  }
-}
-
-function dispatcher(): Dispatcher {
-  return new Dispatcher({
-    runs: deps().runs,
-    events: deps().events,
-    outside: deps().outside,
-    schedules: deps().schedules,
-    claimedBy: "floor-test",
-  });
-}
-
-async function startLine(line: LineBody, workStation: StationBody = WORK_STATION): Promise<string> {
-  await deps().definitions.put("line", "line", line);
-  await deps().definitions.put("station", "work", workStation);
-  await deps().definitions.put("station", "check", WORK_STATION);
-  const { run } = await deps().runs.start({ lineId: "line", repo: "r", startItems: {} });
-
-  return run.id;
-}
-
-async function workOpened() {
-  const runId = await startLine(WORK_LINE);
-
-  await tickUntilIdle();
-  const visits = await deps().runs.visits(runId);
-  const runEvents = await deps().events.listByRun(runId);
-
-  return { runId, visits, runEvents };
-}
-
-async function postedThenHandled(name: string, payload: Record<string, unknown>) {
-  const posted = await deps().events.enqueue({ name, payload });
-
-  await tickUntilIdle();
-
-  return (await deps().events.get(posted.id))!;
-}
+const { tickUntilIdle, dispatcher, startLine, workOpened, postedThenHandled } = new DispatcherScene(deps);
 
 describe("Dispatcher: the walk", () => {
   it("walks a line of markers to its exit with nobody reporting", async () => {
@@ -111,27 +47,6 @@ describe("Dispatcher: the walk", () => {
   });
 });
 
-describe("Dispatcher: a start by hand", () => {
-  async function checkedByHand() {
-    const { runId } = await workOpened();
-    const handled = await postedThenHandled("manual.work.check", { runId, requestedBy: "ana" });
-    const visits = await deps().runs.visits(runId);
-
-    return { handled, visits };
-  }
-
-  it("opens the node the event names in that run's line", async () => {
-    const { visits } = await checkedByHand();
-
-    expect(visits.at(-1)).toMatchObject({ nodeId: "check", iteration: 1, requestedBy: "ana" });
-  });
-
-  it("acks the start event", async () => {
-    const { handled } = await checkedByHand();
-
-    expect(handled.ackedAt).not.toBeNull();
-  });
-});
 
 describe("Dispatcher: events it cannot act on", () => {
   it("fails the run when its node can never open", async () => {
@@ -179,16 +94,17 @@ describe("Dispatcher: events it cannot act on", () => {
     expect(handled.ackedAt).not.toBeNull();
   });
 
-  it("dead-letters a start event for a run already ended, leaving its outcome alone", async () => {
+  it("dead-letters the walk's start of a node in a run already ended, leaving its outcome alone", async () => {
     const { runId } = await workOpened();
 
     await deps().runs.cancel(runId, "not needed");
-    await postedThenHandled("manual.work.check", { runId });
+    const handled = await postedThenHandled("node.work.start", { runId, iteration: 2 });
     const run = await deps().runs.get(runId);
 
-    expect(run!.outcome).toBe("cancelled");
+    expect({ dead: handled.deadAt !== null, outcome: run!.outcome }).toEqual({ dead: true, outcome: "cancelled" });
   });
 });
+
 
 describe("Dispatcher: events from outside", () => {
   const OPENED = "github.pull_request.opened";
@@ -315,5 +231,58 @@ describe("Dispatcher: schedule ticks", () => {
     );
 
     expect(Number(rows[0].count)).toBe(1);
+  });
+
+  const UNFILLABLE_LINE: LineBody = {
+    ...TICK_LINE,
+    args: { topic: { kind: "value" } },
+    start: { on: ["schedule.nightly.tick"], args: { topic: "{topic}" } },
+  };
+
+  class LinesOutOfReach extends OutsideEvents {
+    override startLines(): Promise<never> {
+      return Promise.reject(new Error("the database is out of reach"));
+    }
+  }
+
+  async function refusedTick(): Promise<FloorEvent> {
+    await deps().definitions.put("line", "on-nightly", UNFILLABLE_LINE);
+    await deps().definitions.put("schedule", "nightly", SCHEDULE_BODY);
+    const tick = (await deps().schedules.trigger("nightly"))!;
+
+    await tickUntilIdle();
+
+    return (await deps().events.get(tick.id))!;
+  }
+
+  it("leaves the next occurrence pending when the tick is refused for a start mapping its payload cannot fill", async () => {
+    await refusedTick();
+    const next = await deps().schedules.pending("nightly");
+
+    expect(next?.payload).toEqual({ repo: "r", scheduledFor: "2026-01-02T00:00:00.000Z" });
+  });
+
+  it("dead-letters the refused tick, naming the line and the field its payload lacks", async () => {
+    const tick = await refusedTick();
+
+    expect(tick).toMatchObject({ deadAt: deps().now(), lastError: 'line "on-nightly": a template names {topic}, which is not there to fill it' });
+  });
+
+  it("enqueues the next occurrence once when a tick that failed is handled a second time", async () => {
+    await deps().definitions.put("schedule", "nightly", SCHEDULE_BODY);
+    const tick = (await deps().schedules.trigger("nightly"))!;
+    const failing = dispatcher(new LinesOutOfReach({ pool: deps().pool, runs: deps().runs, definitions: deps().definitions }));
+
+    await failing.tick();
+    await deps().pool.query("update events set not_before = $1 where id = $2", [deps().now(), tick.id]);
+    await failing.tick();
+    const { rows } = await deps().pool.query(
+      "select attempts, payload->>'scheduledFor' as occurrence from events where name = 'schedule.nightly.tick' order by id",
+    );
+
+    expect(rows).toEqual([
+      { attempts: 2, occurrence: "2026-01-01T00:00:00.000Z" },
+      { attempts: 0, occurrence: "2026-01-02T00:00:00.000Z" },
+    ]);
   });
 });

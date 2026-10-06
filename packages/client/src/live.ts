@@ -47,51 +47,39 @@ export interface RunWatch extends AsyncIterable<LiveFrame> {
 }
 
 export function watchRun(floor: LiveReachable, runId: string, options: WatchOptions = {}): RunWatch {
-  const watch = openWatch(cursorOf(options.after));
+  const cursor = { seq: cursorOf(options.after) };
+  const feed = openFeed<LiveFrame>((frame) => {
+    if (frame.type !== "unsupported") cursor.seq = frame.seq;
+  });
 
-  options.signal?.addEventListener("abort", () => watch.stop());
-  void follow({ floor, runId, options, watch });
-
-  return watch;
-}
-
-/** What one watch holds while it runs: the frames not yet handed out, the cursor, and whether it is over. */
-interface Watching extends RunWatch {
-  readonly waiting: LiveFrame[];
-  readonly socket: { current: LiveSocket | null };
-  endedYet(): WatchEnd | null;
-  take(frame: LiveFrame): void;
-  settle(end: WatchEnd): void;
-}
-
-function openWatch(from: number): Watching {
-  const journal = journalFrom(from);
-  const socket: { current: LiveSocket | null } = { current: null };
-
-  const reading = journal.reading;
+  options.signal?.addEventListener("abort", () => feed.stop());
+  void follow({ floor, options, watch: feed, urlFor: () => liveUrl(floor.url, runId, cursor.seq) });
 
   return {
     get seq() {
-      return reading.seq;
+      return cursor.seq;
     },
-    waiting: reading.waiting,
-    ended: reading.ended,
-    endedYet: reading.endedYet,
-    settle: reading.settle,
-    take: reading.take,
-    socket,
-    stop: () => {
-      socket.current?.close(CLOSE.settled, "the watcher stopped");
-      reading.settle({ reason: "stopped" });
-    },
-    [Symbol.asyncIterator]: () => reading[Symbol.asyncIterator](),
+    ended: feed.ended,
+    stop: feed.stop,
+    [Symbol.asyncIterator]: () => feed[Symbol.asyncIterator](),
   };
 }
 
-/** What has arrived and not yet been handed out, the cursor it moved, and whether the watch is over. */
-function journalFrom(from: number): { reading: Omit<Watching, "socket" | "stop"> } {
-  const held = { seq: from, end: null as WatchEnd | null };
-  const waiting: LiveFrame[] = [];
+/** What one watch holds while it runs: the frames not yet handed out, the socket, and whether it is over. */
+export interface Feed<Frame> extends AsyncIterable<Frame> {
+  readonly waiting: Frame[];
+  readonly socket: { current: LiveSocket | null };
+  readonly ended: Promise<WatchEnd>;
+  endedYet(): WatchEnd | null;
+  take(frame: Frame): void;
+  settle(end: WatchEnd): void;
+  stop(): void;
+}
+
+export function openFeed<Frame>(onTake: (frame: Frame) => void = () => {}): Feed<Frame> {
+  const held = { end: null as WatchEnd | null };
+  const waiting: Frame[] = [];
+  const socket: { current: LiveSocket | null } = { current: null };
   const { sleep, wake } = sleeper();
   const { ended, finish } = promised();
 
@@ -103,21 +91,21 @@ function journalFrom(from: number): { reading: Omit<Watching, "socket" | "stop">
   };
 
   return {
-    reading: {
-      get seq() {
-        return held.seq;
-      },
-      waiting,
-      ended,
-      endedYet: () => held.end,
-      settle,
-      take: (frame) => {
-        if (frame.type !== "unsupported") held.seq = frame.seq;
-        waiting.push(frame);
-        wake();
-      },
-      [Symbol.asyncIterator]: () => handOut(waiting, { endedYet: () => held.end, sleep }),
+    waiting,
+    ended,
+    socket,
+    endedYet: () => held.end,
+    settle,
+    take: (frame) => {
+      onTake(frame);
+      waiting.push(frame);
+      wake();
     },
+    stop: () => {
+      socket.current?.close(CLOSE.settled, "the watcher stopped");
+      settle({ reason: "stopped" });
+    },
+    [Symbol.asyncIterator]: () => handOut(waiting, { endedYet: () => held.end, sleep }),
   };
 }
 
@@ -148,9 +136,9 @@ function promised(): { ended: Promise<WatchEnd>; finish: (end: WatchEnd) => void
   return { ended, finish };
 }
 
-function handOut(waiting: LiveFrame[], watch: { endedYet(): WatchEnd | null; sleep(): Promise<void> }): AsyncIterator<LiveFrame> {
+function handOut<Frame>(waiting: Frame[], watch: { endedYet(): WatchEnd | null; sleep(): Promise<void> }): AsyncIterator<Frame> {
   return {
-    async next(): Promise<IteratorResult<LiveFrame>> {
+    async next(): Promise<IteratorResult<Frame>> {
       while (waiting.length === 0) {
         if (watch.endedYet()) return { value: undefined, done: true };
         await watch.sleep();
@@ -161,14 +149,17 @@ function handOut(waiting: LiveFrame[], watch: { endedYet(): WatchEnd | null; sle
   };
 }
 
-interface Following {
+type Reconnecting = Pick<WatchOptions, "reconnect" | "backoffMs">;
+
+interface Following<Frame> {
   floor: LiveReachable;
-  runId: string;
-  options: WatchOptions;
-  watch: Watching;
+  options: Reconnecting;
+  watch: Feed<Frame>;
+  /** The address for this attempt: a run's moves with its cursor, the floor's does not. */
+  urlFor(): string;
 }
 
-async function follow(following: Following): Promise<void> {
+export async function follow<Frame>(following: Following<Frame>): Promise<void> {
   const { options, watch } = following;
   let attempt = 0;
 
@@ -185,23 +176,23 @@ async function follow(following: Following): Promise<void> {
 }
 
 // Settled is the end; a refusal will be refused again; anything else is worth coming back from.
-function endFor(closed: Closed, options: WatchOptions): WatchEnd | null {
+function endFor(closed: Closed, options: Reconnecting): WatchEnd | null {
   if (closed.code === CLOSE.settled) return { reason: "settled" };
   if (refused(closed.code)) return { reason: "refused", code: closed.code, detail: closed.reason };
 
   return options.reconnect === false ? { reason: "stopped" } : null;
 }
 
-function connected(following: Following): Promise<Closed> {
+function connected<Frame>(following: Following<Frame>): Promise<Closed> {
   const { floor, watch } = following;
   const open = floor.socketFn ?? defaultSocket;
-  const socket = open(liveUrl(floor.url, following.runId, watch.seq), { headers: { authorization: `Bearer ${floor.token}` } });
+  const socket = open(following.urlFor(), { headers: { authorization: `Bearer ${floor.token}` } });
 
   watch.socket.current = socket;
 
   return new Promise((resolve) => {
     socket.onFrame((said) => {
-      const frame = frameOf(said);
+      const frame = frameOf<Frame>(said);
 
       if (frame) watch.take(frame);
     });
@@ -226,9 +217,9 @@ function liveUrl(base: string, runId: string, after: number): string {
   return `${base.replace(/^http/, "ws")}/assembly-runs/${runId}/live?after=${after}`;
 }
 
-function frameOf(said: string): LiveFrame | null {
+function frameOf<Frame>(said: string): Frame | null {
   try {
-    return JSON.parse(said) as LiveFrame;
+    return JSON.parse(said) as Frame;
   } catch {
     return null;
   }

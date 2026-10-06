@@ -2,6 +2,7 @@
 import type { CostsRow, Item, RunView } from "@re-cinq/floor-contracts";
 import type { CostsFilter, CostsGroupBy, RunFilter } from "./filters.js";
 import { asked, type Reachable } from "./send.js";
+import { watchFloor, type FloorWatch, type FloorWatchOptions } from "./floor-live.js";
 import { watchRun, type RunWatch, type WatchOptions } from "./live.js";
 
 const HTTP_NOT_FOUND = 404;
@@ -32,6 +33,8 @@ export interface RunsApi {
   cancel(runId: string, reason: string): Promise<RunView>;
   /** Replays the run from `after`, then follows it live. Reconnects from the last seq it handed out. */
   watch(runId: string, options?: WatchOptions): RunWatch;
+  /** Follows the whole floor: which runs start and change, by id. `resync` comes first and after any gap. */
+  watchFloor(options?: FloorWatchOptions): FloorWatch;
 }
 
 export function runsApi(floor: Reachable): RunsApi {
@@ -40,6 +43,7 @@ export function runsApi(floor: Reachable): RunsApi {
     get: (runId) => asked<{ run: RunView; bag: Record<string, Item> }>(floor, { method: "GET", path: `/assembly-runs/${runId}` }, [HTTP_NOT_FOUND]),
     cancel: async (runId, reason) => (await asked<RunView>(floor, { method: "POST", path: `/assembly-runs/${runId}/cancel`, body: { reason } }))!,
     watch: (runId, options) => watchRun(floor, runId, options),
+    watchFloor: (options) => watchFloor(floor, options),
   };
 }
 
