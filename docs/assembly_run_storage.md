@@ -179,7 +179,8 @@ stops that.
 If an open run already holds the subject, `start` returns that run. `entry`
 starts at a node other than the line's entry; the node must exist, and it
 may not be one that ends a run — a visit opens on neither the exit nor the
-fail node, so a run cannot begin at one.
+fail node, so a run cannot begin at one. Naming the line's own entry is
+always allowed, even on a one-node line whose entry is its exit.
 
 A line's `files` (name to blob hash) are seeded into the run's bag at
 start, each as a `file` item `by: "line"`; a start item the caller gave
@@ -270,8 +271,9 @@ how a merged PR or a green CI moves a waiting run on.
 
 **Finding the run.** An event acting on a run carries `runId`, or a
 `subjectKey` and its `repo`, resolved to the open run holding that subject.
-A `subjectKey` with no `repo` names the open run holding that subject among
-the runs that have no repo.
+A `subjectKey` with no `repo`, or with `repo: null`, names the open run
+holding that subject among the runs that have no repo: a floor answers
+`repo: null` for such a run, and takes it back either way.
 A subject that finds no open run is acked: the run is simply not open. A
 run id that finds no run is a mistake, and the event is dead-lettered.
 

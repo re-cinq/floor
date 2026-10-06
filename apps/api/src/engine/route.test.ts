@@ -41,6 +41,12 @@ describe("routeEvent", () => {
     expect(route).toEqual({ kind: "run-event", run: { subjectKey: "pr_url:u", repo: "r" } });
   });
 
+  it("routes an event naming a subject and a null repo the same as one leaving it out", () => {
+    const route = routeEvent({ name: "github.pull_request.closed", payload: { subjectKey: "pr_url:u", repo: null, merged: true } });
+
+    expect(route).toEqual({ kind: "run-event", run: { subjectKey: "pr_url:u", repo: null } });
+  });
+
   it("routes an event naming a subject and no repo to the run that has no repo", () => {
     const route = routeEvent({ name: "github.pull_request.closed", payload: { subjectKey: "pr_url:u", merged: true } });
 
