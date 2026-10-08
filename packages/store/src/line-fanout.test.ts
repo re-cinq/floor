@@ -107,4 +107,23 @@ describe("validateLine on a fan-out", () => {
       'node "merge" collects "nothing", which no fan-out body produces as a value',
     );
   });
+
+  it("names a collected item that the bodies of two fan-outs both produce", () => {
+    const line = fanLine();
+
+    line.nodes.push(
+      { id: "split-more", station: "splitter", fanout: { over: "items", to: "work-more" } },
+      { id: "work-more", station: "worker" },
+    );
+    line.edges.push(
+      { from: "merge", to: "split-more", on: "again", iterationMax: 1 },
+      { from: "split-more", to: "work-more", on: "success" },
+      { from: "work-more", to: "merge", on: "success" },
+      { from: "work-more", to: "failed", on: "failed" },
+    );
+
+    expect(validateLine(line, known)).toContain(
+      'node "merge" collects "result", which more than one fan-out body produces',
+    );
+  });
 });

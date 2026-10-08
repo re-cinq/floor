@@ -142,7 +142,8 @@ edges:
 - a fan-out names a real body, lists a value its own station produces, has a
   success edge to its body, and its body has an edge for `failed`; a body
   belongs to one fan-out and does not fan out itself; a collected name is a
-  value some body produces
+  value that exactly one body produces (two fan-outs whose bodies produce the
+  same name would mix their branches)
 - every required need of every node is seeded at start or produced on every
   path into it; a node with a custom start event must have its required
   needs seeded

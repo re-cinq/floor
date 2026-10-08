@@ -586,7 +586,10 @@ the join.
 **Not done:** a start by hand of a fan-out body opens an ordinary visit and
 restarts the walk there; an outside event that answers a waiting node answers
 one open visit of a node, not a chosen branch; the live feed shows branches as
-visits of one node; there is no cap on the length of a list.
+visits of one node; there is no cap on the length of a list; every report takes
+the run's lock, fan-out or not, one extra round trip a report that a check on the
+line's nodes would save; the lock key is a 32-bit hash of the run id, so two
+runs can share one, which only makes them wait for each other.
 
 ## Known and accepted, for now
 
