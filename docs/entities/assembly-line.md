@@ -22,7 +22,7 @@ executes it.
 | `start` | optional: the events that start a run of this line, and how their payload maps to arguments |
 | `args` | the typed arguments `start` must be given; one may be marked `subject` |
 | `files` | files shipped with the line version, seeded into every run's bag |
-| `nodes[]` | `id`, `station` (optionally pinned `@hash`; omitted for a marker), optional `start`, optional `bind`, optional `reports` (human nodes) |
+| `nodes[]` | `id`, `station` (optionally pinned `@hash`; omitted for a marker), optional `start`, optional `bind`, optional `reports` (human nodes), optional `fanout` |
 | `edges[]` | `from`, `to`, `on` (`success`, `changes_requested`, `failed`, `always`), optional `iteration_max` |
 
 ### Nodes
@@ -71,6 +71,39 @@ The event finds the run by its subject, and the store writes the report on
 that node's open visit. Lore did this in code, once per case: a webhook
 handler for merged spec PRs, a sweep every two minutes for CI.
 
+### Fan-out
+
+A node with `fanout: { over, to }` reports a list, and node `to` then runs
+once for each entry of it. The list is the node's produced **value** `over`,
+a JSON array of strings. Each run of `to` is a *branch* of the same
+iteration (migration 0006: a visit is told apart by node, iteration and
+branch), and has its own entry as an `item` need of kind `value`, which no
+line has to seed or produce. Keep entries small — names or ids — and let the
+body read what it needs from the bag by them.
+
+```yaml
+nodes:
+  - { id: split, station: splitter, fanout: { over: sections, to: write } }
+  - { id: write, station: writer }          # needs: [{ name: item, kind: value }]
+  - { id: assemble, station: assembler }    # needs: [{ name: texts, kind: value, collect: text }]
+edges:
+  - { from: split, to: write, on: success }
+  - { from: write, to: assemble, on: success }   # taken once, when every branch has reported
+  - { from: write, to: failed, on: failed }
+```
+
+The walk goes on past `to` only when every branch has reported. The branches
+count as one visit of `to`: **success** when every branch succeeded, **failed**
+otherwise (any other outcome of a branch counts as failed), and it is
+decided only after all of them have finished — a failed branch does not
+cancel its siblings. An empty list passes through `to` as a success at once.
+The edges out of `to`, and their `iteration_max`, are the ordinary ones.
+
+A need with `collect: <name>` is filled, at open, with a JSON array of what
+the latest round of branches produced under `<name>` (a **value**), in
+branch order, however they reported. The fan-out region does not nest, a
+body belongs to one fan-out, and a body cannot itself fan out.
+
 ### Edges
 
 An edge says: when node A finishes with outcome X, node B is next. The
@@ -106,6 +139,10 @@ edges:
 - a cycle has an `iteration_max` somewhere, or a human node on it
 - a node whose station declares a `git` need with `access: write` has a
   review or human node on every path into it, unless it is the first writer
+- a fan-out names a real body, lists a value its own station produces, has a
+  success edge to its body, and its body has an edge for `failed`; a body
+  belongs to one fan-out and does not fan out itself; a collected name is a
+  value some body produces
 - every required need of every node is seeded at start or produced on every
   path into it; a node with a custom start event must have its required
   needs seeded

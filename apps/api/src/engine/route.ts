@@ -5,7 +5,7 @@ import { issuesOf } from "../parse.js";
 
 export type Route =
   | { kind: "report"; visitId: string; report: Report; worker?: string }
-  | { kind: "run-event"; run: RunRef; iteration?: number; requestedBy?: string }
+  | { kind: "run-event"; run: RunRef; iteration?: number; branch?: number; requestedBy?: string }
   | { kind: "outside" }
   | { kind: "invalid"; reason: string };
 
@@ -27,6 +27,7 @@ const runRef = z.union([
 
 const runEventPayload = z.object({
   iteration: z.number().int().positive().optional(),
+  branch: z.number().int().nonnegative().optional(),
   requestedBy: z.string().min(1).optional(),
 });
 

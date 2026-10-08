@@ -23,6 +23,12 @@ describe("routeEvent", () => {
     expect(route).toEqual({ kind: "run-event", run: { runId: RUN_ID }, iteration: 2 });
   });
 
+  it("routes a branch's node start with the branch it opens", () => {
+    const route = routeEvent({ name: "node.work.start", payload: { runId: RUN_ID, nodeId: "work", iteration: 1, branch: 2 } });
+
+    expect(route).toEqual({ kind: "run-event", run: { runId: RUN_ID }, iteration: 1, branch: 2 });
+  });
+
   it("routes a start posted by a person with who asked and no iteration", () => {
     const route = routeEvent({ name: "manual.plan.validate", payload: { runId: RUN_ID, requestedBy: "ana" } });
 

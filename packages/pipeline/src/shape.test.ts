@@ -177,3 +177,50 @@ describe("readPipelineFile", () => {
     expect(() => readPipelineFile("line:\n  entry: review\n")).toThrow(/not a pipeline file: line.id/);
   });
 });
+
+const FAN_OUT = `
+line:
+  id: fan
+  entry: split
+  exit: done
+  nodes:
+    - { id: split, station: splitter, fanout: { over: items, to: work } }
+    - { id: work, station: worker }
+    - { id: done }
+  edges:
+    - { from: split, to: work, on: success }
+    - { from: work, to: done, on: success }
+stations:
+  splitter:
+    kind: service
+    outcomes: [success]
+    needs: []
+    produces: [{ name: items, kind: value }]
+  worker:
+    kind: service
+    outcomes: [success]
+    needs: [{ name: results, kind: value, collect: result }]
+    produces: []
+`;
+
+describe("a fan-out in a pipeline file", () => {
+  it("keeps the fan-out of a node and the collect of a need through the floor's spelling and back", () => {
+    const pipeline = pipelineOf(readPipelineFile(FAN_OUT));
+    const [splitter, worker] = pipeline.stations;
+    const { nodes } = pipeline.line!.body;
+    const written = fileOf(pipeline).line!.nodes as unknown[];
+    const [need] = worker!.body.needs as { collect?: string }[];
+
+    expect({
+      fanout: (nodes as { fanout?: unknown }[])[0]!.fanout,
+      collect: need!.collect,
+      splitter: splitter!.id,
+      written: written[0],
+    }).toEqual({
+      fanout: { over: "items", to: "work" },
+      collect: "result",
+      splitter: "splitter",
+      written: { id: "split", station: "splitter", fanout: { over: "items", to: "work" } },
+    });
+  });
+});

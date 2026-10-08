@@ -558,6 +558,36 @@ died.
 floor refuses a visit token that reaches for another visit; binding the id at
 construction refuses it a step earlier, where it cannot be written.
 
+## Fan-out and join
+
+**A fan-out region folds into one visit of its body.** The walk kernel keeps
+one cursor, and a run can now have several visits of one node open at once.
+Rather than teach every rule about branches, the kernel folds a finished
+region's branch visits into a single visit of the body, `success` or `failed`,
+and replays as before: routing, the join edge and `iteration_max` are
+unchanged. Only the new `launch-many` step knows about branches: it starts
+every branch at once, and starts the ones a crash left unstarted.
+
+**The list is a value; branch results are values.** A source's list rides in
+its report like any produced value, so the store needs no new channel to count
+branches, and a body reaches heavy content through the bag by entry. A join
+collects values only, in branch order. A file output of a branch would need a
+blob assembled at open; nothing asked for it yet.
+
+**A failed branch fails the region after the rest have finished.** Cancelling
+siblings loses work that already cost; collecting partial results lets a join
+run on a lie. The line decides what a failed region means through the edges
+out of the body.
+
+**Reports take the run's lock before the next step.** Without it two branches
+reporting together could each see the other still open and nobody would launch
+the join.
+
+**Not done:** a start by hand of a fan-out body opens an ordinary visit and
+restarts the walk there; an outside event that answers a waiting node answers
+one open visit of a node, not a chosen branch; the live feed shows branches as
+visits of one node; there is no cap on the length of a list.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is

@@ -537,8 +537,11 @@ The floor collects every cost itself.
 
 ## Concurrency
 
-- `(run, node, iteration)` is unique; a redelivered start event does not
-  dispatch twice.
+- `(run, node, iteration, branch)` is unique (an ordinary visit has no
+  branch); a redelivered start event does not dispatch twice.
+- Taking a report to the next step holds a lock on the run for that
+  transaction, so of several branches reporting together the last to commit
+  sees them all and launches the join once.
 - A report is a compare-and-set on `report is null`.
 - `(repo, subject_key)` is unique among open runs, and no repo counts as a
   repo of its own: two starts with the same subject and no repo join.

@@ -1,3 +1,4 @@
+import { FAN_STATIONS, fanLine } from "@floor/store";
 import { describe, expect, it } from "vitest";
 import { authHeaders, injectJson, setupTestServer } from "../test-server.js";
 
@@ -304,3 +305,41 @@ describe("POST /agent-definitions", () => {
   });
 });
 
+describe("a fan-out line", () => {
+  const stations = Object.entries(FAN_STATIONS).map(([id, body]) => ({ id, ...body }));
+  const line = { id: "fan", ...fanLine() };
+
+  async function putAll(): Promise<void> {
+    for (const station of stations) await injectJson(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: station });
+    await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: line });
+  }
+
+  it("keeps the fan-out a node declares", async () => {
+    await putAll();
+
+    const response = await injectJson<{ body: { nodes: { fanout?: unknown }[] } }>(server(), { method: "GET", url: "/assembly-lines/fan", headers: authHeaders() });
+    const { body } = response.result;
+    const [source] = body.nodes;
+
+    expect(source!.fanout).toEqual({ over: "items", to: "work" });
+  });
+
+  it("keeps the collect a need declares", async () => {
+    await putAll();
+
+    const response = await injectJson<{ body: { needs: { collect?: string }[] } }>(server(), { method: "GET", url: "/stations/merger", headers: authHeaders() });
+    const { body } = response.result;
+    const [need] = body.needs;
+
+    expect(need!.collect).toBe("result");
+  });
+
+  it("refuses a fan-out whose body is not a node", async () => {
+    await putAll();
+    const broken = { ...line, id: "broken", nodes: [{ ...line.nodes[0]!, fanout: { over: "items", to: "nowhere" } }, ...line.nodes.slice(1)] };
+
+    const response = await injectJson(server(), { method: "POST", url: "/assembly-lines", headers: authHeaders(), payload: broken });
+
+    expect(response.statusCode).toBe(400);
+  });
+});

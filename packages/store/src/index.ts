@@ -11,6 +11,7 @@ export {
 export { EVENT_RETENTION_MS, reapSettledRunEvents } from "./events-retention.js";
 export { acquireLease, type Lease } from "./lease.js";
 export { openTestPool, testDatabaseUrl } from "./test-database.js";
+export { FAN_STATIONS, fanLine } from "./fanout.fixtures.js";
 export { Refusal, enforce } from "./refusal.js";
 export { InvalidStart } from "./start-args.js";
 export { canonicalRepo } from "./repo-name.js";

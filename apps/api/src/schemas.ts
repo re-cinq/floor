@@ -23,6 +23,7 @@ const lineNode = z.object({
   start: z.string().optional(),
   bind: z.record(z.string(), z.string()).optional(),
   reports: z.array(lineNodeReport).optional(),
+  fanout: z.object({ over: z.string(), to: z.string() }).optional(),
 });
 
 const lineEdge = z.object({ from: z.string(), to: z.string(), on: z.string(), iterationMax: z.number().int().positive().optional() });
@@ -44,6 +45,7 @@ const needSpec = z.object({
   path: z.string().optional(),
   access: z.enum(["read", "write"]).optional(),
   optional: z.boolean().optional(),
+  collect: z.string().optional(),
 });
 
 const produceSpec = z
