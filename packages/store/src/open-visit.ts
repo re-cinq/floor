@@ -116,13 +116,19 @@ export class OpenVisitResolver {
 
   private collectReaders(): CollectReaders {
     const blobs = new BlobsStore({ connection: this.deps.pool });
+    // Every branch of a fan-out ran the same station, so one open looks it up once.
+    const stations = new Map<string, Promise<StationBody | undefined>>();
+
+    const stationOf = (hash: string): Promise<StationBody | undefined> => {
+      const known = stations.get(hash) ?? this.deps.definitions.byHashOnly<StationBody>("station", hash).then((row) => row?.body);
+
+      stations.set(hash, known);
+
+      return known;
+    };
 
     return {
-      produceKind: async (stationHash, name) => {
-        const station = stationHash ? await this.deps.definitions.byHashOnly<StationBody>("station", stationHash) : null;
-
-        return producedKind(station?.body, name);
-      },
+      produceKind: async (stationHash, name) => producedKind(stationHash ? await stationOf(stationHash) : undefined, name),
       blobText: async (hash) => {
         const blob = await blobs.get(hash);
 
