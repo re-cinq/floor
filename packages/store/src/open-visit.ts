@@ -1,10 +1,11 @@
 // Resolution at open (docs/assembly_run_storage.md, "Resolution at open"): station, agent definition and variant, needs from the bag, conversation, failure context, deadline.
 
+import { collectNeeds, itemNeed } from "./fan-needs.js";
 import { forRepo } from "./repo-name.js";
 import type { Pool } from "pg";
 import { DefinitionsStore } from "./definitions.js";
 import { Refusal, enforce } from "./refusal.js";
-import type { Queryable } from "./rows.js";
+import { visitsWith, type Queryable } from "./rows.js";
 import { requireNode } from "./start-events.js";
 import { mergeAgentSettings, previousErrorNeed, previousFailuresNeed, resolveNeeds } from "./resolve.js";
 import type {
@@ -27,12 +28,15 @@ export interface OpenRequest {
   line: LineBody;
   nodeId: string;
   iteration: number;
+  /** Which item of a fan-out this opens the body for. */
+  branch?: number;
   requestedBy?: string;
 }
 
 export interface OpenContext {
   nodeId: string;
   iteration: number;
+  branch: number | null;
   requestedBy: string | null;
   stationHash: string | null;
   agentDefinitionHash: string | null;
@@ -71,7 +75,9 @@ export class OpenVisitResolver {
   private async resolveStationOpen(request: OpenRequest, node: LineNode): Promise<OpenContext> {
     const station = await this.stationRef(node.station!);
     const bag = await this.deps.bag(request.run.id);
-    const { needs: resolvedNeeds, missing } = resolveNeeds(station.body.needs, node.bind, bag);
+    const visits = await visitsWith(this.deps.pool, request.run.id);
+    const fanned = { ...itemNeed(request.line, node, request.branch, visits), ...collectNeeds(node, station.body, visits) };
+    const { needs: resolvedNeeds, missing } = resolveNeeds(station.body.needs, node.bind, { ...bag, ...fanned });
 
     if (missing.length > 0) {
       throw new Refusal(`node "${node.id}": missing required need(s) ${missing.join(", ")}`);
@@ -95,6 +101,7 @@ export class OpenVisitResolver {
     return {
       nodeId,
       iteration,
+      branch: request.branch ?? null,
       requestedBy: request.requestedBy ?? null,
       stationHash: station.hash,
       agentDefinitionHash: fields.hash,
@@ -227,6 +234,7 @@ function markerContext(request: OpenRequest): OpenContext {
   return {
     nodeId: request.nodeId,
     iteration: request.iteration,
+    branch: request.branch ?? null,
     requestedBy: request.requestedBy ?? null,
     stationHash: null,
     agentDefinitionHash: null,

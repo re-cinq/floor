@@ -2,6 +2,7 @@
 
 import type { Pool, PoolClient } from "pg";
 import type { NodeVisit } from "@floor/assembly-lines";
+import { itemsOf, producedValue } from "./fan-items.js";
 import { canonicalRepo } from "./repo-name.js";
 import type { AgentSettings, Brief, Item, Report, Run, Visit } from "./types.js";
 
@@ -38,6 +39,7 @@ export interface StationRunRow {
   report: Report | null;
   worker: string | null;
   requested_by: string | null;
+  branch: number | null;
   deadline: Date | null;
 }
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -69,19 +71,30 @@ export function toVisit(row: StationRunRow): Visit {
     report: row.report,
     worker: row.worker,
     requestedBy: row.requested_by,
+    branch: row.branch,
     deadline: row.deadline,
     resumedFrom: row.input.resumedFrom,
     agentSettings: row.input.agentSettings,
   };
 }
 
-export function toNodeVisit(visit: Visit): NodeVisit {
+/** `fanOvers` maps a fan-out source's node id to the produced item that lists its items. */
+export function toNodeVisit(visit: Visit, fanOvers: ReadonlyMap<string, string> = new Map()): NodeVisit {
   return {
     nodeId: visit.nodeId,
     iteration: visit.iteration,
     outcome: visit.report?.outcome ?? null,
     requestedBy: visit.requestedBy,
+    ...(visit.branch === null ? {} : { branch: visit.branch }),
+    ...branchesOf(visit, fanOvers),
   };
+}
+
+function branchesOf(visit: Visit, fanOvers: ReadonlyMap<string, string>): { branches?: number } {
+  const over = fanOvers.get(visit.nodeId);
+  const listed = over === undefined ? undefined : producedValue(visit, over);
+
+  return listed === undefined ? {} : { branches: itemsOf(listed).length };
 }
 
 export async function getWith(connection: Queryable, runId: string): Promise<Run | null> {

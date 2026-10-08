@@ -4,8 +4,8 @@ import { edgesByFrom, reachableAvoiding, reachedFrom } from "./line-graph.js";
 import { hasStation, resolvedStationOf } from "./line-stations.js";
 import type { LineBody, LineNode, NeedSpec, StationBody } from "./types.js";
 
-/** Filled by the floor around a retry, never by a line: no station ever declares these as a need to seed or produce. */
-export const EXEMPT_NEEDS: readonly string[] = ["previous_error", "previous_failures"];
+/** Filled by the floor around a retry (`previous_*`) or a fan-out branch (`item`), never by a line: no station ever declares these as a need to seed or produce. */
+export const EXEMPT_NEEDS: readonly string[] = ["previous_error", "previous_failures", "item"];
 
 interface NeedContext {
   bodies: ReadonlyMap<string, StationBody>;
@@ -71,7 +71,8 @@ function needMissesAt(node: LineNode & { station: string }, context: NeedContext
 function missOf(node: LineNode & { station: string }, need: NeedSpec, context: NeedContext): string[] {
   const bagName = bagNameOf(node, need);
 
-  return isExempt(bagName) ? [] : needMissKind(node, need, bagName, context);
+  // A collected need is filled from the branches of a fan-out; the fan-out checks say whether anything produces what it collects.
+  return isExempt(bagName) || need.collect !== undefined ? [] : needMissKind(node, need, bagName, context);
 }
 
 function bagNameOf(node: LineNode, need: NeedSpec): string {

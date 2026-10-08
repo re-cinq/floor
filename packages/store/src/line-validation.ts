@@ -1,5 +1,6 @@
 // Pure: what makes a line body self-consistent, beyond its JSON shape — every problem, not the first.
 import { isTerminalNode } from "@floor/assembly-lines";
+import { fanoutChecks } from "./line-fanout.js";
 import { goingOutOf, reachableAvoiding, reachedFrom } from "./line-graph.js";
 import { needChecks } from "./line-needs.js";
 import { bareStationOf, hasStation, isPinned, resolvedStationOf } from "./line-stations.js";
@@ -25,6 +26,7 @@ export function validateLine(line: LineBody, known: KnownDefinitions): string[] 
     ...outcomeEdgeChecks(line, known),
     ...cycleChecks(line, known),
     ...needChecks(line, known.bodies),
+    ...fanoutChecks(line, known.bodies),
   ];
 }
 

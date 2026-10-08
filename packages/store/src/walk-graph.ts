@@ -11,7 +11,11 @@ export async function buildWalkGraph(
 ): Promise<WalkGraph> {
   const nodes = await Promise.all(line.nodes.map((node) => walkNodeOf(definitions, node)));
 
-  return { name: lineName, entry: line.entry, exit: line.exit, fail: line.fail, edges: edgesOf(line), nodes };
+  return { name: lineName, entry: line.entry, exit: line.exit, fail: line.fail, edges: edgesOf(line), fans: fansOf(line), nodes };
+}
+
+function fansOf(line: LineBody): { source: string; body: string }[] {
+  return line.nodes.flatMap((node) => (node.fanout ? [{ source: node.id, body: node.fanout.to }] : []));
 }
 
 function edgesOf(line: LineBody): WalkEdge[] {

@@ -24,6 +24,7 @@ import {
   insertRun,
   insertVisit,
   listQuery,
+  lockRun,
   nodeVisitCount,
   openRunBySubject,
   openVisitRows,
@@ -184,7 +185,8 @@ export class AssemblyRunStore {
   private async walkWith(connection: Queryable, runId: string): Promise<{ run: Run; line: LineBody; transition: Transition }> {
     const { run, line } = await this.lineOf(connection, runId);
     const graph = await buildWalkGraph(this.definitions, run.lineId, line);
-    const visits = (await visitsWith(connection, runId)).map(toNodeVisit);
+    const fanOvers = new Map(line.nodes.flatMap((node) => (node.fanout ? [[node.id, node.fanout.over] as const] : [])));
+    const visits = (await visitsWith(connection, runId)).map((visit) => toNodeVisit(visit, fanOvers));
 
     return { run, line, transition: getNextTransition(graph, visits) };
   }
@@ -209,12 +211,12 @@ export class AssemblyRunStore {
     });
   }
 
-  async openVisit(runId: string, nodeId: string, iteration: number): Promise<OpenVisitResult> {
+  async openVisit(runId: string, nodeId: string, iteration: number, branch?: number): Promise<OpenVisitResult> {
     const { run, line } = await this.lineOf(this.deps.pool, runId);
 
     enforce(!run.finishedAt, `run "${runId}" is already finished`);
 
-    return this.openNode({ run, line, nodeId, iteration });
+    return this.openNode({ run, line, nodeId, iteration, branch });
   }
 
   /** A start from outside the walk: the node's already-open visit if it has one (so a redelivered start opens nothing twice), otherwise its next iteration. A settled run is reopened, and a visit its settling left open was aborted, not opened by this start. */
@@ -306,10 +308,24 @@ export class AssemblyRunStore {
   }
 
   private async advance(client: PoolClient, runId: string): Promise<void> {
+    // Branches of a fan-out report at the same moment: one at a time, each sees the others' reports, so exactly one of them launches the join.
+    await lockRun(client, runId);
     const { run, line, transition } = await this.walkWith(client, runId);
     const events = this.eventsOn(client);
 
     if (run.finishedAt) return;
+
+    if (transition.kind === "launch-many") {
+      for (const branch of transition.branches) {
+        await events.enqueue({
+          name: startEventName(requireNode(line, transition.nodeId)),
+          payload: { runId, nodeId: transition.nodeId, iteration: transition.iteration, branch },
+          runId,
+        });
+      }
+
+      return;
+    }
 
     if (transition.kind === "launch") {
       await events.enqueue({

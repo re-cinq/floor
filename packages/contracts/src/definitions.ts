@@ -50,6 +50,8 @@ export interface LineNode {
   start?: string;
   bind?: Record<string, string>;
   reports?: LineNodeReport[];
+  /** This node reports a list in its produced value `over` (a JSON array of strings); node `to` then runs once per item, with the item as its `item` need, and the walk goes on past `to` when every one has reported. */
+  fanout?: { over: string; to: string };
 }
 
 export interface LineEdge {
@@ -82,6 +84,8 @@ export interface NeedSpec {
   /** `git` needs only; `read` is the default. */
   access?: "read" | "write";
   optional?: boolean;
+  /** `value` needs only: the name of an item the body of a fan-out produces. The need is filled with a JSON array of what each branch of the latest fan-out produced under it, in branch order. */
+  collect?: string;
 }
 
 export interface ProduceSpec {

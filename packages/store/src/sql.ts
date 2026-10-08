@@ -110,9 +110,9 @@ export async function insertVisit(client: PoolClient, runId: string, context: Op
   };
 
   const { rows } = await client.query(
-    `insert into station_runs (station_run_id, assembly_run_id, node_id, iteration, station_hash, agent_definition_hash, input, requested_by, deadline)
-     values (gen_random_uuid(), $1, $2, $3, $4, $5, $6::jsonb, $7, $8)
-     on conflict (assembly_run_id, node_id, iteration) do update set input = station_runs.input
+    `insert into station_runs (station_run_id, assembly_run_id, node_id, iteration, station_hash, agent_definition_hash, input, requested_by, deadline, branch)
+     values (gen_random_uuid(), $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9)
+     on conflict (assembly_run_id, node_id, iteration, (coalesce(branch, -1))) do update set input = station_runs.input
      returning *, (xmax = 0) as created`,
     [
       runId,
@@ -123,6 +123,7 @@ export async function insertVisit(client: PoolClient, runId: string, context: Op
       JSON.stringify(input),
       context.requestedBy,
       context.deadline,
+      context.branch,
     ],
   );
   const row = rows[0] as StationRunRow & { created: boolean };
@@ -329,4 +330,9 @@ export async function deferPendingAgentDispatches(client: Queryable, heldUntil: 
        and claimed_at is null and acked_at is null and dead_at is null and dropped_at is null`,
     [heldUntil],
   );
+}
+
+/** Serialises what follows within a transaction for one run, so work that reads the run's visits and acts on them sees every report already committed. */
+export async function lockRun(client: PoolClient, runId: string): Promise<void> {
+  await client.query("select pg_advisory_xact_lock(hashtext($1))", [runId]);
 }
