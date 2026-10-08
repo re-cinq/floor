@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { BlobsStore } from "./blobs.js";
 import { FAN_STATIONS, fanLine } from "./fanout.fixtures.js";
 import { setupStoreFixture } from "./assembly-run-store.fixtures.js";
 
-const { store, events, definitions } = setupStoreFixture();
+const { store, events, definitions, pool } = setupStoreFixture();
 
 async function runAfterSplit(listed: string[]): Promise<string> {
   await seedFanLine();
@@ -173,5 +174,31 @@ describe("AssemblyRunStore across a fan-out", () => {
       work: [],
       merge: [{ runId, nodeId: "merge", iteration: 1 }],
     });
+  });
+
+  it("hands the join the text of each branch's file output, in branch order", async () => {
+    await definitions().put("line", "fan", fanLine());
+    const fileWorker = { ...FAN_STATIONS.worker!, produces: [{ name: "result", kind: "file" as const }] };
+
+    await definitions().put("station", "splitter", FAN_STATIONS.splitter!);
+    await definitions().put("station", "worker", fileWorker);
+    await definitions().put("station", "merger", FAN_STATIONS.merger!);
+    const { run } = await store().start({ lineId: "fan", repo: null, startItems: {} });
+    const { visit: entry } = await store().openVisit(run.id, "split", 1);
+
+    await store().report(entry.id, { outcome: "success", produced: { items: JSON.stringify(["a", "b"]) } });
+    const blobs = new BlobsStore({ connection: pool() });
+    const branches = await openBranches(run.id, 2);
+
+    for (const [index, visitId] of [...branches.entries()].reverse().map(([index, id]) => [index, id] as const)) {
+      const { hash } = await blobs.put(Buffer.from(`patch ${index}`));
+
+      await store().report(visitId, { outcome: "success", produced: { result: hash } });
+    }
+
+    const { visit } = await store().openVisit(run.id, "merge", 1);
+    const { needs } = visit.brief;
+
+    expect(JSON.parse(needs.results!)).toEqual(["patch 0", "patch 1"]);
   });
 });

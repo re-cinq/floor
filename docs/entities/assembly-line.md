@@ -100,8 +100,9 @@ cancel its siblings. An empty list passes through `to` as a success at once.
 The edges out of `to`, and their `iteration_max`, are the ordinary ones.
 
 A need with `collect: <name>` is filled, at open, with a JSON array of what
-the latest round of branches produced under `<name>` (a **value**), in
-branch order, however they reported. The fan-out region does not nest, a
+the latest round of branches produced under `<name>`, in branch order,
+however they reported: a produced value as it is, a produced file as its
+text (UTF-8). The fan-out region does not nest, a
 body belongs to one fan-out, and a body cannot itself fan out.
 
 ### Edges
@@ -142,7 +143,7 @@ edges:
 - a fan-out names a real body, lists a value its own station produces, has a
   success edge to its body, and its body has an edge for `failed`; a body
   belongs to one fan-out and does not fan out itself; a collected name is a
-  value that exactly one body produces (two fan-outs whose bodies produce the
+  name that exactly one body produces (two fan-outs whose bodies produce the
   same name would mix their branches)
 - every required need of every node is seeded at start or produced on every
   path into it; a node with a custom start event must have its required

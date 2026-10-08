@@ -104,7 +104,7 @@ describe("validateLine on a fan-out", () => {
         }),
       }),
     ).toContain(
-      'node "merge" collects "nothing", which no fan-out body produces as a value',
+      'node "merge" collects "nothing", which no fan-out body produces',
     );
   });
 

@@ -1,6 +1,7 @@
 // Resolution at open (docs/assembly_run_storage.md, "Resolution at open"): station, agent definition and variant, needs from the bag, conversation, failure context, deadline.
 
-import { collectNeeds, itemNeed } from "./fan-needs.js";
+import { BlobsStore } from "./blobs.js";
+import { collectNeeds, itemNeed, type CollectReaders } from "./fan-needs.js";
 import { forRepo } from "./repo-name.js";
 import type { Pool } from "pg";
 import { DefinitionsStore } from "./definitions.js";
@@ -76,7 +77,7 @@ export class OpenVisitResolver {
     const station = await this.stationRef(node.station!);
     const bag = await this.deps.bag(request.run.id);
     const visits = await visitsWith(this.deps.pool, request.run.id);
-    const fanned = { ...itemNeed(request.line, node, request.branch, visits), ...collectNeeds(node, station.body, visits) };
+    const fanned = { ...itemNeed(request.line, node, request.branch, visits), ...(await collectNeeds(node, station.body, visits, this.collectReaders())) };
     const { needs: resolvedNeeds, missing } = resolveNeeds(station.body.needs, node.bind, { ...bag, ...fanned });
 
     if (missing.length > 0) {
@@ -110,6 +111,31 @@ export class OpenVisitResolver {
       resumedFrom,
       deadline: deadlineFor(station.body.kind, settings, this.deps.now()),
       dispatchTags: dispatchTagsFor(station, settings),
+    };
+  }
+
+  private collectReaders(): CollectReaders {
+    const blobs = new BlobsStore({ connection: this.deps.pool });
+    // Every branch of a fan-out ran the same station, so one open looks it up once.
+    const stations = new Map<string, Promise<StationBody | undefined>>();
+
+    const stationOf = (hash: string): Promise<StationBody | undefined> => {
+      const known = stations.get(hash) ?? this.deps.definitions.byHashOnly<StationBody>("station", hash).then((row) => row?.body);
+
+      stations.set(hash, known);
+
+      return known;
+    };
+
+    return {
+      produceKind: async (stationHash, name) => producedKind(stationHash ? await stationOf(stationHash) : undefined, name),
+      blobText: async (hash) => {
+        const blob = await blobs.get(hash);
+
+        enforce(blob, `a collected file is gone: ${hash}`);
+
+        return blob.bytes.toString("utf8");
+      },
     };
   }
 
@@ -271,3 +297,9 @@ function dispatchTagsFor(station: ResolvedStation, settings: { body: AgentSettin
   return [];
 }
 
+/** What a station produces `name` as; a value when it declares no such produce. */
+function producedKind(station: StationBody | undefined, name: string): "value" | "file" {
+  const produces = station?.produces ?? [];
+
+  return produces.find((produce) => produce.name === name)?.kind ?? "value";
+}

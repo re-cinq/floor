@@ -123,7 +123,7 @@ function collectProblem(
 
   if (count === 0) {
     return [
-      `node "${nodeId}" collects "${collect}", which no fan-out body produces as a value`,
+      `node "${nodeId}" collects "${collect}", which no fan-out body produces`,
     ];
   }
 
@@ -134,7 +134,7 @@ function collectProblem(
     : [];
 }
 
-// How many fan-out bodies produce each value name: a collected name must come from exactly one, or the branches of two fan-outs would mix.
+// How many fan-out bodies produce each name: a collected name must come from exactly one, or the branches of two fan-outs would mix.
 function producersByName(
   line: LineBody,
   sources: FanSource[],
@@ -144,7 +144,7 @@ function producersByName(
   const stationNodes = line.nodes.filter(hasStation);
   const names = stationNodes
     .filter((node) => bodyIds.has(node.id))
-    .flatMap((node) => valuesProducedBy(node, bodies));
+    .flatMap((node) => namesProducedBy(node, bodies));
 
   return names.reduce(
     (counts, name) => counts.set(name, (counts.get(name) ?? 0) + 1),
@@ -152,13 +152,11 @@ function producersByName(
   );
 }
 
-function valuesProducedBy(
+function namesProducedBy(
   node: LineNode & { station: string },
   bodies: Bodies,
 ): string[] {
   const produces = resolvedStationOf(node, bodies)?.produces ?? [];
 
-  return produces
-    .filter((produce) => produce.kind === "value")
-    .map((produce) => produce.name);
+  return produces.map((produce) => produce.name);
 }
