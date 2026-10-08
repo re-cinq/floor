@@ -29,20 +29,38 @@ function newestListing(visits: readonly Visit[], sourceId: string, over: string)
   return listings.filter((listed) => listed !== undefined).at(-1);
 }
 
-/** Each `collect` need of the station, filled with a JSON array of what the newest round of branches produced under that name, in branch order. */
-export function collectNeeds(node: LineNode, station: StationBody, visits: readonly Visit[]): Record<string, Item> {
-  const collecting = station.needs.filter((need) => need.collect !== undefined);
-
-  return Object.fromEntries(
-    collecting.map((need): [string, Item] => [node.bind?.[need.name] ?? need.name, { kind: "value", ref: JSON.stringify(collected(visits, need.collect!)), by: "fanout" }]),
-  );
+/** How a collected output is read back: what kind a station produces a name as, and the text of a file's blob. */
+export interface CollectReaders {
+  produceKind(stationHash: string | null, name: string): Promise<"value" | "file">;
+  blobText(hash: string): Promise<string>;
 }
 
-function collected(visits: readonly Visit[], name: string): string[] {
+/** Each `collect` need of the station, filled with a JSON array of what the newest round of branches produced under that name, in branch order: a value as it is, a file as its text. */
+export async function collectNeeds(node: LineNode, station: StationBody, visits: readonly Visit[], readers: CollectReaders): Promise<Record<string, Item>> {
+  const collecting = station.needs.filter((need) => need.collect !== undefined);
+  const filled = await Promise.all(
+    collecting.map(async (need): Promise<[string, Item]> => {
+      const texts = await collected(visits, need.collect!, readers);
+
+      return [node.bind?.[need.name] ?? need.name, { kind: "value", ref: JSON.stringify(texts), by: "fanout" }];
+    }),
+  );
+
+  return Object.fromEntries(filled);
+}
+
+async function collected(visits: readonly Visit[], name: string, readers: CollectReaders): Promise<string[]> {
   const branches = visits.filter((visit) => visit.branch !== null && producedValue(visit, name) !== undefined);
   const newest = Math.max(0, ...branches.map((visit) => visit.iteration));
   const round = branches.filter((visit) => visit.iteration === newest);
   const ordered = round.sort((first, second) => first.branch! - second.branch!);
 
-  return ordered.map((visit) => producedValue(visit, name)!);
+  return Promise.all(ordered.map((visit) => textOf(visit, name, readers)));
+}
+
+async function textOf(visit: Visit, name: string, readers: CollectReaders): Promise<string> {
+  const produced = producedValue(visit, name)!;
+  const kind = await readers.produceKind(visit.stationHash, name);
+
+  return kind === "file" ? readers.blobText(produced) : produced;
 }

@@ -568,11 +568,13 @@ and replays as before: routing, the join edge and `iteration_max` are
 unchanged. Only the new `launch-many` step knows about branches: it starts
 every branch at once, and starts the ones a crash left unstarted.
 
-**The list is a value; branch results are values.** A source's list rides in
-its report like any produced value, so the store needs no new channel to count
-branches, and a body reaches heavy content through the bag by entry. A join
-collects values only, in branch order. A file output of a branch would need a
-blob assembled at open; nothing asked for it yet.
+**The list is a value; branch results are values or files.** A source's list
+rides in its report like any produced value, so the store needs no new channel
+to count branches, and a body reaches heavy content through the bag by entry.
+A join collects what the branches produced in branch order: a value as it is,
+a file as its text, read from the blob store when the join opens. An agent
+branch hands back a file far more easily than a value, which has to ride inside
+its one-line result marker.
 
 **A failed branch fails the region after the rest have finished.** Cancelling
 siblings loses work that already cost; collecting partial results lets a join
