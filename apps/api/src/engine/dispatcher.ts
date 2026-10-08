@@ -30,6 +30,7 @@ interface NodeStart {
   runId: string;
   nodeId: string;
   iteration?: number;
+  branch?: number;
   requestedBy: string;
 }
 
@@ -97,7 +98,7 @@ export class Dispatcher {
       return false;
     }
 
-    await this.openOrFailRun({ runId: run.id, nodeId, iteration: start.iteration, requestedBy: start.requestedBy ?? event.name });
+    await this.openOrFailRun({ runId: run.id, nodeId, iteration: start.iteration, branch: start.branch, requestedBy: start.requestedBy ?? event.name });
 
     return true;
   }
@@ -123,7 +124,7 @@ export class Dispatcher {
   // The walk posts an iteration; a person or an outside system does not, and that is what makes it a start by hand.
   private async open(start: NodeStart): Promise<void> {
     const opened = start.iteration
-      ? await this.deps.runs.openVisit(start.runId, start.nodeId, start.iteration)
+      ? await this.deps.runs.openVisit(start.runId, start.nodeId, start.iteration, start.branch)
       : await this.deps.runs.openVisitByHand(start.runId, start.nodeId, start.requestedBy);
 
     if (opened.created) console.log(`floor dispatcher: run ${start.runId} opened node ${start.nodeId}`);

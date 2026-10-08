@@ -1,3 +1,6 @@
+import { foldFans, launchOf, relaunchMissing } from "./fanout.js";
+import { budgetOutcome, isTransition, isUnbudgetedForwardHop } from "./walk-budget.js";
+
 // The walk kernel: a pure replay over persisted visits; ported from lore's transition.ts with two departures documented in README.md (dynamic outcomes, no failure classification).
 
 export interface WalkEdge {
@@ -16,6 +19,8 @@ export interface WalkGraph {
   /** A second terminal beside `exit`: a walk that arrives here ends the run as failed on purpose. */
   fail?: string;
   edges: readonly WalkEdge[];
+  /** Fan-out regions: `source` reports a list of items and `body` then runs once per item; the edge out of `body` is the join and is taken once every branch has reported. */
+  fans?: readonly { source: string; body: string }[];
   /** Node kind, so the node ceiling can tell a person's pass from a machine's; a run recorded without them counts every visit. `kind` absent = marker. */
   nodes?: readonly { id: string; kind?: StationKind }[];
 }
@@ -27,10 +32,15 @@ export interface NodeVisit {
   outcome: string | null;
   /** The person who opened this visit by hand (docs/assembly_run_storage.md, "reports from outside"); the walk restarts here, so what came before routes nothing and spends no budget. */
   requestedBy?: string | null;
+  /** Which item of a fan-out this visit is the body for; absent on an ordinary visit. */
+  branch?: number;
+  /** On a fan-out source's visit: how many items it reported, so how many branches follow. */
+  branches?: number;
 }
 
 export type Transition =
   | { kind: "launch"; nodeId: string; iteration: number }
+  | { kind: "launch-many"; nodeId: string; iteration: number; branches: number[] }
   | { kind: "await" }
   | { kind: "finish" }
   | { kind: "halt"; outcome: "iteration_max" | "error" | "failed"; reason: string };
@@ -69,7 +79,7 @@ interface WalkState {
   iteration: number;
 }
 
-interface WalkAccounting {
+export interface WalkAccounting {
   backEdgeCounts: Map<string, number>;
   // A revisit must number past every prior row for that node (not just this edge's count) — two back-edges into the same target could otherwise collide.
   highestIteration: Map<string, number>;
@@ -88,26 +98,32 @@ export function getNextTransition(
   visits: NodeVisit[],
   maxNodes = DEFAULT_MAX_NODES,
 ): Transition {
-  const blocked = replayBlocked(assemblyLine, visits, maxNodes);
+  const early = relaunchMissing(assemblyLine, visits) ?? replayBlocked(assemblyLine, visits, maxNodes);
 
-  if (blocked) {
-    return blocked;
+  if (early) {
+    return early;
   }
 
-  const { state, failure } = replayFromLastHandRun(assemblyLine, visits);
+  const folded = foldFans(assemblyLine, visits);
+  const { state, failure } = replayFromLastHandRun(assemblyLine, folded);
 
-  if (failure) {
-    return failure;
-  }
+  return failure ?? stepFrom(assemblyLine, { visits, folded, state });
+}
 
+interface Replayed {
+  visits: readonly NodeVisit[];
+  /** The history with each finished fan-out region folded into one visit of its body. */
+  folded: readonly NodeVisit[];
+  state: WalkState;
+}
+
+function stepFrom(assemblyLine: WalkGraph, { visits, folded, state }: Replayed): Transition {
   // A visit is always on record here: only a visit's outcome can carry the walk onto fail, which validation refuses as the entry.
   if (state.currentId === assemblyLine.fail) {
-    return deliberateFailure(assemblyLine, visits.at(-1));
+    return deliberateFailure(assemblyLine, folded.at(-1));
   }
 
-  return state.currentId === assemblyLine.exit
-    ? { kind: "finish" }
-    : { kind: "launch", nodeId: state.currentId, iteration: state.iteration };
+  return state.currentId === assemblyLine.exit ? { kind: "finish" } : launchOf(assemblyLine, visits, state);
 }
 
 // Why the replay cannot produce a next step. An unfinished visit means the answer is not knowable yet rather than wrong; the node ceiling means the definition is cycling and the walk would never reach exit.
@@ -323,53 +339,4 @@ function followEdge(
   state.currentId = outcome.nextId;
 
   return null;
-}
-
-// A fresh forward hop with no budget just moves on — only a revisit or a budgeted edge needs the accounting below.
-function isUnbudgetedForwardHop(
-  chosen: WalkEdge,
-  accounting: WalkAccounting,
-): boolean {
-  return (
-    chosen.iterationMax === undefined && !accounting.visited.has(chosen.to)
-  );
-}
-
-// The budget decision for a revisited/budgeted edge: an exhausted budget halts with its own reason, otherwise the edge is spent and the walk advances to its target.
-function budgetOutcome(
-  assemblyLine: WalkGraph,
-  visit: NodeVisit,
-  chosen: WalkEdge,
-  accounting: WalkAccounting,
-): Transition | { nextId: string } {
-  const key = `${chosen.from}->${chosen.to}`;
-  const count = (accounting.backEdgeCounts.get(key) ?? 0) + 1;
-
-  if (chosen.iterationMax !== undefined && count > chosen.iterationMax) {
-    return budgetSpent(assemblyLine, visit, chosen, key);
-  }
-
-  accounting.backEdgeCounts.set(key, count);
-
-  return { nextId: chosen.to };
-}
-
-function isTransition(
-  outcome: Transition | { nextId: string },
-): outcome is Transition {
-  return "kind" in outcome;
-}
-
-// The retry budget for this edge is gone. The budget is HOW the run ended; the visit's own error (if any) is left for the caller to attach, since this kernel carries no failure detail of its own.
-function budgetSpent(
-  assemblyLine: WalkGraph,
-  visit: NodeVisit,
-  chosen: WalkEdge,
-  key: string,
-): Transition {
-  return {
-    kind: "halt",
-    outcome: "iteration_max",
-    reason: `AssemblyLine ${assemblyLine.name}: node "${visit.nodeId}" failed — the ${key} retry budget (${chosen.iterationMax}) is spent`,
-  };
 }

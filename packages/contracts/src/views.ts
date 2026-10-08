@@ -25,6 +25,8 @@ export interface VisitFields<Time> {
   report: Report | null;
   worker: string | null;
   requestedBy: string | null;
+  /** Which item of a fan-out this visit is the body for; null on an ordinary visit. */
+  branch: number | null;
   deadline: Time | null;
   /** The previous visit's sessionRef, for an executor restoring a conversation. Beyond the public Brief a station author sees: this is the executor's own lookup, resolved once so it is not repeated. */
   resumedFrom: string | null;
