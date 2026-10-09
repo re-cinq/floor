@@ -43,7 +43,7 @@ export interface RunMetrics {
   missingCost: MissingCostCount[];
 }
 
-/** Bucket bounds that double from `first`: a minute to about four hours for a run, ten seconds to about forty minutes for a visit. */
+/** Bucket bounds that double from `first`: a minute to about two hours for a run, ten seconds to about forty minutes for a visit. */
 export function doublingBounds(first: number, steps: number): number[] {
   return [...Array(steps).keys()].map((step) => first * 2 ** step);
 }

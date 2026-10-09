@@ -162,7 +162,7 @@ function summarySql(where: string, groupBy: CostsGroupBy): string {
   `;
 }
 
-/** What one line's station spent on one model, for GET /metrics: the BY_MODEL rollup grouped three ways at once. A visit that named no model is counted under the model its definition gave it. */
+/** What one line's station spent on one model, for GET /metrics: the BY_MODEL rollup grouped three ways at once. A visit that named no model is attributed to the model in its run input's agentSettings. */
 export interface CostSeriesRow {
   lineId: string;
   nodeId: string;
@@ -203,7 +203,7 @@ export interface MissingCostCount {
   count: number;
 }
 
-/** Agent visits that reported and stated no price, by line: the anomaly `internal.cost.missing` raises, as a number to watch. */
+/** Agent visits that made model calls and stated no price for them, by line: the anomaly `internal.cost.missing` raises, as a number to watch. A visit with no llm_call record at all is not counted; it may not have called a model. */
 export async function missingCostByLine(client: Queryable): Promise<MissingCostCount[]> {
   const { rows } = await client.query<Record<string, string>>(`
     with ${BY_VISIT}
@@ -212,6 +212,7 @@ export async function missingCostByLine(client: Queryable): Promise<MissingCostC
     join assembly_runs ar on ar.id = sr.assembly_run_id
     left join totals lt on lt.station_run_id = sr.station_run_id
     where sr.agent_definition_hash is not null and sr.report is not null and lt.cost_usd is null
+      and exists (select 1 from station_run_records r where r.station_run_id = sr.station_run_id and r.kind = 'llm_call')
     group by ar.line_id order by ar.line_id
   `);
 
