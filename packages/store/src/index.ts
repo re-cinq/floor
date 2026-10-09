@@ -58,7 +58,8 @@ export {
   type AssemblyRunStoreDeps,
 } from "./assembly-run-store.js";
 export type { StartRunInput, StartResult, RunFilter, Page, PageOf } from "./run-shapes.js";
-export type { OutcomeCount, RunMetrics } from "./sql.js";
+export type { CostSeriesRow } from "./costs.js";
+export type { CountSeries, HistogramBucket, HistogramSeries, MetricLabels, OutcomeCount, RunMetrics } from "./metrics-sql.js";
 export type { VisitFilter } from "./rows.js";
 export type {
   Item,
