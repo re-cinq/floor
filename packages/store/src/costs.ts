@@ -1,6 +1,6 @@
 // Cost rollups (docs/assembly_run_storage.md, "Costs"): sums over station_run_records' llm_call rows, grouped in SQL, never in JavaScript.
 import type { Pool, PoolClient } from "pg";
-import { addCondition, addRepoCondition } from "./rows.js";
+import { addCondition, addRepoCondition, type Queryable } from "./rows.js";
 
 export interface CostsFilter {
   /** One assembly run: what one review cost, say. */
@@ -160,6 +160,63 @@ function summarySql(where: string, groupBy: CostsGroupBy): string {
     group by key
     order by key
   `;
+}
+
+/** What one line's station spent on one model, for GET /metrics: the BY_MODEL rollup grouped three ways at once. A visit that named no model is attributed to the model in its run input's agentSettings. */
+export interface CostSeriesRow {
+  lineId: string;
+  nodeId: string;
+  model: string;
+  costUsd: number;
+  tokensIn: number;
+  tokensOut: number;
+}
+
+const SERIES_SQL = `
+  with ${BY_MODEL}
+  select ar.line_id, sr.node_id, coalesce(lt.model, sr.input->'agentSettings'->>'model', '') as model,
+    round(coalesce(sum(lt.cost_usd), 0), ${COST_DECIMALS}) as cost_usd,
+    coalesce(sum(lt.tokens_in), 0) as tokens_in,
+    coalesce(sum(lt.tokens_out), 0) as tokens_out
+  from station_runs sr
+  join assembly_runs ar on ar.id = sr.assembly_run_id
+  join totals lt on lt.station_run_id = sr.station_run_id
+  group by 1, 2, 3
+  order by 1, 2, 3
+`;
+
+export async function costSeries(client: Queryable): Promise<CostSeriesRow[]> {
+  const { rows } = await client.query<Record<string, string>>(SERIES_SQL);
+
+  return rows.map((row) => ({
+    lineId: row.line_id!,
+    nodeId: row.node_id!,
+    model: row.model!,
+    costUsd: Number(row.cost_usd),
+    tokensIn: Number(row.tokens_in),
+    tokensOut: Number(row.tokens_out),
+  }));
+}
+
+export interface MissingCostCount {
+  lineId: string;
+  count: number;
+}
+
+/** Agent visits that made model calls and stated no price for them, by line: the anomaly `internal.cost.missing` raises, as a number to watch. A visit with no llm_call record at all is not counted; it may not have called a model. */
+export async function missingCostByLine(client: Queryable): Promise<MissingCostCount[]> {
+  const { rows } = await client.query<Record<string, string>>(`
+    with ${BY_VISIT}
+    select ar.line_id, count(*)::text as count
+    from station_runs sr
+    join assembly_runs ar on ar.id = sr.assembly_run_id
+    left join totals lt on lt.station_run_id = sr.station_run_id
+    where sr.agent_definition_hash is not null and sr.report is not null and lt.cost_usd is null
+      and exists (select 1 from station_run_records r where r.station_run_id = sr.station_run_id and r.kind = 'llm_call')
+    group by ar.line_id order by ar.line_id
+  `);
+
+  return rows.map((row) => ({ lineId: row.line_id!, count: Number(row.count) }));
 }
 
 // snake_case mirrors Postgres's own column names verbatim, a third-party shape rather than ours to rename.

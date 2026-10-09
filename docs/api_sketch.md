@@ -60,7 +60,7 @@ GET    /version                          // build sha, schema version, and wheth
 
 ## Metrics
 
-GET    /metrics                          // unauthenticated, like /healthz; Prometheus text exposition (`text/plain; version=0.0.4`), scraped by Google Managed Prometheus
+GET    /metrics                          // unauthenticated, like /healthz; Prometheus text exposition (`text/plain; version=0.0.4`), scraped by Prometheus
 
 Every number is a fresh query against `assembly_runs`/`station_runs`/`events`, never a per-process counter — two api
 replicas would each only see their own traffic, and the tables are the shared source of truth:
@@ -72,6 +72,13 @@ replicas would each only see their own traffic, and the tables are the shared so
 - `floor_events_queue_depth` — events not yet acked, dead, or dropped (the `events_claimable` condition)
 - `floor_events_dead_total` — events with a `dead_at`
 - `floor_loop_holds_lease` — 1 if this replica runs the floor's loop, else 0
+- `floor_runs_started_total{line_id,repo}` — every run ever started; `floor_runs_settled_by_line_total{line_id,outcome}` — the settled ones per line
+- `floor_run_duration_seconds{line_id,outcome}` — histogram of `finished_at - created_at` over settled runs
+- `floor_visits_total{line_id,node_id,outcome}` — finished visits; `floor_visit_duration_seconds{...}` — histogram of `finished_at - opened_at`; `floor_visit_retries_total{line_id,node_id}` — visits with `iteration > 1`
+- `floor_cost_usd_total{line_id,node_id,model}` and `floor_tokens_total{line_id,node_id,model,kind}` — the `llm_call` rollup of `GET /costs`, grouped three ways; `floor_visits_missing_cost{line_id}` — agent visits that made model calls and stated no price for them
+- `floor_events_claim_latency_seconds` — histogram of `claimed_at - not_before` over acked events
+
+A histogram here is `count(*) where seconds <= le` per bucket, computed by the same scrape-time query: cumulative for as long as the rows stay, so a prune of old runs reads as a counter reset to Prometheus. The totals are declared gauges for the same reason.
 
 ## Assembly lines - blueprints for assembly runs
 

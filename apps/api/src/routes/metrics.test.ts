@@ -78,6 +78,54 @@ describe("GET /metrics", () => {
     expect(metricValue(text, "floor_visits_overdue")).toBe(1);
   });
 
+  it("counts the settled run of line on repository r once, by line and by line and outcome, with its duration under +Inf", async () => {
+    await settledRunId();
+
+    const text = await metricsText();
+
+    expect({
+      started: metricValue(text, 'floor_runs_started_total{line_id="line",repo="r"}'),
+      settled: metricValue(text, 'floor_runs_settled_by_line_total{line_id="line",outcome="success"}'),
+      durationCount: metricValue(text, 'floor_run_duration_seconds_count{line_id="line",outcome="success"}'),
+      lastBucket: metricValue(text, 'floor_run_duration_seconds_bucket{line_id="line",outcome="success",le="+Inf"}'),
+    }).toEqual({ started: 1, settled: 1, durationCount: 1, lastBucket: 1 });
+  });
+
+  it("counts the one finished visit of station work with its duration, and no retry", async () => {
+    await settledRunId();
+
+    const text = await metricsText();
+
+    expect({
+      visits: metricValue(text, 'floor_visits_total{line_id="line",node_id="work",outcome="success"}'),
+      durationCount: metricValue(text, 'floor_visit_duration_seconds_count{line_id="line",node_id="work",outcome="success"}'),
+      retries: text.includes("floor_visit_retries_total{"),
+    }).toEqual({ visits: 1, durationCount: 1, retries: false });
+  });
+
+  it("sums a 0.25 usd llm_call of 100 in and 20 out tokens under line, station work and model sonnet", async () => {
+    const runId = await settledRunId();
+    const [visit] = await deps().runs.visits(runId);
+    const models = { sonnet: { cost_usd: 0.25, input_tokens: 100, output_tokens: 20 } };
+
+    await deps().records.append(visit!.id, [{ kind: "llm_call", body: { costUsd: 0.25, models }, occurredAt: new Date("2026-10-09T10:00:00Z") }]);
+    const text = await metricsText();
+
+    expect({
+      cost: metricValue(text, 'floor_cost_usd_total{line_id="line",node_id="work",model="sonnet"}'),
+      tokensIn: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",kind="in"}'),
+      tokensOut: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",kind="out"}'),
+    }).toEqual({ cost: 0.25, tokensIn: 100, tokensOut: 20 });
+  });
+
+  it("reports the claim latency of the acked start events as a histogram with a count", async () => {
+    await settledRunId();
+
+    const text = await metricsText();
+
+    expect(metricValue(text, "floor_events_claim_latency_seconds_count")).toBeGreaterThan(0);
+  });
+
   it("reports a positive events queue depth once a run enqueues its start events", async () => {
     await workStarted(deps());
 

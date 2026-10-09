@@ -30,11 +30,10 @@ import {
   openVisitRows,
   pricedCallExists,
   overdueVisitRows,
-  runMetricsSnapshot,
   settleRun,
   writeReport,
-  type RunMetrics,
 } from "./sql.js";
+import { runMetricsSnapshot, type RunMetrics } from "./metrics-sql.js";
 import type { Item, LineBody, LineNode, Report, Run, Visit } from "./types.js";
 import type { Page, PageOf, RunFilter, StartResult, StartRunInput } from "./run-shapes.js";
 
