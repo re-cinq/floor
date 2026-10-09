@@ -603,3 +603,9 @@ runs can share one, which only makes them wait for each other.
 - The network policy for agent pods is rendered, installed and selects the
   pods, and has never been seen to bind: minikube's default network plugin
   enforces none.
+- A pod that printed no `LORE_NODE_RESULT` line and wrote none of the files its
+  station declares by path fails its visit, naming the files, whatever exit code
+  its supervisor reported: read as success, the next node failed on a need nobody
+  could fill, and the run died where nothing was wrong (lore's run bce29270, a
+  Gemini pod that ended nine seconds in). A pod that spoke a marker is believed,
+  so a line that treats a missing file as a retry keeps working.

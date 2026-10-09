@@ -2,6 +2,8 @@
 
 export interface AgentVerdict {
   outcome: string;
+  /** Whether the agent printed a `LORE_NODE_RESULT:` line at all: an outcome it chose, not one read into its silence. */
+  spoken: boolean;
   /** What the agent said it produced, by name; the caller keeps only what the station declares. */
   produced: Record<string, string>;
   error?: string;
@@ -13,7 +15,7 @@ const MAX_ERROR_CHARS = 300;
 export function readAgentVerdict(output: string | undefined, outcomes: readonly string[]): AgentVerdict {
   const payload = lastMarkerPayload(output ?? "");
 
-  if (payload === null) return { outcome: reviewVerdict(output ?? ""), produced: {} };
+  if (payload === null) return { outcome: reviewVerdict(output ?? ""), produced: {}, spoken: false };
 
   return verdictFromPayload(payload, [...outcomes, "failed"]) ?? malformed(payload);
 }
@@ -30,12 +32,12 @@ function reviewVerdict(output: string): string {
 }
 
 function verdictFromPayload(payload: string, allowed: readonly string[]): AgentVerdict | null {
-  if (allowed.includes(payload)) return { outcome: payload, produced: {} };
+  if (allowed.includes(payload)) return { outcome: payload, produced: {}, spoken: true };
   const parsed = parseObject(payload);
 
   if (typeof parsed?.outcome !== "string" || !allowed.includes(parsed.outcome)) return null;
 
-  return { outcome: parsed.outcome, produced: stringsOf(parsed.produced ?? parsed.extras) };
+  return { outcome: parsed.outcome, produced: stringsOf(parsed.produced ?? parsed.extras), spoken: true };
 }
 
 function parseObject(payload: string): Record<string, unknown> | null {
@@ -59,5 +61,5 @@ function stringsOf(candidate: unknown): Record<string, string> {
 function malformed(payload: string): AgentVerdict {
   const error = `unparseable LORE_NODE_RESULT line: LORE_NODE_RESULT: ${payload}`.slice(0, MAX_ERROR_CHARS);
 
-  return { outcome: "failed", produced: {}, error };
+  return { outcome: "failed", produced: {}, error, spoken: true };
 }

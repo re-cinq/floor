@@ -247,6 +247,18 @@ describe("POST /station-runs/:id/sink", () => {
     expect(visit!.report).toMatchObject({ outcome: "failed", error: expect.stringContaining("unparseable LORE_NODE_RESULT") });
   });
 
+  it("fails a visit whose agent ended without a word and without the file it was to produce, naming the file", async () => {
+    const { brief } = await reviewDispatched();
+
+    await post(brief, { type: "assistant", message: { content: "reading" } });
+    await post(brief, { kind: "file", event: "produced.review_findings", path: "/w/findings.md", reason: "missing" });
+    await post(brief, { kind: "lifecycle", phase: "agent", status: "succeeded", exitCode: 0 });
+    await loop().pass();
+    const visit = await deps().runs.visit(brief.visitId);
+
+    expect(visit!.report).toEqual({ outcome: "failed", error: "the agent ended without a LORE_NODE_RESULT line and without producing review_findings (findings.md)" });
+  });
+
   it("refuses an event for a visit already done", async () => {
     const { brief } = await reviewApproved();
 
