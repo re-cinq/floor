@@ -69,6 +69,9 @@ export class Sink {
     enforce(station, `visit "${visit.id}" has no station to read outcomes from`);
     const verdict = readAgentVerdict(said, station.body.outcomes);
     const produced = { ...declaredValues(station.body, verdict.produced), ...(await this.allFilesOf(visit.id, station.body, said)) };
+    const unproduced = verdict.spoken ? [] : missingFiles(station.body, produced);
+
+    if (unproduced.length > 0) return { outcome: "failed", error: silentFailure(unproduced) };
 
     return { outcome: verdict.outcome, produced, error: verdict.error };
   }
@@ -140,6 +143,17 @@ function declaredValues(station: StationBody, said: Record<string, string>): Rec
 
 function declares(station: StationBody, name: string, kind: "value" | "file"): boolean {
   return station.produces.some((produce) => produce.name === name && produce.kind === kind);
+}
+
+// A pod that printed no marker and wrote none of the files it was to produce died before its work, whatever its exit code said: read as success, the next node would fail on a need nobody could fill.
+function missingFiles(station: StationBody, produced: Record<string, string>): string[] {
+  const unwritten = station.produces.filter((produce) => produce.kind === "file" && produce.from !== "output" && !(produce.name in produced));
+
+  return unwritten.map((produce) => (produce.path ? `${produce.name} (${produce.path})` : produce.name));
+}
+
+function silentFailure(unproduced: string[]): string {
+  return `the agent ended without a LORE_NODE_RESULT line and without producing ${unproduced.join(", ")}`.slice(0, MAX_ERROR_CHARS);
 }
 
 // The agent's own last words first; the supervisor's reason only when it never spoke.
