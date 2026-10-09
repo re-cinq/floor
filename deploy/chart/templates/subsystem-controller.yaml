@@ -1,6 +1,6 @@
 {{/*
 Templated from deploy/agent-subsystem/controller.yaml, the ai-agent-subsystem's controller
-vendored at v0.11.9: same RBAC and Deployment shape, __NAMESPACE__/__CONTROLLER_IMAGE__/
+vendored at v0.11.10: same RBAC and Deployment shape, __NAMESPACE__/__CONTROLLER_IMAGE__/
 __AGENT_IMAGE__ replaced with chart values instead of scripts/setup-minikube-agents.sh's sed.
 */}}
 {{- if .Values.subsystem.enabled }}

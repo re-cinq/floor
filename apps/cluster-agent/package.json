@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",
-    "@re-cinq/agent-contracts": "^0.11.9",
+    "@re-cinq/agent-contracts": "^0.11.10",
     "@re-cinq/floor-client": "*",
     "@re-cinq/floor-contracts": "*"
   },
