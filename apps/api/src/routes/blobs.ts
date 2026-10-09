@@ -3,7 +3,7 @@ import type { Server } from "@hapi/hapi";
 import { MAX_BLOB_BYTES } from "@floor/store";
 import { VISITS_TOO, type Credentials } from "../auth.js";
 import type { Deps } from "../deps.js";
-import { HTTP_CREATED } from "../http-status.js";
+import { HTTP_CREATED, HTTP_OK } from "../http-status.js";
 import { badRequest, notFound } from "../problem.js";
 
 export function registerBlobRoutes(server: Server, deps: Deps): void {
@@ -18,7 +18,8 @@ export function registerBlobRoutes(server: Server, deps: Deps): void {
 
       if (!blob) return notFound(toolkit, `no blob "${hash}"`);
 
-      return toolkit.response(blob.bytes).type(blob.contentType ?? "application/octet-stream");
+      // Explicitly 200: hapi answers an empty payload with 204, which a client reads as nothing stored.
+      return toolkit.response(blob.bytes).type(blob.contentType ?? "application/octet-stream").code(HTTP_OK);
     },
   });
 

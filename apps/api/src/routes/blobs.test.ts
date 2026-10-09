@@ -53,6 +53,16 @@ describe("GET /blobs/:hash, with a visit's token", () => {
   });
 });
 
+describe("GET /blobs/:hash, of an empty file", () => {
+  it("answers 200 with no bytes, not 204, so a client reads an empty file rather than a missing one", async () => {
+    const put = await injectJson<PutBlobResult>(server(), { method: "POST", url: "/blobs", headers: authHeaders(), payload: Buffer.alloc(0) });
+
+    const response = await injectJson(server(), { method: "GET", url: `/blobs/${put.result.hash}`, headers: authHeaders() });
+
+    expect({ statusCode: response.statusCode, length: response.rawPayload.length }).toEqual({ statusCode: 200, length: 0 });
+  });
+});
+
 describe("POST /blobs", () => {
   it("stores the bytes and returns their hash", async () => {
     const response = await injectJson<PutBlobResult>(server(), { method: "POST", url: "/blobs", headers: authHeaders(), payload: Buffer.from("hello") });
