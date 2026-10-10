@@ -12,6 +12,7 @@ line:
     - { from: write, to: done, on: success }
 stations:
   walk-note:
+    description: An AI agent writes one short sentence about the topic into note.md. The floor's own sample line, used to walk a run through a fresh install.
     kind: agent
     agent_definition: walk-note
     outcomes: [success, failed]
