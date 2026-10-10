@@ -43,6 +43,36 @@ describe("AssemblyRunStore.report", () => {
     await expect(store().report(visitId, { outcome: "failed" })).rejects.toThrow(/already has a different report/);
   });
 
+  it("carries when the visit opened and no finish while it is open", async () => {
+    const { visitId } = await openEntryVisit();
+    const visit = await store().visit(visitId);
+
+    expect({ opened: visit!.openedAt instanceof Date, finished: visit!.finishedAt }).toEqual({ opened: true, finished: null });
+  });
+
+  it("carries the fixed clock as finishedAt once the visit reported", async () => {
+    const { visitId } = await openEntryVisit();
+    const visit = await reportSuccessThenVisit(visitId, 1);
+
+    expect(visit!.finishedAt).toEqual(FIXED_NOW);
+  });
+
+  it("stamps the next node's start event with the visit whose report caused it", async () => {
+    const { runId, visitId } = await openEntryVisit();
+
+    await store().report(visitId, { outcome: "success" });
+    const start = (await events().listByRun(runId)).find((event) => event.name === "node.retrospective.start");
+
+    expect(start?.payload).toMatchObject({ nodeId: "retrospective", causedBy: { visitId } });
+  });
+
+  it("stamps the run's settling with the end marker's visit, whose report ended it", async () => {
+    const { runId, opened } = await reviewSucceedsIntoRetrospective();
+    const settled = (await events().listByRun(runId)).find((event) => event.name === "internal.run.settled");
+
+    expect(settled?.payload).toMatchObject({ causedBy: { visitId: opened.visit.id } });
+  });
+
   it("posts the next node's start event", async () => {
     const { runId, visitId } = await openEntryVisit();
 

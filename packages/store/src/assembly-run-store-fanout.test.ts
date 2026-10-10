@@ -50,7 +50,7 @@ describe("AssemblyRunStore across a fan-out", () => {
   it("posts one start event per item, each naming its branch", async () => {
     const runId = await runAfterSplit(["a", "b", "c"]);
 
-    expect(await startsOf(runId, "work")).toEqual([
+    expect(await startsOf(runId, "work")).toMatchObject([
       { runId, nodeId: "work", iteration: 1, branch: 0 },
       { runId, nodeId: "work", iteration: 1, branch: 1 },
       { runId, nodeId: "work", iteration: 1, branch: 2 },
@@ -103,7 +103,7 @@ describe("AssemblyRunStore across a fan-out", () => {
       produced: { result: "r1" },
     });
 
-    expect({ before, after: await startsOf(runId, "merge") }).toEqual({
+    expect({ before, after: await startsOf(runId, "merge") }).toMatchObject({
       before: [],
       after: [{ runId, nodeId: "merge", iteration: 1 }],
     });
@@ -170,7 +170,7 @@ describe("AssemblyRunStore across a fan-out", () => {
     expect({
       work: await startsOf(runId, "work"),
       merge: await startsOf(runId, "merge"),
-    }).toEqual({
+    }).toMatchObject({
       work: [],
       merge: [{ runId, nodeId: "merge", iteration: 1 }],
     });

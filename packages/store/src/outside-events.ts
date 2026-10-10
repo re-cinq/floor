@@ -12,6 +12,8 @@ import type { LineBody, Run, Visit } from "./types.js";
 export type RunRef = { runId: string } | { subjectKey: string; repo: string | null };
 
 export interface OutsideEvent {
+  /** The queued event's id, when it came off the queue: the visit it answers is written back onto it. */
+  id?: string;
   name: string;
   payload: Payload;
 }
@@ -68,12 +70,23 @@ export class OutsideEvents {
     for (const given of answers) {
       const { openVisit } = await nodeVisitCount(this.deps.pool, run.id, given.nodeId);
 
-      if (openVisit) reported.push(await this.deps.runs.report(openVisit.id, { outcome: given.outcome }, `event:${event.name}`));
+      if (!openVisit) continue;
+      reported.push(await this.deps.runs.report(openVisit.id, { outcome: given.outcome }, `event:${event.name}`));
+      await this.noteAnswered(event, openVisit.id);
     }
 
     return reported;
   }
+
+  private async noteAnswered(event: OutsideEvent, visitId: string): Promise<void> {
+    if (event.id === undefined) return;
+
+    await this.deps.pool.query(NOTE_ANSWERED, [event.id, visitId]);
+  }
 }
+
+// Written back onto the event so a reader of the queue can tell which visits it answered; the visit itself only says `event:<name>`. A list, since one event can answer several waiting nodes.
+const NOTE_ANSWERED = `update events set payload = payload || jsonb_build_object('answeredVisitIds', coalesce(payload->'answeredVisitIds', '[]'::jsonb) || jsonb_build_array($2::text)) where id = $1`;
 
 // A line never starts on an internal event of its own runs: its own settling would start it again, forever.
 function isStartedBy(line: DefinitionRow<LineBody>, event: OutsideEvent): boolean {
