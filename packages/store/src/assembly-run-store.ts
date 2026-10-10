@@ -266,7 +266,7 @@ export class AssemblyRunStore {
     await this.releaseWorker(client, visit);
     await this.noteMissingCost(client, visit);
     await this.pauseAgentDispatchesWhenOutOfCredit(client, visit, report);
-    await this.advance(client, visit.runId);
+    await this.advance(client, visit.runId, { visitId: visit.id });
 
     return visit;
   }
@@ -306,7 +306,8 @@ export class AssemblyRunStore {
     });
   }
 
-  private async advance(client: PoolClient, runId: string): Promise<void> {
+  /** `causedBy` names the visit whose report moved the walk: every event this enqueues carries it, so a reader can tell which visit raised what. */
+  private async advance(client: PoolClient, runId: string, causedBy: { visitId: string }): Promise<void> {
     // Branches of a fan-out report at the same moment: one at a time, each sees the others' reports, so exactly one of them launches the join.
     await lockRun(client, runId);
     const { run, line, transition } = await this.walkWith(client, runId);
@@ -318,7 +319,7 @@ export class AssemblyRunStore {
       for (const branch of transition.branches) {
         await events.enqueue({
           name: startEventName(requireNode(line, transition.nodeId)),
-          payload: { runId, nodeId: transition.nodeId, iteration: transition.iteration, branch },
+          payload: { runId, nodeId: transition.nodeId, iteration: transition.iteration, branch, causedBy },
           runId,
         });
       }
@@ -329,7 +330,7 @@ export class AssemblyRunStore {
     if (transition.kind === "launch") {
       await events.enqueue({
         name: startEventName(requireNode(line, transition.nodeId)),
-        payload: { runId, nodeId: transition.nodeId, iteration: transition.iteration },
+        payload: { runId, nodeId: transition.nodeId, iteration: transition.iteration, causedBy },
         runId,
       });
 
@@ -341,7 +342,7 @@ export class AssemblyRunStore {
 
       const settled = await settleRun(client, settle);
 
-      await events.enqueue({ name: "internal.run.settled", payload: aboutRun(settled), runId });
+      await events.enqueue({ name: "internal.run.settled", payload: { ...aboutRun(settled), causedBy }, runId });
     }
   }
 

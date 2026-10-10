@@ -478,6 +478,14 @@ create index events_by_run on events (run_id, id);
 | `schedule.<name>.tick` | the schedule | the floor |
 | `github.*`, `manual.*`, anything else | outside | the floor |
 
+Which visit an event came from or answered. `station_run.dispatch`,
+`station_run.abort`, `station_run.reported` and `internal.cost.missing` carry
+`payload.visitId`. Every event a visit's report enqueues (the next nodes' start
+events, a fan-out's branch starts, `internal.run.settled`) carries
+`payload.causedBy: { visitId }`. An outside event that answers a waiting node
+is written back with `payload.answeredVisitId`. A visit's own start event
+carries `nodeId` and `iteration`, which match it to the visit it opened.
+
 The floor's loop runs on the instance holding the single-instance lease, a
 Postgres advisory lock on a dedicated session.
 

@@ -41,6 +41,8 @@ export interface StationRunRow {
   requested_by: string | null;
   branch: number | null;
   deadline: Date | null;
+  opened_at: Date;
+  finished_at: Date | null;
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -73,6 +75,8 @@ export function toVisit(row: StationRunRow): Visit {
     requestedBy: row.requested_by,
     branch: row.branch,
     deadline: row.deadline,
+    openedAt: row.opened_at,
+    finishedAt: row.finished_at,
     resumedFrom: row.input.resumedFrom,
     agentSettings: row.input.agentSettings,
   };

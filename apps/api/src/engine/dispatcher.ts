@@ -155,7 +155,7 @@ function outsideEvent(event: FloorEvent): OutsideEvent {
   const payload = event.payload;
   const isRecord = typeof payload === "object" && payload !== null && !Array.isArray(payload);
 
-  return { name: event.name, payload: isRecord ? (payload as Record<string, unknown>) : {} };
+  return { id: event.id, name: event.name, payload: isRecord ? (payload as Record<string, unknown>) : {} };
 }
 
 function scheduledForOf(event: FloorEvent): Date {

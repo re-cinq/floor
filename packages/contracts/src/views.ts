@@ -28,6 +28,10 @@ export interface VisitFields<Time> {
   /** Which item of a fan-out this visit is the body for; null on an ordinary visit. */
   branch: number | null;
   deadline: Time | null;
+  /** When the visit opened: the row's creation. */
+  openedAt: Time;
+  /** When its report landed, or it was cancelled; null while it is open. */
+  finishedAt: Time | null;
   /** The previous visit's sessionRef, for an executor restoring a conversation. Beyond the public Brief a station author sees: this is the executor's own lookup, resolved once so it is not repeated. */
   resumedFrom: string | null;
   /** The resolved agent settings bundle, for an executor building the CR. */

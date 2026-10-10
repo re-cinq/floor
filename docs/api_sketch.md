@@ -210,7 +210,7 @@ arrives as an event: `station_run.reported`, posted to `/events` with the
 visit token.
 
 GET    /station-runs                     // run required; node, station, open and since (an opened_at floor) narrow it
-GET    /station-runs/:id                 // the visit + outcome + worker + deadline, and `cost`: what its agent counted and
+GET    /station-runs/:id                 // the visit + outcome + worker + deadline + openedAt/finishedAt, and `cost`: what its agent counted and
                                          // what that cost, model by model; null for a visit nothing was counted for
 GET    /station-runs/:id/brief           // for the executor: the visit's `runId`, `lineId` and `nodeId`, each need with its kind, path
                                          // and access, the resolved settings, and a freshly minted visit token. 409 once the visit is done

@@ -3,7 +3,7 @@ import { setupStoreFixture } from "./assembly-run-store.fixtures.js";
 import { OutsideEvents } from "./outside-events.js";
 import type { LineBody, StationBody } from "./types.js";
 
-const { pool, store, definitions } = setupStoreFixture();
+const { pool, store, definitions, events } = setupStoreFixture();
 
 const OPENED = "github.pull_request.opened";
 const CLOSED = "github.pull_request.closed";
@@ -175,6 +175,16 @@ describe("OutsideEvents.answer", () => {
     const settled = await store().get(run.id);
 
     expect(settled!.outcome).toBe("success");
+  });
+
+  it("stamps the answering event with the visit it answered", async () => {
+    const run = await waitingOnMerge();
+    const posted = await events().enqueue({ name: CLOSED, payload: { merged: true }, runId: run.id });
+
+    const [answered] = await outside().answer(run, { id: posted.id, name: CLOSED, payload: { merged: true } });
+    const stamped = await events().get(posted.id);
+
+    expect(stamped?.payload).toEqual({ merged: true, answeredVisitId: answered.id });
   });
 
   it("writes nothing when the payload does not satisfy the node's when", async () => {

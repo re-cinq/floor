@@ -137,6 +137,14 @@ describe("GET /station-runs/{id}", () => {
     return injectJson<{ id: string; cost: unknown }>(server(), { method: "GET", url: `/station-runs/${visitId}`, headers: authHeaders() });
   }
 
+  it("answers openedAt as an ISO string and finishedAt null for an open visit", async () => {
+    const visitId = await openVisit();
+
+    const response = await injectJson<{ openedAt: string; finishedAt: string | null }>(server(), { method: "GET", url: `/station-runs/${visitId}`, headers: authHeaders() });
+
+    expect({ opened: Number.isNaN(Date.parse(response.result.openedAt)), finished: response.result.finishedAt }).toEqual({ opened: false, finished: null });
+  });
+
   it("says what the visit's agent counted and what it cost", async () => {
     const visitId = await openVisit();
 
