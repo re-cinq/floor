@@ -98,6 +98,8 @@ export interface ProduceSpec {
 
 export interface StationBody {
   kind: StationKind;
+  /** What the station does, in a sentence or two a person reads where the line is drawn. The floor keeps it and acts on nothing in it. */
+  description?: string;
   /** Agent kind only. */
   agentDefinition?: string;
   conversation?: "new" | "continue";
