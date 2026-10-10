@@ -44,7 +44,18 @@ export class DefinitionsStore {
       [kind, id, hash, JSON.stringify(body), createdBy ?? null],
     );
 
+    await this.refreshProse(kind, id, hash, body);
+
     return { hash, created: rows.length > 0 };
+  }
+
+  // The hash leaves prose out, so a reworded description is the same version: it is not a new one, but the words the floor hands back are the newest it was given.
+  private async refreshProse(kind: DefinitionKind, id: string, hash: string, body: unknown): Promise<void> {
+    await this.deps.connection.query(
+      `update definitions set body = $4::jsonb
+       where kind = $1 and id = $2 and hash = $3 and body is distinct from $4::jsonb`,
+      [kind, id, hash, JSON.stringify(body)],
+    );
   }
 
   async latest<Body>(kind: DefinitionKind, id: string): Promise<DefinitionRow<Body> | null> {

@@ -57,6 +57,18 @@ describe("DefinitionsStore.put", () => {
     expect(second.hash).not.toBe(first.hash);
   });
 
+  it("stores the description Reviews the PR on a body that differs only in it, keeping its hash and reporting it not created", async () => {
+    const first = await store().put("station", "review", { kind: "agent" });
+    const reworded = await store().put("station", "review", { kind: "agent", description: "Reviews the PR" });
+    const latest = await store().latest<{ description?: string }>("station", "review");
+
+    expect({ hash: reworded.hash, created: reworded.created, description: latest?.body.description }).toEqual({
+      hash: first.hash,
+      created: false,
+      description: "Reviews the PR",
+    });
+  });
+
   it("keeps kinds separate, so a line and a station may share an id", async () => {
     const line = await store().put("line", "review", { entry: "a" });
     const station = await store().put("station", "review", { kind: "agent" });
