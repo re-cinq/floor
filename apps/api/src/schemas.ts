@@ -54,6 +54,7 @@ const produceSpec = z
 
 export const stationBodySchema = z.object({
   kind: z.enum(["agent", "service", "human"]),
+  description: z.string().optional(),
   agentDefinition: z.string().optional(),
   conversation: z.enum(["new", "continue"]).optional(),
   conversationKey: z.string().optional(),

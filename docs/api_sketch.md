@@ -243,7 +243,9 @@ are, in `config.skills_source`.
 A station is its **kind**, what it **needs** and **produces**, the
 **outcomes** it can report, and for the agent kind a reference to an
 **agent definition**. Kinds: `agent`, `service`, `human`. A node that names
-no station is a marker.
+no station is a marker. An optional **description** says what the station does,
+in a sentence or two for the people who read the line drawn; the floor keeps it
+and acts on nothing in it.
 
 GET    /stations                         // filter on kind, name
 GET    /stations/:id                     // latest version

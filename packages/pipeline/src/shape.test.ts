@@ -145,6 +145,14 @@ describe("fileOf", () => {
     expect(Object.keys(written.line!)).toEqual(["id", "entry", "exit", "fail", "args", "files", "nodes", "edges"]);
   });
 
+  it("writes a station's description right after its kind, whatever order the floor gave the fields in", () => {
+    const [station] = codeReview().stations;
+    const alphabetical = Object.fromEntries(Object.entries({ ...station!.body, description: "Reviews the pull request" }).sort());
+    const written = fileOf({ ...codeReview(), stations: [{ id: "code-review", body: alphabetical }] });
+
+    expect(Object.keys(written.stations!["code-review"]!).slice(0, 3)).toEqual(["kind", "description", "agent_definition"]);
+  });
+
   it("writes an agent's prompt last, after the model it is for", () => {
     const written = fileOf(codeReview());
     const { reviewer } = written.agent_definitions!;

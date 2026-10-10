@@ -61,6 +61,16 @@ describe("GET /stations/:id", () => {
     expect(body.kind).toBe("agent");
   });
 
+  it("keeps the description Opens the spec PR a station was put with", async () => {
+    await injectJson(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: { ...STATION_BODY, description: "Opens the spec PR" } });
+
+    const response = await injectJson<{ body: { description?: string } }>(server(), { method: "GET", url: "/stations/review", headers: authHeaders() });
+
+    const body = response.result.body;
+
+    expect(body.description).toBe("Opens the spec PR");
+  });
+
   it("returns 404 for an id never put", async () => {
     const response = await injectJson(server(), { method: "GET", url: "/stations/missing", headers: authHeaders() });
 
