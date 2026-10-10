@@ -85,8 +85,8 @@ export class OutsideEvents {
   }
 }
 
-// Written back onto the event so a reader of the queue can tell which visit it answered; the visit itself only says `event:<name>`.
-const NOTE_ANSWERED = `update events set payload = payload || jsonb_build_object('answeredVisitId', $2::text) where id = $1`;
+// Written back onto the event so a reader of the queue can tell which visits it answered; the visit itself only says `event:<name>`. A list, since one event can answer several waiting nodes.
+const NOTE_ANSWERED = `update events set payload = payload || jsonb_build_object('answeredVisitIds', coalesce(payload->'answeredVisitIds', '[]'::jsonb) || jsonb_build_array($2::text)) where id = $1`;
 
 // A line never starts on an internal event of its own runs: its own settling would start it again, forever.
 function isStartedBy(line: DefinitionRow<LineBody>, event: OutsideEvent): boolean {

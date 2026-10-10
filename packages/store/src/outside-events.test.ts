@@ -31,6 +31,15 @@ const NOTIFY_LINE: LineBody = {
   edges: [{ from: "notify", to: "done", on: "always" }],
 };
 
+const TWO_WAITERS_LINE: LineBody = {
+  ...MERGE_LINE,
+  nodes: [MERGE_LINE.nodes[0]!, { id: "noted", station: "pr-merged", reports: [{ on: CLOSED, outcome: "success" }] }, { id: "done" }],
+  edges: [
+    { from: "merged", to: "noted", on: "success" },
+    { from: "noted", to: "done", on: "success" },
+  ],
+};
+
 const HUMAN_STATION: StationBody = { kind: "human", outcomes: ["success"], needs: [], produces: [] };
 
 function outside(): OutsideEvents {
@@ -184,7 +193,22 @@ describe("OutsideEvents.answer", () => {
     const [answered] = await outside().answer(run, { id: posted.id, name: CLOSED, payload: { merged: true } });
     const stamped = await events().get(posted.id);
 
-    expect(stamped?.payload).toEqual({ merged: true, answeredVisitId: answered.id });
+    expect(stamped?.payload).toEqual({ merged: true, answeredVisitIds: [answered.id] });
+  });
+
+  it("stamps the answering event with both visits when it answers merged and noted", async () => {
+    await seed();
+    await definitions().put("line", "merge", TWO_WAITERS_LINE);
+    const [started] = await outside().startLines({ name: OPENED, payload: PR_OPENED });
+    const run = started!.run;
+    await store().openVisit(run.id, "merged", 1);
+    await store().openVisit(run.id, "noted", 1);
+    const posted = await events().enqueue({ name: CLOSED, payload: { merged: true }, runId: run.id });
+
+    const answered = await outside().answer(run, { id: posted.id, name: CLOSED, payload: { merged: true } });
+    const stamped = await events().get(posted.id);
+
+    expect(stamped?.payload).toEqual({ merged: true, answeredVisitIds: answered.map((visit) => visit.id) });
   });
 
   it("writes nothing when the payload does not satisfy the node's when", async () => {

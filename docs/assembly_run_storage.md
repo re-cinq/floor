@@ -483,7 +483,7 @@ Which visit an event came from or answered. `station_run.dispatch`,
 `payload.visitId`. Every event a visit's report enqueues (the next nodes' start
 events, a fan-out's branch starts, `internal.run.settled`) carries
 `payload.causedBy: { visitId }`. An outside event that answers a waiting node
-is written back with `payload.answeredVisitId`. A visit's own start event
+is written back with `payload.answeredVisitIds` (every visit it answered). A visit's own start event
 carries `nodeId` and `iteration`, which match it to the visit it opened.
 
 The floor's loop runs on the instance holding the single-instance lease, a
