@@ -278,10 +278,11 @@ and the ones any client uses, and the floor remembers.
 
 ## Costs - collected by the floor for every visit
 
-GET    /costs                            // service token only. filter required: run, repo, line, station, since, until; group required: day | line | station | model | run
+GET    /costs                            // service token only. filter required: run, repo, line, station, since, until; group required: day | line | station | model | run | billing_mode
                                          // returns cost, tokens in and out, visit count, visits with missing cost, and the models
                                          // that had no price. `model` is the model that did the work: the one an agent was given,
-                                         // and any it called on the side
+                                         // and any it called on the side. `billing_mode` is the credential the agent ran on, read
+                                         // from its init line: api_key, subscription, or unknown (Gemini says nothing of it)
 
 ## Blobs - content-addressed bytes behind every `file` item
 

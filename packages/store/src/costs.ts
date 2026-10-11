@@ -12,8 +12,8 @@ export interface CostsFilter {
   until?: Date;
 }
 
-/** `model` is the model that did the work: the one an agent was given, and any it called on the side, each with what it read, wrote and cost. */
-export type CostsGroupBy = "day" | "line" | "station" | "model" | "run";
+/** `model` is the model that did the work: the one an agent was given, and any it called on the side, each with what it read, wrote and cost. `billing_mode` is the credential the agent ran on: `api_key`, `subscription`, or `unknown` when its transcript did not say. */
+export type CostsGroupBy = "day" | "line" | "station" | "model" | "run" | "billing_mode";
 
 export interface CostsRow {
   key: string | null;
@@ -60,6 +60,7 @@ const GROUP_KEY_EXPR: Record<CostsGroupBy, string> = {
   station: "d.id",
   model: "coalesce(lt.model, sr.input->'agentSettings'->>'model')",
   run: "ar.id::text",
+  billing_mode: "coalesce(bm.billing_mode, 'unknown')",
 };
 
 function whereClauseFor(filter: CostsFilter): { where: string; values: unknown[] } {
@@ -121,6 +122,17 @@ const BY_MODEL = `
   )
 `;
 
+// Claude Code says on its init line which credential it found: `none` is the subscription token, anything else a key. Gemini's says nothing, and its visits stay unknown.
+const BILLING = `
+  billing as (
+    select distinct on (station_run_id) station_run_id,
+      case when body->>'apiKeySource' = 'none' then 'subscription' else 'api_key' end as billing_mode
+    from station_run_records
+    where kind = 'turn' and body->>'type' = 'system' and body->>'subtype' = 'init' and body ? 'apiKeySource'
+    order by station_run_id, seq
+  )
+`;
+
 const UNPRICED = `
   unpriced as (
     select station_run_id, named.model
@@ -136,13 +148,14 @@ const MISSING_COST = "agent_definition_hash is not null and report is not null a
 
 function summarySql(where: string, groupBy: CostsGroupBy): string {
   return `
-    with ${groupBy === "model" ? BY_MODEL : BY_VISIT}, ${UNPRICED},
+    with ${groupBy === "model" ? BY_MODEL : BY_VISIT}, ${UNPRICED}, ${BILLING},
     visits as (
       select ${GROUP_KEY_EXPR[groupBy]} as key, sr.station_run_id, sr.agent_definition_hash, sr.report, lt.cost_usd, lt.tokens_in, lt.tokens_out
       from station_runs sr
       join assembly_runs ar on ar.id = sr.assembly_run_id
       left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
       left join totals lt on lt.station_run_id = sr.station_run_id
+      ${groupBy === "billing_mode" ? "left join billing bm on bm.station_run_id = sr.station_run_id" : ""}
       ${where}
     )
     select
