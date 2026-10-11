@@ -6,7 +6,7 @@ import { badRequest } from "../problem.js";
 import { dateOf } from "./date-of.js";
 import { isUuid } from "./own-visit.js";
 
-const GROUP_BY_VALUES: CostsGroupBy[] = ["day", "line", "station", "model", "run"];
+const GROUP_BY_VALUES: CostsGroupBy[] = ["day", "line", "station", "model", "run", "billing_mode"];
 
 export function registerCostsRoutes(server: Server, deps: Deps): void {
   server.route({ method: "GET", path: "/costs", handler: (request, toolkit) => summary(deps, request, toolkit) });
@@ -20,7 +20,7 @@ async function summary(deps: Deps, request: Request, toolkit: ResponseToolkit) {
   if (!hasFilter(filter)) return badRequest(toolkit, "at least one filter is required: run, repo, line, station, since, or until");
   const groupBy = groupByOf(query.group);
 
-  if (!groupBy) return badRequest(toolkit, "group is required: day, line, station, model, or run");
+  if (!groupBy) return badRequest(toolkit, "group is required: day, line, station, model, run, or billing_mode");
 
   return { items: await deps.costs.summary(filter, groupBy) };
 }

@@ -170,6 +170,26 @@ describe("CostsStore.summary", () => {
     ]);
   });
 
+  it("groups by billing_mode: api_key, subscription, and unknown where the agent said nothing of its credential", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const keyed = await openAgentVisit("code-review", "r", DAY_1);
+    const subscribed = await openAgentVisit("code-review", "r", DAY_1);
+
+    await records().append(keyed, [{ kind: "turn", body: { type: "system", subtype: "init", apiKeySource: "ANTHROPIC_API_KEY" }, occurredAt: DAY_1 }]);
+    await records().append(subscribed, [{ kind: "turn", body: { type: "system", subtype: "init", apiKeySource: "none" }, occurredAt: DAY_1 }]);
+    await recordCost(keyed, 1, DAY_1);
+    await recordCost(subscribed, 2, DAY_1);
+    await recordCost(await openAgentVisit("code-review", "r", DAY_1), 4, DAY_1);
+
+    const rows = await costs().summary({ repo: "r" }, "billing_mode");
+
+    expect(rows.map((row) => ({ key: row.key, costUsd: row.costUsd }))).toEqual([
+      { key: "api_key", costUsd: 1 },
+      { key: "subscription", costUsd: 2 },
+      { key: "unknown", costUsd: 4 },
+    ]);
+  });
+
   it("sums tokens in and out from usage", async () => {
     await seedAgentLine("code-review", "claude-x");
     await recordCost(await openAgentVisit("code-review", "r", DAY_1), 1, DAY_1, { tokensIn: 100, tokensOut: 50 });

@@ -12,4 +12,4 @@ export type EventFilter = OneOf<{ since: string; name: string; run: string; stat
 
 export type CostsFilter = OneOf<{ run: string; repo: string; line: string; station: string; since: string; until: string }>;
 
-export type CostsGroupBy = "day" | "line" | "station" | "model" | "run";
+export type CostsGroupBy = "day" | "line" | "station" | "model" | "run" | "billing_mode";
