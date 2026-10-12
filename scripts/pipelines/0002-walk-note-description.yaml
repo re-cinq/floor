@@ -1,15 +1,18 @@
-# The walk-note line again, now with a description for its station: 0001 has run, so the change is this new file.
+# The walk-note line again, now with a description for its station and an edge for its failed outcome: 0001 has run, so the change is this new file.
 line:
   id: walk-note
   entry: write
   exit: done
+  fail: failed
   args:
     topic: { kind: value, subject: true }
   nodes:
     - { id: write, station: walk-note }
     - { id: done }
+    - { id: failed }
   edges:
     - { from: write, to: done, on: success }
+    - { from: write, to: failed, on: failed }
 stations:
   walk-note:
     description: An AI agent writes one short sentence about the topic into note.md. The floor's own sample line, used to walk a run through a fresh install.
