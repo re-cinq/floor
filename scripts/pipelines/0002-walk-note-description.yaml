@@ -1,0 +1,32 @@
+# The walk-note line again, now with a description for its station and an edge for its failed outcome: 0001 has run, so the change is this new file.
+line:
+  id: walk-note
+  entry: write
+  exit: done
+  fail: failed
+  args:
+    topic: { kind: value, subject: true }
+  nodes:
+    - { id: write, station: walk-note }
+    - { id: done }
+    - { id: failed }
+  edges:
+    - { from: write, to: done, on: success }
+    - { from: write, to: failed, on: failed }
+stations:
+  walk-note:
+    description: An AI agent writes one short sentence about the topic into note.md. The floor's own sample line, used to walk a run through a fresh install.
+    kind: agent
+    agent_definition: walk-note
+    outcomes: [success, failed]
+    needs: [{ name: topic, kind: value }]
+    produces: [{ name: note, kind: file, path: note.md }]
+agent_definitions:
+  walk-note:
+    settings:
+      model: claude-sonnet-4-6
+      image: node:22-bookworm
+      timeout_minutes: 8
+      config: { max_turns: 10 }
+      prompt: |
+        Write exactly one short sentence about {topic} into the file {note_path}. Do nothing else. When the file is written, end your reply with this line on its own: LORE_NODE_RESULT: success
