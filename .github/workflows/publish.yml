@@ -112,6 +112,8 @@ jobs:
         with:
           context: .
           push: true
+          # One index per tag, resolved per architecture at pull time.
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: FLOOR_BUILD_SHA=${{ github.sha }}
