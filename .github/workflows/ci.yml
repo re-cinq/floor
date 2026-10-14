@@ -134,17 +134,30 @@ jobs:
 
   docker:
     # The image is what ships; a Dockerfile that stopped building should fail the PR
-    # that broke it, not the push to main that tries to publish it.
-    name: docker build
+    # that broke it, not the push to main that tries to publish it. Once per platform
+    # the push publishes, and the arm64 one is run under QEMU by the check below.
+    name: docker build ${{ matrix.platform }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
     steps:
       - uses: actions/checkout@v5
+
+      # The Dockerfile builds node_modules on the builder's platform and ships it to every
+      # target, which is only right while no runtime dependency carries a native binding.
+      - name: No runtime dependency is platform-specific
+        run: node scripts/check-lockfile-portable.mjs
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@v3
       - name: Build the image
         uses: docker/build-push-action@v7
         with:
           context: .
           push: false
+          platforms: ${{ matrix.platform }}
           # Loaded into the daemon, so the check below can run it.
           load: true
           tags: floor:ci

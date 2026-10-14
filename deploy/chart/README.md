@@ -197,7 +197,9 @@ from the repo root's `Dockerfile` and push it yourself, then point `version` at 
 
 ## Continuous delivery
 
-Three workflows, and the image is always `ghcr.io/re-cinq/floor`.
+Three workflows, and the image is always `ghcr.io/re-cinq/floor`. Every tag is one index of
+`linux/amd64` and `linux/arm64`, which a pull resolves to the node's own architecture; nothing
+is emulated to build it, since the compile and the runtime dependencies are the same on both.
 
 | what happens | the workflow | the image's tags | deployed as |
 |---|---|---|---|
@@ -245,7 +247,8 @@ The deploy runs `helm upgrade --install --wait`, so a release that does not beco
 run rather than reporting success, and the migration Job is waited on with everything else.
 
 `.github/workflows/ci.yml` gates pull requests: one test job a workspace so a red suite cannot mask
-the others, then typecheck, lint, `scripts/check-chart.sh`, and a Docker build. Every job builds
+the others, then typecheck, lint, `scripts/check-chart.sh`, and a Docker build and image check for
+each of `amd64` and `arm64`. Every job builds
 before it tests — cross-package suites import a workspace through its `dist`, so a run without a
 build tests the last build rather than the branch.
 

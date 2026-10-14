@@ -11,17 +11,24 @@
 # then nine, and the cluster agent crash-looped in a real cluster on a package the image did
 # not hold. The workspaces are a fact npm already keeps, and `scripts/check-image.sh` asks the
 # built image whether it can resolve each of them.
+#
+# Built for linux/amd64 and linux/arm64, with nothing emulated. The compile is `tsc` and no
+# runtime dependency carries a native binding (scripts/check-lockfile-portable.mjs holds that
+# true), so the stages that install and build run on the builder's own platform and only the
+# runtime stage, which copies, is per target. The published tag is one index of both:
+#
+#   docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/re-cinq/floor:<tag> --push .
 
 # Every workspace's package.json and nothing else, so `npm ci` below is a layer that changes
 # only when a manifest does, without this file listing which manifests exist.
-FROM node:22-slim AS manifests
+FROM --platform=$BUILDPLATFORM node:22-slim AS manifests
 WORKDIR /src
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages packages
 COPY apps apps
 RUN find packages apps -mindepth 2 -type f ! -name package.json -delete
 
-FROM node:22-slim AS build
+FROM --platform=$BUILDPLATFORM node:22-slim AS build
 WORKDIR /app
 
 COPY --from=manifests /src/ ./
@@ -31,7 +38,7 @@ COPY packages packages
 COPY apps apps
 RUN npm run build
 
-FROM node:22-slim AS prod-deps
+FROM --platform=$BUILDPLATFORM node:22-slim AS prod-deps
 WORKDIR /app
 
 COPY --from=manifests /src/ ./
