@@ -6,6 +6,18 @@ points its apps at one.
 
 ## Install
 
+A release publishes this chart at `oci://ghcr.io/re-cinq/charts/floor`, at the release's version,
+running the image of the same version:
+
+```
+helm install floor oci://ghcr.io/re-cinq/charts/floor --version 0.2.0 \
+  --set api.baseUrl=https://floor.example.com \
+  --set api.existingSecret=floor-api \
+  --set postgres.existingSecret=floor-postgres --set postgres.secretKey=connectionString
+```
+
+From a checkout, the chart carries no `appVersion`, so `version` names the image tag:
+
 ```
 helm install floor deploy/chart \
   --set version=<image tag> \
@@ -13,6 +25,8 @@ helm install floor deploy/chart \
   --set api.existingSecret=floor-api \
   --set postgres.existingSecret=floor-postgres --set postgres.secretKey=connectionString
 ```
+
+The operator's guide is [docs/install.md](../../docs/install.md).
 
 `api.existingSecret` must hold two keys: `serviceToken` and `visitTokenSecret`. The cluster agent
 authenticates to the api with the same `serviceToken` (`FLOOR_CLUSTER_AGENT_TOKEN`), so this
@@ -24,7 +38,8 @@ former.
 See `values.yaml` for the full, commented list. The load-bearing ones:
 
 - `version` — the image tag for both apps. One value, never one per app: they are built and
-  released together.
+  released together. Empty, the chart's `appVersion` is the tag, which a published chart carries
+  and a checkout does not.
 - `image.repository`, `imagePullSecrets` — shared by every Deployment and Job this chart renders,
   including the subsystem controller's.
 - `api.enabled` / `clusterAgent.enabled` — both default `true`. Turn one off to deploy only the
@@ -61,11 +76,11 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
 namespace of its own, and walks a run through it. What it has to do beside `helm install` is what
 an operator has to do:
 
-- **Bind the pull secret to the namespace's `default` service account.** `imagePullSecrets`
-  reaches the pods this chart renders. An agent's pod is rendered by the subsystem's controller,
-  under `default`, and the subsystem's images are private:
+- **Bind the pull secret to the namespace's `default` service account, when the images need
+  one.** `imagePullSecrets` reaches the pods this chart renders. An agent's pod is rendered by the
+  subsystem's controller, under `default`. The published images are all public, so this is for a
+  mirror of them:
   `kubectl -n <namespace> patch serviceaccount default -p '{"imagePullSecrets":[{"name":"<secret>"}]}'`.
-- **Label the namespace** `agents.re-cinq.com/system=true`, as the subsystem expects.
 - **Put the model's credential in `agent-secrets`**, under the key `clusterAgent.modelSecretKeys`
   names. With that value empty the cluster agent looks for `ANTHROPIC_API_KEY`; a Claude OAuth
   token under `CLAUDE_CODE_OAUTH_TOKEN` needs `claude=CLAUDE_CODE_OAUTH_TOKEN`. A pod whose key
@@ -192,8 +207,9 @@ always lint (and install) with a complete values file.
 
 ## What this chart does not do
 
-Install anything into a cluster, push an image, or touch `apps/` or `packages/` — build the image
-from the repo root's `Dockerfile` and push it yourself, then point `version` at that tag.
+Install anything into a cluster, push an image, or touch `apps/` or `packages/`. A release
+publishes the image and this chart together; for anything else, build the image from the repo
+root's `Dockerfile` and push it yourself, then point `version` at that tag.
 
 ## Continuous delivery
 
@@ -204,7 +220,7 @@ is emulated to build it, since the compile and the runtime dependencies are the 
 | what happens | the workflow | the image's tags | deployed as |
 |---|---|---|---|
 | a commit to `main` that touches the code, the Dockerfile or the chart | `build.yml` | its short SHA, and `latest` | its short SHA |
-| a GitHub Release `v1.2.3` is published | `publish.yml` | `1.2.3` and `1.2` | `1.2.3` |
+| a tag `v1.2.3` is pushed | `publish.yml` | `1.2.3` and `1.2`; the chart `1.2.3` to `oci://ghcr.io/re-cinq/charts/floor` | `1.2.3` |
 | `build.yml` run by hand on a branch | `build.yml` | the commit's short SHA | not deployed |
 
 - **Both deploy through `deploy.yml`**, which installs one version with this chart.

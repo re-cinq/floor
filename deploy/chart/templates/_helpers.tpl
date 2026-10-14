@@ -44,10 +44,16 @@ app.kubernetes.io/component: cluster-agent
 {{- end -}}
 
 {{/*
-The one image both apps ship from, tagged by the one shared .Values.version.
+The one image both apps ship from, tagged by the one shared `version`. A published chart carries
+the release's version as its appVersion, so an install of one names no tag; a checkout carries
+none and must.
 */}}
+{{- define "floor.imageTag" -}}
+{{ .Values.version | default .Chart.AppVersion }}
+{{- end -}}
+
 {{- define "floor.image" -}}
-{{ .Values.image.repository }}:{{ .Values.version }}
+{{ .Values.image.repository }}:{{ include "floor.imageTag" . }}
 {{- end -}}
 
 {{- define "floor.imagePullSecrets" -}}

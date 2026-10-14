@@ -10,6 +10,9 @@ underneath it.
 
 [Tutorial](tutorial.md): install floor with Helm, register a cluster, import a line and run it.
 
+- [Install](install.md): a release into a cluster with Helm; upgrade, a second cluster, uninstall
+- [Use](using.md): the CLI, the client, a service station of your own, and the HTTP API
+
 ## The entities
 
 1. [Station](entities/station.md): one unit of work, one function, three kinds
@@ -22,7 +25,7 @@ underneath it.
 - [API sketch](api_sketch.md): every endpoint, the conventions, the lore compatibility table and the converter
 - [Assembly run storage](assembly_run_storage.md): the model, routing, dispatch, events, costs, tables, and the mapping from lore's columns
 - [Development loop](dev_loop.md): minikube, hot reload, one command
-- [Releasing](releasing.md): a GitHub Release publishes the image and the four npm packages, and deploys
+- [Releasing](releasing.md): a tag publishes the image, the chart and the four npm packages, and deploys
 
 ## What is built
 

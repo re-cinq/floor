@@ -1,14 +1,15 @@
 # Releasing
 
-A release is a version of five things, published together: the image, the wire contracts, the
-client, the station SDK and the pipeline tool. Pushing a `vX.Y.Z` tag is the whole act.
+A release is a version of six things, published together: the image, the chart, the wire
+contracts, the client, the station SDK and the pipeline tool. Pushing a `vX.Y.Z` tag is the whole act.
 No commit bumps a version, and nothing waits for a hand afterwards.
 
 ## What a release publishes
 
 | | where | as |
 |---|---|---|
-| the image | `ghcr.io/re-cinq/floor` | `1.2.3` and `1.2` |
+| the image | `ghcr.io/re-cinq/floor`, for `linux/amd64` and `linux/arm64` | `1.2.3` and `1.2` |
+| the chart | `oci://ghcr.io/re-cinq/charts/floor` | `1.2.3`, running the image `1.2.3` |
 | the wire contracts | npm, `@re-cinq/floor-contracts` | `1.2.3` |
 | the client | npm, `@re-cinq/floor-client` | `1.2.3` |
 | the station SDK | npm, `@re-cinq/floor-station` | `1.2.3` |
@@ -30,8 +31,8 @@ That starts `.github/workflows/publish.yml`:
    `main`. Any other tag is refused.
 2. **The gates run again**, against the tagged commit: every job of `ci.yml`. A tag points at
    whatever its author chose, so a green `main` says nothing about it.
-3. **The image is built and pushed**, and **the packages are published to npm**, installable
-   at once.
+3. **The image is built and pushed**, **the chart is packaged and pushed**, and **the packages
+   are published to npm**, installable at once.
 4. **The image is deployed**, once the repository names a cluster.
 5. **The GitHub Release is written**, with generated notes, last: it never names a version
    that failed to publish.
@@ -43,7 +44,9 @@ commit must be on `main`, and `main` takes a pull request.
 
 The four packages carry a placeholder version on `main`. `scripts/release-version.sh v1.2.3`
 stamps `1.2.3` into them, and into the ranges they ask of one another, just before they are built, in the workflow's checkout, and commits
-nothing. `scripts/check-pack-list.mjs` then reads what each tarball would hold: the entry point
+nothing. The chart carries a placeholder too, and no `appVersion`: `helm package --version 1.2.3
+--app-version 1.2.3` stamps both, and the `appVersion` is the image tag an install of the chart runs
+when it names none. A checkout has no `appVersion`, so an install from one must set `version`. `scripts/check-pack-list.mjs` then reads what each tarball would hold: the entry point
 and the license are there, and no test and no source map is.
 
 ## Before the first release, once, by hand

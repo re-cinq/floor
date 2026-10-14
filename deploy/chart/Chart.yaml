@@ -2,5 +2,7 @@ apiVersion: v2
 name: floor
 description: The floor's own API and cluster agent, one chart for both. Postgres is external and never deployed by this chart.
 type: application
+# Placeholders. A release stamps the tag's version into both: publish.yml packages the chart with
+# --version and --app-version, so no commit bumps them. appVersion is the image tag the chart runs
+# when `version` is not set, which is why a checkout, carrying none, requires `version`.
 version: 0.1.0
-appVersion: "0.1.0"

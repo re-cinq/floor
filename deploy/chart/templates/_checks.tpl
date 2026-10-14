@@ -4,8 +4,8 @@ lint/template/install/upgrade regardless of which components are enabled.
 */}}
 {{- define "floor.checks" -}}
 
-{{- if not .Values.version -}}
-{{ fail "version is required: the image tag both apps run" }}
+{{- if not (include "floor.imageTag" .) -}}
+{{ fail "version is required: the image tag both apps run. A chart published by a release carries it; one from a checkout does not" }}
 {{- end -}}
 
 {{- if not .Values.postgres.existingSecret -}}
