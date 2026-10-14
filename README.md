@@ -128,7 +128,7 @@ it `needs` and what it `produces`; floor moves the bytes and nothing else crosse
 | [`packages/pipeline`](packages/pipeline/README.md) | A whole pipeline as one file, exported from or imported into a floor over HTTP. |
 | [`packages/lore-converter`](packages/lore-converter/README.md) | Reads a lore checkout and writes the definitions this floor runs in its place. |
 | [`deploy/chart`](deploy/chart/README.md) | One Helm chart, one image, both apps, toggled. |
-| [`.github/workflows`](.github/workflows) | CI on every pull request; build, push and deploy to GKE on `main`. |
+| [`.github/workflows`](.github/workflows) | CI on every pull request; build, push and deploy to GKE on `main`; a release on a `v*` tag. |
 
 **GitHub is not in this repository.** lore owns it: lore posts GitHub's events to `/events`, runs a
 service station for every GitHub action an assembly line takes, and answers floor's git-credential
@@ -139,7 +139,13 @@ Floor's own GitHub app was deleted — see [docs/decisions.md](docs/decisions.md
 
 **New here? [Follow the tutorial](docs/tutorial.md)** — install floor with Helm, register a cluster
 to run agents in, import an assembly line, and start an assembly run of it. Five steps, each one
-ending in something you can check.
+ending in something you can check. To run one, [docs/install.md](docs/install.md) installs,
+upgrades and uninstalls a release, and [docs/using.md](docs/using.md) is the CLI, the client, the
+station SDK and the HTTP API, from the published packages.
+
+Every [release](https://github.com/re-cinq/floor/releases) publishes the chart at
+`oci://ghcr.io/re-cinq/charts/floor`, the image at `ghcr.io/re-cinq/floor` for `linux/amd64` and
+`linux/arm64`, and four npm packages, all under one version.
 
 To work on floor itself:
 

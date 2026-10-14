@@ -89,6 +89,14 @@ assert_refusal "api.enabled without api.existingSecret" \
   --set version=t --set postgres.existingSecret=s --set postgres.secretKey=k \
   --set api.enabled=true --set api.baseUrl=http://floor --set clusterAgent.enabled=false
 
+say "a published chart runs the image of its own app version"
+packaged="$(mktemp -d)"
+helm package "${CHART}" --version 9.9.9 --app-version 9.9.9 --destination "${packaged}" >/dev/null
+helm template floor "${packaged}/floor-9.9.9.tgz" -f "${CHART}/ci/values-both.yaml" --set version="" \
+  | grep -qF 'image: ghcr.io/re-cinq/floor:9.9.9' \
+  || fail "a chart packaged with --app-version 9.9.9 did not run that image tag"
+rm -rf "${packaged}"
+
 say "agent pods reach the api of their own release, and are reached by nothing"
 policy="$(helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" -s templates/agent-networkpolicy.yaml)"
 grep -qF 'agents.re-cinq.com/component: job' <<<"${policy}" || fail "the policy does not select agent pods"

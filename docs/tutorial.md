@@ -15,13 +15,16 @@ install.
 
 | | |
 |---|---|
-| A Kubernetes cluster | Agents run as pods in it. minikube is fine. |
+| A Kubernetes cluster, `helm` 3.8 or later | Agents run as pods in it. minikube is fine. |
 | A Postgres | **Outside** the cluster as far as this chart cares — it never deploys one. |
-| An image | Built from this repo's `Dockerfile`, pushed somewhere the cluster can pull. |
 | A model credential | An Anthropic or Gemini key, or a Claude OAuth token. Without one, agents start and fail. |
+| Node.js | For the pipeline CLI, an npm package. |
 
-Floor is one image and one chart. The api and the cluster agent are the same build, chosen at
-deploy time — never two versions at once.
+Floor is one image and one chart, published together with every
+[release](https://github.com/re-cinq/floor/releases): the chart at `oci://ghcr.io/re-cinq/charts/floor`
+and the image at `ghcr.io/re-cinq/floor`, under the same version. The api and the cluster agent are
+the same build, chosen at deploy time — never two versions at once. Pick a release; `<release>`
+below is its version without the `v`, such as `0.2.0`.
 
 ## 1. Install floor
 
@@ -44,9 +47,7 @@ read a definition, start a run or claim work.
 Then install:
 
 ```bash
-helm install floor deploy/chart \
-  --set version=<image tag> \
-  --set image.repository=ghcr.io/re-cinq/floor \
+helm install floor oci://ghcr.io/re-cinq/charts/floor --version <release> \
   --set api.baseUrl=https://floor.example.com \
   --set api.existingSecret=floor-api \
   --set postgres.existingSecret=floor-postgres \
@@ -59,8 +60,9 @@ helm install floor deploy/chart \
 [ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem)'s controller — the thing that
 actually runs an agent pod. Leave it off only if another install on the cluster already runs it.
 
-A migration Job runs on install and on every upgrade; it creates the tables. The chart
-refuses an install with no `version` or no `api.existingSecret`, before anything is applied.
+The chart runs the image of its own version, so no tag is named. A migration Job runs on install
+and on every upgrade; it creates the tables. The chart refuses an install missing a required value,
+such as `api.existingSecret`, before anything is applied.
 
 **Check it:**
 
@@ -86,8 +88,7 @@ tag `kind:agent`, which every agent dispatch carries. One cluster, nothing more 
 tag of its own:
 
 ```bash
-helm install floor-acme deploy/chart \
-  --set version=<image tag> \
+helm install floor-acme oci://ghcr.io/re-cinq/charts/floor --version <release> \
   --set api.enabled=false \
   --set clusterAgent.floorUrl=https://floor.example.com \
   --set clusterAgent.tags="kind:agent,cluster:acme" \
@@ -135,10 +136,10 @@ An assembly line, its stations, its agent definitions and their prompts travel t
 file**. Put it in with `floor-pipeline`:
 
 ```bash
-npm run build -w @re-cinq/floor-pipeline
+npm install -g @re-cinq/floor-pipeline
 
 export FLOOR_SERVICE_TOKEN=<the serviceToken from step 1>
-node packages/pipeline/dist/cli.js import my-line.yaml --floor https://floor.example.com
+floor-pipeline import my-line.yaml --floor https://floor.example.com
 ```
 
 Importing the same file twice changes nothing: a version *is* its content, so re-importing an
@@ -149,13 +150,16 @@ To have floor seeded at every deploy, put the files in a ConfigMap and name it:
 
 ```bash
 kubectl create configmap floor-pipelines --from-file=pipelines/
-helm upgrade floor deploy/chart --reuse-values --set pipelines.existingConfigMap=floor-pipelines
+helm upgrade floor oci://ghcr.io/re-cinq/charts/floor --version <release> \
+  --reuse-values --set pipelines.existingConfigMap=floor-pipelines
 ```
 
 A job then runs `migrate` over them after each install and upgrade, once the floor answers ready.
 A file that ran is not run again, and one changed since fails the job: a change is a new file.
 
-To bring an assembly line over from lore instead of writing one, convert it:
+To bring an assembly line over from lore instead of writing one, convert it. The converter is a
+developer's tool, not published: it runs from a checkout of this repository, after `npm install`
+and `npm run build`.
 
 ```bash
 node packages/lore-converter/dist/cli.js --lore ~/workspace/lore --line code-review \
@@ -234,6 +238,8 @@ first.
 
 ## Next
 
+- [using.md](using.md) — the CLI, the client, writing a service station, and the HTTP API
+- [install.md](install.md) — upgrading, a second cluster, uninstalling
 - [assembly_run_storage.md](assembly_run_storage.md) — the model underneath all of the above
 - [api_sketch.md](api_sketch.md) — every endpoint
 - [entities/assembly-line.md](entities/assembly-line.md) — how to write a line of your own

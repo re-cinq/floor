@@ -1,7 +1,7 @@
 name: Publish
 
-# Publishes a version: the image to ghcr.io/re-cinq/floor, the wire contracts, the client, the
-# station SDK and the pipeline tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
+# Publishes a version: the image to ghcr.io/re-cinq/floor, the chart to oci://ghcr.io/re-cinq/charts,
+# the wire contracts, the client, the station SDK and the pipeline tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
 #
 # Pushing a `vX.Y.Z` tag is what starts this file, and the tag is the version: the packages carry
 # a placeholder on main, stamped just before they are built, so a release is one act and no
@@ -118,6 +118,35 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # The chart's version and appVersion are the release's, stamped into the package and committed
+  # nowhere, like the npm packages' versions. appVersion is the image tag an install runs by default.
+  chart:
+    name: Publish the chart
+    needs: [release-tag, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: ${{ needs.release-tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+
+      - name: Log in to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: helm registry login "${REGISTRY}" --username "${GITHUB_ACTOR}" --password-stdin <<<"${GITHUB_TOKEN}"
+
+      - name: Package the chart at the release version
+        run: helm package deploy/chart --version "${VERSION}" --app-version "${VERSION}" --destination dist
+
+      - name: Push the chart
+        run: helm push "dist/floor-${VERSION}.tgz" "oci://${REGISTRY}/re-cinq/charts"
+
   packages:
     name: Publish the packages to npm
     needs: [release-tag, verify]
@@ -193,7 +222,7 @@ jobs:
   # publish. A run started again by hand finds the release there and leaves it.
   release:
     name: Write the GitHub Release
-    needs: [release-tag, image, packages, deploy]
+    needs: [release-tag, image, chart, packages, deploy]
     runs-on: ubuntu-latest
     permissions:
       contents: write
