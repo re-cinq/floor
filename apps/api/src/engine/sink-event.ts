@@ -1,4 +1,4 @@
-// Pure: what one event from the ai-agent-subsystem's supervisor means to a visit. The wire shapes are the subsystem's (website/.../reference/notification-api.md): an envelope around a line of the agent's own stream, Claude's or Gemini's, a lifecycle event, or a file event.
+// Pure: what one event from the ai-agent-subsystem's supervisor means to a visit. The wire shapes are the subsystem's (website/.../reference/notification-api.md): an envelope around a line of the agent's own stream, Claude's, Gemini's or Codex's, a lifecycle event, or a file event.
 import { z } from "zod";
 
 export type SinkEvent =
@@ -78,6 +78,23 @@ const lifecycleEvent = z.object({
 
 type Lifecycle = z.infer<typeof lifecycleEvent>;
 
+/** Codex counts what it read from the cache inside its `input_tokens`, and its reasoning inside its `output_tokens`. */
+const codexCounts = z.object({
+  input_tokens: z.number().optional(),
+  cached_input_tokens: z.number().optional(),
+  output_tokens: z.number().optional(),
+});
+
+// Codex ends each turn with its counts, or with why it failed, and says what it said in the messages it completed along the way.
+const codexTurnEnd = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("turn.completed"), usage: codexCounts.optional() }),
+  z.object({ type: z.literal("turn.failed"), error: z.object({ message: z.string() }) }),
+]);
+
+const codexMessage = z
+  .object({ type: z.literal("item.completed"), item: z.object({ type: z.literal("agent_message"), text: z.string() }) })
+  .transform((line) => line.item.text);
+
 /** The payload inside the subsystem's `{source, event}` envelope, or the body itself when it came bare. */
 export function peel(body: unknown): unknown {
   return isRecord(body) && "source" in body && "event" in body ? body.event : body;
@@ -86,7 +103,7 @@ export function peel(body: unknown): unknown {
 export function readSinkEvent(body: unknown): SinkEvent {
   const payload = peel(body);
 
-  return readResult(payload) ?? readFile(payload) ?? readLifecycle(payload) ?? readLine(payload);
+  return readResult(payload) ?? readCodexTurnEnd(payload) ?? readFile(payload) ?? readLifecycle(payload) ?? readLine(payload);
 }
 
 function readResult(payload: unknown): SinkEvent | null {
@@ -128,6 +145,23 @@ function saidAtTheEnd(line: z.infer<typeof resultLine>): string {
   return line.result ?? reason?.message ?? "";
 }
 
+function readCodexTurnEnd(payload: unknown): SinkEvent | null {
+  const parsed = codexTurnEnd.safeParse(payload);
+
+  if (!parsed.success) return null;
+  const end = parsed.data;
+
+  if (end.type === "turn.failed") return { kind: "result", text: end.error.message, failed: true, cost: {} };
+
+  return { kind: "result", text: "", failed: false, cost: end.usage ? { usage: codexCounted(end.usage) } : {} };
+}
+
+function codexCounted(counts: z.infer<typeof codexCounts>): ModelCounts {
+  const { input_tokens: read = 0, cached_input_tokens: cached = 0, output_tokens: written = 0 } = counts;
+
+  return { input_tokens: read - cached, cache_read_input_tokens: cached, output_tokens: written };
+}
+
 // Gemini's counts under the names Claude's go by, which are the names costs are read by.
 function countedBy(stats: z.infer<typeof geminiStats> | undefined): Pick<ResultCost, "durationMs" | "usage"> {
   if (!stats) return {};
@@ -135,11 +169,12 @@ function countedBy(stats: z.infer<typeof geminiStats> | undefined): Pick<ResultC
   return { durationMs: stats.duration_ms, usage: geminiCounted(stats) };
 }
 
-/** What the agent said, put together from the pieces it said it in: for an agent whose last line does not repeat it. */
+/** What the agent said, for an agent whose last line does not repeat it: Gemini's pieces put together, or the last message Codex completed. */
 export function spokenIn(turns: unknown[]): string {
   const pieces = turns.map((turn) => spokenPiece.safeParse(turn)).filter((piece) => piece.success);
+  const messages = turns.map((turn) => codexMessage.safeParse(turn)).filter((message) => message.success);
 
-  return pieces.map((piece) => piece.data.content).join("");
+  return pieces.map((piece) => piece.data.content).join("") || (messages.at(-1)?.data ?? "");
 }
 
 function readFile(payload: unknown): SinkEvent | null {

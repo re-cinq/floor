@@ -287,9 +287,11 @@ review GitHub attributes to an owner, a member or a collaborator.
 **What an agent said is read from wherever it said it.** Claude ends its
 stream with a line that repeats its answer and gives its cost. Gemini ends
 with a status and its counts, and says its answer in pieces along the way.
+Codex ends each turn with `turn.completed` and its counts, or `turn.failed`
+and why, and says its answer in the `agent_message` items it completes.
 When the last line carries no words, the floor puts the answer together
-from the pieces. Without that a Gemini agent's verdict read as empty, which
-passes as success.
+from Gemini's pieces, or takes the last message Codex completed. Without
+that such an agent's verdict read as empty, which passes as success.
 
 **A pipeline is one file, and the tool that reads it is a client.** An
 assembly line with every station, agent definition, prompt, file and
