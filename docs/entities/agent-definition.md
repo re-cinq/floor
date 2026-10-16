@@ -48,8 +48,10 @@ model's name.
 ## What a visit cost
 
 An agent that says what it cost is believed: Claude ends with a price. One
-that only counts is priced from `prices`: Gemini ends with tokens and no
-price. The floor holds no price of its own.
+that only counts is priced from `prices`: Gemini and Codex end with tokens
+and no price. The floor holds no price of its own. Codex counts what it read
+from the cache inside its `input_tokens`, so the floor takes that part out
+and prices it as `cache_read_input_tokens`.
 
 ```yaml
 prices:

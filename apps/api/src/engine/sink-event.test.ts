@@ -85,6 +85,27 @@ describe("readSinkEvent", () => {
     expect(readSinkEvent(enveloped(line))).toMatchObject({ kind: "result", text: "the tool could not run", failed: true });
   });
 
+  it("reads Codex's turn.completed as its last line: no words, its 7742 read with 6400 cached as 1342 input and 6400 read from the cache", () => {
+    const line = { type: "turn.completed", usage: { input_tokens: 7742, cached_input_tokens: 6400, output_tokens: 5, reasoning_output_tokens: 0 } };
+
+    expect(readSinkEvent(enveloped(line))).toEqual({
+      kind: "result",
+      text: "",
+      failed: false,
+      cost: { usage: { input_tokens: 1342, cache_read_input_tokens: 6400, output_tokens: 5 } },
+    });
+  });
+
+  it("reads Codex's turn.failed as a failed last line, with the reason it gave", () => {
+    const line = { type: "turn.failed", error: { message: "unexpected status 401 Unauthorized" } };
+
+    expect(readSinkEvent(enveloped(line))).toEqual({ kind: "result", text: "unexpected status 401 Unauthorized", failed: true, cost: {} });
+  });
+
+  it("reads Codex's error line as a turn, since Codex retries after it", () => {
+    expect(readSinkEvent(enveloped({ type: "error", message: "Reconnecting... 2/5" }))).toEqual({ kind: "turn" });
+  });
+
   it("reads an uploaded file as produced under the name after produced.", () => {
     const file = { kind: "file", event: "produced.review_findings", path: "/w/findings.md", uploaded: true, bytes: 10, sha256: SHA };
 
@@ -145,6 +166,19 @@ describe("spokenIn", () => {
 
   it("puts together what the agent said, from the pieces it said it in", () => {
     expect(spokenIn(SAID)).toBe("Looks good.\nREVIEW_RESULT:APPROVED");
+  });
+
+  it("is the last message Codex completed, its reasoning and commands left out", () => {
+    const codex = [
+      { type: "thread.started", thread_id: "01a13b9c" },
+      { type: "item.completed", item: { id: "item_0", type: "agent_message", text: "Reading the diff." } },
+      { type: "item.completed", item: { id: "item_1", type: "reasoning", text: "REVIEW_RESULT:CHANGES_REQUESTED" } },
+      { type: "item.completed", item: { id: "item_2", type: "command_execution", command: "git diff", aggregated_output: "", exit_code: 0 } },
+      { type: "item.completed", item: { id: "item_3", type: "agent_message", text: "REVIEW_RESULT:APPROVED" } },
+      { type: "turn.completed", usage: { input_tokens: 10, cached_input_tokens: 0, output_tokens: 2 } },
+    ];
+
+    expect(spokenIn(codex)).toBe("REVIEW_RESULT:APPROVED");
   });
 
   it("is empty for an agent that said nothing", () => {
