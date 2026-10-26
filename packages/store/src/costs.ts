@@ -88,6 +88,11 @@ function tokensOut(counts: string): string {
   return `coalesce((${counts}->>'output_tokens')::numeric, 0)`;
 }
 
+/** The part of tokens in that was read from the cache, which costs a tenth of the rest. */
+function tokensCacheRead(counts: string): string {
+  return `coalesce((${counts}->>'cache_read_input_tokens')::numeric, 0)`;
+}
+
 /** One row a visit. */
 const BY_VISIT = `
   totals as (
@@ -96,7 +101,8 @@ const BY_VISIT = `
       null::text as model,
       sum((body->>'costUsd')::numeric) filter (where body->>'costUsd' is not null) as cost_usd,
       sum(${tokensIn("body->'usage'")}) as tokens_in,
-      sum(${tokensOut("body->'usage'")}) as tokens_out
+      sum(${tokensOut("body->'usage'")}) as tokens_out,
+      sum(${tokensCacheRead("body->'usage'")}) as tokens_cache_read
     from station_run_records
     where kind = 'llm_call'
     group by station_run_id
@@ -111,12 +117,12 @@ const NAMES_MODELS = `jsonb_typeof(body->'models') = 'object' and body->'models'
 const BY_MODEL = `
   totals as (
     select station_run_id, counted.key as model, (counted.value->>'cost_usd')::numeric as cost_usd,
-      ${tokensIn("counted.value")} as tokens_in, ${tokensOut("counted.value")} as tokens_out
+      ${tokensIn("counted.value")} as tokens_in, ${tokensOut("counted.value")} as tokens_out, ${tokensCacheRead("counted.value")} as tokens_cache_read
     from station_run_records, jsonb_each(body->'models') as counted
     where kind = 'llm_call' and ${NAMES_MODELS}
     union all
     select station_run_id, null::text, (body->>'costUsd')::numeric,
-      ${tokensIn("body->'usage'")}, ${tokensOut("body->'usage'")}
+      ${tokensIn("body->'usage'")}, ${tokensOut("body->'usage'")}, ${tokensCacheRead("body->'usage'")}
     from station_run_records
     where kind = 'llm_call' and not coalesce(${NAMES_MODELS}, false)
   )
@@ -183,6 +189,8 @@ export interface CostSeriesRow {
   repo: string;
   costUsd: number;
   tokensIn: number;
+  /** Counted in tokensIn as well. */
+  tokensCacheRead: number;
   tokensOut: number;
 }
 
@@ -191,6 +199,7 @@ const SERIES_SQL = `
   select ar.line_id, sr.node_id, coalesce(lt.model, sr.input->'agentSettings'->>'model', '') as model, coalesce(ar.repo, '') as repo,
     round(coalesce(sum(lt.cost_usd), 0), ${COST_DECIMALS}) as cost_usd,
     coalesce(sum(lt.tokens_in), 0) as tokens_in,
+    coalesce(sum(lt.tokens_cache_read), 0) as tokens_cache_read,
     coalesce(sum(lt.tokens_out), 0) as tokens_out
   from station_runs sr
   join assembly_runs ar on ar.id = sr.assembly_run_id
@@ -209,6 +218,7 @@ export async function costSeries(client: Queryable): Promise<CostSeriesRow[]> {
     repo: row.repo!,
     costUsd: Number(row.cost_usd),
     tokensIn: Number(row.tokens_in),
+    tokensCacheRead: Number(row.tokens_cache_read),
     tokensOut: Number(row.tokens_out),
   }));
 }
