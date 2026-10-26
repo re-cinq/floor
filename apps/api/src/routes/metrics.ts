@@ -55,12 +55,11 @@ function runLines(runs: RunMetrics): string[] {
 }
 
 function visitLines(runs: RunMetrics): string[] {
-  const finished = runs.visitDurations.map((series) => ({ labels: series.labels, count: series.count }));
-
   return [
     gaugeLines("floor_visits_open", "Station runs with no report yet.", runs.openVisits),
     gaugeLines("floor_visits_overdue", "Open station runs past their deadline.", runs.overdueVisits),
-    countLines("floor_visits_total", "Finished station runs, by line, station and outcome, as of this scrape.", finished),
+    countLines("floor_visits_started_total", "Station runs ever opened, by line, station, station kind and repository, as of this scrape.", runs.visitsStarted),
+    countLines("floor_visits_total", "Finished station runs, by line, station, outcome, station kind and repository, as of this scrape.", runs.visitsFinished),
     histogramLines("floor_visit_duration_seconds", "Seconds a visit stayed open, by line, station and outcome.", runs.visitDurations),
     countLines("floor_visit_retries_total", "Station runs that revisited their node (iteration above 1), by line and station.", runs.visitRetries),
   ];
@@ -74,14 +73,14 @@ function costLines(runs: RunMetrics): string[] {
   const missing = runs.missingCost.map((row) => ({ labels: { line_id: row.lineId }, value: row.count }));
 
   return [
-    valueLines("floor_cost_usd_total", "Cost in USD of every llm_call record, by line, station and model, as of this scrape.", runs.costs.map((row) => ({ labels: costLabels(row), value: row.costUsd }))),
-    valueLines("floor_tokens_total", "Tokens of every llm_call record, by line, station, model and direction, as of this scrape.", tokens),
+    valueLines("floor_cost_usd_total", "Cost in USD of every llm_call record, by line, station, model and repository, as of this scrape.", runs.costs.map((row) => ({ labels: costLabels(row), value: row.costUsd }))),
+    valueLines("floor_tokens_total", "Tokens of every llm_call record, by line, station, model, repository and direction, as of this scrape.", tokens),
     valueLines("floor_visits_missing_cost", "Agent visits that reported and stated no price, by line.", missing),
   ];
 }
 
 function costLabels(row: CostSeriesRow): MetricLabels {
-  return { line_id: row.lineId, node_id: row.nodeId, model: row.model };
+  return { line_id: row.lineId, node_id: row.nodeId, model: row.model, repo: row.repo };
 }
 
 function busLines(snapshot: MetricsSnapshot): string[] {

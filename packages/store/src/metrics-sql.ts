@@ -35,6 +35,8 @@ export interface RunMetrics {
   overdueVisits: number;
   runsStarted: CountSeries[];
   runsSettledByLine: CountSeries[];
+  visitsStarted: CountSeries[];
+  visitsFinished: CountSeries[];
   runDurations: HistogramSeries[];
   visitDurations: HistogramSeries[];
   visitRetries: CountSeries[];
@@ -81,9 +83,11 @@ async function countSnapshot(client: Queryable, now: Date): Promise<CountSnapsho
 type SeriesSnapshot = Omit<RunMetrics, keyof CountSnapshot>;
 
 async function seriesSnapshot(client: Queryable): Promise<SeriesSnapshot> {
-  const [runsStarted, runsSettledByLine, runDurations, visitDurations, visitRetries, claimLatencies, costs, missingCost] = await Promise.all([
+  const [runsStarted, runsSettledByLine, visitsStarted, visitsFinished, runDurations, visitDurations, visitRetries, claimLatencies, costs, missingCost] = await Promise.all([
     countSeries(client, `select line_id, repo, count(*)::text as count from assembly_runs group by line_id, repo order by line_id, repo`, ["line_id", "repo"]),
     countSeries(client, `select line_id, outcome, count(*)::text as count from assembly_runs where outcome is not null group by line_id, outcome order by line_id, outcome`, ["line_id", "outcome"]),
+    countSeries(client, visitCounts(STARTED_LABELS, ""), STARTED_LABELS),
+    countSeries(client, visitCounts(FINISHED_LABELS, "where sr.finished_at is not null and sr.outcome is not null"), FINISHED_LABELS),
     histogram(client, SETTLED_RUNS, ["line_id", "outcome"], RUN_DURATION_BOUNDS),
     histogram(client, FINISHED_VISITS, ["line_id", "node_id", "outcome"], VISIT_DURATION_BOUNDS),
     countSeries(client, REVISITS, ["line_id", "node_id"]),
@@ -92,16 +96,30 @@ async function seriesSnapshot(client: Queryable): Promise<SeriesSnapshot> {
     missingCostByLine(client),
   ]);
 
-  return { runsStarted, runsSettledByLine, runDurations, visitDurations, visitRetries, claimLatencies, costs, missingCost };
+  return { runsStarted, runsSettledByLine, visitsStarted, visitsFinished, runDurations, visitDurations, visitRetries, claimLatencies, costs, missingCost };
 }
 
 const SETTLED_RUNS = `select line_id, outcome, extract(epoch from finished_at - created_at)::float8 as seconds
   from assembly_runs where finished_at is not null and outcome is not null`;
 
-/** A finished visit's `count` is the number of visits, so the same rows serve `floor_visits_total`. */
 const FINISHED_VISITS = `select ar.line_id, sr.node_id, sr.outcome, extract(epoch from sr.finished_at - sr.opened_at)::float8 as seconds
   from station_runs sr join assembly_runs ar on ar.id = sr.assembly_run_id
   where sr.finished_at is not null and sr.outcome is not null`;
+
+const STARTED_LABELS = ["line_id", "node_id", "kind", "repo"];
+const FINISHED_LABELS = ["line_id", "node_id", "outcome", "kind", "repo"];
+
+/** Visits counted by line, station, the station's kind (agent, service, human) and the run's repository: what a board needs to show work by kind and by repository. A node with no station definition (a marker) counts as kind `none`. */
+function visitCounts(labelNames: string[], where: string): string {
+  return `select ${labelNames.join(", ")}, count(*)::text as count from (
+      select ar.line_id, sr.node_id, sr.outcome, coalesce(d.body->>'kind', 'none') as kind, coalesce(ar.repo, '') as repo
+      from station_runs sr
+      join assembly_runs ar on ar.id = sr.assembly_run_id
+      left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
+      ${where}
+    ) visits
+    group by ${labelNames.join(", ")} order by ${labelNames.join(", ")}`;
+}
 
 /** Visits that were a revisit of their node: the loop went round again. */
 const REVISITS = `select ar.line_id, sr.node_id, count(*)::text as count
