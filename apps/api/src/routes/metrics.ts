@@ -68,13 +68,14 @@ function visitLines(runs: RunMetrics): string[] {
 function costLines(runs: RunMetrics): string[] {
   const tokens = [
     ...runs.costs.map((row) => ({ labels: { ...costLabels(row), kind: "in" }, value: row.tokensIn })),
+    ...runs.costs.map((row) => ({ labels: { ...costLabels(row), kind: "cache_read" }, value: row.tokensCacheRead })),
     ...runs.costs.map((row) => ({ labels: { ...costLabels(row), kind: "out" }, value: row.tokensOut })),
   ];
   const missing = runs.missingCost.map((row) => ({ labels: { line_id: row.lineId }, value: row.count }));
 
   return [
     valueLines("floor_cost_usd_total", "Cost in USD of every llm_call record, by line, station, model and repository, as of this scrape.", runs.costs.map((row) => ({ labels: costLabels(row), value: row.costUsd }))),
-    valueLines("floor_tokens_total", "Tokens of every llm_call record, by line, station, model, repository and direction, as of this scrape.", tokens),
+    valueLines("floor_tokens_total", "Tokens of every llm_call record, by line, station, model, repository and kind, as of this scrape: in, the cache reads among them (cache_read), and out.", tokens),
     valueLines("floor_visits_missing_cost", "Agent visits that reported and stated no price, by line.", missing),
   ];
 }

@@ -103,10 +103,10 @@ describe("GET /metrics", () => {
     }).toEqual({ visits: 1, durationCount: 1, retries: false });
   });
 
-  it("sums a 0.25 usd llm_call of 100 in and 20 out tokens under line, station work, model sonnet and repository r", async () => {
+  it("sums a 0.25 usd llm_call of 100 in, 80 of them read from the cache, and 20 out tokens under line, station work, model sonnet and repository r, the cache reads counted in and apart", async () => {
     const runId = await settledRunId();
     const [visit] = await deps().runs.visits(runId);
-    const models = { sonnet: { cost_usd: 0.25, input_tokens: 100, output_tokens: 20 } };
+    const models = { sonnet: { cost_usd: 0.25, input_tokens: 20, cache_read_input_tokens: 80, output_tokens: 20 } };
 
     await deps().records.append(visit!.id, [{ kind: "llm_call", body: { costUsd: 0.25, models }, occurredAt: new Date("2026-10-09T10:00:00Z") }]);
     const text = await metricsText();
@@ -114,8 +114,9 @@ describe("GET /metrics", () => {
     expect({
       cost: metricValue(text, 'floor_cost_usd_total{line_id="line",node_id="work",model="sonnet",repo="r"}'),
       tokensIn: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",repo="r",kind="in"}'),
+      cacheRead: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",repo="r",kind="cache_read"}'),
       tokensOut: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",repo="r",kind="out"}'),
-    }).toEqual({ cost: 0.25, tokensIn: 100, tokensOut: 20 });
+    }).toEqual({ cost: 0.25, tokensIn: 100, cacheRead: 80, tokensOut: 20 });
   });
 
   it("counts the visit opened at service station work on repository r as started before it reports", async () => {
