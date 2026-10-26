@@ -126,6 +126,15 @@ describe("GET /metrics", () => {
     expect(metricValue(text, 'floor_visits_started_total{line_id="line",node_id="work",kind="service",repo="r"}')).toBe(1);
   });
 
+  it("counts the visit at station work once when another station shares its definition's body", async () => {
+    await deps().definitions.put("station", "twin", SERVICE_STATION);
+    await workStarted(deps());
+
+    const text = await metricsText();
+
+    expect(metricValue(text, 'floor_visits_started_total{line_id="line",node_id="work",kind="service",repo="r"}')).toBe(1);
+  });
+
   it("reports the claim latency of the acked start events as a histogram with a count", async () => {
     await settledRunId();
 

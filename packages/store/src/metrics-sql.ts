@@ -84,7 +84,7 @@ type SeriesSnapshot = Omit<RunMetrics, keyof CountSnapshot>;
 
 async function seriesSnapshot(client: Queryable): Promise<SeriesSnapshot> {
   const [runsStarted, runsSettledByLine, visitsStarted, visitsFinished, runDurations, visitDurations, visitRetries, claimLatencies, costs, missingCost] = await Promise.all([
-    countSeries(client, `select line_id, repo, count(*)::text as count from assembly_runs group by line_id, repo order by line_id, repo`, ["line_id", "repo"]),
+    countSeries(client, `select line_id, coalesce(repo, '') as repo, count(*)::text as count from assembly_runs group by line_id, repo order by line_id, repo`, ["line_id", "repo"]),
     countSeries(client, `select line_id, outcome, count(*)::text as count from assembly_runs where outcome is not null group by line_id, outcome order by line_id, outcome`, ["line_id", "outcome"]),
     countSeries(client, visitCounts(STARTED_LABELS, ""), STARTED_LABELS),
     countSeries(client, visitCounts(FINISHED_LABELS, "where sr.finished_at is not null and sr.outcome is not null"), FINISHED_LABELS),
@@ -109,13 +109,13 @@ const FINISHED_VISITS = `select ar.line_id, sr.node_id, sr.outcome, extract(epoc
 const STARTED_LABELS = ["line_id", "node_id", "kind", "repo"];
 const FINISHED_LABELS = ["line_id", "node_id", "outcome", "kind", "repo"];
 
-/** Visits counted by line, station, the station's kind (agent, service, human) and the run's repository: what a board needs to show work by kind and by repository. A node with no station definition (a marker) counts as kind `none`. */
+/** Visits counted by line, station, the station's kind (agent, service, human) and the run's repository: what a board needs to show work by kind and by repository. A node with no station definition (a marker) counts as kind `none`. Stations whose bodies are identical share a hash, so the definitions are taken once per hash, or each would count the visit again. */
 function visitCounts(labelNames: string[], where: string): string {
   return `select ${labelNames.join(", ")}, count(*)::text as count from (
-      select ar.line_id, sr.node_id, sr.outcome, coalesce(d.body->>'kind', 'none') as kind, coalesce(ar.repo, '') as repo
+      select ar.line_id, sr.node_id, sr.outcome, coalesce(d.kind, 'none') as kind, coalesce(ar.repo, '') as repo
       from station_runs sr
       join assembly_runs ar on ar.id = sr.assembly_run_id
-      left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
+      left join (select distinct on (hash) hash, body->>'kind' as kind from definitions where kind = 'station') d on d.hash = sr.station_hash
       ${where}
     ) visits
     group by ${labelNames.join(", ")} order by ${labelNames.join(", ")}`;
