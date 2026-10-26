@@ -91,19 +91,19 @@ describe("GET /metrics", () => {
     }).toEqual({ started: 1, settled: 1, durationCount: 1, lastBucket: 1 });
   });
 
-  it("counts the one finished visit of station work with its duration, and no retry", async () => {
+  it("counts the one finished visit of service station work on repository r with its duration, and no retry", async () => {
     await settledRunId();
 
     const text = await metricsText();
 
     expect({
-      visits: metricValue(text, 'floor_visits_total{line_id="line",node_id="work",outcome="success"}'),
+      visits: metricValue(text, 'floor_visits_total{line_id="line",node_id="work",outcome="success",kind="service",repo="r"}'),
       durationCount: metricValue(text, 'floor_visit_duration_seconds_count{line_id="line",node_id="work",outcome="success"}'),
       retries: text.includes("floor_visit_retries_total{"),
     }).toEqual({ visits: 1, durationCount: 1, retries: false });
   });
 
-  it("sums a 0.25 usd llm_call of 100 in and 20 out tokens under line, station work and model sonnet", async () => {
+  it("sums a 0.25 usd llm_call of 100 in and 20 out tokens under line, station work, model sonnet and repository r", async () => {
     const runId = await settledRunId();
     const [visit] = await deps().runs.visits(runId);
     const models = { sonnet: { cost_usd: 0.25, input_tokens: 100, output_tokens: 20 } };
@@ -112,10 +112,27 @@ describe("GET /metrics", () => {
     const text = await metricsText();
 
     expect({
-      cost: metricValue(text, 'floor_cost_usd_total{line_id="line",node_id="work",model="sonnet"}'),
-      tokensIn: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",kind="in"}'),
-      tokensOut: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",kind="out"}'),
+      cost: metricValue(text, 'floor_cost_usd_total{line_id="line",node_id="work",model="sonnet",repo="r"}'),
+      tokensIn: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",repo="r",kind="in"}'),
+      tokensOut: metricValue(text, 'floor_tokens_total{line_id="line",node_id="work",model="sonnet",repo="r",kind="out"}'),
     }).toEqual({ cost: 0.25, tokensIn: 100, tokensOut: 20 });
+  });
+
+  it("counts the visit opened at service station work on repository r as started before it reports", async () => {
+    await workStarted(deps());
+
+    const text = await metricsText();
+
+    expect(metricValue(text, 'floor_visits_started_total{line_id="line",node_id="work",kind="service",repo="r"}')).toBe(1);
+  });
+
+  it("counts the visit at station work once when another station shares its definition's body", async () => {
+    await deps().definitions.put("station", "twin", SERVICE_STATION);
+    await workStarted(deps());
+
+    const text = await metricsText();
+
+    expect(metricValue(text, 'floor_visits_started_total{line_id="line",node_id="work",kind="service",repo="r"}')).toBe(1);
   });
 
   it("reports the claim latency of the acked start events as a histogram with a count", async () => {

@@ -175,11 +175,12 @@ function summarySql(where: string, groupBy: CostsGroupBy): string {
   `;
 }
 
-/** What one line's station spent on one model, for GET /metrics: the BY_MODEL rollup grouped three ways at once. A visit that named no model is attributed to the model in its run input's agentSettings. */
+/** What one line's station spent on one model in one repository, for GET /metrics: the BY_MODEL rollup grouped four ways at once. A visit that named no model is attributed to the model in its run input's agentSettings. */
 export interface CostSeriesRow {
   lineId: string;
   nodeId: string;
   model: string;
+  repo: string;
   costUsd: number;
   tokensIn: number;
   tokensOut: number;
@@ -187,15 +188,15 @@ export interface CostSeriesRow {
 
 const SERIES_SQL = `
   with ${BY_MODEL}
-  select ar.line_id, sr.node_id, coalesce(lt.model, sr.input->'agentSettings'->>'model', '') as model,
+  select ar.line_id, sr.node_id, coalesce(lt.model, sr.input->'agentSettings'->>'model', '') as model, coalesce(ar.repo, '') as repo,
     round(coalesce(sum(lt.cost_usd), 0), ${COST_DECIMALS}) as cost_usd,
     coalesce(sum(lt.tokens_in), 0) as tokens_in,
     coalesce(sum(lt.tokens_out), 0) as tokens_out
   from station_runs sr
   join assembly_runs ar on ar.id = sr.assembly_run_id
   join totals lt on lt.station_run_id = sr.station_run_id
-  group by 1, 2, 3
-  order by 1, 2, 3
+  group by 1, 2, 3, 4
+  order by 1, 2, 3, 4
 `;
 
 export async function costSeries(client: Queryable): Promise<CostSeriesRow[]> {
@@ -205,6 +206,7 @@ export async function costSeries(client: Queryable): Promise<CostSeriesRow[]> {
     lineId: row.line_id!,
     nodeId: row.node_id!,
     model: row.model!,
+    repo: row.repo!,
     costUsd: Number(row.cost_usd),
     tokensIn: Number(row.tokens_in),
     tokensOut: Number(row.tokens_out),
