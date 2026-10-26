@@ -40,6 +40,7 @@ produces:
 | `needs` / `produces` | items read from and written to the run's bag, by name and kind |
 | `access` on a `git` need | `read` (default) or `write`; what the visit's token is traded for when git asks: a credential that reads the repository, or one that may push to it |
 | `must_change` | agent kind: a `success` with no diff on the branch is recorded as `failed` |
+| `result_required` | agent kind: an agent that ends with neither a `LORE_NODE_RESULT:` line nor a `REVIEW_RESULT:` verdict has failed its visit; absent or `false`, its silence is read as `success` |
 | `agent_definition`, `conversation`, `conversation_key` | agent kind only |
 | `route` | human kind only: the page template a person works on |
 
@@ -109,6 +110,21 @@ produces goes in its marker, as JSON:
 Only what the station declares is taken. The outcome is parsed from the
 agent's own output: `LORE_NODE_RESULT:` first, then `REVIEW_RESULT:`, then
 `success`; a malformed marker is `failed`.
+
+That last `success` is a guess. An agent whose CLI exits cleanly in the middle
+of its work, or whose answer is cut off before its verdict, says nothing, and
+is read as having succeeded. A station that declares `result_required: true`
+refuses the guess: an agent that printed neither a `LORE_NODE_RESULT:` line
+nor `REVIEW_RESULT: APPROVED` or `REVIEW_RESULT: CHANGES_REQUESTED` reports
+
+```
+{ outcome: "failed", error: "the agent ended without a LORE_NODE_RESULT or REVIEW_RESULT line, and its station requires one" }
+```
+
+and the line's edges for `failed` decide what happens next, a retry or the
+end of the run. A station whose files are all declared by path does not need
+it to catch a silent agent that wrote none of them: that visit already fails,
+naming the files.
 
 Writing an agent station is writing the YAML above and a prompt.
 

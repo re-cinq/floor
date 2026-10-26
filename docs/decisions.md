@@ -560,6 +560,21 @@ died.
 floor refuses a visit token that reaches for another visit; binding the id at
 construction refuses it a step earlier, where it cannot be written.
 
+**A station may refuse to read silence as success, by `result_required`.**
+An agent that printed no `LORE_NODE_RESULT` line and no `REVIEW_RESULT`
+verdict was read as `success`. That was wrong twice in real runs: a Gemini
+CLI that exited 0 after reading one file, 35 output tokens in, and review
+agents cut off in the middle of their verdict JSON. Each next station ran on
+nothing. The missing-files guard catches neither when the station declares no
+file by path. A flag on the station was chosen over failing every silent
+agent, because a prompt that never asks for a marker, as many do not,
+would then fail on every visit. A `REVIEW_RESULT` verdict counts as
+speaking, so a review prompt that ends on `REVIEW_RESULT: APPROVED` keeps
+working; the word `REVIEW_RESULT:` with no verdict after it does not, which is
+what a review cut off there looks like. The verdict says what the agent spoke
+with, `marker`, `review` or `nothing`, in place of a `spoken` boolean that
+could only tell the first from the rest.
+
 ## Fan-out and join
 
 **A fan-out region folds into one visit of its body.** The walk kernel keeps

@@ -371,7 +371,9 @@ blob is really in the store. The lifecycle event that ends the visit becomes
 `station_run.reported`, once however often it is posted: the agent phase
 ending either way, or the init phase failing. The outcome is parsed from the
 result's text: `LORE_NODE_RESULT:` first, then `REVIEW_RESULT:`, then
-`success`; a marker that is there and cannot be read is `failed`. Only
+`success`; a marker that is there and cannot be read is `failed`. A station
+with `result_required: true` takes no `success` from silence: an agent that
+printed neither marker nor `REVIEW_RESULT:` verdict is `failed`. Only
 outcomes and produces the station declares are taken.
 
 A pod killed from outside posts nothing. Its visit fails at its deadline.

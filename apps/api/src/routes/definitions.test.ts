@@ -44,6 +44,18 @@ describe("POST /stations", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("returns 400 for a resultRequired that is the text yes, not a boolean", async () => {
+    const response = await injectJson(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: { ...STATION_BODY, resultRequired: "yes" } });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("returns the hash a station without resultRequired had before the field existed", async () => {
+    const response = await injectJson<PutResult>(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: STATION_BODY });
+
+    expect(response.result.hash).toBe("4c6f3fbe9e7e9c24e6fb4a501e4780070e1b5cb852cb623f03d78f0c03e16179");
+  });
+
   it("refuses a request with no bearer token", async () => {
     const response = await injectJson(server(), { method: "POST", url: "/stations", payload: STATION_BODY });
 
@@ -69,6 +81,14 @@ describe("GET /stations/:id", () => {
     const body = response.result.body;
 
     expect(body.description).toBe("Opens the spec PR");
+  });
+
+  it("keeps the resultRequired true a station was put with", async () => {
+    await injectJson(server(), { method: "POST", url: "/stations", headers: authHeaders(), payload: { ...STATION_BODY, resultRequired: true } });
+
+    const response = await injectJson<{ body: { resultRequired?: boolean } }>(server(), { method: "GET", url: "/stations/review", headers: authHeaders() });
+
+    expect(response.result.body).toMatchObject({ resultRequired: true });
   });
 
   it("returns 404 for an id never put", async () => {
