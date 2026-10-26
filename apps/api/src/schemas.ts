@@ -60,6 +60,7 @@ export const stationBodySchema = z.object({
   conversationKey: z.string().optional(),
   outcomes: z.array(z.string()),
   mustChange: z.boolean().optional(),
+  resultRequired: z.boolean().optional(),
   needs: z.array(needSpec),
   produces: z.array(produceSpec),
   url: z.string().optional(),

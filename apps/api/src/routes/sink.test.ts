@@ -47,9 +47,9 @@ function bearer(token: string): Record<string, string> {
   return { authorization: `Bearer ${token}` };
 }
 
-async function reviewDispatched(): Promise<{ runId: string; brief: Brief }> {
+async function reviewDispatched(station: StationBody = REVIEW_STATION): Promise<{ runId: string; brief: Brief }> {
   await deps().definitions.put("line", "review", REVIEW_LINE);
-  await deps().definitions.put("station", "review", REVIEW_STATION);
+  await deps().definitions.put("station", "review", station);
   await deps().definitions.put("agent_definition", "reviewer", REVIEWER);
   const { run } = await deps().runs.start({ lineId: "review", repo: "r", startItems: { pr_url: { kind: "value", ref: "https://pr/412", by: "start" } } });
 
@@ -280,6 +280,48 @@ describe("POST /station-runs/:id/sink", () => {
     await loop().pass();
 
     expect(Object.keys(await deps().runs.bag(runId))).not.toContain("review_findings");
+  });
+});
+
+describe("a station that requires a result line", () => {
+  const RESULT_REQUIRED: StationBody = { ...REVIEW_STATION, resultRequired: true };
+
+  async function reportAfter(station: StationBody, resultText: string) {
+    const { brief } = await reviewDispatched(station);
+
+    await agentRan(brief, resultText);
+
+    return (await deps().runs.visit(brief.visitId))!.report;
+  }
+
+  it("fails a visit whose agent ended with no LORE_NODE_RESULT or REVIEW_RESULT line, saying so", async () => {
+    const report = await reportAfter(RESULT_REQUIRED, "Read the diff.");
+
+    expect(report).toMatchObject({ outcome: "failed", error: "the agent ended without a LORE_NODE_RESULT or REVIEW_RESULT line, and its station requires one" });
+  });
+
+  it("takes the outcome success from a LORE_NODE_RESULT line", async () => {
+    const report = await reportAfter(RESULT_REQUIRED, "LORE_NODE_RESULT: success");
+
+    expect(report?.outcome).toBe("success");
+  });
+
+  it("takes the outcome changes_requested from a REVIEW_RESULT line with no marker", async () => {
+    const report = await reportAfter(RESULT_REQUIRED, "Two findings.\nREVIEW_RESULT: CHANGES_REQUESTED");
+
+    expect(report?.outcome).toBe("changes_requested");
+  });
+
+  it("fails a review cut off before its REVIEW_RESULT verdict", async () => {
+    const report = await reportAfter(RESULT_REQUIRED, '{"findings": [{"file": "a.ts"');
+
+    expect(report?.outcome).toBe("failed");
+  });
+
+  it("reports success for an agent that ended with no result line on a station that does not require one", async () => {
+    const report = await reportAfter(REVIEW_STATION, "Read the diff.");
+
+    expect(report?.outcome).toBe("success");
   });
 });
 

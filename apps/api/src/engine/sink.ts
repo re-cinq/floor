@@ -7,6 +7,7 @@ import { peel, readSinkEvent, spokenIn, type SinkEvent } from "./sink-event.js";
 
 const MAX_ERROR_CHARS = 300;
 const MAX_NOTES = 200;
+const UNSPOKEN_RESULT = "the agent ended without a LORE_NODE_RESULT or REVIEW_RESULT line, and its station requires one";
 
 type SinkDeps = Pick<Deps, "runs" | "records" | "blobs" | "events" | "definitions" | "now">;
 type Ended = Extract<SinkEvent, { kind: "ended" }>;
@@ -69,9 +70,10 @@ export class Sink {
     enforce(station, `visit "${visit.id}" has no station to read outcomes from`);
     const verdict = readAgentVerdict(said, station.body.outcomes);
     const produced = { ...declaredValues(station.body, verdict.produced), ...(await this.allFilesOf(visit.id, station.body, said)) };
-    const unproduced = verdict.spoken ? [] : missingFiles(station.body, produced);
+    const unproduced = verdict.spoke === "marker" ? [] : missingFiles(station.body, produced);
 
     if (unproduced.length > 0) return { outcome: "failed", error: silentFailure(unproduced) };
+    if (station.body.resultRequired && verdict.spoke === "nothing") return { outcome: "failed", error: UNSPOKEN_RESULT };
 
     return { outcome: verdict.outcome, produced, error: verdict.error };
   }

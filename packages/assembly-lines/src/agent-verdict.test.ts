@@ -5,11 +5,11 @@ const OUTCOMES = ["success", "changes_requested", "needs_human"];
 
 describe("readAgentVerdict", () => {
   it("defaults to success when the agent printed no marker", () => {
-    expect(readAgentVerdict("All done.", OUTCOMES)).toEqual({ outcome: "success", produced: {}, spoken: false });
+    expect(readAgentVerdict("All done.", OUTCOMES)).toEqual({ outcome: "success", produced: {}, spoke: "nothing" });
   });
 
   it("defaults to success for no output at all", () => {
-    expect(readAgentVerdict(undefined, OUTCOMES)).toEqual({ outcome: "success", produced: {}, spoken: false });
+    expect(readAgentVerdict(undefined, OUTCOMES)).toEqual({ outcome: "success", produced: {}, spoke: "nothing" });
   });
 
   it("reads a bare-word marker", () => {
@@ -27,7 +27,7 @@ describe("readAgentVerdict", () => {
   it("reads a JSON marker with what it produced", () => {
     const output = 'LORE_NODE_RESULT: {"outcome":"success","produced":{"review_verdict":"approved"}}';
 
-    expect(readAgentVerdict(output, OUTCOMES)).toEqual({ outcome: "success", produced: { review_verdict: "approved" }, spoken: true });
+    expect(readAgentVerdict(output, OUTCOMES)).toEqual({ outcome: "success", produced: { review_verdict: "approved" }, spoke: "marker" });
   });
 
   it("reads lore's extras as what was produced", () => {
@@ -57,7 +57,7 @@ describe("readAgentVerdict", () => {
       outcome: "failed",
       produced: {},
       error: "unparseable LORE_NODE_RESULT line: LORE_NODE_RESULT: approved",
-      spoken: true,
+      spoke: "marker",
     });
   });
 
@@ -86,6 +86,22 @@ describe("readAgentVerdict", () => {
   });
 
   it("says whether the agent spoke a marker at all, so silence is not mistaken for a chosen success", () => {
-    expect([readAgentVerdict("done, nothing to add", ["success"]).spoken, readAgentVerdict("LORE_NODE_RESULT: success", ["success"]).spoken]).toEqual([false, true]);
+    expect([readAgentVerdict("done, nothing to add", ["success"]).spoke, readAgentVerdict("LORE_NODE_RESULT: success", ["success"]).spoke]).toEqual(["nothing", "marker"]);
+  });
+
+  it("says the agent spoke a review verdict when it printed REVIEW_RESULT: APPROVED and no marker", () => {
+    expect(readAgentVerdict("REVIEW_RESULT: APPROVED", OUTCOMES)).toEqual({ outcome: "success", produced: {}, spoke: "review" });
+  });
+
+  it("says the agent spoke a review verdict for REVIEW_RESULT: CHANGES_REQUESTED", () => {
+    expect(readAgentVerdict("Two findings.\nREVIEW_RESULT: CHANGES_REQUESTED", OUTCOMES).spoke).toBe("review");
+  });
+
+  it("says the agent spoke nothing when its output stops at REVIEW_RESULT: with no verdict after it", () => {
+    expect(readAgentVerdict('{"findings": [\nREVIEW_RESULT:', OUTCOMES).spoke).toBe("nothing");
+  });
+
+  it("says the agent spoke a marker when it printed both a marker and REVIEW_RESULT", () => {
+    expect(readAgentVerdict("REVIEW_RESULT: CHANGES_REQUESTED\nLORE_NODE_RESULT: success", OUTCOMES).spoke).toBe("marker");
   });
 });

@@ -24,6 +24,7 @@ stations:
     kind: agent
     agent_definition: reviewer
     conversation_key: pr_url
+    result_required: true
     outcomes: [success, failed]
     needs: [{ name: pr_url, kind: value }]
     produces: []
@@ -73,7 +74,7 @@ describe("pipelineOf", () => {
   });
 
   it("spells a station's fields as the floor does", () => {
-    expect(codeReview().stations).toMatchObject([{ id: "code-review", body: { agentDefinition: "reviewer", conversationKey: "pr_url" } }]);
+    expect(codeReview().stations).toMatchObject([{ id: "code-review", body: { agentDefinition: "reviewer", conversationKey: "pr_url", resultRequired: true } }]);
   });
 
   it("spells an agent's timeout and its prices as the floor does", () => {

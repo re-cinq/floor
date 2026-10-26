@@ -36,7 +36,7 @@ interface Spellings {
 
 const AS_THE_FLOOR_SPELLS: Spellings = {
   edge: { iteration_max: "iterationMax" },
-  station: { agent_definition: "agentDefinition", conversation_key: "conversationKey", must_change: "mustChange" },
+  station: { agent_definition: "agentDefinition", conversation_key: "conversationKey", must_change: "mustChange", result_required: "resultRequired" },
   settings: { timeout_minutes: "timeoutMinutes" },
   price: { input_per_million: "inputPerMillion", output_per_million: "outputPerMillion", cache_read_per_million: "cacheReadPerMillion", cache_write_per_million: "cacheWritePerMillion" },
 };
@@ -74,7 +74,7 @@ function archiveOf(written: PipelineFile["archive"]): Archive {
 /** The order a person reads in: where a line begins before what it is given, a prompt after the model it is for. A floor hands its fields back in the alphabet's. */
 const READ_IN_ORDER = {
   line: ["id", "entry", "exit", "fail", "start", "args", "files", "nodes", "edges"],
-  station: ["kind", "description", "agent_definition", "conversation", "conversation_key", "url", "route", "outcomes", "must_change", "needs", "produces"],
+  station: ["kind", "description", "agent_definition", "conversation", "conversation_key", "url", "route", "outcomes", "must_change", "result_required", "needs", "produces"],
   settings: ["model", "image", "timeout_minutes", "tags", "prices", "config", "prompt"],
   schedule: ["cron", "timezone", "payload"],
 };

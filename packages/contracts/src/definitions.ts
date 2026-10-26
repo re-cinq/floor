@@ -106,6 +106,8 @@ export interface StationBody {
   conversationKey?: string;
   outcomes: string[];
   mustChange?: boolean;
+  /** Agent kind only: an agent that ends with neither a `LORE_NODE_RESULT:` line nor a `REVIEW_RESULT:` verdict has failed its visit, instead of being read as `success`. */
+  resultRequired?: boolean;
   needs: NeedSpec[];
   produces: ProduceSpec[];
   /** Service kind only. */
