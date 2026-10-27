@@ -419,6 +419,15 @@ the old one lives. The API keeps nothing between requests, so nothing is
 lost by letting every replica answer. `/readyz` is now "can reach the
 database", and `/version` says whether this instance runs the loop.
 
+**Readiness does not queue behind requests.** `/readyz` asked the request
+pool for a connection. A `/metrics` scrape (about two seconds, a dozen
+queries at once) or a few slow reads of a single run could hold all ten,
+`select 1` waited longer than the kubelet's default one-second timeout,
+and both replicas left the Service together while still working. `/readyz`
+now asks on a connection of its own and gives up after two seconds, and the
+chart's probes wait three. A busy replica stays in the Service: taking it
+out only moves its load onto the other one.
+
 **Migrating takes a lock.** Every API replica migrates when it starts, and
 the chart's hook Job migrates too, so three may start at once. `create table
 if not exists` is not safe against itself: two of them collide inside

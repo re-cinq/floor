@@ -55,7 +55,7 @@ each entity has its own page under [entities/](entities/).
 ## Health and version
 
 GET    /healthz                          // process up
-GET    /readyz                           // can reach its database; 503 otherwise. Every such instance serves
+GET    /readyz                           // can reach its database, within two seconds, on a connection of its own; 503 otherwise. Every such instance serves
 GET    /version                          // build sha, schema version, and whether this instance runs the loop
 
 ## Metrics

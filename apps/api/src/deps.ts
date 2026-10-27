@@ -3,6 +3,7 @@ import {
   AssemblyRunStore,
   BlobsStore,
   CostsStore,
+  DatabaseProbe,
   DefinitionsStore,
   DispatchBriefs,
   EventStore,
@@ -32,6 +33,8 @@ export interface Deps {
   journal: RunJournal;
   /** Holds a connection of its own once somebody watches a run: close it when the floor stops. */
   notifier: RunNotifier;
+  /** Answers /readyz on a connection of its own: close it when the floor stops. */
+  databaseProbe: DatabaseProbe;
 }
 
 export function buildDeps(pool: PgPool, config: Config, now: () => Date = () => new Date()): Deps {
@@ -53,6 +56,7 @@ export function buildDeps(pool: PgPool, config: Config, now: () => Date = () => 
     costs: new CostsStore({ connection: pool }),
     schedules: new SchedulesStore({ definitions, events, now }),
     journal: new RunJournal({ pool }),
+    databaseProbe: new DatabaseProbe(config.databaseUrl),
     notifier: new PgRunNotifier({ connectionString: config.databaseUrl, onError: (error) => console.error("floor live channel: lost its listening connection", error) }),
   };
 }

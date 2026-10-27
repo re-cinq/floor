@@ -8,8 +8,8 @@ import { withAdvisoryLock } from "./lease.js";
 
 export type { Pool as PgPool, PoolClient } from "pg";
 
-export function createPool(connectionString: string): postgres.Pool {
-  return new postgres.Pool({ connectionString });
+export function createPool(connectionString: string, options: postgres.PoolConfig = {}): postgres.Pool {
+  return new postgres.Pool({ ...options, connectionString });
 }
 
 // Distinct from the floor lease key and the test lease key, so migrating never waits on a floor.
