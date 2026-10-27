@@ -33,7 +33,7 @@ See [the map](../../README.md) for the whole path an event takes.
 - **The loop** (`engine/loop.ts`): runs the dispatcher and the sweeper on the one instance holding the floor's lease, a Postgres advisory lock. Each pass checks the lease is still alive first, since Postgres drops it silently with the connection; a pass that throws is logged and tried again. `stop()` waits for the pass in flight and releases the lease, so another instance takes over at once. An instance without the lease still serves the API; it only leaves the loop to the one that has it.
 - **Validation** (`schemas.ts`, `parse.ts`): zod mirrors of `@floor/store`'s definition bodies; `parseBody` collects every error, not just the first.
 - **Errors** (`problem.ts`): RFC 9457 `application/problem+json`.
-- **Costs** (`routes/costs.ts`): `GET /costs`, a service's alone like every route that does not say otherwise — at least one of `repo`/`line`/`station`/`since`/`until` and a `group` (`day`/`line`/`station`/`model`) are required; returns cost, tokens in/out, visit count and visits missing cost, per `CostsStore.summary`.
+- **Costs** (`routes/costs.ts`): `GET /costs`, a service's alone like every route that does not say otherwise — at least one of `run`/`repo`/`line`/`station`/`since`/`until` and a `group` (`day`/`line`/`station`/`model`/`run`/`billing_mode`) are required; returns cost, tokens in/out, visit count and visits missing cost, per `CostsStore.summary`.
 
 ## Not yet here
 

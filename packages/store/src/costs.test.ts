@@ -261,6 +261,18 @@ describe("CostsStore.summary", () => {
     expect(rows).toMatchObject([{ key: "code-review", costUsd: 1, visits: 1 }]);
   });
 
+  it("names only the unpriced model of the asked run when another run has its own", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const asked = await openAgentVisit("code-review", "r", DAY_1);
+    const other = await openAgentVisit("code-review", "r", DAY_1);
+
+    await records().append(asked, [{ kind: "llm_call", body: { costUsd: 1, usage: {}, unpriced: ["claude-asked"] }, occurredAt: DAY_1 }]);
+    await records().append(other, [{ kind: "llm_call", body: { costUsd: 2, usage: {}, unpriced: ["claude-other"] }, occurredAt: DAY_1 }]);
+    const rows = await costs().summary({ runId: await runOf(asked) }, "run");
+
+    expect(rows).toEqual([{ key: await runOf(asked), costUsd: 1, tokensIn: 0, tokensOut: 0, visits: 1, visitsMissingCost: 0, unpriced: ["claude-asked"] }]);
+  });
+
   it("groups by run", async () => {
     await seedAgentLine("code-review", "claude-x");
     const first = await openAgentVisit("code-review", "r", DAY_1);

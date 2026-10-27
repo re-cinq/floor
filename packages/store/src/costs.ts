@@ -93,8 +93,13 @@ function tokensCacheRead(counts: string): string {
   return `coalesce((${counts}->>'cache_read_input_tokens')::numeric, 0)`;
 }
 
+/** What a records CTE reads: every station run's records, or only those of the station runs the `scoped` CTE selected. */
+type RecordsScope = string;
+
+const SCOPED_VISITS: RecordsScope = "station_run_id in (select station_run_id from scoped)";
+
 /** One row a visit. */
-const BY_VISIT = `
+const byVisit = (scope: RecordsScope): string => `
   totals as (
     select
       station_run_id,
@@ -104,7 +109,7 @@ const BY_VISIT = `
       sum(${tokensOut("body->'usage'")}) as tokens_out,
       sum(${tokensCacheRead("body->'usage'")}) as tokens_cache_read
     from station_run_records
-    where kind = 'llm_call'
+    where kind = 'llm_call' and ${scope}
     group by station_run_id
   )
 `;
@@ -114,36 +119,36 @@ const NAMES_MODELS = `jsonb_typeof(body->'models') = 'object' and body->'models'
       and (body->>'costUsd' is null or jsonb_path_exists(body->'models', '$.*.cost_usd'))`;
 
 /** One row a visit and a model it called. A record that names no models is one row, its model left for the visit's definition to name. */
-const BY_MODEL = `
+const byModel = (scope: RecordsScope): string => `
   totals as (
     select station_run_id, counted.key as model, (counted.value->>'cost_usd')::numeric as cost_usd,
       ${tokensIn("counted.value")} as tokens_in, ${tokensOut("counted.value")} as tokens_out, ${tokensCacheRead("counted.value")} as tokens_cache_read
     from station_run_records, jsonb_each(body->'models') as counted
-    where kind = 'llm_call' and ${NAMES_MODELS}
+    where kind = 'llm_call' and ${NAMES_MODELS} and ${scope}
     union all
     select station_run_id, null::text, (body->>'costUsd')::numeric,
       ${tokensIn("body->'usage'")}, ${tokensOut("body->'usage'")}, ${tokensCacheRead("body->'usage'")}
     from station_run_records
-    where kind = 'llm_call' and not coalesce(${NAMES_MODELS}, false)
+    where kind = 'llm_call' and not coalesce(${NAMES_MODELS}, false) and ${scope}
   )
 `;
 
 // Claude Code says on its init line which credential it found: `none` is the subscription token, anything else a key. Gemini's says nothing, and its visits stay unknown.
-const BILLING = `
+const billing = (scope: RecordsScope): string => `
   billing as (
     select distinct on (station_run_id) station_run_id,
       case when body->>'apiKeySource' = 'none' then 'subscription' else 'api_key' end as billing_mode
     from station_run_records
-    where kind = 'turn' and body->>'type' = 'system' and body->>'subtype' = 'init' and body ? 'apiKeySource'
+    where kind = 'turn' and body->>'type' = 'system' and body->>'subtype' = 'init' and body ? 'apiKeySource' and ${scope}
     order by station_run_id, seq
   )
 `;
 
-const UNPRICED = `
+const unpriced = (scope: RecordsScope): string => `
   unpriced as (
     select station_run_id, named.model
     from station_run_records, jsonb_array_elements_text(body->'unpriced') as named(model)
-    where kind = 'llm_call' and jsonb_typeof(body->'unpriced') = 'array'
+    where kind = 'llm_call' and jsonb_typeof(body->'unpriced') = 'array' and ${scope}
   )
 `;
 
@@ -152,9 +157,21 @@ const COST_DECIMALS = 6;
 
 const MISSING_COST = "agent_definition_hash is not null and report is not null and cost_usd is null";
 
+/** The station runs the filter selects, before any of their records are read. */
+const scopedVisits = (where: string): string => `
+  scoped as (
+    select sr.station_run_id
+    from station_runs sr
+    join assembly_runs ar on ar.id = sr.assembly_run_id
+    left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
+    ${where}
+  )
+`;
+
 function summarySql(where: string, groupBy: CostsGroupBy): string {
   return `
-    with ${groupBy === "model" ? BY_MODEL : BY_VISIT}, ${UNPRICED}, ${BILLING},
+    with ${scopedVisits(where)},
+    ${groupBy === "model" ? byModel(SCOPED_VISITS) : byVisit(SCOPED_VISITS)}, ${unpriced(SCOPED_VISITS)}, ${billing(SCOPED_VISITS)},
     visits as (
       select ${GROUP_KEY_EXPR[groupBy]} as key, sr.station_run_id, sr.agent_definition_hash, sr.report, lt.cost_usd, lt.tokens_in, lt.tokens_out
       from station_runs sr
@@ -162,7 +179,7 @@ function summarySql(where: string, groupBy: CostsGroupBy): string {
       left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
       left join totals lt on lt.station_run_id = sr.station_run_id
       ${groupBy === "billing_mode" ? "left join billing bm on bm.station_run_id = sr.station_run_id" : ""}
-      ${where}
+      where sr.station_run_id in (select station_run_id from scoped)
     )
     select
       key,
@@ -181,7 +198,9 @@ function summarySql(where: string, groupBy: CostsGroupBy): string {
   `;
 }
 
-/** What one line's station spent on one model in one repository, for GET /metrics: the BY_MODEL rollup grouped four ways at once. A visit that named no model is attributed to the model in its run input's agentSettings. */
+const EVERY_VISIT: RecordsScope = "true";
+
+/** What one line's station spent on one model in one repository, for GET /metrics: the byModel rollup grouped four ways at once. A visit that named no model is attributed to the model in its run input's agentSettings. */
 export interface CostSeriesRow {
   lineId: string;
   nodeId: string;
@@ -195,7 +214,7 @@ export interface CostSeriesRow {
 }
 
 const SERIES_SQL = `
-  with ${BY_MODEL}
+  with ${byModel(EVERY_VISIT)}
   select ar.line_id, sr.node_id, coalesce(lt.model, sr.input->'agentSettings'->>'model', '') as model, coalesce(ar.repo, '') as repo,
     round(coalesce(sum(lt.cost_usd), 0), ${COST_DECIMALS}) as cost_usd,
     coalesce(sum(lt.tokens_in), 0) as tokens_in,
@@ -231,7 +250,7 @@ export interface MissingCostCount {
 /** Agent visits that made model calls and stated no price for them, by line: the anomaly `internal.cost.missing` raises, as a number to watch. A visit with no llm_call record at all is not counted; it may not have called a model. */
 export async function missingCostByLine(client: Queryable): Promise<MissingCostCount[]> {
   const { rows } = await client.query<Record<string, string>>(`
-    with ${BY_VISIT}
+    with ${byVisit(EVERY_VISIT)}
     select ar.line_id, count(*)::text as count
     from station_runs sr
     join assembly_runs ar on ar.id = sr.assembly_run_id
