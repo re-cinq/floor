@@ -542,8 +542,12 @@ The floor collects every cost itself.
   `GET /costs`, so the two never disagree.
 - **Crashes still cost.** Records are written during the visit.
 - **Rollups are queries.** Visit, run and aggregate cost are sums over
-  records, in SQL: `CostsStore.summary`, grouped by day, line, station or
-  model, over `GET /costs`.
+  records, in SQL: `CostsStore.summary`, grouped by day, line, station,
+  model, run or billing mode, over `GET /costs`.
+- **A rollup reads only the records it asks for.** The filters pick the
+  visits first; the record sums, the unpriced models and the billing mode
+  are then read for those visits alone, by the records' primary key, so a
+  query costs what its visits hold and not what the table holds.
 
 ## Concurrency
 
