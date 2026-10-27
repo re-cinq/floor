@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { injectJson, setupTestServer } from "../test-server.js";
 
-const { server, loop } = setupTestServer();
+const { server, loop, pool } = setupTestServer();
 
 describe("GET /healthz", () => {
   it("is reachable with no bearer token", async () => {
@@ -17,6 +17,18 @@ describe("GET /readyz", () => {
 
     expect(response.result).toEqual({ status: "ready" });
   });
+
+  it("is ready while every connection of the request pool is taken", async () => {
+    const taken = await Promise.all(Array.from({ length: pool().options.max }, () => pool().connect()));
+
+    try {
+      const response = await injectJson(server(), { method: "GET", url: "/readyz" });
+
+      expect(response.result).toEqual({ status: "ready" });
+    } finally {
+      taken.forEach((client) => client.release());
+    }
+  }, 10_000);
 });
 
 describe("GET /version", () => {

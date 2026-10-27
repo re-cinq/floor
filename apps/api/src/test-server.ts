@@ -71,6 +71,7 @@ export function setupTestServer(configured: Partial<Config> = {}): TestServer {
     await loop.stop();
     await server.stop();
     await deps.notifier.close();
+    await deps.databaseProbe.close();
     await pool.end();
   });
 
