@@ -41,7 +41,7 @@ function fakeResources(overrides: Partial<AgentResourcesApi> = {}): AgentResourc
   return {
     apply: vi.fn(() => Promise.resolve({ name: "x", created: true })),
     delete: vi.fn(() => Promise.resolve({ name: "x", deleted: true })),
-    sweep: vi.fn(() => Promise.resolve({ stations: [], definitions: [] })),
+    sweep: vi.fn(() => Promise.resolve({ agents: [], stations: [], definitions: [] })),
     ...overrides,
   };
 }

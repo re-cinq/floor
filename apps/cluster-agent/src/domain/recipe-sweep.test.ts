@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { unusedRecipes, type Listed } from "./recipe-sweep.js";
+import { abandonedAgents, unusedRecipes, type Listed } from "./recipe-sweep.js";
 
 const NOW = new Date("2026-10-30T12:00:00Z");
 const OLD = "2026-10-30T10:00:00Z";
@@ -56,5 +56,29 @@ describe("unusedRecipes", () => {
     expect(
       unusedRecipes({ agentStationRefs: [], stations: [station("reviewer", "reviewer", null)], definitions: [definition("reviewer", null)], now: NOW }),
     ).toEqual({ stations: [], definitions: [] });
+  });
+});
+
+describe("abandonedAgents", () => {
+  const visit = "floor-0b0e7a32-5c55-4e2e-9a64-0f4e6f1d2c3b";
+
+  it("picks a Succeeded visit Agent made 2026-10-02, whose abort was lost", () => {
+    expect(abandonedAgents([{ name: visit, phase: "Succeeded", createdAt: "2026-10-02T11:07:05Z" }], NOW)).toEqual([visit]);
+  });
+
+  it("picks a Failed visit Agent older than a day", () => {
+    expect(abandonedAgents([{ name: visit, phase: "Failed", createdAt: "2026-10-29T11:00:00Z" }], NOW)).toEqual([visit]);
+  });
+
+  it("keeps a Succeeded visit Agent made an hour ago, its abort still to come", () => {
+    expect(abandonedAgents([{ name: visit, phase: "Succeeded", createdAt: "2026-10-30T11:00:00Z" }], NOW)).toEqual([]);
+  });
+
+  it("keeps a Running visit Agent made 2026-10-02", () => {
+    expect(abandonedAgents([{ name: visit, phase: "Running", createdAt: "2026-10-02T11:07:05Z" }], NOW)).toEqual([]);
+  });
+
+  it("keeps a Succeeded Agent named reviewer-run-1 that the floor did not make", () => {
+    expect(abandonedAgents([{ name: "reviewer-run-1", phase: "Succeeded", createdAt: "2026-10-02T11:07:05Z" }], NOW)).toEqual([]);
   });
 });

@@ -128,7 +128,10 @@ confirmation in the same file. An abort deletes the Agent only: its recipe
 may be running other visits.
 
 **The sweep.** At most every ten minutes, after a tick's dispatches and never
-beside one, the loop removes the recipes no Agent runs any more
+beside one, the loop first deletes the finished (Succeeded or Failed)
+`floor-<visitId>` Agents older than a day, whose abort was lost (a visit
+reports long before; ten such Agents from 2026-10-02 on were still there on
+10-30), then removes the recipes no Agent runs any more
 (`domain/recipe-sweep.ts`): the floor's Stations no Agent's `stationRef`
 names, then the floor's AgentDefinitions no remaining Station names. A
 recipe younger than ten minutes is kept, its first Agent possibly not made

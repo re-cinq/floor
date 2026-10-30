@@ -1,4 +1,4 @@
-// Which recipes no visit runs any more: the floor's Stations no Agent points at, then the floor's AgentDefinitions no remaining Station points at.
+// What no visit needs any more: a finished visit Agent whose abort never came, then the floor's Stations no Agent points at, then the floor's AgentDefinitions no remaining Station points at.
 import { RECIPE_LABEL } from "./agent-triple.js";
 
 /** One Station or AgentDefinition as listed; `ref` is a Station's `agentDefRef`. */
@@ -16,17 +16,35 @@ export interface Listing {
   now: Date;
 }
 
+/** One Agent as listed. */
+export interface ListedAgent {
+  name: string;
+  phase?: string;
+  createdAt: string;
+}
+
 export interface Unused {
+  agents: string[];
   stations: string[];
   definitions: string[];
 }
 
 /** A recipe younger than this is kept: its first visit's Agent may not be created yet. */
 const GRACE_MS = 600_000;
+/** A finished visit Agent older than this lost its abort: a visit reports long before. */
+const ABANDONED_AFTER_MS = 86_400_000;
+const FINISHED = new Set(["Succeeded", "Failed"]);
 /** Earlier releases named a whole triple after its visit and labelled nothing. */
 const PER_VISIT_NAME = /^floor-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export function unusedRecipes(listing: Listing): Unused {
+/** Finished visit Agents a day old: their abort, which deletes them, was lost. */
+export function abandonedAgents(agents: readonly ListedAgent[], now: Date): string[] {
+  return agents
+    .filter((agent) => PER_VISIT_NAME.test(agent.name) && FINISHED.has(agent.phase ?? "") && ageOf(agent, now) >= ABANDONED_AFTER_MS)
+    .map((agent) => agent.name);
+}
+
+export function unusedRecipes(listing: Listing): Omit<Unused, "agents"> {
   const removable = (listed: Listed) => isFloors(listed) && isOld(listed, listing.now);
   const runStations = new Set(listing.agentStationRefs);
   const stations = listing.stations.filter((station) => removable(station) && !runStations.has(station.name));
@@ -43,5 +61,9 @@ function isFloors(listed: Listed): boolean {
 }
 
 function isOld(listed: Listed, now: Date): boolean {
-  return now.getTime() - Date.parse(listed.createdAt) >= GRACE_MS;
+  return ageOf(listed, now) >= GRACE_MS;
+}
+
+function ageOf(listed: { createdAt: string }, now: Date): number {
+  return now.getTime() - Date.parse(listed.createdAt);
 }

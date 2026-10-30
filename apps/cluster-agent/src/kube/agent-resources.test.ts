@@ -113,6 +113,17 @@ describe("KubeAgentResourcesApi.delete", () => {
   });
 });
 
+function listingApi(byKind: Record<string, unknown[]>, deleted: string[]): CustomObjectsApi {
+  return fakeApi({
+    listNamespacedCustomObject: vi.fn((args: { plural: string }) => Promise.resolve({ items: byKind[args.plural] })) as CustomObjectsApi["listNamespacedCustomObject"],
+    deleteNamespacedCustomObject: vi.fn((args: { plural: string; name: string }) => {
+      deleted.push(`${args.plural}/${args.name}`);
+
+      return Promise.resolve({});
+    }) as CustomObjectsApi["deleteNamespacedCustomObject"],
+  });
+}
+
 describe("KubeAgentResourcesApi.sweep", () => {
   const listed: Record<string, unknown[]> = {
     agents: [{ metadata: { name: "floor-v2" }, spec: { stationRef: "floor-aaaaaaaaaaaa" } }],
@@ -128,20 +139,28 @@ describe("KubeAgentResourcesApi.sweep", () => {
 
   it("deletes the Station and AgentDefinition floor-bbbbbbbbbbbb no Agent runs, and keeps floor-aaaaaaaaaaaa", async () => {
     const deleted: string[] = [];
-    const api = fakeApi({
-      listNamespacedCustomObject: vi.fn((args: { plural: string }) => Promise.resolve({ items: listed[args.plural] })) as CustomObjectsApi["listNamespacedCustomObject"],
-      deleteNamespacedCustomObject: vi.fn((args: { plural: string; name: string }) => {
-        deleted.push(`${args.plural}/${args.name}`);
-
-        return Promise.resolve({});
-      }) as CustomObjectsApi["deleteNamespacedCustomObject"],
-    });
+    const api = listingApi(listed, deleted);
 
     const removed = await new KubeAgentResourcesApi(() => api, "floor-agents").sweep(new Date("2026-10-30T12:00:00Z"));
 
     expect({ removed, deleted: deleted.sort() }).toEqual({
-      removed: { stations: ["floor-bbbbbbbbbbbb"], definitions: ["floor-bbbbbbbbbbbb"] },
+      removed: { agents: [], stations: ["floor-bbbbbbbbbbbb"], definitions: ["floor-bbbbbbbbbbbb"] },
       deleted: ["agentdefinitions/floor-bbbbbbbbbbbb", "stations/floor-bbbbbbbbbbbb"],
     });
+  });
+
+  it("deletes visit Agent floor-0b0e7a32-… finished on 2026-10-02 and, in the same sweep, the recipe only it ran", async () => {
+    const visit = "floor-0b0e7a32-5c55-4e2e-9a64-0f4e6f1d2c3b";
+    const deleted: string[] = [];
+    const byKind: Record<string, unknown[]> = {
+      agents: [{ metadata: { name: visit, creationTimestamp: "2026-10-02T11:07:05Z" }, spec: { stationRef: "floor-cccccccccccc" }, status: { phase: "Succeeded" } }],
+      stations: [{ metadata: { name: "floor-cccccccccccc", creationTimestamp: "2026-10-02T11:07:05Z", labels: { "floor.re-cinq.com/recipe": "true" } }, spec: { agentDefRef: "floor-cccccccccccc" } }],
+      agentdefinitions: [{ metadata: { name: "floor-cccccccccccc", creationTimestamp: "2026-10-02T11:07:05Z", labels: { "floor.re-cinq.com/recipe": "true" } } }],
+    };
+    const api = listingApi(byKind, deleted);
+
+    await new KubeAgentResourcesApi(() => api, "floor-agents").sweep(new Date("2026-10-30T12:00:00Z"));
+
+    expect(deleted).toEqual([`agents/${visit}`, "stations/floor-cccccccccccc", "agentdefinitions/floor-cccccccccccc"]);
   });
 });
