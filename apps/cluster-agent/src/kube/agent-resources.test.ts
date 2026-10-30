@@ -67,17 +67,17 @@ describe("KubeAgentResourcesApi.apply", () => {
 });
 
 describe("KubeAgentResourcesApi.delete", () => {
-  it("reports deleted:true when the apiserver accepts every removal", async () => {
+  it("reports deleted:true when the apiserver removes the Agent", async () => {
     const result = await new KubeAgentResourcesApi(() => fakeApi(), "floor-agents").delete("floor-v1");
 
     expect(result).toEqual({ name: "floor-v1", deleted: true });
   });
 
-  it("deletes all three resources", async () => {
+  it("deletes the visit's Agent only, leaving its recipe to the other visits that run it", async () => {
     const calls: string[] = [];
     const api = fakeApi({
-      deleteNamespacedCustomObject: vi.fn((args: { plural: string }) => {
-        calls.push(args.plural);
+      deleteNamespacedCustomObject: vi.fn((args: { plural: string; name: string }) => {
+        calls.push(`${args.plural}/${args.name}`);
 
         return Promise.resolve({});
       }) as CustomObjectsApi["deleteNamespacedCustomObject"],
@@ -85,10 +85,10 @@ describe("KubeAgentResourcesApi.delete", () => {
 
     await new KubeAgentResourcesApi(() => api, "floor-agents").delete("floor-v1");
 
-    expect(calls.sort()).toEqual(["agentdefinitions", "agents", "stations"]);
+    expect(calls).toEqual(["agents/floor-v1"]);
   });
 
-  it("reports deleted:false when nothing was there to delete (a redelivered abort)", async () => {
+  it("reports deleted:false when the Agent was already gone (a redelivered abort)", async () => {
     const api = fakeApi({
       deleteNamespacedCustomObject: vi.fn(() =>
         Promise.reject({ code: 404 }),
@@ -98,20 +98,6 @@ describe("KubeAgentResourcesApi.delete", () => {
     const result = await new KubeAgentResourcesApi(() => api, "floor-agents").delete("floor-v1");
 
     expect(result).toEqual({ name: "floor-v1", deleted: false });
-  });
-
-  it("reports deleted:true when only one of the three was still present", async () => {
-    const api = fakeApi({
-      deleteNamespacedCustomObject: vi
-        .fn()
-        .mockRejectedValueOnce({ code: 404 })
-        .mockResolvedValueOnce({})
-        .mockRejectedValueOnce({ code: 404 }) as CustomObjectsApi["deleteNamespacedCustomObject"],
-    });
-
-    const result = await new KubeAgentResourcesApi(() => api, "floor-agents").delete("floor-v1");
-
-    expect(result).toEqual({ name: "floor-v1", deleted: true });
   });
 
   it("rethrows a non-404 failure", async () => {
@@ -124,5 +110,38 @@ describe("KubeAgentResourcesApi.delete", () => {
     await expect(
       new KubeAgentResourcesApi(() => api, "floor-agents").delete("floor-v1"),
     ).rejects.toMatchObject({ code: 500 });
+  });
+});
+
+describe("KubeAgentResourcesApi.sweep", () => {
+  const listed: Record<string, unknown[]> = {
+    agents: [{ metadata: { name: "floor-v2" }, spec: { stationRef: "floor-aaaaaaaaaaaa" } }],
+    stations: [
+      { metadata: { name: "floor-aaaaaaaaaaaa", creationTimestamp: "2026-10-30T10:00:00Z", labels: { "floor.re-cinq.com/recipe": "true" } }, spec: { agentDefRef: "floor-aaaaaaaaaaaa" } },
+      { metadata: { name: "floor-bbbbbbbbbbbb", creationTimestamp: "2026-10-30T10:00:00Z", labels: { "floor.re-cinq.com/recipe": "true" } }, spec: { agentDefRef: "floor-bbbbbbbbbbbb" } },
+    ],
+    agentdefinitions: [
+      { metadata: { name: "floor-aaaaaaaaaaaa", creationTimestamp: "2026-10-30T10:00:00Z", labels: { "floor.re-cinq.com/recipe": "true" } } },
+      { metadata: { name: "floor-bbbbbbbbbbbb", creationTimestamp: "2026-10-30T10:00:00Z", labels: { "floor.re-cinq.com/recipe": "true" } } },
+    ],
+  };
+
+  it("deletes the Station and AgentDefinition floor-bbbbbbbbbbbb no Agent runs, and keeps floor-aaaaaaaaaaaa", async () => {
+    const deleted: string[] = [];
+    const api = fakeApi({
+      listNamespacedCustomObject: vi.fn((args: { plural: string }) => Promise.resolve({ items: listed[args.plural] })) as CustomObjectsApi["listNamespacedCustomObject"],
+      deleteNamespacedCustomObject: vi.fn((args: { plural: string; name: string }) => {
+        deleted.push(`${args.plural}/${args.name}`);
+
+        return Promise.resolve({});
+      }) as CustomObjectsApi["deleteNamespacedCustomObject"],
+    });
+
+    const removed = await new KubeAgentResourcesApi(() => api, "floor-agents").sweep(new Date("2026-10-30T12:00:00Z"));
+
+    expect({ removed, deleted: deleted.sort() }).toEqual({
+      removed: { stations: ["floor-bbbbbbbbbbbb"], definitions: ["floor-bbbbbbbbbbbb"] },
+      deleted: ["agentdefinitions/floor-bbbbbbbbbbbb", "stations/floor-bbbbbbbbbbbb"],
+    });
   });
 });

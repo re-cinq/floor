@@ -68,7 +68,8 @@ export interface PodResources {
   limits?: Record<string, string>;
 }
 
-export type BriefSettings = ExecutorSettings & { model?: string; prompt: string; image: string };
+/** `timeoutMinutes` is the definition's own work budget, the same for every visit; `VisitBrief.deadlineMinutes` is what is left of this visit's. */
+export type BriefSettings = ExecutorSettings & { model?: string; prompt: string; image: string; timeoutMinutes?: number };
 
 /** `GET /station-runs/:id/brief`: everything an executor needs to run one visit, and a token that reaches only this visit. */
 export interface VisitBrief {

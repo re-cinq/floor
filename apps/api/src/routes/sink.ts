@@ -67,7 +67,7 @@ function dispatchSettings(settings: AgentSettings): BriefSettings {
 
   if (!config.success) throw new Refusal(`the agent definition's config cannot be read: ${issuesOf(config.error).join("; ")}`);
 
-  return { model: settings.model, prompt: settings.prompt, image: settings.image, ...executorSettings(config.data) };
+  return { model: settings.model, prompt: settings.prompt, image: settings.image, timeoutMinutes: settings.timeoutMinutes, ...executorSettings(config.data) };
 }
 
 function modelSecretKeyOf(settings: AgentSettings | null): string | undefined {
