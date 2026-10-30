@@ -4,7 +4,7 @@ import { GROUP, VERSION } from "@re-cinq/agent-contracts";
 import type { AgentTriple } from "../domain/agent-triple.js";
 import { agentsNamespace, customObjectsApi } from "./clients.js";
 import { isConflict, isMissing } from "../lib/k8s-errors.js";
-import { unusedRecipes, type Listed, type Unused } from "../domain/recipe-sweep.js";
+import { abandonedAgents, unusedRecipes, type Listed, type Unused } from "../domain/recipe-sweep.js";
 
 const AGENT_DEFINITION_PLURAL = "agentdefinitions";
 const STATION_PLURAL = "stations";
@@ -15,7 +15,7 @@ export interface AgentResourcesApi {
   apply(triple: AgentTriple): Promise<{ name: string; created: boolean }>;
   /** The visit's Agent only, tolerating it already being gone: its recipe may run other visits. */
   delete(name: string): Promise<{ name: string; deleted: boolean }>;
-  /** Removes the floor's recipes no Agent runs any more; never run beside a dispatch, which could be about to use one. */
+  /** Removes the finished visit Agents whose abort was lost, then the floor's recipes no Agent runs any more; never run beside a dispatch, which could be about to use one. */
   sweep(now: Date): Promise<Unused>;
 }
 
@@ -45,8 +45,9 @@ export class KubeAgentResourcesApi implements AgentResourcesApi {
       this.list(STATION_PLURAL),
       this.list(AGENT_DEFINITION_PLURAL),
     ]);
+    const abandoned = await this.removeAbandoned(agents, now);
     const unused = unusedRecipes({
-      agentStationRefs: agents.map((agent) => agent.spec?.stationRef ?? ""),
+      agentStationRefs: agents.filter((agent) => !abandoned.has(nameOf(agent))).map((agent) => agent.spec?.stationRef ?? ""),
       stations: stations.map((station) => ({ ...listed(station), ref: station.spec?.agentDefRef })),
       definitions: definitions.map(listed),
       now,
@@ -55,7 +56,16 @@ export class KubeAgentResourcesApi implements AgentResourcesApi {
     await Promise.all(unused.stations.map((name) => this.remove(STATION_PLURAL, name)));
     await Promise.all(unused.definitions.map((name) => this.remove(AGENT_DEFINITION_PLURAL, name)));
 
-    return unused;
+    return { agents: [...abandoned], ...unused };
+  }
+
+  private async removeAbandoned(agents: ListedObject[], now: Date): Promise<Set<string>> {
+    const listedAgents = agents.map((agent) => ({ name: nameOf(agent), phase: agent.status?.phase, createdAt: agent.metadata?.creationTimestamp ?? "" }));
+    const abandoned = abandonedAgents(listedAgents, now);
+
+    await Promise.all(abandoned.map((name) => this.remove(AGENT_PLURAL, name)));
+
+    return new Set(abandoned);
   }
 
   private async list(plural: string): Promise<ListedObject[]> {
@@ -115,6 +125,11 @@ export class KubeAgentResourcesApi implements AgentResourcesApi {
 interface ListedObject {
   metadata?: { name?: string; creationTimestamp?: string; labels?: Record<string, string> };
   spec?: { stationRef?: string; agentDefRef?: string };
+  status?: { phase?: string };
+}
+
+function nameOf(object: ListedObject): string {
+  return object.metadata?.name ?? "";
 }
 
 function listed(object: ListedObject): Listed {
