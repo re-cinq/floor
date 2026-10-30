@@ -1,6 +1,6 @@
 {{/*
 Templated from deploy/agent-subsystem/controller.yaml, the ai-agent-subsystem's controller
-vendored at v0.11.11: same RBAC and Deployment shape, __NAMESPACE__/__CONTROLLER_IMAGE__/
+vendored at v0.15.0: same RBAC and Deployment shape, __NAMESPACE__/__CONTROLLER_IMAGE__/
 __AGENT_IMAGE__ replaced with chart values instead of scripts/setup-minikube-agents.sh's sed.
 */}}
 {{- if .Values.subsystem.enabled }}
@@ -22,13 +22,22 @@ metadata:
 rules:
   - apiGroups: ["agents.re-cinq.com"]
     resources: ["agents"]
-    verbs: ["get", "list", "watch", "patch", "update", "delete"]
+    verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["agentspawners"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["agentspawners/status"]
+    verbs: ["get", "patch"]
   - apiGroups: ["agents.re-cinq.com"]
     resources: ["agents/status"]
     verbs: ["get", "update", "patch"]
   - apiGroups: ["agents.re-cinq.com"]
     resources: ["stations", "agentdefinitions"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["modelcatalogs", "modelcatalogs/status"]
+    verbs: ["get", "create", "patch"]
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["create", "get", "list", "watch", "delete"]
