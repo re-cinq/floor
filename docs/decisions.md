@@ -619,6 +619,30 @@ the run's lock, fan-out or not, one extra round trip a report that a check on th
 line's nodes would save; the lock key is a 32-bit hash of the run id, so two
 runs can share one, which only makes them wait for each other.
 
+## One recipe per settings, in each cluster
+
+**The cluster agent makes a recipe once and an Agent per visit.** It used to
+make an AgentDefinition, a Station and an Agent for every visit, because the
+subsystem's AgentDefinition held the visit's repos, conversation and sinks,
+so a shared one would have been one visit stale. ai-agent-subsystem v0.15.0
+lets an Agent carry those over its recipe (re-cinq/ai-agent-subsystem#335),
+so the AgentDefinition and Station now hold only the visit's settings and
+are named after their hash: `kubectl get agentdefinitions` lists what runs,
+one row per agent version and repository variant, instead of one per visit.
+
+**Named after the merged settings, not the version hash.** A visit's
+settings are the version merged with its repository's variant, so two
+repositories can run two recipes of one version; the visit's
+`agentDefinitionHash` still names the version.
+
+**A sweep, not an owner, removes a recipe.** Many Agents share one, so no
+single abort may delete it. The sweep runs inside the claim loop, after a
+tick's dispatches, so it never removes a recipe a dispatch is about to use,
+and it spares a recipe younger than ten minutes.
+
+**Not done:** the visit records no name of the recipe it ran; its Agent's
+`agents.re-cinq.com/agent-definition` label says it while the Agent lives.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is

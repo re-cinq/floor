@@ -5,7 +5,12 @@ station of the agent kind references one; a visit records which version it
 used.
 
 Not the ai-agent-subsystem's `AgentDefinition`, which is a recipe resource
-inside a cluster. The cluster agent builds one of those from this.
+inside a cluster. The cluster agent builds one of those from this: from the
+settings a visit resolved (the latest version, merged with the run's
+repository variant), named `floor-<12 hex>` after their hash, and shared by
+every visit that resolves the same settings, in that cluster. A new version
+or a changed variant makes a new one the first time a visit runs it; the old
+one is swept once no Agent runs it (`apps/cluster-agent/README.md`).
 
 ## Why it is separate from the station
 

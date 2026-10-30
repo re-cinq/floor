@@ -2,10 +2,10 @@
 
 The only process in one deployment that talks to that cluster's Kubernetes
 API. Claims `station_run.dispatch` and `station_run.abort` events from the
-Floor by tag, and turns a dispatch into one AgentDefinition + Station +
-Agent triple of the
-[ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem), or an
-abort into deleting that triple. See
+Floor by tag, and turns a dispatch into an Agent of the
+[ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) running a
+recipe (an AgentDefinition + Station) shared by every visit with the same
+settings, or an abort into deleting that Agent. See
 [docs/entities/station.md](../../docs/entities/station.md), "AgentStation,
 kind agent", and
 [docs/assembly_run_storage.md](../../docs/assembly_run_storage.md), "the
@@ -49,15 +49,29 @@ in the lore monorepo, Apache 2.0, same organisation:
 ## What is new, and the two judgement calls in it
 
 `domain/agent-triple.ts` maps a visit's resolved needs onto the three
-subsystem custom resources; every field traces to a sentence in
+subsystem custom resources, a recipe and an Agent; every field traces to a sentence in
 `docs/entities/station.md`'s mapping table or the subsystem's own CRD
 reference (`ai-agent-subsystem/website/.../reference/crd-*.md`), with two
 exceptions called out in its file header:
 
-1. **A triple is minted per visit**, not synced once per repo/task-type the
-   way lore's catalog does. A `git` need's branch+sha and a `continue`
-   conversation's session id are per-visit, so a shared, long-lived
-   AgentDefinition would always be one visit stale on at least one of them.
+1. **A recipe per settings, an Agent per visit.** The AgentDefinition and
+   Station hold only what the visit's settings decide (model, prompt, tools,
+   skills, MCP servers, the model's secret, the definition's own env, image,
+   pod resources, and its `timeoutMinutes` as the Station's deadline rather
+   than the minutes the visit has left, which differ for every visit), and both are named `floor-<12 hex>` after a hash
+   of that content. The settings are the agent definition's latest version
+   merged with the run's repository variant, so a new version or a changed
+   variant is a new recipe, and every visit that runs the same settings
+   shares one. A recipe is created only when absent (a 409 is the one
+   already there). What belongs to the visit rides on its Agent,
+   `floor-<visitId>`, which ai-agent-subsystem v0.15.0 lays over the recipe:
+   the repos to clone, the conversation, the sink and file uploads under the
+   visit's token, and the git identity of a visit that writes (a variable the
+   definition sets itself wins). The Agent is created labelled
+   `agents.re-cinq.com/station` and `agents.re-cinq.com/agent-definition`
+   with its recipe's name. Before v0.15.0 a whole triple was minted per
+   visit, because a shared AgentDefinition would have been one visit stale on
+   the branch or the conversation.
 2. **The conversation contract is the subsystem's own**, read from its
    source: it restores with `GET {source}/{id}` and saves with
    `POST {source}/{pin}`, and hands `pin` to the agent as its session id,
@@ -108,9 +122,21 @@ gives up after 30.
 treats abort as "release this visit's cluster resources," fired on every
 visit's end, because nothing else tells this agent when a visit reports
 successfully — the pod's own supervisor posts straight to the Floor's sink,
-never through this agent. Without that widening the CR triple and the
-per-visit secret keys would never be reclaimed on the common path. Flagged
-for confirmation in the same file.
+never through this agent. Without that widening the visit's Agent and its
+secret key would never be reclaimed on the common path. Flagged for
+confirmation in the same file. An abort deletes the Agent only: its recipe
+may be running other visits.
+
+**The sweep.** At most every ten minutes, after a tick's dispatches and never
+beside one, the loop removes the recipes no Agent runs any more
+(`domain/recipe-sweep.ts`): the floor's Stations no Agent's `stationRef`
+names, then the floor's AgentDefinitions no remaining Station names. A
+recipe younger than ten minutes is kept, its first Agent possibly not made
+yet. The floor's own are those labelled `floor.re-cinq.com/recipe`, and the
+unlabelled `floor-<uuid>` triples of earlier releases, which the same sweep
+clears once their Agent is gone; nothing else in the namespace is touched. A
+sweep that fails is logged and tried at the next one. The Role grants `list`
+on the three kinds for it.
 
 A `git` need gets no credential from this agent, read or write. The Agent
 it creates carries the visit's token and the Floor's address as the

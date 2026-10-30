@@ -105,7 +105,7 @@ describe("GET /station-runs/:id/brief", () => {
 
     expect(brief).toMatchObject({
       deadlineMinutes: 50,
-      settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", skills: ["review"], disallowedTools: ["Bash(npm:*)"], env: { LOG: "1" }, permissionMode: "auto", maxTurns: 12 },
+      settings: { model: "claude-sonnet-5", prompt: "Review {pr_url}.", image: "img:1", timeoutMinutes: 20, skills: ["review"], disallowedTools: ["Bash(npm:*)"], env: { LOG: "1" }, permissionMode: "auto", maxTurns: 12 },
       needs: [{ name: "pr_url", kind: "value", value: "https://pr/412" }],
       conversation: { mode: "new", save: true },
     });

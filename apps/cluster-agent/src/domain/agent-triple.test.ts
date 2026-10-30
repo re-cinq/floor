@@ -1,50 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { buildAgentTriple, type DispatchBrief } from "./agent-triple.js";
-
-function brief(overrides: Partial<DispatchBrief> = {}): DispatchBrief {
-  return {
-    visitId: "abc-123",
-    runId: "run-1",
-    lineId: "line-1",
-    nodeId: "node-1",
-    floorBaseUrl: "http://host.minikube.internal:8080",
-    tokenSecretKey: "visit-abc-123-token",
-    visitToken: "visit-token-abc",
-    secretName: "agent-secrets",
-    deadlineMinutes: 20,
-    settings: {
-      model: "claude-sonnet-4-6",
-      prompt: "Review the diff on {pr_url}.",
-      image: "ghcr.io/re-cinq/floor-station:1.0",
-    },
-    needs: [],
-    produces: [],
-    conversation: { mode: "new", save: false },
-    ...overrides,
-  };
-}
+import { buildAgentTriple } from "./agent-triple.js";
+import { brief } from "./agent-triple.fixture.js";
 
 describe("buildAgentTriple", () => {
-  it("names all three resources identically, after the visit", () => {
+  it("names the AgentDefinition and the Station floor-<12 hex> after what they run, and the Agent after the visit", () => {
     const { agentDefinition, station, agent } = buildAgentTriple(brief());
+    const recipe = agentDefinition.metadata?.name;
 
     expect({
-      agentDefinition: agentDefinition.metadata?.name,
+      recipe: /^floor-[0-9a-f]{12}$/.test(recipe ?? ""),
       station: station.metadata?.name,
       agent: agent.metadata?.name,
-    }).toEqual({
-      agentDefinition: "floor-abc-123",
-      station: "floor-abc-123",
-      agent: "floor-abc-123",
-    });
+    }).toEqual({ recipe: true, station: recipe, agent: "floor-abc-123" });
   });
 
   it("points the Agent at the Station, and the Station at the AgentDefinition", () => {
-    const { station, agent } = buildAgentTriple(brief());
+    const { agentDefinition, station, agent } = buildAgentTriple(brief());
 
     expect({ stationRef: agent.spec?.stationRef, agentDefRef: station.spec?.agentDefRef }).toEqual({
-      stationRef: "floor-abc-123",
-      agentDefRef: "floor-abc-123",
+      stationRef: station.metadata?.name,
+      agentDefRef: agentDefinition.metadata?.name,
     });
   });
 
@@ -57,8 +32,8 @@ describe("buildAgentTriple", () => {
     });
   });
 
-  it("turns a git need into a repo the AgentDefinition clones, at its branch, with no credential of its own", () => {
-    const { agentDefinition } = buildAgentTriple(
+  it("turns a git need into a repo the Agent clones, at its branch, with no credential of its own", () => {
+    const { agent } = buildAgentTriple(
       brief({
         needs: [
           {
@@ -72,9 +47,8 @@ describe("buildAgentTriple", () => {
         ],
       }),
     );
-    const resources = agentDefinition.spec?.resources;
 
-    expect(resources?.repos).toEqual([
+    expect(agent.spec?.repos).toEqual([
       {
         name: "workspace",
         url: "https://github.com/re-cinq/lore.git",
@@ -151,10 +125,10 @@ describe("buildAgentTriple", () => {
   });
 
   it("watches a file produce and uploads it to the blob store", () => {
-    const { agentDefinition } = buildAgentTriple(
+    const { agent } = buildAgentTriple(
       brief({ produces: [{ name: "patch", kind: "file", path: "out/patch.diff" }] }),
     );
-    const output = agentDefinition.spec?.output;
+    const output = agent.spec?.output;
 
     expect(output?.watch).toEqual([
       {
@@ -169,17 +143,17 @@ describe("buildAgentTriple", () => {
   });
 
   it("never watches a value produce, since it is read from the agent's own result line, not a file", () => {
-    const { agentDefinition } = buildAgentTriple(
+    const { agent } = buildAgentTriple(
       brief({ produces: [{ name: "pr_number", kind: "value" }] }),
     );
-    const output = agentDefinition.spec?.output;
+    const output = agent.spec?.output;
 
     expect(output?.watch).toEqual([]);
   });
 
   it("streams turns, cost and the result to this visit's sink, authenticated by its own token", () => {
-    const { agentDefinition } = buildAgentTriple(brief());
-    const output = agentDefinition.spec?.output;
+    const { agent } = buildAgentTriple(brief());
+    const output = agent.spec?.output;
 
     expect(output?.sinks).toEqual([
       {
@@ -238,19 +212,17 @@ describe("buildAgentTriple", () => {
   });
 
   it("omits conversation entirely on a fresh visit", () => {
-    const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new", save: false } }));
-    const resources = agentDefinition.spec?.resources;
+    const { agent } = buildAgentTriple(brief({ conversation: { mode: "new", save: false } }));
 
-    expect(resources?.conversation).toBeUndefined();
+    expect(agent.spec?.conversation).toBeUndefined();
   });
 
   it("restores the earlier visit's session and saves this one under the visit's own id", () => {
-    const { agentDefinition } = buildAgentTriple(
+    const { agent } = buildAgentTriple(
       brief({ conversation: { mode: "continue", sessionRef: "earlier-visit" } }),
     );
-    const resources = agentDefinition.spec?.resources;
 
-    expect(resources?.conversation).toEqual({
+    expect(agent.spec?.conversation).toEqual({
       source: "http://host.minikube.internal:8080/conversations",
       id: "earlier-visit",
       pin: "abc-123",
@@ -259,10 +231,9 @@ describe("buildAgentTriple", () => {
   });
 
   it("saves the first round of a station that continues, with nothing to restore", () => {
-    const { agentDefinition } = buildAgentTriple(brief({ conversation: { mode: "new", save: true } }));
-    const resources = agentDefinition.spec?.resources;
+    const { agent } = buildAgentTriple(brief({ conversation: { mode: "new", save: true } }));
 
-    expect(resources?.conversation).toEqual({
+    expect(agent.spec?.conversation).toEqual({
       source: "http://host.minikube.internal:8080/conversations",
       id: undefined,
       pin: "abc-123",
@@ -284,13 +255,19 @@ describe("buildAgentTriple", () => {
     expect(resources?.secrets).toBeUndefined();
   });
 
-  it("carries the deadline onto the Station as its wall-clock limit", () => {
-    const { station } = buildAgentTriple(brief({ deadlineMinutes: 45 }));
+  it("limits the Station to the definition's 45-minute budget, the same for every visit, not the minutes the visit has left", () => {
+    const { station } = buildAgentTriple(brief({ deadlineMinutes: 52, settings: { ...brief().settings, timeoutMinutes: 45 } }));
 
     expect(station.spec?.deadlineMinutes).toBe(45);
   });
 
-  it("keeps the finished Agent until the visit's abort deletes it, since a limit of 0 makes the controller run the job twice", () => {
+  it("limits the Station to the visit's 52 minutes left when the definition names no budget", () => {
+    const { station } = buildAgentTriple(brief({ deadlineMinutes: 52 }));
+
+    expect(station.spec?.deadlineMinutes).toBe(52);
+  });
+
+  it("keeps one finished Agent of the recipe, since a limit of 0 makes the controller run the job twice", () => {
     const { station } = buildAgentTriple(brief());
 
     expect({

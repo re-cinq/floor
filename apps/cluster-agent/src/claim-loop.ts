@@ -1,4 +1,4 @@
-// The pull loop: claim station_run.dispatch/abort events by tag, create or delete the CR triple, ack. See ../README.md for the abort-on-every-end judgement call.
+// The pull loop: claim station_run.dispatch/abort events by tag, create a visit's Agent (and its recipe when new) or delete it, ack; between ticks, sweep the recipes no Agent runs. See ../README.md for the abort-on-every-end judgement call.
 
 import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
@@ -23,7 +23,7 @@ export interface ClaimLoopDeps {
   maxIdleMs?: number;
   sleep: (delayMs: number) => Promise<void>;
   running?: () => boolean;
-  /** Told of what the loop survives: a floor it could not reach. */
+  /** Told of what the loop survives: a floor it could not reach, a sweep that failed. */
   onError?: (error: unknown) => void;
   /** Epoch ms; defaults to `Date.now`, injectable so the liveness log's once-a-minute rate limit is testable without the wall clock. */
   now?: () => number;
@@ -41,6 +41,7 @@ const DEFAULT_IDLE_MS = 5_000;
 const DEFAULT_MAX_IDLE_MS = 60_000;
 const DEFAULT_CLAIM_LIMIT = 10;
 const DEFAULT_SECRET_NAME = "agent-secrets";
+const SWEEP_EVERY_MS = 600_000;
 
 export function tokenSecretKey(visitId: string): string {
   return `visit-${visitId}-token`;
@@ -56,9 +57,17 @@ export async function runClaimLoop(deps: ClaimLoopDeps): Promise<void> {
   const claimLimit = deps.claimLimit ?? DEFAULT_CLAIM_LIMIT;
   const now = deps.now ?? Date.now;
   let lastLoggedAt: number | null = null;
+  let lastSweptAt: number | null = null;
 
   await runPollLoop<ClaimTickOutcome[]>({
-    tick: () => claimTick(deps, secretName, claimLimit),
+    // The sweep runs after the tick's dispatches, never beside one, so it cannot remove a recipe a dispatch is about to use.
+    tick: async () => {
+      const outcomes = await claimTick(deps, secretName, claimLimit);
+
+      lastSweptAt = await sweepIfDue(deps, lastSweptAt, now());
+
+      return outcomes;
+    },
     onOutcome: (outcomes) => {
       lastLoggedAt = logLivenessIfDue(outcomes, lastLoggedAt, now());
     },
@@ -68,6 +77,16 @@ export async function runClaimLoop(deps: ClaimLoopDeps): Promise<void> {
     sleep: deps.sleep,
     running: deps.running,
   } satisfies PollLoopDeps<ClaimTickOutcome[]>);
+}
+
+async function sweepIfDue(deps: ClaimLoopDeps, lastSweptAt: number | null, now: number): Promise<number | null> {
+  if (lastSweptAt !== null && now - lastSweptAt < SWEEP_EVERY_MS) return lastSweptAt;
+
+  const { resources } = deps;
+
+  await resources.sweep(new Date(now)).catch((error: unknown) => deps.onError?.(error));
+
+  return now;
 }
 
 // At most once a minute (dueForLivenessLog), or 11+ hours of silence reads the same as wedged whether or not it is.

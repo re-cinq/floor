@@ -41,6 +41,7 @@ function fakeResources(overrides: Partial<AgentResourcesApi> = {}): AgentResourc
   return {
     apply: vi.fn(() => Promise.resolve({ name: "x", created: true })),
     delete: vi.fn(() => Promise.resolve({ name: "x", deleted: true })),
+    sweep: vi.fn(() => Promise.resolve({ stations: [], definitions: [] })),
     ...overrides,
   };
 }
@@ -214,7 +215,7 @@ describe("runClaimLoop: a dispatch with nothing left to run", () => {
 });
 
 describe("runClaimLoop: abort", () => {
-  it("deletes the CR triple named after the visit", async () => {
+  it("deletes the Agent named after the visit", async () => {
     const scenario = await abortScenario();
 
     expect(scenario.resources.delete).toHaveBeenCalledWith("floor-v1");
@@ -294,5 +295,51 @@ describe("runClaimLoop: liveness log", () => {
 
   it("logs alive again once a minute has passed between ticks", async () => {
     expect(await aliveLogCount([0, 60_000])).toBe(2);
+  });
+});
+
+describe("runClaimLoop: sweeping unused recipes", () => {
+  async function runTicks(times: number[], resources: AgentResourcesApi, onError?: (error: unknown) => void): Promise<void> {
+    let tick = 0;
+
+    await runClaimLoop({
+      floor: fakeFloor().client,
+      resources,
+      secrets: fakeSecrets(),
+      tags: [],
+      now: () => times[Math.min(tick, times.length - 1)]!,
+      sleep: async () => {
+        tick += 1;
+      },
+      running: () => tick < times.length,
+      onError,
+    });
+  }
+
+  it("sweeps after its first tick, at the loop's clock", async () => {
+    const resources = fakeResources();
+
+    await runTicks([Date.parse("2026-10-30T12:00:00Z")], resources);
+
+    expect(resources.sweep).toHaveBeenCalledWith(new Date("2026-10-30T12:00:00Z"));
+  });
+
+  it("sweeps twice over ticks at 0, 5 and 11 minutes, once ten minutes have passed", async () => {
+    const resources = fakeResources();
+    const minute = 60_000;
+
+    await runTicks([0, 5 * minute, 11 * minute], resources);
+
+    expect(resources.sweep).toHaveBeenCalledTimes(2);
+  });
+
+  it("tells onError of a sweep that failed and goes on claiming", async () => {
+    const failure = new Error("list stations: 503");
+    const resources = fakeResources({ sweep: vi.fn(() => Promise.reject(failure)) });
+    const errors: unknown[] = [];
+
+    await runTicks([0, 1], resources, (error) => errors.push(error));
+
+    expect(errors).toEqual([failure]);
   });
 });
