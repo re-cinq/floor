@@ -1,5 +1,6 @@
 // Pure mapping: a visit's resolved brief onto the AgentDefinition + Station + Agent triple the ai-agent-subsystem understands. See ../../README.md for the two judgement calls this makes (a triple per visit, and the conversation wire contract).
 
+import { GROUP, VERSION } from "@re-cinq/agent-contracts";
 import type {
   Agent,
   AgentDefinition,
@@ -42,7 +43,7 @@ export interface AgentTriple {
   agent: Agent;
 }
 
-const API_VERSION = "agents.re-cinq.com/v1alpha1";
+const API_VERSION = `${GROUP}/${VERSION}`;
 
 export function buildAgentTriple(input: DispatchBrief): AgentTriple {
   const name = `floor-${input.visitId}`;

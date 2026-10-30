@@ -86,7 +86,7 @@ postgres:
 # by default: a floor can share a subsystem another install already put on the cluster.
 subsystem:
   enabled: false
-  version: v0.11.11
+  version: v0.15.0
   # The only versions this chart knows how to deploy today; add to this list as the chart is
   # updated for a newer vendored controller.yaml.
   supportedVersions:
@@ -95,5 +95,6 @@ subsystem:
     - v0.11.9
     - v0.11.10
     - v0.11.11
+    - v0.15.0
   controllerImage: ghcr.io/re-cinq/ai-agent-controller
   agentImage: ghcr.io/re-cinq/ai-agent
