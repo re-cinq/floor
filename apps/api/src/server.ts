@@ -5,6 +5,7 @@ import { registerLiveSocket } from "./live/live-socket.js";
 import { registerProblemResponses } from "./problem.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerMetricsRoutes } from "./routes/metrics.js";
+import { registerClusterRoutes } from "./routes/clusters.js";
 import { registerDefinitionRoutes } from "./routes/definitions.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerStationRunRoutes } from "./routes/station-runs.js";
@@ -19,6 +20,7 @@ import { registerScheduleRoutes } from "./routes/schedules.js";
 import { registerMigrationRoutes } from "./routes/migrations.js";
 
 const ROUTES = [
+  registerClusterRoutes,
   registerDefinitionRoutes,
   registerRunRoutes,
   registerStationRunRoutes,

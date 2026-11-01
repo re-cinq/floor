@@ -27,8 +27,8 @@ export async function workStarted(deps: Pick<Deps, "definitions" | "runs">): Pro
 }
 
 /** Drains the queue through a real Dispatcher, for a test that needs the walk to actually advance (a node opened, a marker auto-reported, a run settled) rather than poking the store directly. */
-export async function tickDispatcherUntilIdle(deps: Pick<Deps, "runs" | "events" | "outside" | "schedules">): Promise<void> {
-  const dispatcher = new Dispatcher({ runs: deps.runs, events: deps.events, outside: deps.outside, schedules: deps.schedules, claimedBy: "test-dispatcher" });
+export async function tickDispatcherUntilIdle(deps: Pick<Deps, "runs" | "events" | "outside" | "schedules" | "clusters">): Promise<void> {
+  const dispatcher = new Dispatcher({ runs: deps.runs, events: deps.events, outside: deps.outside, schedules: deps.schedules, clusters: deps.clusters, claimedBy: "test-dispatcher" });
 
   for (let tick = 0; tick < MAX_DISPATCH_TICKS; tick++) {
     if ((await dispatcher.tick()) === 0) return;
