@@ -4,7 +4,8 @@ import { createServer, type Server } from "node:http";
 import { createFloorClient, serviceToken } from "@re-cinq/floor-client";
 import { KubeAgentResourcesApi } from "./kube/agent-resources.js";
 import { KubeSecretKeyWriter } from "./kube/secret-writer.js";
-import { runClaimLoop } from "./claim-loop.js";
+import { reportHolding, runClaimLoop } from "./claim-loop.js";
+import { watchRecipes } from "./kube/recipe-watch.js";
 import { parseKeyByFamily } from "./domain/model-secret.js";
 import { createStoppable } from "./lib/stoppable.js";
 
@@ -21,27 +22,33 @@ async function main(): Promise<void> {
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
   const healthServer = startHealthServer(Number(process.env.FLOOR_HEALTH_PORT ?? "8080"));
+  const clusterId = env("FLOOR_CLUSTER_ID");
+  const resources = new KubeAgentResourcesApi();
 
+  watchRecipes({ report: (definitionId) => reportHolding({ floor, clusterId, resources }, definitionId), onError, running });
   await runClaimLoop({
     floor,
-    resources: new KubeAgentResourcesApi(),
+    clusterId,
+    resources,
     secrets: new KubeSecretKeyWriter(),
-    tags: claimTags(),
+    tags: [...claimTags(), `cluster:${clusterId}`],
     secretName: process.env.FLOOR_AGENT_SECRETS_NAME,
     modelSecretKeys: parseKeyByFamily(process.env.FLOOR_MODEL_SECRET_KEYS),
     idleMs: millisecondsOf(process.env.FLOOR_CLAIM_IDLE_MS),
     maxIdleMs: millisecondsOf(process.env.FLOOR_CLAIM_MAX_IDLE_MS),
     running,
     sleep,
-    onError: (error) => {
-      console.error("[cluster-agent] the floor could not be reached; trying again:", error instanceof Error ? error.message : error);
-    },
+    onError,
   });
 
   healthServer.close();
   // A probe may hold its connection open, and close() alone waits for it.
   healthServer.closeAllConnections();
   console.log("[cluster-agent] stopped");
+}
+
+function onError(error: unknown): void {
+  console.error("[cluster-agent] the floor could not be reached; trying again:", error instanceof Error ? error.message : error);
 }
 
 function env(name: string, fallback?: string): string {

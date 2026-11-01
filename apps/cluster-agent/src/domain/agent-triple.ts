@@ -53,16 +53,31 @@ const STATION_LABEL = "agents.re-cinq.com/station";
 const AGENT_DEFINITION_LABEL = "agents.re-cinq.com/agent-definition";
 const RECIPE_HASH_LENGTH = 12;
 
-export function buildAgentTriple(input: DispatchBrief): AgentTriple {
+/** What a recipe is made of: the settings alone, never the visit, so a recipe pushed before any visit is the one a visit of the same settings names. */
+export type RecipeInput = Pick<DispatchBrief, "settings" | "floorBaseUrl" | "modelSecretKey"> & { deadlineMinutes?: number };
+
+export interface Recipe {
+  name: string;
+  agentDefinition: AgentDefinition;
+  station: Station;
+}
+
+export function buildRecipe(input: RecipeInput): Recipe {
   const definitionSpec = recipeSpec(input);
   const stationSpec = (agentDefRef: string) => buildStationSpec(agentDefRef, input);
-  const recipe = recipeName(definitionSpec, stationSpec(""));
+  const name = recipeName(definitionSpec, stationSpec(""));
 
   return {
-    agentDefinition: { apiVersion: API_VERSION, kind: "AgentDefinition", metadata: recipeMetadata(recipe), spec: definitionSpec },
-    station: { apiVersion: API_VERSION, kind: "Station", metadata: recipeMetadata(recipe), spec: stationSpec(recipe) },
-    agent: buildAgent(recipe, input),
+    name,
+    agentDefinition: { apiVersion: API_VERSION, kind: "AgentDefinition", metadata: recipeMetadata(name), spec: definitionSpec },
+    station: { apiVersion: API_VERSION, kind: "Station", metadata: recipeMetadata(name), spec: stationSpec(name) },
   };
+}
+
+export function buildAgentTriple(input: DispatchBrief): AgentTriple {
+  const recipe = buildRecipe(input);
+
+  return { agentDefinition: recipe.agentDefinition, station: recipe.station, agent: buildAgent(recipe.name, input) };
 }
 
 // Named after its whole content, so every visit that runs the same settings shares it, and a new version or variant is a new one.
@@ -77,7 +92,7 @@ function recipeMetadata(name: string): { name: string; labels: Record<string, st
 }
 
 // Only what the settings decide: nothing of the visit, or two visits could not share it.
-function recipeSpec(input: DispatchBrief): AgentDefinition["spec"] {
+function recipeSpec(input: RecipeInput): AgentDefinition["spec"] {
   return {
     model: input.settings.model,
     prompt: input.settings.prompt,
@@ -89,7 +104,7 @@ function recipeSpec(input: DispatchBrief): AgentDefinition["spec"] {
   };
 }
 
-function recipeResources(input: DispatchBrief): AgentResources {
+function recipeResources(input: RecipeInput): AgentResources {
   return {
     env: envList(environmentOf({ needs: [], model: input.settings.model, defined: input.settings.env })),
     secrets: modelSecret(input),
@@ -112,13 +127,13 @@ function envList(env: Record<string, string> | undefined): { name: string; value
   return Object.entries(env).map(([name, value]) => ({ name, value }));
 }
 
-function modelSecret(input: DispatchBrief): { name: string; ref: string }[] | undefined {
+function modelSecret(input: RecipeInput): { name: string; ref: string }[] | undefined {
   if (!input.modelSecretKey) return undefined;
 
   return [{ name: input.modelSecretKey, ref: input.modelSecretKey }];
 }
 
-function buildStationSpec(agentDefRef: string, input: DispatchBrief): Station["spec"] {
+function buildStationSpec(agentDefRef: string, input: RecipeInput): Station["spec"] {
   return {
     agentDefRef,
     // The definition's budget, not the minutes this visit has left: those differ for every visit, and would give each its own recipe.

@@ -22,11 +22,15 @@ export type {
 } from "./definitions.js";
 
 export type {
+  AgentPresence,
+  AgentRecipes,
   BlobRef,
   BriefConversation,
   BriefNeed,
   BriefSettings,
   ClaimedEvent,
+  ClusterHolding,
+  ClusterPresence,
   DefinitionKind,
   ExecutorSettings,
   FileNeed,
@@ -34,6 +38,7 @@ export type {
   GitNeed,
   McpServerSettings,
   PodResources,
+  PresenceState,
   MigrationBody,
   Problem,
   PutResult,

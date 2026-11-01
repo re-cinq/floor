@@ -1,86 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { runClaimLoop, tokenSecretKey } from "./claim-loop.js";
+import { claiming, dispatchBrief, dispatchOf, fakeFloor, fakeResources, fakeSecrets, runOneTick, type FakeFloor } from "./claim-loop.fixtures.js";
 import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
 import { createStoppable } from "./lib/stoppable.js";
-import type { BriefOutcome, FloorClient } from "@re-cinq/floor-client";
-import type { FloorEventView, VisitBrief } from "@re-cinq/floor-contracts";
-
-interface FakeCalls {
-  claim: (claiming: { tags: string[]; limit: number }) => Promise<FloorEventView[]>;
-  ack: (eventId: string) => Promise<void>;
-  fail: (eventId: string, error: string) => Promise<void>;
-  brief: (visitId: string) => Promise<BriefOutcome>;
-}
-
-interface FakeFloor extends FakeCalls {
-  client: FloorClient;
-}
-
-function fakeFloor(overrides: Partial<FakeCalls> = {}): FakeFloor {
-  const calls: FakeCalls = {
-    claim: vi.fn(() => Promise.resolve([] as FloorEventView[])),
-    ack: vi.fn(() => Promise.resolve()),
-    fail: vi.fn(() => Promise.resolve()),
-    brief: vi.fn(() => Promise.resolve({ kind: "absent" } as BriefOutcome)),
-    ...overrides,
-  };
-
-  return { ...calls, client: { events: calls, stationRuns: { brief: calls.brief } } as unknown as FloorClient };
-}
-
-function claiming(events: FloorEventView[]): FakeCalls["claim"] {
-  return vi.fn(() => Promise.resolve(events));
-}
-
-function dispatchOf(id: string, visitId: string, name = "station_run.dispatch"): FloorEventView {
-  return { id, name, payload: { visitId } } as unknown as FloorEventView;
-}
-
-function fakeResources(overrides: Partial<AgentResourcesApi> = {}): AgentResourcesApi {
-  return {
-    apply: vi.fn(() => Promise.resolve({ name: "x", created: true })),
-    delete: vi.fn(() => Promise.resolve({ name: "x", deleted: true })),
-    sweep: vi.fn(() => Promise.resolve({ agents: [], stations: [], definitions: [] })),
-    ...overrides,
-  };
-}
-
-function fakeSecrets(overrides: Partial<SecretKeyWriter> = {}): SecretKeyWriter {
-  return {
-    setKey: vi.fn(() => Promise.resolve()),
-    deleteKey: vi.fn(() => Promise.resolve()),
-    ...overrides,
-  };
-}
-
-const dispatchBrief: VisitBrief = {
-  visitId: "v1",
-  runId: "run-1",
-  lineId: "code-review",
-  nodeId: "review",
-  floorBaseUrl: "http://host.minikube.internal:8080",
-  token: "visit-token-abc",
-  deadlineMinutes: 20,
-  settings: { prompt: "hi", image: "img:1" },
-  needs: [],
-  produces: [],
-  conversation: { mode: "new", save: false },
-  iteration: 1,
-};
-
-async function runOneTick(floor: FakeFloor, rest: Omit<Parameters<typeof runClaimLoop>[0], "floor">): Promise<void> {
-  let ticks = 0;
-
-  await runClaimLoop({
-    ...rest,
-    floor: floor.client,
-    sleep: async () => {
-      ticks += 1;
-    },
-    running: () => ticks === 0,
-  });
-}
+import type { BriefOutcome } from "@re-cinq/floor-client";
+import type { VisitBrief } from "@re-cinq/floor-contracts";
 
 interface DispatchScenario {
   floor: FakeFloor;
@@ -256,7 +181,7 @@ describe("runClaimLoop: stopping", () => {
       }),
     });
 
-    await runClaimLoop({ floor: floor.client, resources: fakeResources(), secrets: fakeSecrets(), tags: [], running, sleep });
+    await runClaimLoop({ clusterId: "east", floor: floor.client, resources: fakeResources(), secrets: fakeSecrets(), tags: [], running, sleep });
 
     expect({ acked: ack.mock.calls, claims: claimCalls.length }).toEqual({
       acked: [["e1"]],
@@ -270,6 +195,7 @@ async function aliveLogCount(nowValues: number[]): Promise<number> {
   const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
   await runClaimLoop({
+    clusterId: "east",
     floor: fakeFloor().client,
     resources: fakeResources(),
     secrets: fakeSecrets(),
@@ -303,6 +229,7 @@ describe("runClaimLoop: sweeping unused recipes", () => {
     let tick = 0;
 
     await runClaimLoop({
+      clusterId: "east",
       floor: fakeFloor().client,
       resources,
       secrets: fakeSecrets(),

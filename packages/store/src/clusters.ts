@@ -90,6 +90,7 @@ export class ClusterStore {
       this.deps.pool.query(`select id, last_seen_at from clusters order by id`),
       this.deps.pool.query(`select cluster_id, definition_id, hash from cluster_agent_definitions`),
     ]);
+    const { rows: heldRows } = holdings;
     const seen = clusters.rows.map((row) => ({ id: row.id as string, lastSeenAt: row.last_seen_at as Date }));
 
     return Object.fromEntries(
@@ -98,7 +99,7 @@ export class ClusterStore {
         presenceState({
           latest: definition.hash,
           clusters: seen,
-          holdings: holdings.rows
+          holdings: heldRows
             .filter((row) => row.definition_id === definition.id)
             .map((row) => ({ clusterId: row.cluster_id as string, hash: row.hash as string })),
           now: this.now(),

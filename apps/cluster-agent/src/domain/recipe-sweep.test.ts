@@ -13,7 +13,46 @@ function definition(name: string, labels: Record<string, string> | null = RECIPE
   return { name, createdAt, labels: labels ?? undefined };
 }
 
+const PUSHED = { ...RECIPE, "floor.re-cinq.com/definition": "reviewer" };
+
+function pushed(name: string, variant: string, createdAt = OLD): Listed {
+  return { name, createdAt, labels: PUSHED, annotations: { "floor.re-cinq.com/variant": variant }, ref: name };
+}
+
 describe("unusedRecipes", () => {
+  it("keeps reviewer's pushed recipe floor-dddddddddddd, which no Agent runs yet, while it is reviewer's newest", () => {
+    expect(
+      unusedRecipes({ agentStationRefs: [], stations: [pushed("floor-dddddddddddd", "")], definitions: [pushed("floor-dddddddddddd", "")], now: NOW }),
+    ).toEqual({ stations: [], definitions: [] });
+  });
+
+  it("removes reviewer's pushed recipe floor-dddddddddddd once a newer one, floor-eeeeeeeeeeee, holds the same variant", () => {
+    const newer = "2026-10-30T11:00:00Z";
+
+    expect(
+      unusedRecipes({
+        agentStationRefs: [],
+        stations: [pushed("floor-dddddddddddd", ""), pushed("floor-eeeeeeeeeeee", "", newer)],
+        definitions: [pushed("floor-dddddddddddd", ""), pushed("floor-eeeeeeeeeeee", "", newer)],
+        now: NOW,
+      }),
+    ).toEqual({ stations: ["floor-dddddddddddd"], definitions: ["floor-dddddddddddd"] });
+  });
+
+  it("keeps the base and the otto variant of reviewer side by side, each the newest of its own", () => {
+    const newer = "2026-10-30T11:00:00Z";
+    const otto = "github.com/re-cinq/otto";
+
+    expect(
+      unusedRecipes({
+        agentStationRefs: [],
+        stations: [pushed("floor-dddddddddddd", ""), pushed("floor-ffffffffffff", otto, newer)],
+        definitions: [pushed("floor-dddddddddddd", ""), pushed("floor-ffffffffffff", otto, newer)],
+        now: NOW,
+      }),
+    ).toEqual({ stations: [], definitions: [] });
+  });
+
   it("removes recipe floor-bbbbbbbbbbbb, which no Agent runs, and keeps floor-aaaaaaaaaaaa, which floor-v2 runs", () => {
     expect(
       unusedRecipes({

@@ -39,7 +39,8 @@ export const CLUSTER_LIVE_MINUTES = 5;
 export function presenceState(input: PresenceInput): AgentPresence {
   const liveSince = input.now.getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE;
   const held = new Map(input.holdings.map((holding) => [holding.clusterId, holding.hash]));
-  const clusters = input.clusters
+  const { clusters: seen } = input;
+  const clusters = seen
     .filter((cluster) => cluster.lastSeenAt.getTime() >= liveSince)
     .map((cluster) => {
       const hash = held.get(cluster.id) ?? null;

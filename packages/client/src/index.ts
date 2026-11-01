@@ -7,7 +7,7 @@ export { reach, asked, send } from "./send.js";
 export { CLOSE, watchRun } from "./live.js";
 export { watchFloor } from "./floor-live.js";
 
-export type { FloorAccess, FloorClient, HealthApi, LinesApi, MigrationsApi, SchedulesApi, Version } from "./client.js";
+export type { AgentDefinitionsApi, ClustersApi, FloorAccess, FloorClient, HealthApi, LinesApi, MigrationsApi, SchedulesApi, Version } from "./client.js";
 export type { AppendRecord, GitCredentialOutcome, VisitAccess, VisitClient } from "./visit.js";
 export type { ServiceToken, VisitToken } from "./tokens.js";
 export type { Asking, Reachable } from "./send.js";

@@ -40,6 +40,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.api.existingSecret }}
                   key: serviceToken
+            - name: FLOOR_CLUSTER_ID
+              value: {{ required "clusterAgent.clusterId names this cluster to the floor" .Values.clusterAgent.clusterId | quote }}
             - name: FLOOR_CLUSTER_AGENT_TAGS
               value: {{ .Values.clusterAgent.tags | quote }}
             - name: FLOOR_AGENTS_NAMESPACE

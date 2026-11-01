@@ -1,11 +1,13 @@
 // What no visit needs any more: a finished visit Agent whose abort never came, then the floor's Stations no Agent points at, then the floor's AgentDefinitions no remaining Station points at.
 import { RECIPE_LABEL } from "./agent-triple.js";
+import { DEFINITION_LABEL, VARIANT_ANNOTATION } from "./pushed-recipe.js";
 
 /** One Station or AgentDefinition as listed; `ref` is a Station's `agentDefRef`. */
 export interface Listed {
   name: string;
   createdAt: string;
   labels?: Record<string, string>;
+  annotations?: Record<string, string>;
   ref?: string;
 }
 
@@ -45,7 +47,8 @@ export function abandonedAgents(agents: readonly ListedAgent[], now: Date): stri
 }
 
 export function unusedRecipes(listing: Listing): Omit<Unused, "agents"> {
-  const removable = (listed: Listed) => isFloors(listed) && isOld(listed, listing.now);
+  const current = newestPushed(listing.stations);
+  const removable = (listed: Listed) => isFloors(listed) && isOld(listed, listing.now) && !current.has(listed.name);
   const runStations = new Set(listing.agentStationRefs);
   const stations = listing.stations.filter((station) => removable(station) && !runStations.has(station.name));
   const removed = new Set(stations.map((station) => station.name));
@@ -54,6 +57,31 @@ export function unusedRecipes(listing: Listing): Omit<Unused, "agents"> {
   const definitions = listing.definitions.filter((definition) => removable(definition) && !keptDefinitions.has(definition.name));
 
   return { stations: stations.map((station) => station.name), definitions: definitions.map((definition) => definition.name) };
+}
+
+// A pushed recipe waits for its first visit, so no Agent runs it yet: the newest of each agent definition's variant is kept, and an older one goes like any recipe no Agent runs.
+function newestPushed(stations: readonly Listed[]): Set<string> {
+  const newest = new Map<string, Listed>();
+
+  for (const station of stations.filter(isPushed)) {
+    const key = pushedKey(station);
+    const held = newest.get(key);
+
+    if (!held || Date.parse(station.createdAt) > Date.parse(held.createdAt)) newest.set(key, station);
+  }
+
+  return new Set([...newest.values()].flatMap((station) => [station.name, station.ref ?? station.name]));
+}
+
+function isPushed(station: Listed): boolean {
+  return Boolean(station.labels?.[DEFINITION_LABEL]);
+}
+
+// The agent definition and the variant, apart by a NUL no repository name holds.
+function pushedKey(station: Listed): string {
+  const { labels, annotations } = station;
+
+  return `${labels?.[DEFINITION_LABEL] ?? ""}\u0000${annotations?.[VARIANT_ANNOTATION] ?? ""}`;
 }
 
 function isFloors(listed: Listed): boolean {

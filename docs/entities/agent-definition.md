@@ -129,3 +129,27 @@ variants:
 5. The dispatch event carries `kind:agent` plus the resolved `tags`.
 6. The visit records the agent definition hash. Reading the visit later
    shows exactly what ran.
+
+## Distribution and presence
+
+A new version does not wait for a visit to reach the clusters.
+
+1. A cluster agent registers under its cluster id (`PUT /clusters/{id}`) on start and every minute after.
+2. A put that makes a new latest version writes one `agent_definition.changed` event per registered
+   cluster, tagged `cluster:<id>`, in the put's own transaction. A cluster registering later gets one
+   for every agent definition whose latest version it does not hold.
+3. The cluster agent claims its own events like a dispatch, and applies the recipe of each variant
+   (`GET /agent-definitions/{id}/recipes`: the settings a visit of that variant is briefed with, so the
+   pushed recipe is the one a visit names). It reads the **latest** version when it handles the event,
+   never the one the event named, so a late or repeated event cannot set a cluster back.
+4. It acks only once kube reads that version back. Anything else fails the event, which the queue
+   tries again with backoff.
+5. It watches its recipes and reports what kube holds as `agent_definition.reported`. A recipe
+   edited in kube by hand (prompt, model, image, timeout) is adopted by the floor as the newest
+   version, `created_by: cluster:<id>`, and goes to the other clusters by step 2. A cluster reporting an
+   older version the floor has stored is only behind; nothing is adopted.
+
+`GET /agent-definitions/presence` answers, per agent definition, `all` when every cluster seen in the
+last five minutes holds the latest version, `some` when one holds a version but not every one the
+latest, and `none` when none holds any. `GET /agent-definitions/{id}/clusters` answers what each
+cluster read back out of its kube.

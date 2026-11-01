@@ -13,8 +13,25 @@ beforeEach(async () => {
   await pool().query("truncate definitions, events, clusters cascade");
 });
 
-function clusters(now = new Date()): ClusterStore {
-  return new ClusterStore({ pool: pool(), now: () => now });
+const NOW = new Date("2026-11-01T12:00:00Z");
+
+function clusters(): ClusterStore {
+  return new ClusterStore({ pool: pool(), now: () => NOW });
+}
+
+async function latestReviewer(): Promise<{ hash?: string; createdBy?: string | null }> {
+  const latest = await new DefinitionsStore({ connection: pool() }).latest("agent_definition", "reviewer");
+
+  return { hash: latest?.hash, createdBy: latest?.createdBy };
+}
+
+async function eastEditsReviewerInKube(): Promise<{ hash: string; adopted: boolean }> {
+  await clusters().register("east", []);
+  await clusters().register("west", []);
+  await clusters().putAgentDefinition("reviewer", reviewer);
+  await pool().query("truncate events");
+
+  return clusters().recordHolding("east", "reviewer", reviewerReworded);
 }
 
 async function changedEvents(): Promise<Array<{ tags: string[]; payload: unknown }>> {
@@ -83,16 +100,19 @@ describe("ClusterStore.recordHolding", () => {
     expect(recorded).toEqual({ hash, adopted: false });
   });
 
-  it("adopts a body edited in kube as the newest version, created by the cluster, and sends it to the other clusters", async () => {
-    await clusters().register("east", []);
-    await clusters().register("west", []);
-    await clusters().putAgentDefinition("reviewer", reviewer);
-    await pool().query("truncate events");
-    const recorded = await clusters().recordHolding("east", "reviewer", reviewerReworded);
-    const latest = await new DefinitionsStore({ connection: pool() }).latest("agent_definition", "reviewer");
+  it("answers adopted for a body edited in kube that the floor never stored", async () => {
+    expect(await eastEditsReviewerInKube()).toEqual({ hash: definitionHash(reviewerReworded), adopted: true });
+  });
 
-    expect(recorded).toEqual({ hash: definitionHash(reviewerReworded), adopted: true });
-    expect(latest).toMatchObject({ hash: definitionHash(reviewerReworded), createdBy: "cluster:east" });
+  it("makes a body edited in east's kube the newest version, created by cluster:east", async () => {
+    await eastEditsReviewerInKube();
+
+    expect(await latestReviewer()).toEqual({ hash: definitionHash(reviewerReworded), createdBy: "cluster:east" });
+  });
+
+  it("sends a body edited in east's kube to both clusters", async () => {
+    await eastEditsReviewerInKube();
+
     expect((await changedEvents()).map((event) => event.tags)).toEqual([["cluster:east"], ["cluster:west"]]);
   });
 
@@ -101,10 +121,8 @@ describe("ClusterStore.recordHolding", () => {
     await clusters().putAgentDefinition("reviewer", reviewer);
     const second = await clusters().putAgentDefinition("reviewer", reviewerReworded);
     const recorded = await clusters().recordHolding("east", "reviewer", reviewer);
-    const latest = await new DefinitionsStore({ connection: pool() }).latest("agent_definition", "reviewer");
 
-    expect(recorded.adopted).toBe(false);
-    expect(latest?.hash).toBe(second.hash);
+    expect({ adopted: recorded.adopted, latest: (await latestReviewer()).hash }).toEqual({ adopted: false, latest: second.hash });
   });
 });
 

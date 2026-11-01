@@ -44,6 +44,7 @@ async function recipes(deps: Deps, request: Request, toolkit: ResponseToolkit) {
     id,
     hash: latest.hash,
     body: latest.body,
+    floorBaseUrl: deps.config.baseUrl,
     recipes: resolved.map(({ variant, merged }) => ({ variant, settings: dispatchSettings(merged), modelSecretKey: modelSecretKeyOf(merged) })),
   };
 }

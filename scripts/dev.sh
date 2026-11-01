@@ -73,7 +73,7 @@ watch_run api apps/api
 
 if [ "${AGENTS}" = "1" ]; then
   watch_build agent-tsc apps/cluster-agent
-  FLOOR_API_URL="http://localhost:${PORT}" FLOOR_CLUSTER_AGENT_TOKEN="${FLOOR_SERVICE_TOKEN}" \
+  FLOOR_API_URL="http://localhost:${PORT}" FLOOR_CLUSTER_ID="${FLOOR_CLUSTER_ID:-minikube}" FLOOR_CLUSTER_AGENT_TOKEN="${FLOOR_SERVICE_TOKEN}" \
     FLOOR_HEALTH_PORT="$((PORT + 1))" FLOOR_CLAIM_MAX_IDLE_MS="${FLOOR_CLAIM_MAX_IDLE_MS:-5000}" \
     watch_run agent apps/cluster-agent
 fi

@@ -77,12 +77,13 @@ is expected, not a fault.
 
 ## 2. Register a cluster
 
-There is no registration endpoint. **A cluster joins a floor by running a cluster agent that claims
-work from it**, and the claim is by tag. Floor never connects to a cluster; the cluster connects to
-floor.
+**A cluster joins a floor by running a cluster agent**, which registers under its
+`clusterAgent.clusterId` (`PUT /clusters/{id}`, on start and every minute after) and then claims
+work by tag. Floor never connects to a cluster; the cluster connects to floor.
 
-The install above already did it: `clusterAgent.enabled` defaults true, and the agent offers the
-tag `kind:agent`, which every agent dispatch carries. One cluster, nothing more to do.
+The install above already did it: `clusterAgent.enabled` defaults true, the agent registers as
+`default` and offers the tag `kind:agent`, which every agent dispatch carries, and `cluster:default`,
+its own. One cluster, nothing more to do.
 
 **A second cluster** is a second install, api turned off, pointed at the first floor and offering a
 tag of its own:
@@ -91,13 +92,13 @@ tag of its own:
 helm install floor-acme oci://ghcr.io/re-cinq/charts/floor --version <release> \
   --set api.enabled=false \
   --set clusterAgent.floorUrl=https://floor.example.com \
-  --set clusterAgent.tags="kind:agent,cluster:acme" \
+  --set clusterAgent.clusterId=acme \
   --set api.existingSecret=floor-api \
   --set subsystem.enabled=true
 ```
 
 `api.existingSecret` is still required with the api off: the cluster agent authenticates with the
-same `serviceToken`.
+same `serviceToken`. The agent offers `cluster:acme` itself, beside `clusterAgent.tags`.
 
 Now work reaches a chosen cluster by what its agent definition asks for:
 
@@ -108,7 +109,8 @@ settings:
 
 **A claimer must offer every tag on the dispatch.** An agent definition with no tags is claimable by
 any cluster; one tagged `cluster:acme` is claimable only by the agent above. That is the whole
-routing model — floor does not know what a cluster is, only what a tag is.
+routing model for visits. Agent definitions are the one thing a floor sends to every registered
+cluster: see [agent definitions](entities/agent-definition.md), "Distribution and presence".
 
 **Check it:** the cluster agent logs that it is claiming. Nothing is dispatched yet, so an idle
 agent is the correct state.
