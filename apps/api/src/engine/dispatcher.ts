@@ -2,6 +2,7 @@
 import {
   Refusal,
   type AssemblyRunStore,
+  type ClusterStore,
   type EventStore,
   type FloorEvent,
   type OutsideEvent,
@@ -20,6 +21,7 @@ export interface DispatcherDeps {
   events: EventStore;
   outside: OutsideEvents;
   schedules: SchedulesStore;
+  clusters: ClusterStore;
   claimedBy: string;
   batchSize?: number;
 }
@@ -65,6 +67,7 @@ export class Dispatcher {
     await this.advanceScheduleIfTick(event);
     if (route.kind === "invalid") throw new Refusal(route.reason);
     if (route.kind === "report") return this.report(route);
+    if (route.kind === "holding") return this.recordHolding(route);
     const outside = outsideEvent(event);
 
     if (route.kind === "run-event" && (await this.startedNode(outside, route))) return;
@@ -83,6 +86,12 @@ export class Dispatcher {
 
   private async report(route: Extract<Route, { kind: "report" }>): Promise<void> {
     await this.deps.runs.report(route.visitId, route.report, route.worker);
+  }
+
+  private async recordHolding(route: Extract<Route, { kind: "holding" }>): Promise<void> {
+    const recorded = await this.deps.clusters.recordHolding(route.clusterId, route.definitionId, route.body);
+
+    if (recorded.adopted) console.log(`floor dispatcher: adopted agent definition ${route.definitionId} ${recorded.hash} as edited on cluster ${route.clusterId}`);
   }
 
   /** True when the event was a node's start in the run it names. When it was not, the run's waiting nodes get to take it as their answer. */

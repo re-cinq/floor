@@ -41,6 +41,7 @@ export class DispatcherScene {
       events: this.deps().events,
       outside,
       schedules: this.deps().schedules,
+      clusters: this.deps().clusters,
       claimedBy: "floor-test",
     });
 

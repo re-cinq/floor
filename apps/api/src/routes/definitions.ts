@@ -1,7 +1,7 @@
 // Assembly lines, stations and agent definitions (docs/api_sketch.md): the same shape of CRUD three times over, one call per kind.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { z, type ZodType } from "zod";
-import type { DefinitionKind, LineBody, StationBody } from "@floor/store";
+import type { DefinitionKind, LineBody, PutResult, StationBody } from "@floor/store";
 import { validateLine } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { HTTP_CREATED, HTTP_NO_CONTENT } from "../http-status.js";
@@ -16,6 +16,7 @@ interface KindRoutes<Body> {
   bodySchema: ZodType<Body>;
   guardArchive?: (deps: Deps, id: string) => Promise<string | null>;
   semanticValidate?: (deps: Deps, body: Body) => Promise<string[]>;
+  put?: (deps: Deps, id: string, body: Body) => Promise<PutResult>;
 }
 
 export function registerDefinitionRoutes(server: Server, deps: Deps): void {
@@ -27,7 +28,13 @@ export function registerDefinitionRoutes(server: Server, deps: Deps): void {
     semanticValidate: validateLineBody,
   });
   registerKindRoutes(server, deps, { base: "stations", kind: "station", bodySchema: stationBodySchema });
-  registerKindRoutes(server, deps, { base: "agent-definitions", kind: "agent_definition", bodySchema: agentDefinitionBodySchema, guardArchive: guardStationsNaming });
+  registerKindRoutes(server, deps, {
+    base: "agent-definitions",
+    kind: "agent_definition",
+    bodySchema: agentDefinitionBodySchema,
+    guardArchive: guardStationsNaming,
+    put: (routeDeps, id, body) => routeDeps.clusters.putAgentDefinition(id, body),
+  });
   registerStartRoute(server, deps);
 }
 
@@ -85,7 +92,7 @@ function createHandler<Body>(deps: Deps, routes: KindRoutes<Body>, idSchema: Zod
 
     if (problems && problems.length > 0) return badRequest(toolkit, `invalid ${kind} body`, problems);
 
-    return toolkit.response(await deps.definitions.put(kind, id, body)).code(HTTP_CREATED);
+    return toolkit.response(await putOf(deps, routes, id, body as Body)).code(HTTP_CREATED);
   };
 }
 
@@ -100,8 +107,13 @@ function putVersionHandler<Body>(deps: Deps, routes: KindRoutes<Body>) {
 
     if (problems && problems.length > 0) return badRequest(toolkit, `invalid ${kind} body`, problems);
 
-    return deps.definitions.put(kind, request.params.id as string, parsed.value);
+    return putOf(deps, routes, request.params.id as string, parsed.value);
   };
+}
+
+// An agent definition is put through the clusters, which queue its new version to every cluster in the same transaction.
+function putOf<Body>(deps: Deps, routes: KindRoutes<Body>, id: string, body: Body): Promise<PutResult> {
+  return routes.put ? routes.put(deps, id, body) : deps.definitions.put(routes.kind, id, body);
 }
 
 function archiveHandler(deps: Deps, kind: DefinitionKind, guardArchive: KindRoutes<unknown>["guardArchive"]) {

@@ -110,6 +110,8 @@ export const enqueueEventSchema = z.object({
   runId: z.string().optional(),
 });
 
+export const registerClusterSchema = z.object({ tags: z.array(z.string()) });
+
 export const claimEventsSchema = z.object({ tags: z.array(z.string()), limit: z.number().int().positive() });
 
 export const failEventSchema = z.object({ error: z.string(), permanent: z.boolean() });

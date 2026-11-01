@@ -6,6 +6,7 @@ import { issuesOf } from "../parse.js";
 export type Route =
   | { kind: "report"; visitId: string; report: Report; worker?: string }
   | { kind: "run-event"; run: RunRef; iteration?: number; branch?: number; requestedBy?: string }
+  | { kind: "holding"; clusterId: string; definitionId: string; body: Record<string, unknown> }
   | { kind: "outside" }
   | { kind: "invalid"; reason: string };
 
@@ -18,6 +19,14 @@ const reportedPayload = z.object({
     sessionRef: z.string().optional(),
     error: z.string().optional(),
   }),
+});
+
+export const AGENT_DEFINITION_REPORTED = "agent_definition.reported";
+
+const reportedHoldingPayload = z.object({
+  clusterId: z.string().min(1),
+  definitionId: z.string().min(1),
+  body: z.record(z.string(), z.unknown()),
 });
 
 const runRef = z.union([
@@ -33,6 +42,7 @@ const runEventPayload = z.object({
 
 export function routeEvent(event: Pick<FloorEvent, "name" | "payload">): Route {
   if (event.name === "station_run.reported") return routeReported(event.payload);
+  if (event.name === AGENT_DEFINITION_REPORTED) return routeHolding(event.payload);
   if (event.name.startsWith("internal.")) return { kind: "outside" };
 
   return routeRunEvent(event.payload);
@@ -44,6 +54,15 @@ function routeReported(payload: unknown): Route {
   if (!parsed.success) return { kind: "invalid", reason: `station_run.reported: ${reasonOf(parsed.error)}` };
 
   return { kind: "report", ...parsed.data };
+}
+
+// What a cluster read back out of its kube for one agent definition.
+function routeHolding(payload: unknown): Route {
+  const parsed = reportedHoldingPayload.safeParse(payload);
+
+  if (!parsed.success) return { kind: "invalid", reason: `${AGENT_DEFINITION_REPORTED}: ${reasonOf(parsed.error)}` };
+
+  return { kind: "holding", ...parsed.data };
 }
 
 // An event that names no run starts no node; one that names a run badly is refused, not guessed at.

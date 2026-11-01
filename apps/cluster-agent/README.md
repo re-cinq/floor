@@ -160,11 +160,23 @@ with nobody to ask. What the agent definition's `env` sets wins.
 Everything that watches Agent CRs for terminal status
 (`events/listeners/k8s-watch.ts`, `agent-reporting.ts`) has no counterpart:
 the plan's pods report through their own sink, so this agent never watches
-what it creates. Also not ported: the catalog sync loop (lore's own
-AgentDefinition/Station CRDs are synced from Postgres; this plan builds them
-fresh per visit instead), registration/heartbeat against a cluster-agent
-registry (no such registry is in the plan's API), and pod-log tailing (logs
-reach the Floor through the same sink).
+what it creates. Also not ported: pod-log tailing (logs reach the Floor through the same
+sink).
+
+## Pushed recipes
+
+The agent registers with the floor under `FLOOR_CLUSTER_ID` every minute and
+offers `cluster:<id>` beside its tags. Its own `agent_definition.changed`
+events push the latest version's recipes ahead of any visit
+(`domain/pushed-recipe.ts`), labelled `floor.re-cinq.com/definition` and
+annotated with the version, the variant and the floor body; a recipe a visit
+made first is marked in place (a merge patch). It watches those recipes
+(`kube/recipe-watch.ts`) and posts what kube holds as
+`agent_definition.reported`, so a hand edit becomes the floor's newest
+version. The sweep keeps the newest pushed recipe of each agent definition
+and variant, though no Agent runs it yet. The Role grants `watch` and
+`patch` for it. See docs/entities/agent-definition.md, "Distribution and
+presence".
 
 ## Tests
 

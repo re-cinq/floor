@@ -1,5 +1,8 @@
 // What an agent definition's `config` may say to the subsystem, under the names docs/entities/agent-definition.md gives them, which are lore's own. Anything else in `config` is kept and passed to nobody.
+import { Refusal, type AgentSettings } from "@floor/store";
+import type { BriefSettings } from "@re-cinq/floor-contracts";
 import { z } from "zod";
+import { issuesOf } from "./parse.js";
 
 // One of the two ways to reach a server, never neither: a process the pod starts, or an address it calls.
 const mcpServer = z
@@ -60,4 +63,19 @@ export function executorSettings(config: AgentConfig): ExecutorSettings {
     maxTurns: config.max_turns,
     podResources: config.pod_resources,
   };
+}
+
+// A definition's config was checked when it was put; one that no longer reads is refused here, by name, and never half-applied.
+export function dispatchSettings(settings: AgentSettings): BriefSettings {
+  const config = agentConfigSchema.safeParse(settings.config ?? {});
+
+  if (!config.success) throw new Refusal(`the agent definition's config cannot be read: ${issuesOf(config.error).join("; ")}`);
+
+  return { model: settings.model, prompt: settings.prompt, image: settings.image, timeoutMinutes: settings.timeoutMinutes, ...executorSettings(config.data) };
+}
+
+export function modelSecretKeyOf(settings: AgentSettings | null): string | undefined {
+  const named = settings?.config?.model_secret_key;
+
+  return typeof named === "string" ? named : undefined;
 }

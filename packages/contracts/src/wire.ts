@@ -91,13 +91,50 @@ export interface VisitBrief {
   modelSecretKey?: string;
 }
 
-/** `POST /events/claim` answers only the two events a worker may take, and both name the visit they are about. */
-export interface ClaimedEvent {
+interface ClaimedFields {
   id: string;
-  name: "station_run.dispatch" | "station_run.abort";
-  payload: { visitId: string };
   tags: string[];
   attempts: number;
+}
+
+/** `POST /events/claim` answers only what a worker may take: a visit to dispatch or abort, or an agent definition whose latest version this cluster should hold. */
+export type ClaimedEvent =
+  | (ClaimedFields & { name: "station_run.dispatch" | "station_run.abort"; payload: { visitId: string } })
+  | (ClaimedFields & { name: "agent_definition.changed"; payload: { id: string; hash: string } });
+
+/** all: every live cluster holds the latest version. some: a cluster holds a version, but not every one the latest. none: no cluster holds any. */
+export type PresenceState = "all" | "some" | "none";
+
+export interface ClusterPresence {
+  id: string;
+  /** The version this cluster's kube holds; null when it holds none. */
+  hash: string | null;
+  current: boolean;
+}
+
+/** `GET /agent-definitions/presence`, by agent definition id. */
+export interface AgentPresence {
+  state: PresenceState;
+  latest: string;
+  clusters: ClusterPresence[];
+}
+
+/** `GET /agent-definitions/{id}/clusters`: what one cluster read back out of its kube. */
+export interface ClusterHolding<Body = unknown> {
+  clusterId: string;
+  hash: string;
+  body: Body;
+  appliedAt: string;
+}
+
+/** `GET /agent-definitions/{id}/recipes`: the latest version, and the settings a visit of each variant is briefed with. `variant` null is the base. */
+export interface AgentRecipes<Body = unknown> {
+  id: string;
+  hash: string;
+  body: Body;
+  /** The floor as a pod reaches it, as a visit's brief says it. */
+  floorBaseUrl: string;
+  recipes: { variant: string | null; settings: BriefSettings; modelSecretKey?: string }[];
 }
 
 /** What a floor answers for bytes it now keeps: `POST /blobs`, and a saved conversation. */

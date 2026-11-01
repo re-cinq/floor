@@ -1,7 +1,10 @@
 // Live create/delete over @kubernetes/client-node for a visit's Agent and the recipe (AgentDefinition + Station) it runs; ported from lore's KubeAgentApi. See ../../README.md.
 
 import { GROUP, VERSION } from "@re-cinq/agent-contracts";
-import type { AgentTriple } from "../domain/agent-triple.js";
+import { PatchStrategy, setHeaderOptions } from "@kubernetes/client-node";
+import type { AgentDefinitionBody } from "@re-cinq/floor-contracts";
+import type { AgentTriple, Recipe } from "../domain/agent-triple.js";
+import { BODY_ANNOTATION, DEFINITION_LABEL, HASH_ANNOTATION, VARIANT_ANNOTATION, type HeldRecipe } from "../domain/pushed-recipe.js";
 import { agentsNamespace, customObjectsApi } from "./clients.js";
 import { isConflict, isMissing } from "../lib/k8s-errors.js";
 import { abandonedAgents, unusedRecipes, type Listed, type Unused } from "../domain/recipe-sweep.js";
@@ -17,6 +20,10 @@ export interface AgentResourcesApi {
   delete(name: string): Promise<{ name: string; deleted: boolean }>;
   /** Removes the finished visit Agents whose abort was lost, then the floor's recipes no Agent runs any more; never run beside a dispatch, which could be about to use one. */
   sweep(now: Date): Promise<Unused>;
+  /** A recipe pushed before any visit: created, or, when a visit already made it, given the marks that say which agent definition it holds. */
+  applyRecipe(recipe: Recipe): Promise<void>;
+  /** Every pushed recipe of one agent definition, as kube holds it now, edits included. */
+  heldRecipes(definitionId: string): Promise<HeldRecipe[]>;
 }
 
 export class KubeAgentResourcesApi implements AgentResourcesApi {
@@ -37,6 +44,23 @@ export class KubeAgentResourcesApi implements AgentResourcesApi {
 
   async delete(name: string): Promise<{ name: string; deleted: boolean }> {
     return { name, deleted: await this.remove(AGENT_PLURAL, name) };
+  }
+
+  async applyRecipe(recipe: Recipe): Promise<void> {
+    await this.createOrMark(STATION_PLURAL, "Station", recipe.station);
+    await this.createOrMark(AGENT_DEFINITION_PLURAL, "AgentDefinition", recipe.agentDefinition);
+  }
+
+  async heldRecipes(definitionId: string): Promise<HeldRecipe[]> {
+    const labelSelector = `${DEFINITION_LABEL}=${definitionId}`;
+    const [stations, definitions] = await Promise.all([this.list(STATION_PLURAL, labelSelector), this.list(AGENT_DEFINITION_PLURAL, labelSelector)]);
+    const byName = new Map(definitions.map((definition) => [nameOf(definition), definition]));
+
+    return stations.flatMap((station) => {
+      const definition = byName.get(station.spec?.agentDefRef ?? "");
+
+      return definition ? [heldRecipe(station, definition)] : [];
+    });
   }
 
   async sweep(now: Date): Promise<Unused> {
@@ -68,12 +92,13 @@ export class KubeAgentResourcesApi implements AgentResourcesApi {
     return new Set(abandoned);
   }
 
-  private async list(plural: string): Promise<ListedObject[]> {
+  private async list(plural: string, labelSelector?: string): Promise<ListedObject[]> {
     const response = (await this.customObjects().listNamespacedCustomObject({
       group: GROUP,
       version: VERSION,
       namespace: this.namespace,
       plural,
+      labelSelector,
     })) as { items?: ListedObject[] };
 
     return response.items ?? [];
@@ -104,6 +129,18 @@ export class KubeAgentResourcesApi implements AgentResourcesApi {
     }
   }
 
+  private async createOrMark(plural: string, kind: string, body: { metadata?: { name?: string; labels?: Record<string, string>; annotations?: Record<string, string> } }): Promise<void> {
+    const { created } = await this.create(plural, kind, body);
+
+    if (created) return;
+    const metadata = body.metadata ?? {};
+
+    await this.customObjects().patchNamespacedCustomObject(
+      { group: GROUP, version: VERSION, namespace: this.namespace, plural, name: metadata.name ?? "", body: { metadata: { labels: metadata.labels, annotations: metadata.annotations } } },
+      setHeaderOptions("Content-Type", PatchStrategy.MergePatch),
+    );
+  }
+
   private async remove(plural: string, name: string): Promise<boolean> {
     try {
       await this.customObjects().deleteNamespacedCustomObject({
@@ -123,9 +160,44 @@ export class KubeAgentResourcesApi implements AgentResourcesApi {
 }
 
 interface ListedObject {
-  metadata?: { name?: string; creationTimestamp?: string; labels?: Record<string, string> };
-  spec?: { stationRef?: string; agentDefRef?: string };
+  metadata?: { name?: string; creationTimestamp?: string; labels?: Record<string, string>; annotations?: Record<string, string> };
+  spec?: {
+    stationRef?: string;
+    agentDefRef?: string;
+    model?: string;
+    prompt?: string;
+    deadlineMinutes?: number;
+    template?: { spec?: { containers?: { name?: string; image?: string }[] } };
+  };
   status?: { phase?: string };
+}
+
+// What the recipe's two resources say now, beside the version and body it was pushed with: a person's edit shows as a difference between them.
+function heldRecipe(station: ListedObject, definition: ListedObject): HeldRecipe {
+  return { ...pushMarks(definition.metadata), spec: { ...definitionFields(definition.spec), ...stationFields(station.spec) } };
+}
+
+function pushMarks(metadata: ListedObject["metadata"] = {}): Omit<HeldRecipe, "spec"> {
+  const { annotations = {}, creationTimestamp = "" } = metadata;
+
+  return { ...annotated(annotations), createdAt: creationTimestamp };
+}
+
+function annotated(annotations: Record<string, string>): Pick<HeldRecipe, "hash" | "variant" | "body"> {
+  const { [HASH_ANNOTATION]: hash = "", [VARIANT_ANNOTATION]: variant = "", [BODY_ANNOTATION]: body = "null" } = annotations;
+
+  return { hash, variant: variant || null, body: JSON.parse(body) as AgentDefinitionBody };
+}
+
+function definitionFields(spec: ListedObject["spec"] = {}): HeldRecipe["spec"] {
+  return { model: spec.model, prompt: spec.prompt };
+}
+
+function stationFields(spec: ListedObject["spec"] = {}): HeldRecipe["spec"] {
+  const { template } = spec;
+  const containers = template?.spec?.containers ?? [];
+
+  return { image: containers.find((candidate) => candidate.name === "agent")?.image, timeoutMinutes: spec.deadlineMinutes };
 }
 
 function nameOf(object: ListedObject): string {
@@ -135,5 +207,5 @@ function nameOf(object: ListedObject): string {
 function listed(object: ListedObject): Listed {
   const metadata = object.metadata ?? {};
 
-  return { name: metadata.name ?? "", createdAt: metadata.creationTimestamp ?? "", labels: metadata.labels };
+  return { name: metadata.name ?? "", createdAt: metadata.creationTimestamp ?? "", labels: metadata.labels, annotations: metadata.annotations };
 }

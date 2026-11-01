@@ -37,6 +37,9 @@ clusterAgent:
   enabled: true
   # Defaults to the in-cluster api Service when api.enabled; required when api.enabled is false.
   floorUrl: ""
+  # The name this cluster registers under; the floor queues every agent definition's new version
+  # to each registered cluster, and reports which clusters hold it. Unique per cluster.
+  clusterId: "default"
   tags: "kind:agent"
   # "claude=CLAUDE_CODE_OAUTH_TOKEN,gemini=GEMINI_API_KEY" — overrides which secret key in
   # agent-secrets holds each model family's credential. Optional; the agent has its own defaults.

@@ -1,14 +1,13 @@
 // What a running visit's executor calls (docs/api_sketch.md, "Station runs"): its structured brief and its event sink. A visit token reaches only its own visit.
 import type { ResponseToolkit, Server } from "@hapi/hapi";
-import { Refusal, enforce, type AgentSettings, type DispatchBrief } from "@floor/store";
-import type { BriefSettings, VisitBrief } from "@re-cinq/floor-contracts";
-import { agentConfigSchema, executorSettings } from "../agent-config.js";
+import { Refusal, enforce, type DispatchBrief } from "@floor/store";
+import type { VisitBrief } from "@re-cinq/floor-contracts";
+import { dispatchSettings, modelSecretKeyOf } from "../agent-config.js";
 import { VISITS_TOO } from "../auth.js";
 import { declaresWrite } from "../git-grant.js";
 import type { Deps } from "../deps.js";
 import { Sink } from "../engine/sink.js";
 import { HTTP_NO_CONTENT } from "../http-status.js";
-import { issuesOf } from "../parse.js";
 import { conflict, notFound } from "../problem.js";
 import { forOwnVisit, isUuid } from "./own-visit.js";
 import { mintVisitToken } from "../visit-token.js";
@@ -59,21 +58,6 @@ function briefResponse(deps: Deps, found: DispatchBrief): VisitBrief {
     conversation: conversation.mode === "continue" ? { mode: "continue", sessionRef: conversation.visitId } : conversation,
     modelSecretKey: modelSecretKeyOf(found.settings),
   };
-}
-
-// A definition's config was checked when it was put; one that no longer reads is refused here, by name, and never half-applied.
-function dispatchSettings(settings: AgentSettings): BriefSettings {
-  const config = agentConfigSchema.safeParse(settings.config ?? {});
-
-  if (!config.success) throw new Refusal(`the agent definition's config cannot be read: ${issuesOf(config.error).join("; ")}`);
-
-  return { model: settings.model, prompt: settings.prompt, image: settings.image, timeoutMinutes: settings.timeoutMinutes, ...executorSettings(config.data) };
-}
-
-function modelSecretKeyOf(settings: AgentSettings | null): string | undefined {
-  const named = settings?.config?.model_secret_key;
-
-  return typeof named === "string" ? named : undefined;
 }
 
 async function takeEvent(sink: Sink, posted: { visitId: string; body: unknown }, toolkit: ResponseToolkit) {

@@ -85,3 +85,6 @@ export type {
   AgentDefinitionBody,
   ScheduleBody,
 } from "./types.js";
+export { AGENT_DEFINITION_CHANGED, ClusterStore, clusterTag, type ClusterHoldingRow, type ClusterStoreDeps, type RecordedHolding } from "./clusters.js";
+export { CLUSTER_LIVE_MINUTES, presenceState, type AgentPresence, type ClusterPresence, type PresenceState } from "./agent-presence.js";
+export { mergeAgentSettings } from "./resolve.js";
