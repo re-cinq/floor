@@ -35,6 +35,11 @@ api:
 
 clusterAgent:
   enabled: true
+  # The namespace the agent creates Agents in (FLOOR_AGENTS_NAMESPACE), where the
+  # ai-agent-subsystem's controller watches. Empty: this release's namespace, with the
+  # controller from `subsystem` below. Set it to the subsystem's own namespace (`ai-agents`)
+  # when the subsystem is installed on its own, and leave `subsystem.enabled` off.
+  agentsNamespace: ""
   # Defaults to the in-cluster api Service when api.enabled; required when api.enabled is false.
   floorUrl: ""
   # The name this cluster registers under; the floor queues every agent definition's new version

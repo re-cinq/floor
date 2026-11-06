@@ -23,5 +23,10 @@ postgres:
 pipelines:
   existingConfigMap: floor-pipelines
 
+# The ai-agent-subsystem runs on its own (re-cinq/ai-agent-subsystem, namespace
+# ai-agents); the agent creates Agents there and the chart's own controller stays off.
+clusterAgent:
+  agentsNamespace: ai-agents
+
 subsystem:
-  enabled: true
+  enabled: false
