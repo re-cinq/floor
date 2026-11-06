@@ -12,6 +12,7 @@ imagePullSecrets:
   - name: ghcr
 
 api:
+  serviceMonitor: { enabled: true }
   baseUrl: http://floor-api.floor.svc.cluster.local:8080
   existingSecret: floor-api
   gitCredentialUrl: http://lore-api.lore-api.svc.cluster.local:3000/api/floor/git-credential
