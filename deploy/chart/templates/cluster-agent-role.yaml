@@ -3,6 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ include "floor.clusterAgent.fullname" . }}
+  namespace: {{ include "floor.agentsNamespace" . }}
   labels:
     {{- include "floor.clusterAgent.selectorLabels" . | nindent 4 }}
 rules:

@@ -108,3 +108,11 @@ http://{{ include "floor.api.fullname" . }}.{{ .Release.Namespace }}.svc.cluster
 {{ .Values.api.gitCredentialUrl }}
 {{- end -}}
 {{- end }}
+
+{{/*
+The namespace the cluster agent creates Agents in, where the subsystem's
+controller runs: clusterAgent.agentsNamespace, or this release's.
+*/}}
+{{- define "floor.agentsNamespace" -}}
+{{- default .Release.Namespace .Values.clusterAgent.agentsNamespace -}}
+{{- end -}}

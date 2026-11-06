@@ -1,0 +1,32 @@
+# re:cinq's internal cluster (project re-cinq-internal). Argo CD deploys the
+# chart with these values into the `floor` namespace on every merge to main
+# (re-cinq/infrastructure, docs/deploying.md). The Secrets and the pipelines
+# ConfigMap named here are created by re-cinq/lore's umbrella chart, which
+# owns the floor's credentials.
+
+version: 0.4.0
+
+image:
+  repository: ghcr.io/re-cinq/floor
+imagePullSecrets:
+  - name: ghcr
+
+api:
+  baseUrl: http://floor-api.floor.svc.cluster.local:8080
+  existingSecret: floor-api
+  gitCredentialUrl: http://lore-api.lore-api.svc.cluster.local:3000/api/floor/git-credential
+
+postgres:
+  existingSecret: floor-postgres
+  secretKey: connectionString
+
+pipelines:
+  existingConfigMap: floor-pipelines
+
+# The ai-agent-subsystem runs on its own (re-cinq/ai-agent-subsystem, namespace
+# ai-agents); the agent creates Agents there and the chart's own controller stays off.
+clusterAgent:
+  agentsNamespace: ai-agents
+
+subsystem:
+  enabled: false

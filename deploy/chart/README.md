@@ -66,6 +66,10 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   [What an agent's pod may reach](#what-an-agents-pod-may-reach).
 - `pipelines.existingConfigMap` — a ConfigMap you keep, holding one YAML file a pipeline. Empty
   (the default) renders no seed Job. See [Seeding pipelines](#seeding-pipelines).
+- `clusterAgent.agentsNamespace` — the namespace the agent creates Agents in, where the subsystem's
+  controller watches; the Role, the `agent-secrets` Secret and the agent network policy render there.
+  Empty (the default) means this release's namespace, with the controller from `subsystem.*`. Set it
+  to `ai-agents` when the ai-agent-subsystem is installed on its own and leave `subsystem.enabled` off.
 - `subsystem.*` — the ai-agent-subsystem's controller and CRDs, off by default. `subsystem.version`
   is checked against `subsystem.supportedVersions` (today: `v0.11.6`, `v0.11.8`, `v0.11.9`, `v0.11.10`, `v0.11.11` and `v0.15.0`) — add to that list
   before pointing the chart at a newer vendored `controller.yaml`.
