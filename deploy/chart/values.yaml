@@ -10,6 +10,8 @@ image:
 imagePullSecrets: []
 
 api:
+  # A ServiceMonitor for a cluster that runs the Prometheus operator.
+  serviceMonitor: { enabled: false }
   enabled: true
   # Every replica serves. The loop runs on the one holding the floor's lease, and another takes
   # it over when that one goes; GET /version on a replica says whether it is the one.

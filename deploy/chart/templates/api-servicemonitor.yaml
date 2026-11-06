@@ -1,0 +1,16 @@
+{{- if and .Values.api.enabled .Values.api.serviceMonitor.enabled }}
+# The api serves /metrics on its http port; the cluster's Prometheus operator
+# picks this up (re-cinq/infrastructure, docs/deploying.md).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "floor.api.fullname" . }}
+  labels:
+    {{- include "floor.api.selectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "floor.api.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - { port: http, path: /metrics, interval: 30s }
+{{- end }}
