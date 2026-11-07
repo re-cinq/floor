@@ -25,7 +25,7 @@ underneath it.
 - [API sketch](api_sketch.md): every endpoint, the conventions, the lore compatibility table and the converter
 - [Assembly run storage](assembly_run_storage.md): the model, routing, dispatch, events, costs, tables, and the mapping from lore's columns
 - [Development loop](dev_loop.md): minikube, hot reload, one command
-- [Releasing](releasing.md): a tag publishes the image, the chart and the four npm packages, and deploys
+- [Releasing](releasing.md): a tag publishes the image, the chart and the four npm packages; the [chart's README](../deploy/chart/README.md#how-recinq-deploys-it) is how Argo CD deploys a merge
 
 ## What is built
 

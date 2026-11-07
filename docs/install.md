@@ -1,7 +1,9 @@
 # Install floor
 
 Install a released floor into a Kubernetes cluster with Helm, from the published chart and image.
-At the end you have an api answering on your address and a cluster agent claiming work, and nothing
+This is the page for a cluster of your own. re:cinq's own floor is not installed this way: Argo CD
+deploys it from `main`, and the [chart's README](../deploy/chart/README.md#how-recinq-deploys-it)
+says how. At the end you have an api answering on your address and a cluster agent claiming work, and nothing
 else to build. For a guided first run after that, read the [tutorial](tutorial.md); for every
 chart value, the [chart's README](../deploy/chart/README.md).
 
