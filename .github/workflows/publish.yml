@@ -210,21 +210,12 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  deploy:
-    needs: [release-tag, image]
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/deploy.yml
-    with:
-      version: ${{ needs.release-tag.outputs.version }}
-    secrets: inherit
 
   # The record of what went out, written last so it never names a version that failed to
   # publish. A run started again by hand finds the release there and leaves it.
   release:
     name: Write the GitHub Release
-    needs: [release-tag, image, chart, packages, deploy]
+    needs: [release-tag, image, chart, packages]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -17,7 +17,6 @@ on:
       - "tsconfig.base.json"
       - "deploy/**"
       - ".github/workflows/build.yml"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 concurrency:
@@ -81,13 +80,3 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/deploy.yml
-    with:
-      version: ${{ needs.build.outputs.image_tag }}
-    secrets: inherit
