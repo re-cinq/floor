@@ -9,7 +9,8 @@ runs of it.
 
 If you only want to see a run happen on your laptop, skip all of this and use the dev loop:
 `npm start`, then `scripts/walk-agent.sh`. See [dev_loop.md](dev_loop.md). This page is about a real
-install.
+install, on a cluster of your own. re:cinq's own floor is deployed by Argo CD, not by these
+commands: see [the chart's README](../deploy/chart/README.md#how-recinq-deploys-it).
 
 ## What you need first
 

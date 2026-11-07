@@ -14,10 +14,11 @@ No commit bumps a version, and nothing waits for a hand afterwards.
 | the client | npm, `@re-cinq/floor-client` | `1.2.3` |
 | the station SDK | npm, `@re-cinq/floor-station` | `1.2.3` |
 | the pipeline tool | npm, `@re-cinq/floor-pipeline` | `1.2.3` |
-| the deploy | the cluster the repository names | the image `1.2.3` |
+| the deploy | nothing, by itself: re:cinq's cluster runs the `version` pinned in `deploy/clusters/internal-cluster.values.yaml` | bump it in a pull request, Argo CD syncs the merge |
 
 A commit to `main` publishes no version. It publishes the image under its short SHA and
-`latest`, and deploys the SHA: `.github/workflows/build.yml`.
+`latest`: `.github/workflows/build.yml`. Whether the cluster runs it is a separate merge, see
+[How re:cinq deploys it](../deploy/chart/README.md#how-recinq-deploys-it).
 
 ## Cutting one
 
@@ -33,7 +34,10 @@ That starts `.github/workflows/publish.yml`:
    whatever its author chose, so a green `main` says nothing about it.
 3. **The image is built and pushed**, **the chart is packaged and pushed**, and **the packages
    are published to npm**, installable at once.
-4. **The image is deployed**, once the repository names a cluster.
+4. **The leftover push deploy runs**, `deploy.yml`, into the cluster the repository variables
+   still name, the decommissioned `n8n-cluster`. It is not how the release reaches re:cinq's
+   floor: that is a pull request setting `version: 1.2.3` in
+   `deploy/clusters/internal-cluster.values.yaml`, which Argo CD syncs once merged.
 5. **The GitHub Release is written**, with generated notes, last: it never names a version
    that failed to publish.
 

@@ -26,7 +26,8 @@ helm install floor deploy/chart \
   --set postgres.existingSecret=floor-postgres --set postgres.secretKey=connectionString
 ```
 
-The operator's guide is [docs/install.md](../../docs/install.md).
+The operator's guide is [docs/install.md](../../docs/install.md). That is how someone else installs
+floor; re:cinq's own floor is not installed by hand, see [How re:cinq deploys it](#how-recinq-deploys-it).
 
 `api.existingSecret` must hold two keys: `serviceToken` and `visitTokenSecret`. The cluster agent
 authenticates to the api with the same `serviceToken` (`FLOOR_CLUSTER_AGENT_TOKEN`), so this
@@ -167,9 +168,10 @@ with the ConfigMap mounted read-only at `/pipelines`. The service token comes fr
   reapplied by `helm upgrade`. This is a Helm limitation, not a bug in this chart —
   `subsystem.enabled` only gates the controller Deployment/RBAC (`templates/subsystem-controller.yaml`),
   not the CRDs. **On a cluster that already has them**, installing them again is a
-  field-ownership conflict, since whoever installed them owns them: `deploy.yml` looks for
-  `agents.agents.re-cinq.com` first and passes `--skip-crds` when it is there. Install by hand
-  with the same flag on such a cluster. Installing the CRDs unconditionally is intentional: the cluster agent creates
+  field-ownership conflict, since whoever installed them owns them: the leftover `deploy.yml` looks
+  for `agents.agents.re-cinq.com` first and passes `--skip-crds` when it is there. Install by hand
+  with the same flag on such a cluster. On the internal cluster they belong to the
+  ai-agent-subsystem's own Argo application, never to this chart. Installing the CRDs unconditionally is intentional: the cluster agent creates
   `Agent`/`Station`/`AgentDefinition` objects whether or not this same release also runs their
   controller (another install on the cluster may run it instead — see
   `scripts/setup-minikube-agents.sh`'s own comment to that effect).
@@ -215,56 +217,120 @@ Install anything into a cluster, push an image, or touch `apps/` or `packages/`.
 publishes the image and this chart together; for anything else, build the image from the repo
 root's `Dockerfile` and push it yourself, then point `version` at that tag.
 
-## Continuous delivery
+## How re:cinq deploys it
 
-Three workflows, and the image is always `ghcr.io/re-cinq/floor`. Every tag is one index of
-`linux/amd64` and `linux/arm64`, which a pull resolves to the node's own architecture; nothing
-is emulated to build it, since the compile and the runtime dependencies are the same on both.
+re:cinq's own floor runs on the GKE Autopilot cluster `internal-cluster` in the GCP project
+`re-cinq-internal`, and Argo CD deploys it. Argo CD is installed by
+[re-cinq/infrastructure](https://github.com/re-cinq/infrastructure) (its `docs/deploying.md`),
+which also owns the cluster, Prometheus, Grafana and External Secrets. Nobody runs `helm install`
+or `helm upgrade` against that cluster: Argo owns the `floor` application with automated sync,
+prune and self-heal, so anything applied by hand is reverted at the next sync, and `helm list`
+there shows nothing. The old `floor` release on `n8n-cluster` (project `re5-n8n-platform`) is
+scaled to zero and is deleted with the project; nothing is deployed there any more.
 
-| what happens | the workflow | the image's tags | deployed as |
-|---|---|---|---|
-| a commit to `main` that touches the code, the Dockerfile or the chart | `build.yml` | its short SHA, and `latest` | its short SHA |
-| a tag `v1.2.3` is pushed | `publish.yml` | `1.2.3` and `1.2`; the chart `1.2.3` to `oci://ghcr.io/re-cinq/charts/floor` | `1.2.3` |
-| `build.yml` run by hand on a branch | `build.yml` | the commit's short SHA | not deployed |
+### What Argo CD watches
 
-- **Both deploy through `deploy.yml`**, which installs one version with this chart.
-  Authentication to GCP is Workload Identity Federation, the same setup lore uses — no
-  service-account key is stored anywhere.
-- **The deploy is skipped until the repository names a cluster** in `GKE_CLUSTER_NAME`. The
-  image is published all the same.
-- **Both deploy into the same release**, so what serves is what was deployed last. Release
-  `v1.2.3` and the cluster runs `1.2.3`; push to `main` after and it runs a SHA again. The two
-  never run at once: deploys wait for each other.
-- **A release publishes the npm packages too.** See [Releasing](../../docs/releasing.md).
+An ApplicationSet scans every repository in the re-cinq GitHub organization. A repository is
+deployed when it has `deploy/chart/Chart.yaml` and `deploy/clusters/internal-cluster.values.yaml`;
+this one has both. Argo renders this chart, from `main`, with that values file, into an Application
+and a namespace both named after the repository: `floor`. A merge to `main` is synced within about
+three minutes. The UI is <https://argocd.gcp.re-cinq.com> (Google sign-in, re-cinq.com accounts).
 
-It needs these set on the repository. The secrets are shared with lore; the variables are floor's
-own.
+### How a release reaches the cluster
 
-| | name | what it is |
+Merging to `main` is the deploy. There is no deploy job to run and no button to press. What runs is
+what `deploy/clusters/internal-cluster.values.yaml` says:
+
+- **`version` pins the image tag** — `0.4.0` today, a release `publish.yml` published. Nothing in
+  CI changes that line: a new version reaches the cluster when a pull request bumps it and merges.
+  Either tag works: a release's `1.2.3` ([Releasing](../../docs/releasing.md)), or the short SHA of
+  a `main` commit, which `build.yml` pushes to `ghcr.io/re-cinq/floor` on every merge that
+  touches the code or the chart.
+- **Any other change to `deploy/chart/` or the values file** on `main` is deployed the same way,
+  at the pinned image.
+
+Both apps roll together, as always: one chart, one image, one `version`. The migration Job runs
+as a `pre-upgrade` hook before the new pods start, so a sync waits for the schema too.
+
+### Checking a rollout
+
+The Argo CD UI shows the application, its sync state and the health of every object. From a
+terminal:
+
+```
+gcloud container clusters get-credentials internal-cluster --region europe-west1 --project re-cinq-internal
+kubectl -n floor rollout status deployment/floor-api
+kubectl -n floor rollout status deployment/floor-cluster-agent
+kubectl -n floor get pods -l app.kubernetes.io/name=floor -o wide
+kubectl -n floor exec deploy/floor-api -- wget -qO- http://127.0.0.1:8080/version
+```
+
+`/version` says which image answered and whether that replica holds the loop's lease. Logs and
+pods are also in Headlamp, <https://headlamp.gcp.re-cinq.com>, and the api's metrics in Grafana,
+<https://grafana.gcp.re-cinq.com> (both Google sign-in). The internal values turn on
+`api.serviceMonitor.enabled`, so the cluster's Prometheus scrapes the api Service's `/metrics`
+with no further setup.
+
+### Rolling back
+
+Revert the commit that changed `version` (or whatever else broke), merge the revert, and Argo
+syncs the previous state. That is the rollback that lasts. The Argo CD UI's History and Rollback
+puts an earlier revision back at once, but it also turns automated sync off for the application,
+so follow it with the revert and turn sync back on. `helm rollback` does not apply: Argo does not
+install Helm releases.
+
+### Secrets
+
+This chart only takes existing Secrets, and on the internal cluster it renders none of them.
+Values live in Secret Manager in project `re-cinq-internal`, in containers declared by
+re-cinq/infrastructure in `projects/internal/secrets.tf`: floor's own `floor-db-password` and
+`floor-visit-token-secret`, and the shared `lore-floor-service-token` and
+`lore-floor-git-credential-token`. Nothing but a container is in Terraform; a person adds the
+value:
+
+```
+gcloud secrets versions add floor-visit-token-secret --project=re-cinq-internal --data-file=-
+```
+
+ExternalSecrets read them through `ClusterSecretStore/gcp-secret-manager` (API
+`external-secrets.io/v1beta1`) into the `floor` namespace. Today those ExternalSecrets are
+rendered by re-cinq/lore's umbrella chart, which owns the floor's credentials (lore's
+`deploy/clusters/internal-cluster.values.yaml`): `floor-api` with `serviceToken`,
+`visitTokenSecret` and `gitCredentialToken`, `floor-postgres` with the `connectionString` built
+around `floor-db-password`, and the `ghcr` pull secret. The `floor-pipelines` ConfigMap the values
+name comes from the same place. A new secret is three pull requests: the container in
+re-cinq/infrastructure, the value with `gcloud`, and the ExternalSecret that reads it.
+
+### The ai-agents namespace
+
+The ai-agent-subsystem's controller and CRDs are not installed by this chart on the internal
+cluster. They are deployed from [re-cinq/ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem)
+by the same Argo CD, into the namespace `ai-agents`. All floor needs is that name:
+`clusterAgent.agentsNamespace: ai-agents` and `subsystem.enabled: false` in the internal values.
+The cluster agent creates its Agents in `ai-agents`, and the chart renders the Role, the
+`agent-secrets` Secret and the agent network policy there. The vendored copy under
+`deploy/agent-subsystem/` is for minikube and for a cluster that runs nothing else.
+
+### The push-deploy workflow, left over
+
+`build.yml` and `publish.yml` still call `deploy.yml`, which runs `helm upgrade --install` into
+the cluster the repository variables `GCP_PROJECT_ID` and `GKE_CLUSTER_NAME` name. Those point at
+`n8n-cluster`, the release that is scaled to zero. The job is the leftover of the push-based
+setup and is to be removed with that cluster (re-cinq/infrastructure, `docs/deploying.md`,
+"Moving an existing push-deployed repository"); it must not be pointed at `internal-cluster`,
+where Argo would undo it. The image and the chart are published all the same.
+
+### What a workflow publishes
+
+The image is always `ghcr.io/re-cinq/floor`. Every tag is one index of `linux/amd64` and
+`linux/arm64`, which a pull resolves to the node's own architecture; nothing is emulated to build
+it, since the compile and the runtime dependencies are the same on both.
+
+| what happens | the workflow | the image's tags |
 |---|---|---|
-| secret | `GCP_WORKLOAD_IDENTITY_PROVIDER` | the provider the run's OIDC token is traded at |
-| secret | `GCP_SERVICE_ACCOUNT` | the service account it impersonates |
-| variable | `GCP_PROJECT_ID`, `GKE_CLUSTER_NAME` | the cluster to deploy into |
-| variable | `GKE_LOCATION` | optional; `europe-west1` when unset |
-| variable | `FLOOR_BASE_URL` | `api.baseUrl` — the address **pods** reach the api at |
-| variable | `FLOOR_NAMESPACE` | optional; `floor` when unset |
-| variable | `FLOOR_PULL_SECRET` | optional; `ghcr` when unset |
-| variable | `FLOOR_PIPELINES_CONFIGMAP` | optional; `pipelines.existingConfigMap`. Unset seeds nothing |
-| variable | `FLOOR_GIT_CREDENTIAL_URL` | optional; `api.gitCredentialUrl`. Unset leaves no provider, so a visit that would write to a repository is not dispatched. Its token is the `gitCredentialToken` key of `FLOOR_API_SECRET` |
-| variable | `FLOOR_API_SECRET`, `FLOOR_POSTGRES_SECRET`, `FLOOR_POSTGRES_SECRET_KEY` | optional; the Secret names, defaulting to `floor-api`, `floor-postgres` and `connectionString` |
-
-**A Postgres must exist before the first deploy.** This chart never deploys one, and the
-migration Job is a `pre-install` hook, so a floor pointed at nothing fails before anything is
-installed. Either instance will do: its own, or a database of its own on one that is already
-there. Give it a database and a role of its own, never a database another service uses, since
-floor's schema has tables called `events`, `blobs` and `definitions`.
-
-Two things must already exist in the cluster, because the workflow creates neither: the two Secrets
-above (see [the tutorial](../../docs/tutorial.md)), and **an image pull secret for GHCR** if the
-image's package is private, since a GKE node cannot pull it with the node service account alone.
-
-The deploy runs `helm upgrade --install --wait`, so a release that does not become ready fails the
-run rather than reporting success, and the migration Job is waited on with everything else.
+| a commit to `main` that touches the code, the Dockerfile or the chart | `build.yml` | its short SHA, and `latest` |
+| a tag `v1.2.3` is pushed | `publish.yml` | `1.2.3` and `1.2`; the chart `1.2.3` to `oci://ghcr.io/re-cinq/charts/floor`; the npm packages |
+| `build.yml` run by hand on a branch | `build.yml` | the commit's short SHA |
 
 `.github/workflows/ci.yml` gates pull requests: one test job a workspace so a red suite cannot mask
 the others, then typecheck, lint, `scripts/check-chart.sh`, and a Docker build and image check for

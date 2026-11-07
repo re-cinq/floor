@@ -1,6 +1,6 @@
 # The ai-agent-subsystem, vendored
 
-What runs an agent station's visit: the controller that turns an `Agent` resource into a pod, and the three CRDs it reads. Vendored from [re-cinq/ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) `deploy/` at **v0.15.0**, the release `@re-cinq/agent-contracts` in `apps/cluster-agent` is pinned to. The two move together.
+What runs an agent station's visit: the controller that turns an `Agent` resource into a pod, and the three CRDs it reads. This copy is for minikube (`npm run minikube-setup`) and for a cluster that runs nothing else, through the chart's `subsystem.*` values. **re:cinq's internal cluster does not install it from here**: the operator is deployed from [re-cinq/ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) by Argo CD into its own namespace, `ai-agents`, and floor only names that namespace, `clusterAgent.agentsNamespace: ai-agents` (see [the chart's README](../chart/README.md#the-ai-agents-namespace)). Vendored from [re-cinq/ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) `deploy/` at **v0.15.0**, the release `@re-cinq/agent-contracts` in `apps/cluster-agent` is pinned to. The two move together.
 
 | file | from upstream | changed |
 |---|---|---|
@@ -13,4 +13,4 @@ The images are not taken from upstream's `deploy/`: a tag's `deploy/` pins the d
 
 `npm run minikube-setup` installs this, and `npm run minikube-claude-auth` gives its agents a Claude credential. To move to a newer release, copy the new `deploy/crds/`, update the two image digests in the script, and bump `@re-cinq/agent-contracts`.
 
-On a cluster that already has the CRDs, the chart's deploy passes `--skip-crds` and Helm never changes them, so apply the new ones by hand **before** the deploy that brings the new controller: `kubectl apply --server-side -f deploy/agent-subsystem/crds/`. From v0.14.0 the CRDs store `v1beta1` and still serve `v1alpha1`, so a controller or cluster agent of an older release keeps working against them; the v0.15.0 controller does not work against the old `v1alpha1`-only CRDs.
+On a cluster where another install owns the CRDs, Helm never changes them: a `helm upgrade` passes `--skip-crds`, and on the internal cluster they are the ai-agent-subsystem's own Argo application's, upgraded by a release of that repository, never by hand from here. Where this copy is the only install, apply the new CRDs **before** the upgrade that brings the new controller: `kubectl apply --server-side -f deploy/agent-subsystem/crds/`. From v0.14.0 the CRDs store `v1beta1` and still serve `v1alpha1`, so a controller or cluster agent of an older release keeps working against them; the v0.15.0 controller does not work against the old `v1alpha1`-only CRDs.
