@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   const clusterId = env("FLOOR_CLUSTER_ID");
   const resources = new KubeAgentResourcesApi();
 
-  watchRecipes({ report: (definitionId) => reportHolding({ floor, clusterId, resources }, definitionId), onError, running });
+  watchRecipes({ report: (definitionId) => reportHolding({ floor, clusterId, resources }, definitionId), onError: onWatchError, running });
   await runClaimLoop({
     floor,
     clusterId,
@@ -49,6 +49,10 @@ async function main(): Promise<void> {
 
 function onError(error: unknown): void {
   console.error("[cluster-agent] the floor could not be reached; trying again:", error instanceof Error ? error.message : error);
+}
+
+function onWatchError(error: unknown): void {
+  console.error("[cluster-agent] the recipe watch dropped; reopening:", error instanceof Error ? error.message : error);
 }
 
 function env(name: string, fallback?: string): string {

@@ -37,11 +37,16 @@ export function watchRecipes(deps: RecipeWatchDeps): void {
   }
 }
 
+/** The kube client ends every watch request after 30 seconds with a TimeoutError; that is the watch's normal end, and the reopen relists. */
+export function isWatchExpiry(error: unknown): boolean {
+  return error instanceof Error && error.name === "TimeoutError";
+}
+
 function open(deps: RecipeWatchDeps, path: string, changed: (definitionId: string) => void): void {
   if (!deps.running()) return;
 
   const reopen = (error: unknown) => {
-    if (error) deps.onError(error);
+    if (error && !isWatchExpiry(error)) deps.onError(error);
     setTimeout(() => open(deps, path, changed), REOPEN_MS);
   };
 
