@@ -95,6 +95,11 @@ config:
 - **`headers_secret`** names a key in the cluster's `agent-secrets`, holding
   the header whole: `Authorization: Bearer <token>`. The pod's reference to
   it is not optional. A key that is not there is a pod that never starts.
+- **`headers`** (http and sse) and **`env`** (stdio) each take any number of
+  `{ name, ref }`: the header or env var the server wants, and the key in
+  `agent-secrets` holding its value alone (`ref: search-api-key` for
+  `X-API-Key`), not a whole header line. They replace `headers_secret`, which
+  keeps working. An entry without a `ref` is refused when the definition is put.
 - **A url is a fact about one environment.** The address above is a
   cluster's; on a laptop the same gateway is at `host.minikube.internal`.
   A variant is keyed by repo, not by environment, so a definition naming a

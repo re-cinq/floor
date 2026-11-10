@@ -186,6 +186,16 @@ describe("buildAgentTriple", () => {
     expect(resources?.mcp_servers).toEqual([{ name: "lore", transport: "http", url: "http://gateway.test/mcp", headers_secret: "lore-mcp-auth" }]);
   });
 
+  it("gives an MCP server its X-API-Key header and its API_KEY env var, each read from the secret it names", () => {
+    const search = { name: "search", transport: "http" as const, url: "http://search.test/mcp", headers: [{ name: "X-API-Key", ref: "search-api-key" }] };
+    const files = { name: "files", transport: "stdio" as const, command: "npx", env: [{ name: "API_KEY", ref: "files-api-key" }] };
+    const { agentDefinition } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i", mcpServers: [search, files] } }));
+
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.mcp_servers).toEqual([search, files]);
+  });
+
   it("lets the agent use its tools unasked, a pod having nobody to ask", () => {
     const { agentDefinition } = buildAgentTriple(brief({}));
 
