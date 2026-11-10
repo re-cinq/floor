@@ -48,6 +48,15 @@ export interface McpServerSettings {
   args?: string[];
   url?: string;
   headersSecret?: string;
+  /** http and sse: headers whose values the pod reads from the cluster's agent-secrets, by key. */
+  headers?: SecretRef[];
+  /** stdio: env vars of the server process, valued the same way. */
+  env?: SecretRef[];
+}
+
+export interface SecretRef {
+  name: string;
+  ref: string;
 }
 
 /** An agent definition's `config`, under the names the wire uses rather than the snake_case a definition is authored in. */

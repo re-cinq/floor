@@ -1,8 +1,11 @@
 // What an agent definition's `config` may say to the subsystem, under the names docs/entities/agent-definition.md gives them, which are lore's own. Anything else in `config` is kept and passed to nobody.
 import { Refusal, type AgentSettings } from "@floor/store";
-import type { BriefSettings } from "@re-cinq/floor-contracts";
+import type { BriefSettings, ExecutorSettings } from "@re-cinq/floor-contracts";
 import { z } from "zod";
 import { issuesOf } from "./parse.js";
+
+// A header or env var the server needs, valued from the key `ref` of the cluster's agent-secrets.
+const secretRef = z.object({ name: z.string().min(1), ref: z.string().min(1) });
 
 // One of the two ways to reach a server, never neither: a process the pod starts, or an address it calls.
 const mcpServer = z
@@ -13,6 +16,8 @@ const mcpServer = z
     args: z.array(z.string()).optional(),
     url: z.url().optional(),
     headers_secret: z.string().min(1).optional(),
+    headers: z.array(secretRef).optional(),
+    env: z.array(secretRef).optional(),
   })
   .refine((server) => (server.transport === "stdio" ? Boolean(server.command) : Boolean(server.url)), {
     message: "a stdio server needs a command, any other a url",
@@ -39,17 +44,6 @@ export const agentConfigSchema = z.looseObject({
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
-
-export interface ExecutorSettings {
-  disallowedTools?: string[];
-  skills?: string[];
-  skillsSource?: string;
-  mcpServers?: { name: string; transport: "stdio" | "http" | "sse"; command?: string; args?: string[]; url?: string; headersSecret?: string }[];
-  env?: Record<string, string>;
-  permissionMode?: "auto" | "bypass";
-  maxTurns?: number;
-  podResources?: AgentConfig["pod_resources"];
-}
 
 /** The same settings under the names the floor's own wire uses. */
 export function executorSettings(config: AgentConfig): ExecutorSettings {
