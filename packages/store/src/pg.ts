@@ -17,6 +17,11 @@ const MIGRATION_LOCK_KEY = 0x6d696772n;
 
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
+/** The schema a floor's database is at once migrated: how many migration files this store ships. */
+export async function schemaVersion(dir: string = MIGRATIONS_DIR): Promise<number> {
+  return (await readdir(dir)).filter((name) => name.endsWith(".sql")).length;
+}
+
 export async function migrate(pool: postgres.Pool, dir: string = MIGRATIONS_DIR): Promise<string[]> {
   return withAdvisoryLock(pool, MIGRATION_LOCK_KEY, (client) => applyPending(client, dir));
 }

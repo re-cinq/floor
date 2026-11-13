@@ -116,3 +116,11 @@ controller runs: clusterAgent.agentsNamespace, or this release's.
 {{- define "floor.agentsNamespace" -}}
 {{- default .Release.Namespace .Values.clusterAgent.agentsNamespace -}}
 {{- end -}}
+
+{{/*
+The namespace the ai-agent-subsystem publishes its agent-subsystem-versions ConfigMap in:
+clusterAgent.subsystemNamespace, or the agents namespace.
+*/}}
+{{- define "floor.subsystemNamespace" -}}
+{{- default (include "floor.agentsNamespace" .) .Values.clusterAgent.subsystemNamespace -}}
+{{- end -}}

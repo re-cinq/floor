@@ -110,7 +110,9 @@ export const enqueueEventSchema = z.object({
   runId: z.string().optional(),
 });
 
-export const registerClusterSchema = z.object({ tags: z.array(z.string()) });
+const subsystemVersionsSchema = z.object({ version: z.string(), clis: z.record(z.string(), z.string()) });
+
+export const registerClusterSchema = z.object({ tags: z.array(z.string()), build: z.string().optional(), subsystem: subsystemVersionsSchema.nullable().optional() });
 
 export const claimEventsSchema = z.object({ tags: z.array(z.string()), limit: z.number().int().positive() });
 

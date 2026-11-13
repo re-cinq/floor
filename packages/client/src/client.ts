@@ -1,5 +1,5 @@
 // A floor, as a service reaches it. The namespaces are the floor's own route files, one for one.
-import type { AgentDefinitionBody, AgentPresence, AgentRecipes, ClusterHolding, LineBody, MigrationBody, PutResult, ScheduleBody, StationBody, DefinitionRowView, FloorEventView } from "@re-cinq/floor-contracts";
+import type { AgentDefinitionBody, AgentPresence, AgentRecipes, ClusterHolding, ClusterRegistration, ClusterVersions, LineBody, MigrationBody, PutResult, ScheduleBody, StationBody, DefinitionRowView, FloorEventView } from "@re-cinq/floor-contracts";
 import { blobsApi, conversationApi, type BlobsApi, type ConversationApi } from "./blobs.js";
 import { definitionApi, type DefinitionApi } from "./definitions.js";
 import { eventsApi, type EventsApi } from "./events.js";
@@ -36,8 +36,8 @@ export interface AgentDefinitionsApi extends DefinitionApi<AgentDefinitionBody> 
 }
 
 export interface ClustersApi {
-  /** Registers this cluster, or tells the floor it is still there. */
-  register(id: string, tags: string[]): Promise<void>;
+  /** Registers this cluster, or tells the floor it is still there, with what it runs. */
+  register(id: string, registration: ClusterRegistration): Promise<void>;
 }
 
 export interface SchedulesApi extends DefinitionApi<ScheduleBody> {
@@ -57,6 +57,8 @@ export interface Version {
   schemaVersion: number;
   /** Every replica serves; only the one holding the floor's lease runs its loop. */
   runsLoop: boolean;
+  /** The clusters seen within the last few minutes, with the cluster agent's build and the agent subsystem each last reported. */
+  clusters: ClusterVersions[];
 }
 
 export interface HealthApi {
@@ -90,8 +92,8 @@ export function createFloorClient(access: FloorAccess): FloorClient {
     stations: definitionApi<StationBody>(floor, "stations"),
     agentDefinitions: agentDefinitionsApi(floor),
     clusters: {
-      register: async (id, tags) => {
-        await done(floor, { method: "PUT", path: `/clusters/${id}`, body: { tags } });
+      register: async (id, registration) => {
+        await done(floor, { method: "PUT", path: `/clusters/${id}`, body: registration });
       },
     },
     schedules: { ...definitionApi<ScheduleBody>(floor, "schedules"), trigger: (id) => asked<FloorEventView>(floor, { method: "POST", path: `/schedules/${id}/trigger` }, [HTTP_NOT_FOUND]) },

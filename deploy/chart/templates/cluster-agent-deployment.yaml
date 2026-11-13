@@ -46,6 +46,8 @@ spec:
               value: {{ .Values.clusterAgent.tags | quote }}
             - name: FLOOR_AGENTS_NAMESPACE
               value: {{ include "floor.agentsNamespace" . }}
+            - name: FLOOR_SUBSYSTEM_NAMESPACE
+              value: {{ include "floor.subsystemNamespace" . }}
             - name: FLOOR_KUBE_IN_CLUSTER
               value: "1"
             - name: FLOOR_MODEL_SECRET_KEYS

@@ -2,10 +2,13 @@
 
 import type { Pool, PoolClient } from "pg";
 import { definitionHash } from "@floor/assembly-lines";
-import { presenceState, type AgentPresence } from "./agent-presence.js";
+import type { SubsystemVersions } from "@re-cinq/floor-contracts";
+import { CLUSTER_LIVE_MINUTES, presenceState, type AgentPresence } from "./agent-presence.js";
 import { DefinitionsStore, type PutResult } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { withTransaction } from "./rows.js";
+
+const MS_PER_MINUTE = 60_000;
 
 export const AGENT_DEFINITION_CHANGED = "agent_definition.changed";
 
@@ -27,6 +30,19 @@ export interface RecordedHolding {
   adopted: boolean;
 }
 
+/** What a cluster agent says it runs when it registers; an older agent sends neither. */
+export interface ClusterBuild {
+  build?: string;
+  subsystem?: SubsystemVersions | null;
+}
+
+export interface ClusterVersionsRow {
+  id: string;
+  build: string | null;
+  subsystem: SubsystemVersions | null;
+  lastSeenAt: Date;
+}
+
 export interface ClusterStoreDeps {
   pool: Pool;
   now?: () => Date;
@@ -40,12 +56,12 @@ export class ClusterStore {
   }
 
   /** Registers or refreshes a cluster, and queues every agent definition whose latest version it does not hold, unless one is already on its way. */
-  async register(id: string, tags: string[]): Promise<void> {
+  async register(id: string, tags: string[], running: ClusterBuild = {}): Promise<void> {
     await withTransaction(this.deps.pool, async (client) => {
       await client.query(
-        `insert into clusters (id, tags, last_seen_at) values ($1, $2::text[], $3)
-         on conflict (id) do update set tags = excluded.tags, last_seen_at = excluded.last_seen_at`,
-        [id, tags, this.now()],
+        `insert into clusters (id, tags, last_seen_at, build, subsystem) values ($1, $2::text[], $3, $4, $5::jsonb)
+         on conflict (id) do update set tags = excluded.tags, last_seen_at = excluded.last_seen_at, build = excluded.build, subsystem = excluded.subsystem`,
+        [id, tags, this.now(), running.build ?? null, running.subsystem ? JSON.stringify(running.subsystem) : null],
       );
       await this.queueMissing(client, id);
     });
@@ -81,6 +97,14 @@ export class ClusterStore {
     );
 
     return rows.map((row) => ({ clusterId: row.cluster_id, hash: row.hash, body: row.body, appliedAt: row.applied_at }));
+  }
+
+  /** The clusters seen within CLUSTER_LIVE_MINUTES, with what each last said it runs. */
+  async liveVersions(): Promise<ClusterVersionsRow[]> {
+    const liveSince = new Date(this.now().getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE);
+    const { rows } = await this.deps.pool.query(`select id, build, subsystem, last_seen_at from clusters where last_seen_at >= $1 order by id`, [liveSince]);
+
+    return rows.map((row) => ({ id: row.id, build: row.build, subsystem: row.subsystem, lastSeenAt: row.last_seen_at }));
   }
 
   /** Every agent definition's presence on the live clusters, by id. */

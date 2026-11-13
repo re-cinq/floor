@@ -79,6 +79,15 @@ describe("runClaimLoop: registering", () => {
 
     await runOneTick(floor, { resources: fakeResources(), secrets: fakeSecrets(), tags: ["kind:agent", "cluster:east"], sleep: async () => {} });
 
-    expect(floor.register).toHaveBeenCalledWith("east", ["kind:agent", "cluster:east"]);
+    expect(floor.register).toHaveBeenCalledWith("east", { tags: ["kind:agent", "cluster:east"], build: "dev", subsystem: null });
+  });
+
+  it("registers east with build abc123 and the subsystem its ConfigMap names", async () => {
+    const floor = fakeFloor();
+    const subsystem = { version: "0.19.0", clis: { claude: "2.1.311" } };
+
+    await runOneTick(floor, { resources: fakeResources(), secrets: fakeSecrets(), tags: [], build: "abc123", readSubsystem: () => Promise.resolve(subsystem), sleep: async () => {} });
+
+    expect(floor.register).toHaveBeenCalledWith("east", { tags: [], build: "abc123", subsystem });
   });
 });

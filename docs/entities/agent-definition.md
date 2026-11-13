@@ -139,7 +139,11 @@ variants:
 
 A new version does not wait for a visit to reach the clusters.
 
-1. A cluster agent registers under its cluster id (`PUT /clusters/{id}`) on start and every minute after.
+1. A cluster agent registers under its cluster id (`PUT /clusters/{id}`) on start and every minute after,
+   with `{tags, build, subsystem}`: the tags it claims by, its own build sha, and the agent subsystem
+   its cluster runs, `{version, clis: {claude, codex, gemini, opencode}}` read from the subsystem's
+   `agent-subsystem-versions` ConfigMap, or null when it cannot be read. `build` and `subsystem` are
+   optional, so an older agent registers with its tags alone. `GET /version` lists them per live cluster.
 2. A put that makes a new latest version writes one `agent_definition.changed` event per registered
    cluster, tagged `cluster:<id>`, in the put's own transaction. A cluster registering later gets one
    for every agent definition whose latest version it does not hold.

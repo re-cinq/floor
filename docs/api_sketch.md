@@ -56,7 +56,21 @@ each entity has its own page under [entities/](entities/).
 
 GET    /healthz                          // process up
 GET    /readyz                           // can reach its database, within two seconds, on a connection of its own; 503 otherwise. Every such instance serves
-GET    /version                          // build sha, schema version, and whether this instance runs the loop
+GET    /version                          // build sha, schema version, whether this instance runs the loop, and what each live cluster runs
+
+`/version` answers:
+
+```
+{ "sha": "180a511…", "schemaVersion": 8, "runsLoop": true,
+  "clusters": [ { "id": "internal", "build": "180a511…", "lastSeenAt": "2026-11-13T10:00:00Z",
+                  "subsystem": { "version": "0.19.0",
+                                 "clis": { "claude": "2.1.311", "codex": "0.167.1", "gemini": "0.62.0", "opencode": "1.2.0" } } } ] }
+```
+
+`schemaVersion` is the number of the store's migrations. `clusters` lists every cluster seen
+within `CLUSTER_LIVE_MINUTES` (5): `build` is its cluster agent's own build sha, and `subsystem`
+what its `agent-subsystem-versions` ConfigMap says. Either is null for a cluster agent that does not
+send it, and `subsystem` is null when the agent cannot read that ConfigMap.
 
 ## Metrics
 
