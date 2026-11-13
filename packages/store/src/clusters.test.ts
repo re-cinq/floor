@@ -91,6 +91,29 @@ describe("ClusterStore.register", () => {
   });
 });
 
+const SUBSYSTEM = { version: "0.19.0", clis: { claude: "2.1.311", codex: "0.167.1", gemini: "0.62.0", opencode: "1.2.0" } };
+
+describe("ClusterStore.liveVersions", () => {
+  it("lists east with build abc123 and subsystem 0.19.0 after it registers them", async () => {
+    await clusters().register("east", [], { build: "abc123", subsystem: SUBSYSTEM });
+
+    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: "abc123", subsystem: SUBSYSTEM, lastSeenAt: NOW }]);
+  });
+
+  it("lists null build and subsystem for a cluster agent that sent neither", async () => {
+    await clusters().register("east", []);
+
+    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: null, subsystem: null, lastSeenAt: NOW }]);
+  });
+
+  it("leaves out a cluster last seen six minutes ago", async () => {
+    await new ClusterStore({ pool: pool(), now: () => new Date(NOW.getTime() - 6 * 60_000) }).register("west", []);
+    await clusters().register("east", []);
+
+    expect((await clusters().liveVersions()).map((cluster) => cluster.id)).toEqual(["east"]);
+  });
+});
+
 describe("ClusterStore.recordHolding", () => {
   it("records the hash a cluster read back for the latest version, and adopts nothing", async () => {
     await clusters().register("east", []);

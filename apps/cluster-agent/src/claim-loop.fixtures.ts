@@ -4,7 +4,7 @@ import { runClaimLoop } from "./claim-loop.js";
 import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
 import type { BriefOutcome, FloorClient } from "@re-cinq/floor-client";
-import type { AgentDefinitionBody, AgentRecipes, FloorEventView, VisitBrief } from "@re-cinq/floor-contracts";
+import type { AgentDefinitionBody, AgentRecipes, ClusterRegistration, FloorEventView, VisitBrief } from "@re-cinq/floor-contracts";
 
 export interface FakeCalls {
   claim: (claiming: { tags: string[]; limit: number }) => Promise<FloorEventView[]>;
@@ -13,7 +13,7 @@ export interface FakeCalls {
   brief: (visitId: string) => Promise<BriefOutcome>;
   recipes: (id: string) => Promise<AgentRecipes<AgentDefinitionBody> | null>;
   post: (event: { name: string; payload: Record<string, unknown> }) => Promise<FloorEventView>;
-  register: (id: string, tags: string[]) => Promise<void>;
+  register: (id: string, registration: ClusterRegistration) => Promise<void>;
 }
 
 export interface FakeFloor extends FakeCalls {

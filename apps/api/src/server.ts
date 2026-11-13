@@ -39,7 +39,7 @@ export async function buildServer(deps: Deps, holdsLease: () => boolean): Promis
 
   registerAuth(server, { serviceToken: deps.config.serviceToken, visitTokenSecret: deps.config.visitTokenSecret, now: deps.now });
   registerProblemResponses(server);
-  registerHealthRoutes(server, { databaseProbe: deps.databaseProbe, holdsLease });
+  registerHealthRoutes(server, { databaseProbe: deps.databaseProbe, holdsLease, clusters: deps.clusters });
   registerMetricsRoutes(server, deps, { holdsLease });
   registerSkillRoutes(server);
   for (const register of ROUTES) register(server, deps);

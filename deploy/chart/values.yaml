@@ -42,6 +42,11 @@ clusterAgent:
   # controller from `subsystem` below. Set it to the subsystem's own namespace (`ai-agents`)
   # when the subsystem is installed on its own, and leave `subsystem.enabled` off.
   agentsNamespace: ""
+  # Where the ai-agent-subsystem's chart publishes its `agent-subsystem-versions` ConfigMap, which
+  # the agent reads and reports to the floor on every register (FLOOR_SUBSYSTEM_NAMESPACE). Empty:
+  # the agents namespace. The chart grants `get` on that one ConfigMap there; a ConfigMap the agent
+  # cannot read is reported as no subsystem, and registering goes on.
+  subsystemNamespace: ""
   # Defaults to the in-cluster api Service when api.enabled; required when api.enabled is false.
   floorUrl: ""
   # The name this cluster registers under; the floor queues every agent definition's new version

@@ -1,13 +1,12 @@
-// Health and version (docs/api_sketch.md, "Health and version"): unauthenticated, for a load balancer or a human. Every instance that can reach its database serves; which one runs the loop is a fact about it, not a condition of serving.
+// Health and version (docs/api_sketch.md, "Health and version"): unauthenticated, for a load balancer or a human; the version names this build, its schema and what each live cluster runs. Every instance that can reach its database serves; which one runs the loop is a fact about it, not a condition of serving.
 import type { Server } from "@hapi/hapi";
 import Boom from "@hapi/boom";
-import type { DatabaseProbe } from "@floor/store";
-
-const SCHEMA_VERSION = 3;
+import { schemaVersion, type ClusterStore, type DatabaseProbe } from "@floor/store";
 
 export interface Readiness {
   databaseProbe: DatabaseProbe;
   holdsLease: () => boolean;
+  clusters: Pick<ClusterStore, "liveVersions">;
 }
 
 export function registerHealthRoutes(server: Server, readiness: Readiness): void {
@@ -33,6 +32,11 @@ export function registerHealthRoutes(server: Server, readiness: Readiness): void
     method: "GET",
     path: "/version",
     options: { auth: false },
-    handler: () => ({ sha: process.env.FLOOR_BUILD_SHA ?? "dev", schemaVersion: SCHEMA_VERSION, runsLoop: readiness.holdsLease() }),
+    handler: async () => ({
+      sha: process.env.FLOOR_BUILD_SHA ?? "dev",
+      schemaVersion: await schemaVersion(),
+      runsLoop: readiness.holdsLease(),
+      clusters: await readiness.clusters.liveVersions(),
+    }),
   });
 }

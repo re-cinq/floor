@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { injectJson, setupTestServer } from "../test-server.js";
+import { authHeaders, injectJson, setupTestServer } from "../test-server.js";
 
 const { server, loop, pool } = setupTestServer();
 
@@ -45,9 +45,19 @@ describe("GET /version", () => {
     expect(response.result.runsLoop).toBe(true);
   });
 
-  it("returns a schema version", async () => {
+  it("returns schema version 8, the count of the store's migrations", async () => {
     const response = await injectJson<{ schemaVersion: number }>(server(), { method: "GET", url: "/version" });
 
-    expect(response.result.schemaVersion).toBe(3);
+    expect(response.result.schemaVersion).toBe(8);
+  });
+
+  it("lists east with the build and subsystem it registered", async () => {
+    const subsystem = { version: "0.19.0", clis: { claude: "2.1.311", codex: "0.167.1", gemini: "0.62.0", opencode: "1.2.0" } };
+
+    await pool().query("truncate clusters cascade");
+    await server().inject({ method: "PUT", url: "/clusters/east", headers: authHeaders(), payload: { tags: ["kind:agent"], build: "abc123", subsystem } });
+    const response = await injectJson<{ clusters: unknown[] }>(server(), { method: "GET", url: "/version" });
+
+    expect(response.result.clusters).toEqual([{ id: "east", build: "abc123", subsystem, lastSeenAt: expect.any(Date) }]);
   });
 });

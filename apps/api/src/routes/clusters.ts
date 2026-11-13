@@ -19,7 +19,9 @@ async function register(deps: Deps, request: Request, toolkit: ResponseToolkit) 
   const parsed = parseBody(registerClusterSchema, request.payload);
 
   if (!parsed.success) return badRequest(toolkit, "invalid cluster", parsed.errors);
-  await deps.clusters.register(request.params.id as string, parsed.value.tags);
+  const { tags, build, subsystem } = parsed.value;
+
+  await deps.clusters.register(request.params.id as string, tags, { build, subsystem });
 
   return toolkit.response().code(HTTP_NO_CONTENT);
 }

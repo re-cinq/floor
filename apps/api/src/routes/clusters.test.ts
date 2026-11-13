@@ -49,6 +49,18 @@ async function presence(): Promise<Record<string, { state: string }>> {
 }
 
 describe("PUT /clusters/{id}", () => {
+  it("answers 400 for a subsystem with no version", async () => {
+    const response = await server().inject({ method: "PUT", url: "/clusters/east", headers: authHeaders(), payload: { tags: [], subsystem: { clis: {} } } });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("answers 204 for a cluster-agent registering a null subsystem", async () => {
+    const response = await server().inject({ method: "PUT", url: "/clusters/east", headers: authHeaders(), payload: { tags: [], build: "abc123", subsystem: null } });
+
+    expect(response.statusCode).toBe(204);
+  });
+
   it("answers 204 for a cluster-agent registering with its tags", async () => {
     expect(await register("east")).toBe(204);
   });

@@ -165,7 +165,11 @@ sink).
 
 ## Pushed recipes
 
-The agent registers with the floor under `FLOOR_CLUSTER_ID` every minute and
+The agent registers with the floor under `FLOOR_CLUSTER_ID` every minute, with
+its build (`FLOOR_BUILD_SHA`) and the agent subsystem's release and CLI pins read
+from the `agent-subsystem-versions` ConfigMap in `FLOOR_SUBSYSTEM_NAMESPACE`
+(default: the agents namespace; `kube/subsystem-versions.ts`, null when it cannot
+be read, never a failed register), and
 offers `cluster:<id>` beside its tags. Its own `agent_definition.changed`
 events push the latest version's recipes ahead of any visit
 (`domain/pushed-recipe.ts`), labelled `floor.re-cinq.com/definition` and

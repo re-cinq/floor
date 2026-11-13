@@ -128,6 +128,27 @@ export interface AgentPresence {
   clusters: ClusterPresence[];
 }
 
+/** The agent subsystem a cluster runs, as its `agent-subsystem-versions` ConfigMap says: its release and the CLI each vendor's pod runs, by vendor (`claude`, `codex`, `gemini`, `opencode`). */
+export interface SubsystemVersions {
+  version: string;
+  clis: Record<string, string>;
+}
+
+/** `PUT /clusters/{id}`: what a cluster agent sends each time it registers. `build` and `subsystem` are absent from an older agent; `subsystem` is null when the cluster's ConfigMap could not be read. */
+export interface ClusterRegistration {
+  tags: string[];
+  build?: string;
+  subsystem?: SubsystemVersions | null;
+}
+
+/** One live cluster on `GET /version`: the cluster agent's build and the subsystem it last reported. */
+export interface ClusterVersions {
+  id: string;
+  build: string | null;
+  subsystem: SubsystemVersions | null;
+  lastSeenAt: string;
+}
+
 /** `GET /agent-definitions/{id}/clusters`: what one cluster read back out of its kube. */
 export interface ClusterHolding<Body = unknown> {
   clusterId: string;

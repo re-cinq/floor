@@ -4,7 +4,7 @@ import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
 import { buildAgentTriple } from "./domain/agent-triple.js";
 import type { FloorClient } from "@re-cinq/floor-client";
-import type { ClaimedEvent } from "@re-cinq/floor-contracts";
+import type { ClaimedEvent, ClusterRegistration, SubsystemVersions } from "@re-cinq/floor-contracts";
 import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js";
 import { modelSecretKeyFor, type KeyByFamily } from "./domain/model-secret.js";
 import { describeClaimTick, dueForLivenessLog } from "./domain/liveness.js";
@@ -17,6 +17,10 @@ export interface ClaimLoopDeps {
   resources: AgentResourcesApi;
   secrets: SecretKeyWriter;
   tags: string[];
+  /** This agent's own build, sent on every register; "dev" when unset. */
+  build?: string;
+  /** The agent subsystem this cluster runs, sent on every register; null when unknown. */
+  readSubsystem?: () => Promise<SubsystemVersions | null>;
   secretName?: string;
   /** The model secrets this cluster holds, by model family, where they differ from the usual API keys. */
   modelSecretKeys?: KeyByFamily;
@@ -97,7 +101,7 @@ async function registerIfDue(deps: ClaimLoopDeps, lastRegisteredAt: number | nul
   try {
     const { clusters } = deps.floor;
 
-    await clusters.register(deps.clusterId, deps.tags);
+    await clusters.register(deps.clusterId, await registrationOf(deps));
 
     return now;
   } catch (error) {
@@ -105,6 +109,13 @@ async function registerIfDue(deps: ClaimLoopDeps, lastRegisteredAt: number | nul
 
     return lastRegisteredAt;
   }
+}
+
+// What this cluster tells the floor on each register: its claim tags, its build, and the subsystem it runs.
+async function registrationOf(deps: ClaimLoopDeps): Promise<ClusterRegistration> {
+  const subsystem = (await deps.readSubsystem?.()) ?? null;
+
+  return { tags: deps.tags, build: deps.build ?? "dev", subsystem };
 }
 
 async function sweepIfDue(deps: ClaimLoopDeps, lastSweptAt: number | null, now: number): Promise<number | null> {

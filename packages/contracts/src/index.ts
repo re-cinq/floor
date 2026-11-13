@@ -31,6 +31,8 @@ export type {
   ClaimedEvent,
   ClusterHolding,
   ClusterPresence,
+  ClusterRegistration,
+  ClusterVersions,
   DefinitionKind,
   ExecutorSettings,
   FileNeed,
@@ -42,6 +44,7 @@ export type {
   MigrationBody,
   Problem,
   PutResult,
+  SubsystemVersions,
   ValueNeed,
   VisitBrief,
 } from "./wire.js";

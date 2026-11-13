@@ -6,6 +6,8 @@ import { KubeAgentResourcesApi } from "./kube/agent-resources.js";
 import { KubeSecretKeyWriter } from "./kube/secret-writer.js";
 import { reportHolding, runClaimLoop } from "./claim-loop.js";
 import { watchRecipes } from "./kube/recipe-watch.js";
+import { subsystemReader } from "./kube/subsystem-versions.js";
+import { agentsNamespace } from "./kube/clients.js";
 import { parseKeyByFamily } from "./domain/model-secret.js";
 import { createStoppable } from "./lib/stoppable.js";
 
@@ -32,8 +34,7 @@ async function main(): Promise<void> {
     resources,
     secrets: new KubeSecretKeyWriter(),
     tags: [...claimTags(), `cluster:${clusterId}`],
-    secretName: process.env.FLOOR_AGENT_SECRETS_NAME,
-    modelSecretKeys: parseKeyByFamily(process.env.FLOOR_MODEL_SECRET_KEYS),
+    ...clusterSettings(),
     idleMs: millisecondsOf(process.env.FLOOR_CLAIM_IDLE_MS),
     maxIdleMs: millisecondsOf(process.env.FLOOR_CLAIM_MAX_IDLE_MS),
     running,
@@ -45,6 +46,16 @@ async function main(): Promise<void> {
   // A probe may hold its connection open, and close() alone waits for it.
   healthServer.closeAllConnections();
   console.log("[cluster-agent] stopped");
+}
+
+// What this cluster holds and runs, from its environment: the secret its model keys live in, and the build and subsystem it registers with.
+function clusterSettings() {
+  return {
+    secretName: process.env.FLOOR_AGENT_SECRETS_NAME,
+    modelSecretKeys: parseKeyByFamily(process.env.FLOOR_MODEL_SECRET_KEYS),
+    build: process.env.FLOOR_BUILD_SHA,
+    readSubsystem: subsystemReader(process.env.FLOOR_SUBSYSTEM_NAMESPACE || agentsNamespace()),
+  };
 }
 
 function onError(error: unknown): void {
