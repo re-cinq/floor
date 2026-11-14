@@ -151,42 +151,55 @@ async function countSeries(client: Queryable, countSql: string, labelNames: stri
   return rows.map((row) => ({ labels: labelsOf(row, labelNames), count: Number(row.count) }));
 }
 
+/** How many of one label tuple's rows fell in one bucket: the bucket is the index of the first bound at or above the value, the number of bounds for one above them all. */
 export interface HistogramRow extends Record<string, string | number> {
-  bound: number;
+  bucket: number;
   count: string;
   sum: number;
-  total: string;
 }
 
-// One row per label tuple and bucket; `sum` and `total` repeat on every row of a tuple and are read once.
-async function histogram(client: Queryable, sample: string, labelNames: string[], bounds: number[]): Promise<HistogramSeries[]> {
+// One pass over the sample: each row's bucket comes from width_bucket over the negated bounds in reverse, which counts the bounds at or above the value, so `seconds <= bound` holds as Prometheus's `le` means it. Joining every row to every bound made a scrape read the sample once per bound.
+export async function histogram(client: Queryable, sample: string, labelNames: string[], bounds: number[]): Promise<HistogramSeries[]> {
   const labels = labelNames.length ? `${labelNames.join(", ")},` : "";
-  const grouping = labelNames.length ? `${labelNames.join(", ")}, bound` : "bound";
+  const grouping = labelNames.length ? `${labelNames.join(", ")}, bucket` : "bucket";
   const { rows } = await client.query<HistogramRow>(
     `with sample as (${sample})
-     select ${labels} bound, count(*) filter (where seconds <= bound)::text as count, sum(seconds)::float8 as sum, count(*)::text as total
-       from sample cross join unnest($1::float8[]) as bound
+     select ${labels} ($1::int - width_bucket(-seconds, $2::float8[])) as bucket, count(*)::text as count, sum(seconds)::float8 as sum
+       from sample
       group by ${grouping} order by ${grouping}`,
-    [bounds],
+    [bounds.length, bounds.map((bound) => -bound).reverse()],
   );
 
-  return foldHistogramRows(rows, labelNames);
+  return foldHistogramRows(rows, labelNames, bounds);
 }
 
-/** Folds the bucket rows of one query into a series per label tuple, in row order. */
-export function foldHistogramRows(rows: HistogramRow[], labelNames: string[]): HistogramSeries[] {
+/** Adds the bucket rows of each label tuple up into Prometheus's cumulative buckets, tuples in row order. */
+export function foldHistogramRows(rows: HistogramRow[], labelNames: string[], bounds: number[]): HistogramSeries[] {
   const series = new Map<string, HistogramSeries>();
 
   for (const row of rows) {
     const labels = labelsOf(row, labelNames);
     const key = JSON.stringify(labels);
-    const current = series.get(key) ?? { labels, buckets: [], sum: row.sum, count: Number(row.total) };
+    const current = series.get(key) ?? emptySeries(labels, bounds);
 
-    current.buckets.push({ upTo: Number(row.bound), count: Number(row.count) });
+    addRow(current, row);
     series.set(key, current);
   }
 
   return [...series.values()];
+}
+
+function emptySeries(labels: MetricLabels, bounds: number[]): HistogramSeries {
+  return { labels, buckets: bounds.map((upTo) => ({ upTo, count: 0 })), sum: 0, count: 0 };
+}
+
+function addRow(series: HistogramSeries, row: HistogramRow): void {
+  const measured = Number(row.count);
+  const { buckets } = series;
+
+  for (const bucket of buckets.slice(Number(row.bucket))) bucket.count += measured;
+  series.sum += Number(row.sum);
+  series.count += measured;
 }
 
 function labelsOf(row: Record<string, unknown>, labelNames: string[]): MetricLabels {
