@@ -2,6 +2,7 @@
 import type { Server } from "@hapi/hapi";
 import type { CostSeriesRow, CountSeries, HistogramSeries, MetricLabels, OutcomeCount, RunMetrics } from "@floor/store";
 import type { Deps } from "../deps.js";
+import { sharedRead } from "./shared-read.js";
 
 const METRICS_CONTENT_TYPE = "text/plain; version=0.0.4";
 
@@ -17,12 +18,14 @@ export interface MetricsSnapshot {
 }
 
 export function registerMetricsRoutes(server: Server, deps: Deps, readiness: MetricsReadiness): void {
+  const snapshotOnce = sharedRead(() => metricsSnapshot(deps, readiness));
+
   server.route({
     method: "GET",
     path: "/metrics",
     options: { auth: false },
     handler: async (request, toolkit) => {
-      const snapshot = await metricsSnapshot(deps, readiness);
+      const snapshot = await snapshotOnce();
 
       return toolkit.response(renderMetrics(snapshot)).type(METRICS_CONTENT_TYPE);
     },
