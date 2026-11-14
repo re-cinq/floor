@@ -53,13 +53,13 @@ function wasCounted(row: CostsRow): boolean {
   return row.costUsd > 0 || row.tokensIn > 0 || row.tokensOut > 0 || row.unpriced.length > 0;
 }
 
-// The `visits` CTE's own output columns, not the joined tables' aliases, which are out of scope by the time the outer select runs. A visit that names no models did its work with the one its definition gave it.
+// Read from the `scoped` CTE (`sc`) and the totals (`lt`), the joined tables' aliases being out of scope by the time `visits` selects. A visit that names no models did its work with the one its definition gave it.
 const GROUP_KEY_EXPR: Record<CostsGroupBy, string> = {
-  day: "to_char(date_trunc('day', sr.opened_at), 'YYYY-MM-DD')",
-  line: "ar.line_id",
-  station: "d.id",
-  model: "coalesce(lt.model, sr.input->'agentSettings'->>'model')",
-  run: "ar.id::text",
+  day: "to_char(date_trunc('day', sc.opened_at), 'YYYY-MM-DD')",
+  line: "sc.line_id",
+  station: "sc.station_id",
+  model: "coalesce(lt.model, sc.input->'agentSettings'->>'model')",
+  run: "sc.run_id::text",
   billing_mode: "coalesce(bm.billing_mode, 'unknown')",
 };
 
@@ -77,24 +77,12 @@ function whereClauseFor(filter: CostsFilter): { where: string; values: unknown[]
   return { where: conditions.length > 0 ? `where ${conditions.join(" and ")}` : "", values };
 }
 
-// Tokens in are everything the model read: what it read from its cache, and what it wrote to it, are counted apart from the rest, and on a second turn the rest is a handful.
-function tokensIn(counts: string): string {
-  return `coalesce((${counts}->>'input_tokens')::numeric, 0)
-        + coalesce((${counts}->>'cache_creation_input_tokens')::numeric, 0)
-        + coalesce((${counts}->>'cache_read_input_tokens')::numeric, 0)`;
-}
-
-function tokensOut(counts: string): string {
-  return `coalesce((${counts}->>'output_tokens')::numeric, 0)`;
-}
-
-/** The part of tokens in that was read from the cache, which costs a tenth of the rest. */
-function tokensCacheRead(counts: string): string {
-  return `coalesce((${counts}->>'cache_read_input_tokens')::numeric, 0)`;
-}
+/** Narrows a records CTE to the visits the filter kept; unfiltered rollups pass nothing. */
+const IN_SCOPE = "and station_run_id in (select station_run_id from scoped)";
 
 /** One row a visit. */
-const BY_VISIT = `
+function byVisit(scope: string): string {
+  return `
   totals as (
     select
       station_run_id,
@@ -104,48 +92,32 @@ const BY_VISIT = `
       sum(${tokensOut("body->'usage'")}) as tokens_out,
       sum(${tokensCacheRead("body->'usage'")}) as tokens_cache_read
     from station_run_records
-    where kind = 'llm_call'
+    where kind = 'llm_call' ${scope}
     group by station_run_id
   )
 `;
+}
 
 // A record's models are taken one by one only when they account for its cost: where the record has a cost and no model has one, the cost is the record's, and splitting it would lose it.
 const NAMES_MODELS = `jsonb_typeof(body->'models') = 'object' and body->'models' <> '{}'::jsonb
       and (body->>'costUsd' is null or jsonb_path_exists(body->'models', '$.*.cost_usd'))`;
 
 /** One row a visit and a model it called. A record that names no models is one row, its model left for the visit's definition to name. */
-const BY_MODEL = `
+function byModel(scope: string): string {
+  return `
   totals as (
     select station_run_id, counted.key as model, (counted.value->>'cost_usd')::numeric as cost_usd,
       ${tokensIn("counted.value")} as tokens_in, ${tokensOut("counted.value")} as tokens_out, ${tokensCacheRead("counted.value")} as tokens_cache_read
     from station_run_records, jsonb_each(body->'models') as counted
-    where kind = 'llm_call' and ${NAMES_MODELS}
+    where kind = 'llm_call' and ${NAMES_MODELS} ${scope}
     union all
     select station_run_id, null::text, (body->>'costUsd')::numeric,
       ${tokensIn("body->'usage'")}, ${tokensOut("body->'usage'")}, ${tokensCacheRead("body->'usage'")}
     from station_run_records
-    where kind = 'llm_call' and not coalesce(${NAMES_MODELS}, false)
+    where kind = 'llm_call' and not coalesce(${NAMES_MODELS}, false) ${scope}
   )
 `;
-
-// Claude Code says on its init line which credential it found: `none` is the subscription token, anything else a key. Gemini's says nothing, and its visits stay unknown.
-const BILLING = `
-  billing as (
-    select distinct on (station_run_id) station_run_id,
-      case when body->>'apiKeySource' = 'none' then 'subscription' else 'api_key' end as billing_mode
-    from station_run_records
-    where kind = 'turn' and body->>'type' = 'system' and body->>'subtype' = 'init' and body ? 'apiKeySource'
-    order by station_run_id, seq
-  )
-`;
-
-const UNPRICED = `
-  unpriced as (
-    select station_run_id, named.model
-    from station_run_records, jsonb_array_elements_text(body->'unpriced') as named(model)
-    where kind = 'llm_call' and jsonb_typeof(body->'unpriced') = 'array'
-  )
-`;
+}
 
 /** A millionth of a dollar. An agent reports its cost as a fraction a machine cannot write exactly, and a sum of those ends in noise. */
 const COST_DECIMALS = 6;
@@ -154,15 +126,12 @@ const MISSING_COST = "agent_definition_hash is not null and report is not null a
 
 function summarySql(where: string, groupBy: CostsGroupBy): string {
   return `
-    with ${groupBy === "model" ? BY_MODEL : BY_VISIT}, ${UNPRICED}, ${BILLING},
+    with ${scopedSql(where)}, ${groupBy === "model" ? byModel(IN_SCOPE) : byVisit(IN_SCOPE)}, ${unpricedOf(IN_SCOPE)}, ${billingOf(IN_SCOPE)},
     visits as (
-      select ${GROUP_KEY_EXPR[groupBy]} as key, sr.station_run_id, sr.agent_definition_hash, sr.report, lt.cost_usd, lt.tokens_in, lt.tokens_out
-      from station_runs sr
-      join assembly_runs ar on ar.id = sr.assembly_run_id
-      left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
-      left join totals lt on lt.station_run_id = sr.station_run_id
-      ${groupBy === "billing_mode" ? "left join billing bm on bm.station_run_id = sr.station_run_id" : ""}
-      ${where}
+      select ${GROUP_KEY_EXPR[groupBy]} as key, sc.station_run_id, sc.agent_definition_hash, sc.report, lt.cost_usd, lt.tokens_in, lt.tokens_out
+      from scoped sc
+      left join totals lt on lt.station_run_id = sc.station_run_id
+      ${groupBy === "billing_mode" ? "left join billing bm on bm.station_run_id = sc.station_run_id" : ""}
     )
     select
       key,
@@ -181,6 +150,56 @@ function summarySql(where: string, groupBy: CostsGroupBy): string {
   `;
 }
 
+function scopedSql(where: string): string {
+  return `
+    scoped as (
+      select sr.station_run_id, sr.opened_at, sr.input, sr.agent_definition_hash, sr.report, ar.id as run_id, ar.line_id, d.id as station_id
+      from station_runs sr
+      join assembly_runs ar on ar.id = sr.assembly_run_id
+      left join definitions d on d.kind = 'station' and d.hash = sr.station_hash
+      ${where}
+    )`;
+}
+
+// Claude Code says on its init line which credential it found: `none` is the subscription token, anything else a key. Gemini's says nothing, and its visits stay unknown.
+function billingOf(scope: string): string {
+  return `
+  billing as (
+    select distinct on (station_run_id) station_run_id,
+      case when body->>'apiKeySource' = 'none' then 'subscription' else 'api_key' end as billing_mode
+    from station_run_records
+    where kind = 'turn' and body->>'type' = 'system' and body->>'subtype' = 'init' and body ? 'apiKeySource' ${scope}
+    order by station_run_id, seq
+  )
+`;
+}
+
+function unpricedOf(scope: string): string {
+  return `
+  unpriced as (
+    select station_run_id, named.model
+    from station_run_records, jsonb_array_elements_text(body->'unpriced') as named(model)
+    where kind = 'llm_call' and jsonb_typeof(body->'unpriced') = 'array' ${scope}
+  )
+`;
+}
+
+// Tokens in are everything the model read: what it read from its cache, and what it wrote to it, are counted apart from the rest, and on a second turn the rest is a handful.
+function tokensIn(counts: string): string {
+  return `coalesce((${counts}->>'input_tokens')::numeric, 0)
+        + coalesce((${counts}->>'cache_creation_input_tokens')::numeric, 0)
+        + coalesce((${counts}->>'cache_read_input_tokens')::numeric, 0)`;
+}
+
+function tokensOut(counts: string): string {
+  return `coalesce((${counts}->>'output_tokens')::numeric, 0)`;
+}
+
+/** The part of tokens in that was read from the cache, which costs a tenth of the rest. */
+function tokensCacheRead(counts: string): string {
+  return `coalesce((${counts}->>'cache_read_input_tokens')::numeric, 0)`;
+}
+
 /** What one line's station spent on one model in one repository, for GET /metrics: the BY_MODEL rollup grouped four ways at once. A visit that named no model is attributed to the model in its run input's agentSettings. */
 export interface CostSeriesRow {
   lineId: string;
@@ -193,6 +212,8 @@ export interface CostSeriesRow {
   tokensCacheRead: number;
   tokensOut: number;
 }
+
+const BY_MODEL = byModel("");
 
 const SERIES_SQL = `
   with ${BY_MODEL}
@@ -227,6 +248,8 @@ export interface MissingCostCount {
   lineId: string;
   count: number;
 }
+
+const BY_VISIT = byVisit("");
 
 /** Agent visits that made model calls and stated no price for them, by line: the anomaly `internal.cost.missing` raises, as a number to watch. A visit with no llm_call record at all is not counted; it may not have called a model. */
 export async function missingCostByLine(client: Queryable): Promise<MissingCostCount[]> {

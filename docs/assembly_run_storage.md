@@ -544,6 +544,11 @@ The floor collects every cost itself.
 - **Rollups are queries.** Visit, run and aggregate cost are sums over
   records, in SQL: `CostsStore.summary`, grouped by day, line, station or
   model, over `GET /costs`.
+- **A filtered summary reads only what it filters to.** The filter (run,
+  repository, line, station, dates) picks the visits first, and only those
+  visits' records are summed, so the cost of one run does not read every
+  record the floor holds
+  ([`sums only run r1's model calls when two runs hold calls`](../packages/store/src/costs.test.ts)).
 
 ## Concurrency
 
