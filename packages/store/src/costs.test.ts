@@ -261,6 +261,19 @@ describe("CostsStore.summary", () => {
     expect(rows).toMatchObject([{ key: "code-review", costUsd: 1, visits: 1 }]);
   });
 
+  it("sums only run r1's model calls when two runs hold calls", async () => {
+    await seedAgentLine("code-review", "claude-x");
+    const first = await openAgentVisit("code-review", "r", DAY_1);
+    const second = await openAgentVisit("code-review", "r", DAY_1);
+
+    await recordCost(first, 1, DAY_1, { tokensIn: 10, tokensOut: 5 });
+    await recordCost(first, 3, DAY_1, { tokensIn: 20, tokensOut: 7 });
+    await recordCost(second, 100, DAY_1, { tokensIn: 1000, tokensOut: 500 });
+    const rows = await costs().summary({ runId: await runOf(first) }, "model");
+
+    expect(rows).toEqual([{ key: "claude-x", costUsd: 4, tokensIn: 30, tokensOut: 12, visits: 1, visitsMissingCost: 0, unpriced: [] }]);
+  });
+
   it("groups by run", async () => {
     await seedAgentLine("code-review", "claude-x");
     const first = await openAgentVisit("code-review", "r", DAY_1);
