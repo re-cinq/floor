@@ -48,6 +48,16 @@ describe("readAgentVerdict", () => {
     expect(readAgentVerdict(output, OUTCOMES).outcome).toBe("changes_requested");
   });
 
+  it("reads a JSON marker the agent wrapped in backticks", () => {
+    const output = 'The sketch is in the plan.\n\n`LORE_NODE_RESULT: {"outcome":"success"}`';
+
+    expect(readAgentVerdict(output, OUTCOMES)).toEqual({ outcome: "success", produced: {}, spoke: "marker" });
+  });
+
+  it("reads a bare-word marker the agent wrapped in backticks", () => {
+    expect(readAgentVerdict("`LORE_NODE_RESULT: changes_requested`", OUTCOMES).outcome).toBe("changes_requested");
+  });
+
   it("ignores a marker quoted mid-sentence", () => {
     expect(readAgentVerdict("I will print LORE_NODE_RESULT: failed when done.", OUTCOMES).outcome).toBe("success");
   });
