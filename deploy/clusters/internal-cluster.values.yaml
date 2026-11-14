@@ -4,7 +4,7 @@
 # ConfigMap named here are created by re-cinq/lore's umbrella chart, which
 # owns the floor's credentials.
 
-version: 0.5.1
+version: 0.5.2
 
 image:
   repository: ghcr.io/re-cinq/floor
