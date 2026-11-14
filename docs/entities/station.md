@@ -109,7 +109,8 @@ produces goes in its marker, as JSON:
 `LORE_NODE_RESULT: {"outcome":"success","produced":{"review_verdict":"approved"}}`.
 Only what the station declares is taken. The outcome is parsed from the
 agent's own output: `LORE_NODE_RESULT:` first, then `REVIEW_RESULT:`, then
-`success`; a malformed marker is `failed`.
+`success`; a malformed marker is `failed`. The marker starts its line; one
+wrapped in backticks, as an agent copies it from a prompt, is read the same.
 
 That last `success` is a guess. An agent whose CLI exits cleanly in the middle
 of its work, or whose answer is cut off before its verdict, says nothing, and

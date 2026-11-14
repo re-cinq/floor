@@ -11,7 +11,8 @@ export interface AgentVerdict {
   error?: string;
 }
 
-const MARKER = /^LORE_NODE_RESULT:[ \t]*(.*)$/gm;
+// Agents copy the marker out of a prompt that shows it as inline code, backticks included.
+const MARKER = /^`*LORE_NODE_RESULT:[ \t]*(.*?)`*[ \t]*$/gm;
 const REVIEW_VERDICT = /REVIEW_RESULT:\s*(APPROVED|CHANGES_REQUESTED)/i;
 const MAX_ERROR_CHARS = 300;
 
