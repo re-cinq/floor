@@ -1,6 +1,6 @@
 {{/*
 Templated from deploy/agent-subsystem/controller.yaml, the ai-agent-subsystem's controller
-vendored at v0.15.0: same RBAC and Deployment shape, __NAMESPACE__/__CONTROLLER_IMAGE__/
+vendored at v0.21.0: same RBAC and Deployment shape, __NAMESPACE__/__CONTROLLER_IMAGE__/
 __AGENT_IMAGE__ replaced with chart values instead of scripts/setup-minikube-agents.sh's sed.
 */}}
 {{- if .Values.subsystem.enabled }}
@@ -74,6 +74,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     agents.re-cinq.com/component: controller
+    app.kubernetes.io/version: {{ trimPrefix "v" .Values.subsystem.version | quote }}
     {{- include "floor.labels" . | nindent 4 }}
 spec:
   # One replica: the same single-controller-per-namespace shape as the vendored manifest.
