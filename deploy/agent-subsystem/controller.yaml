@@ -1,4 +1,4 @@
-# The ai-agent-subsystem's controller, vendored from its deploy/ at v0.21.0 (see README.md).
+# The ai-agent-subsystem's controller, vendored from its deploy/ at v0.21.1 (see README.md).
 # __NAMESPACE__, __CONTROLLER_IMAGE__ and __AGENT_IMAGE__ are filled by scripts/setup-minikube-agents.sh.
 apiVersion: v1
 kind: ServiceAccount
@@ -64,7 +64,7 @@ metadata:
   namespace: __NAMESPACE__
   labels:
     agents.re-cinq.com/component: controller
-    app.kubernetes.io/version: "0.21.0"
+    app.kubernetes.io/version: "0.21.1"
 spec:
   # One replica: a laptop has nothing to fail over to.
   replicas: 1
