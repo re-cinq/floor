@@ -76,7 +76,7 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   namespace. The chart renders a Role there with `get` on that one ConfigMap; the agent reports its
   contents to the floor on every register, and `/version` lists them per cluster.
 - `subsystem.*` — the ai-agent-subsystem's controller and CRDs, off by default. `subsystem.version`
-  is checked against `subsystem.supportedVersions` (today: `v0.11.6`, `v0.11.8`, `v0.11.9`, `v0.11.10`, `v0.11.11`, `v0.15.0` and `v0.21.0`) — add to that list
+  is checked against `subsystem.supportedVersions` (today: `v0.11.6`, `v0.11.8`, `v0.11.9`, `v0.11.10`, `v0.11.11`, `v0.15.0`, `v0.21.0` and `v0.21.1`) — add to that list
   before pointing the chart at a newer vendored `controller.yaml`.
 
 ## Walked on minikube
