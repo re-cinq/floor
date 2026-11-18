@@ -15,6 +15,8 @@ spec:
       labels:
         {{- include "floor.api.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "floor.api.serviceAccountName" . }}
+      {{- include "floor.scheduling" (dict "own" .Values.api "root" .) | nindent 6 }}
       {{- include "floor.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
@@ -78,6 +80,10 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
+          {{- with .Values.api.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

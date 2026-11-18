@@ -9,7 +9,30 @@ image:
 # when enabled). A list of { name: <secret-name> }, as Kubernetes expects.
 imagePullSecrets: []
 
+# Where the chart's controllers run (the api, the cluster agent, the subsystem controller and the
+# two hook Jobs), unless a component sets its own below. Agent run pods are not covered: the
+# subsystem's controller schedules those.
+#   global: { nodeSelector: { pool: management }, tolerations: [{ key: pool, operator: Exists }] }
+global:
+  nodeSelector: {}
+  tolerations: []
+
+# The two hook Jobs: the database migration and the pipeline seed.
+jobs:
+  nodeSelector: {}
+  tolerations: []
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
 api:
+  # Overrides global.nodeSelector / global.tolerations for the api when set.
+  nodeSelector: {}
+  tolerations: []
+  # No CPU limit: a limit throttles the event loop before it saves anything.
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
   # A ServiceMonitor for a cluster that runs the Prometheus operator.
   serviceMonitor: { enabled: false }
   enabled: true
@@ -37,6 +60,11 @@ api:
 
 clusterAgent:
   enabled: true
+  nodeSelector: {}
+  tolerations: []
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
   # The namespace the agent creates Agents in (FLOOR_AGENTS_NAMESPACE), where the
   # ai-agent-subsystem's controller watches. Empty: this release's namespace, with the
   # controller from `subsystem` below. Set it to the subsystem's own namespace (`ai-agents`)
@@ -77,6 +105,14 @@ agentNetworkPolicy:
   #       - { protocol: TCP, port: 8080 }
   extraEgress: []
 
+# Who may reach the api, as a NetworkPolicy on its pods. Off by default. When on, the api accepts
+# this release's cluster agent and pipeline-seed Job, agent run pods, and the namespaces listed
+# here: add the one your ingress controller runs in, and the namespace of any other caller.
+# Port 8080 only. Binds only where the cluster's network plugin enforces NetworkPolicy.
+apiNetworkPolicy:
+  enabled: false
+  allowedNamespaces: []
+
 # Pipelines seeded into the floor at every install and upgrade, by a post-install,post-upgrade Job
 # that runs `floor-pipeline migrate` against the api. Empty means no Job; it also needs api.enabled.
 # existingConfigMap names a ConfigMap you keep: one YAML file a pipeline, and the names are the
@@ -101,6 +137,9 @@ postgres:
 # by default: a floor can share a subsystem another install already put on the cluster.
 subsystem:
   enabled: false
+  # Overrides global.nodeSelector / global.tolerations for the controller when set.
+  nodeSelector: {}
+  tolerations: []
   version: v0.21.1
   # The only versions this chart knows how to deploy today; add to this list as the chart is
   # updated for a newer vendored controller.yaml.

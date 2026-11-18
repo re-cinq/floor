@@ -88,6 +88,7 @@ spec:
         agents.re-cinq.com/component: controller
     spec:
       serviceAccountName: agent-controller
+      {{- include "floor.scheduling" (dict "own" .Values.subsystem "root" .) | nindent 6 }}
       {{- include "floor.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true

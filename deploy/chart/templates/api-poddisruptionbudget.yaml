@@ -1,0 +1,13 @@
+{{- if and .Values.api.enabled (gt (int .Values.api.replicas) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "floor.api.fullname" . }}
+  labels:
+    {{- include "floor.api.selectorLabels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "floor.api.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -65,6 +65,24 @@ See `values.yaml` for the full, commented list. The load-bearing ones:
   release also deploys the api.
 - `agentNetworkPolicy.*` — what an agent's pod may reach, on by default. See
   [What an agent's pod may reach](#what-an-agents-pod-may-reach).
+- `global.nodeSelector`, `global.tolerations` — where the chart's controllers run: the api, the
+  cluster agent, the subsystem controller and the two hook Jobs. `api.*`, `clusterAgent.*`,
+  `subsystem.*` and `jobs.*` each take their own `nodeSelector` / `tolerations`, which replace the
+  global one for that component when set. Agent run pods are not covered; the subsystem's
+  controller places those, so a tainted management pool keeps them off it.
+- `api.resources`, `clusterAgent.resources`, `jobs.resources` — requests and limits. Defaults: api
+  100m CPU / 256Mi request, 1Gi memory limit; cluster agent and Jobs 50m / 128Mi, 512Mi limit. No
+  CPU limits. Memory is the limit that matters: raise it for a large database or many viewers.
+- The api and the two hook Jobs run under ServiceAccounts that mount no token (`<release>-api`,
+  `<release>-hooks`): they never call the Kubernetes API. The hooks account is itself a pre-install
+  hook, so that it exists before the migration Job, and `helm uninstall` leaves it behind. The
+  cluster agent and the subsystem controller keep theirs.
+- A PodDisruptionBudget (`maxUnavailable: 1`) renders for the api when `api.replicas` is above 1.
+- `apiNetworkPolicy.enabled` (default `false`), `apiNetworkPolicy.allowedNamespaces` — a
+  NetworkPolicy on the api's pods, port 8080. Admitted: this release's cluster agent and seed Job,
+  agent run pods, and every namespace listed (your ingress controller's, and any other caller's).
+  A cluster agent in another cluster reaches the api through your ingress, so that namespace must
+  be listed. It binds only where the network plugin enforces NetworkPolicy.
 - `pipelines.existingConfigMap` — a ConfigMap you keep, holding one YAML file a pipeline. Empty
   (the default) renders no seed Job. See [Seeding pipelines](#seeding-pipelines).
 - `clusterAgent.agentsNamespace` — the namespace the agent creates Agents in, where the subsystem's

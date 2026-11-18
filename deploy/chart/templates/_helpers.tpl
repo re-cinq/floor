@@ -124,3 +124,33 @@ clusterAgent.subsystemNamespace, or the agents namespace.
 {{- define "floor.subsystemNamespace" -}}
 {{- default (include "floor.agentsNamespace" .) .Values.clusterAgent.subsystemNamespace -}}
 {{- end -}}
+
+{{/*
+Where a pod may run: the component's own nodeSelector / tolerations when it sets any, else the
+chart-wide global.nodeSelector / global.tolerations. Call with
+(dict "own" <the component's values> "root" .) and indent the result under the pod spec.
+*/}}
+{{- define "floor.scheduling" -}}
+{{- $global := .root.Values.global | default dict -}}
+{{- with (.own.nodeSelector | default $global.nodeSelector) }}
+nodeSelector:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with (.own.tolerations | default $global.tolerations) }}
+tolerations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{/*
+ServiceAccounts of the pods that never call the Kubernetes API. The api has its own; the two hook
+Jobs share one that is itself a hook, because the migration Job runs before the release's
+resources exist.
+*/}}
+{{- define "floor.api.serviceAccountName" -}}
+{{ include "floor.fullname" . }}-api
+{{- end -}}
+
+{{- define "floor.hooks.serviceAccountName" -}}
+{{ include "floor.fullname" . }}-hooks
+{{- end -}}
