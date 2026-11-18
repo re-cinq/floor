@@ -17,6 +17,8 @@ spec:
         app.kubernetes.io/component: migrate
     spec:
       restartPolicy: Never
+      serviceAccountName: {{ include "floor.hooks.serviceAccountName" . }}
+      {{- include "floor.scheduling" (dict "own" .Values.jobs "root" .) | nindent 6 }}
       {{- include "floor.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
@@ -34,6 +36,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "floor.postgres.secretName" . }}
                   key: {{ include "floor.postgres.secretKey" . }}
+          {{- with .Values.jobs.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

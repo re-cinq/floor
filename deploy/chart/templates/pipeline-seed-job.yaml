@@ -18,6 +18,8 @@ spec:
         app.kubernetes.io/component: pipeline-seed
     spec:
       restartPolicy: Never
+      serviceAccountName: {{ include "floor.hooks.serviceAccountName" . }}
+      {{- include "floor.scheduling" (dict "own" .Values.jobs "root" .) | nindent 6 }}
       {{- include "floor.imagePullSecrets" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
@@ -47,6 +49,10 @@ spec:
             - name: pipelines
               mountPath: /pipelines
               readOnly: true
+          {{- with .Values.jobs.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

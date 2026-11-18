@@ -1,0 +1,41 @@
+{{- if and .Values.api.enabled .Values.apiNetworkPolicy.enabled }}
+# Who may reach the api. Off by default: whatever stands in front of the api (an ingress
+# controller, a service in another namespace) is the operator's to name in allowedNamespaces.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "floor.api.fullname" . }}-ingress
+  labels:
+    {{- include "floor.api.selectorLabels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "floor.api.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # This release's cluster agent and the pipeline-seed Job, in the release's namespace.
+        - podSelector:
+            matchLabels:
+              {{- include "floor.clusterAgent.selectorLabels" . | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "floor.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: pipeline-seed
+        # Agent run pods, which live where the cluster agent creates them.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ include "floor.agentsNamespace" . }}
+          podSelector:
+            matchLabels:
+              agents.re-cinq.com/component: job
+        {{- range .Values.apiNetworkPolicy.allowedNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 8080
+{{- end }}
