@@ -137,11 +137,9 @@ Floor's own GitHub app was deleted — see [docs/decisions.md](docs/decisions.md
 
 ## Getting started
 
-**New here? [Follow the tutorial](docs/tutorial.md)** — install floor with Helm, register a cluster
-to run agents in, import an assembly line, and start an assembly run of it. Five steps, each one
-ending in something you can check. To run one, [docs/install.md](docs/install.md) installs,
-upgrades and uninstalls a release, and [docs/using.md](docs/using.md) is the CLI, the client, the
-station SDK and the HTTP API, from the published packages.
+To design a workflow, start with a product decision you can trace on paper. The first tutorial turns a launch approval into a complete YAML file. The second changes it so two teams must sign off. [Define your first assembly line](docs/define-a-launch-approval.md) · [Add a second sign-off](docs/add-a-launch-review.md)
+
+To run Floor on your own cluster, follow the [installation and first run tutorial](docs/tutorial.md). For an existing install, see [the CLI, client and HTTP API guide](docs/using.md).
 
 Every [release](https://github.com/re-cinq/floor/releases) publishes the chart at
 `oci://ghcr.io/re-cinq/charts/floor`, the image at `ghcr.io/re-cinq/floor` for `linux/amd64` and
@@ -161,8 +159,8 @@ npm start                              # the dev loop, see docs/dev_loop.md
 
 ## The documents
 
-[docs/tutorial.md](docs/tutorial.md) is the way in: installing, registering a cluster, importing an
-assembly line, and starting an assembly run of it. [docs/README.md](docs/README.md) is the index and states the contract the pages keep: they describe
+The [installation tutorial](docs/tutorial.md) covers cluster registration, importing an assembly
+line, and starting an assembly run. [docs/README.md](docs/README.md) is the index and states the contract the pages keep: they describe
 the floor **as it runs**, anything designed but unwritten is marked **Not built yet**, and nothing
 unmarked should be false. Start with [docs/assembly_run_storage.md](docs/assembly_run_storage.md)
 for the model, [docs/api_sketch.md](docs/api_sketch.md) for the endpoints, and
