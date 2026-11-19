@@ -8,8 +8,9 @@ underneath it.
 
 ## Start here
 
-[Tutorial](tutorial.md): install floor with Helm, register a cluster, import a line and run it.
-
+- [Define your first assembly line](define-a-launch-approval.md) walks through a product manager's launch decision and turns it into a working YAML definition.
+- [Add a second sign-off](add-a-launch-review.md) changes that definition so Communications gets a say before launch.
+- [Install Floor and run your first line](tutorial.md) takes you from a Kubernetes cluster to a running line.
 - [Install](install.md): a release into a cluster with Helm; upgrade, a second cluster, uninstall
 - [Use](using.md): the CLI, the client, a service station of your own, and the HTTP API
 
