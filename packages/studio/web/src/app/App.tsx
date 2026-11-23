@@ -103,7 +103,7 @@ function unloadedScreen({ connection, readError }: StudioSnapshot): ReactElement
 
 function loadedScreen(collection: CollectionView, { requestedLine, inspector, resolved, onSelectNode }: Place): ReactElement {
   if (collection.lines.length === 0) return <EmptyCollection />;
-  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} inspector={inspector} onSelectNode={onSelectNode} />;
+  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} inspector={{ ...inspector, skillNames: collection.skills }} onSelectNode={onSelectNode} />;
 
   return requestedLine ? <MissingLine lineId={requestedLine} /> : <ChooseLine collection={collection} />;
 }

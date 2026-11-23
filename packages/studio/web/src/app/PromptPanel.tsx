@@ -30,7 +30,7 @@ function AgentPromptEditor({ agent, rows, onSave }: { agent: NodeView["agent"]; 
 
 function AgentEditor({ agent, onSave, children }: { agent: NodeView["agent"]; onSave: SavePrompt; children: ReactNode }) {
   return (
-    <PromptEditor label="Prompt" incoming={{ prompt: agent?.prompt ?? "", version: agent?.version ?? "" }} onSave={unwrappedSave(onSave)}>
+    <PromptEditor label="Prompt" incoming={{ prompt: unwrapParagraphs(agent?.prompt ?? ""), version: agent?.version ?? "" }} onSave={unwrappedSave(onSave)}>
       {children}
     </PromptEditor>
   );
@@ -41,7 +41,7 @@ function ExtraPromptEditor({ extra, onSave }: { extra: NodeView["extra"]; onSave
 
   return (
     <PromptFile file={extra.file}>
-      <PromptEditor label="Extra prompt" incoming={{ prompt: extra.text, version: extra.version }} onSave={unwrappedSave(onSave)}>
+      <PromptEditor label="Extra prompt" incoming={{ prompt: unwrapParagraphs(extra.text), version: extra.version }} onSave={unwrappedSave(onSave)}>
         <p>{unwrapParagraphs(extra.text)}</p>
       </PromptEditor>
     </PromptFile>

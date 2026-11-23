@@ -15,6 +15,7 @@ export interface InspectorActions {
   savePrompt?: SavePrompt;
   saveExtra?: SavePrompt;
   saveSettings?: SaveSettings;
+  skillNames?: string[];
 }
 
 /** The node inspector's place. It names the selected node and its station and offers the Station, Events, Prompt and Settings tabs; their panels are built later. */
@@ -27,7 +28,7 @@ export default function Inspector({ node, actions = {}, onClose }: { node: NodeV
       {node ? (
         <>
           <TitleBar node={node} isMaximized={isMaximized} onToggleMaximize={() => setIsMaximized(!isMaximized)} onClose={onClose} />
-          <InspectorTabs tabChoice={actions.tabChoice} tabs={tabsFor(node)} panels={{ Station: <StationPanel node={node} />, Events: <EventsPanel node={node} />, Prompt: <PromptPanel node={node} onSave={actions.savePrompt} onSaveExtra={actions.saveExtra} />, Settings: <SettingsPanel node={node} onSave={actions.saveSettings} /> }} />
+          <InspectorTabs tabChoice={actions.tabChoice} tabs={tabsFor(node)} panels={{ Station: <StationPanel node={node} />, Events: <EventsPanel node={node} />, Prompt: <PromptPanel node={node} onSave={actions.savePrompt} onSaveExtra={actions.saveExtra} />, Settings: <SettingsPanel node={node} onSave={actions.saveSettings} skillNames={actions.skillNames} /> }} />
         </>
       ) : (
         <p className="muted">Select a node in the graph to inspect it.</p>

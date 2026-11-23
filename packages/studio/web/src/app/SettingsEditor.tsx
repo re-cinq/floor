@@ -11,7 +11,7 @@ import { isNested, settingText, settingsDraft, typedSettings, type Settings } fr
 export type SaveSettings = (settings: Settings, version: string) => Promise<unknown>;
 
 /** The agent's settings as a form, one field per setting, saved through the page's connection when asked. */
-export default function SettingsEditor({ agent, onSave }: { agent: NonNullable<NodeView["agent"]>; onSave: SaveSettings }) {
+export default function SettingsEditor({ agent, onSave, skillNames }: { agent: NonNullable<NodeView["agent"]>; onSave: SaveSettings; skillNames?: string[] }) {
   const incoming = { settings: agent.settings, version: agent.version ?? "" };
   const [draft, setDraft] = useState(() => settingsDraft.startDraft(incoming));
   const received = settingsDraft.receive(draft, incoming);
@@ -25,9 +25,9 @@ export default function SettingsEditor({ agent, onSave }: { agent: NonNullable<N
   return (
     <>
       {Object.entries(edited).map(([key, value]) => (
-        <SettingField key={key} settingKey={key} value={value} isNested={isNested(seed.settings[key])} onEdit={editField} />
+        <SettingField key={key} settingKey={key} value={value} isNested={isNested(seed.settings[key])} seedEnvName={envPlaceholder(settingText(seed.settings[key]))} onEdit={editField} />
       ))}
-      <ConfigForm config={isNested(seed.settings.config) ? (seed.settings.config as Settings) : {}} />
+      <ConfigForm skillNames={skillNames} configText={settingText(edited.config)} onChange={(config) => editField("config", settingText(config))} />
       <SaveButton label="Save settings" onSave={() => onSave(typedSettings(seed.settings, edited), seed.version)} />
       <DiskVersionChoice
         isPending={settingsDraft.hasDiskVersion(received)}
@@ -42,25 +42,36 @@ interface SettingFieldProps {
   settingKey: string;
   value: Parameters<typeof settingText>[0];
   isNested: boolean;
+  seedEnvName?: string;
   onEdit: (key: string, text: string) => void;
 }
 
-function SettingField({ settingKey, value, isNested: nested, onEdit }: SettingFieldProps) {
+function SettingField({ settingKey, value, isNested: nested, seedEnvName, onEdit }: SettingFieldProps) {
   const control = { "aria-label": settingKey, value: settingText(value), onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => onEdit(settingKey, event.target.value) };
   const envName = envPlaceholder(settingText(value));
-  const kind = envName ? "env" : settingKey === "model" ? "model" : nested ? "nested" : "plain";
+  const kind = kindOf({ settingKey, envName, nested, seedEnvName });
 
   return (
     <label>
       <span>{settingKey}</span>
-      {controlsByKind[kind]({ ...control, envName, onOverride: () => onEdit(settingKey, "") })}
+      {controlsByKind[kind]({ ...control, envName, seedEnvName, onOverride: () => onEdit(settingKey, ""), onRestore: () => onEdit(settingKey, `\${${seedEnvName}}`) })}
     </label>
   );
 }
 
-type ControlProps = React.JSX.IntrinsicElements["input"] & React.JSX.IntrinsicElements["textarea"] & React.JSX.IntrinsicElements["select"] & { envName?: string; onOverride?: () => void };
+type Kind = keyof typeof controlsByKind;
 
-const controlsByKind: Record<"env" | "model" | "nested" | "plain", (props: ControlProps) => React.JSX.Element> = {
+function kindOf({ settingKey, envName, nested, seedEnvName }: { settingKey: string; envName?: string; nested: boolean; seedEnvName?: string }): Kind {
+  if (envName) return "env";
+  if (settingKey === "model") return "model";
+  if (nested) return "nested";
+
+  return seedEnvName ? "restorable" : "plain";
+}
+
+type ControlProps = React.JSX.IntrinsicElements["input"] & React.JSX.IntrinsicElements["textarea"] & React.JSX.IntrinsicElements["select"] & { envName?: string; onOverride?: () => void; seedEnvName?: string; onRestore?: () => void };
+
+const controlsByKind: Record<"env" | "model" | "nested" | "plain" | "restorable", (props: ControlProps) => React.JSX.Element> = {
   env: ({ envName, onOverride }) => (
     <>
       <code>env: {envName}</code>
@@ -71,6 +82,12 @@ const controlsByKind: Record<"env" | "model" | "nested" | "plain", (props: Contr
   model: (props) => <ModelSelect {...props} />,
   nested: (props) => <textarea {...props} />,
   plain: (props) => <input {...props} />,
+  restorable: ({ seedEnvName, onRestore, ...props }) => (
+    <>
+      <input {...props} />
+      <button type="button" aria-label={`Use env: ${seedEnvName}`} onClick={onRestore}>Use env: {seedEnvName}</button>
+    </>
+  ),
 };
 
 function ModelSelect(props: ControlProps) {

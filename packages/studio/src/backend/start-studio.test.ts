@@ -67,6 +67,22 @@ describe("startStudio", () => {
     expect(await client.nextOfType("result")).toMatchObject({ result: { folder: basename(dir) } });
   });
 
+  it("answers collection.read with skills api-design and tdd-start, sorted, when skills/ holds tdd-start.md and api-design.md", async () => {
+    const { client } = await connectedTo([...WORKER_COLLECTION, { path: "skills/tdd-start.md", text: "Start with a test.\n" }, { path: "skills/api-design.md", text: "Design the API.\n" }]);
+
+    client.send({ id: "r1", type: "collection.read" });
+
+    expect(await client.nextOfType("result")).toMatchObject({ result: { skills: ["api-design", "tdd-start"] } });
+  });
+
+  it("answers collection.read with skills lore-context and tdd-start, sorted, when agent-skills/skills/lore-context/SKILL.md joins skills/tdd-start.md", async () => {
+    const { client } = await connectedTo([...WORKER_COLLECTION, { path: "skills/tdd-start.md", text: "Start with a test.\n" }, { path: "agent-skills/skills/lore-context/SKILL.md", text: "Read the context.\n" }]);
+
+    client.send({ id: "r1", type: "collection.read" });
+
+    expect(await client.nextOfType("result")).toMatchObject({ result: { skills: ["lore-context", "tdd-start"] } });
+  });
+
   it("refuses with 401 a socket that carries no token", async () => {
     const { url } = await started();
 

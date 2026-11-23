@@ -3,7 +3,6 @@
   --sheet-height: 45vh;
   position: relative;
   height: 100%;
-  overflow: hidden;
 }
 
 /* The graph takes the height the header and the problems leave, so the page itself never scrolls. */
@@ -106,14 +105,16 @@
 }
 
 /* Title bar and tabs stay put; only the open panel scrolls, inside the sheet. */
+/* The sheet reaches down through the main area's bottom padding, so it sits on the window's edge. */
 .inspector {
   position: absolute;
-  inset: auto 0 0 0;
+  inset: auto 0 calc(-1 * var(--space-7)) 0;
   height: var(--sheet-height);
   display: flex;
   flex-direction: column;
   padding: 0 var(--space-5) var(--space-5);
   border: 1px solid var(--border);
+  border-bottom: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: var(--bg-surface);
   box-shadow: 0 -8px 24px rgb(0 0 0 / 18%);
@@ -122,7 +123,7 @@
 
 /* Maximized, the sheet covers the whole line screen; Close and Esc still close it. */
 .inspector[data-maximized] {
-  height: 100%;
+  height: calc(100% + var(--space-7));
   border-radius: 0;
 }
 
@@ -239,8 +240,16 @@
   margin-right: var(--space-3);
 }
 
-/* Text and editor take a whole row; the buttons after them share one. */
+/* A prompt file fills the panel's free height: heading, then its text or editor stretching, then its buttons in one row. */
 .inspector section[aria-labelledby] {
+  display: flex;
+  flex: 1 0 16rem;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 16rem;
+}
+
+.inspector [data-actions] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -271,11 +280,13 @@
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .inspector section[aria-labelledby] textarea {
-  min-height: 24rem;
-  resize: vertical;
+  resize: none;
 }
 
 .inspector mark {
@@ -337,6 +348,37 @@
 .inspector [role="tabpanel"] select:hover,
 .inspector [role="tabpanel"] textarea:hover {
   border-color: var(--text-muted);
+}
+
+/* A list entry and its Remove button share one row. */
+.inspector [role="tabpanel"] label div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Buttons inside a field (Override, Use env, Add, Remove) are quiet: the field, not the button, is the point. */
+.inspector [role="tabpanel"] label button {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.inspector [role="tabpanel"] label button:hover {
+  border-color: var(--text-muted);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* A config field's help line, under its control. */
+.inspector [role="tabpanel"] label + span[id] {
+  margin-top: calc(-1 * var(--space-2));
+  max-width: var(--size-480);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
 }
 
 .inspector li {

@@ -76,6 +76,7 @@ const agentViewSchema = z.looseObject({
 
 export const collectionViewSchema: z.ZodType<CollectionView> = z.looseObject({
   folder: z.string().optional(),
+  skills: z.array(z.string()).optional(),
   lines: z.array(lineViewSchema),
   agents: z.array(agentViewSchema),
   refused: z.array(z.looseObject({ path: z.string(), reason: z.string() })),

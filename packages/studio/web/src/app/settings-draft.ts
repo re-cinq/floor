@@ -45,7 +45,7 @@ function typedSetting(original: unknown, text: unknown): unknown {
   return isNested(original) && typeof text === "string" ? parseNested(text) : text;
 }
 
-function parseNested(text: string): unknown {
+export function parseNested(text: string): unknown {
   try {
     return parse(text);
   } catch {

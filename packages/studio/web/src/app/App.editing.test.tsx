@@ -124,6 +124,16 @@ describe("App prompt unwrapping on edit", () => {
 
     await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work on {ticket} now. please")));
   });
+
+  it("opens the Prompt editor with 'Work on {ticket} now.\n' when the prompt is 'Work on\n{ticket} now.'", async () => {
+    const wrappedCollection = [WORKER_COLLECTION[0], { path: "flow/agents/worker.md", text: agentMarkdown("Work on\n{ticket} now.") }];
+    await openPage(wrappedCollection, { hash: "&line=flow&node=work&tab=Prompt" });
+    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
+    await userEvent.click(await within(panel).findByRole("button", { name: "Edit prompt" }));
+    const editor = (await within(panel).findByRole("textbox", { name: "Prompt" })) as HTMLTextAreaElement;
+
+    expect(editor.value).toEqual("Work on {ticket} now.\n");
+  });
 });
 
 describe("App extra prompt editing", () => {

@@ -85,6 +85,8 @@ export interface RefusedFile {
 export interface CollectionView {
   /** The name of the collection's folder. Set by the backend that knows it, so the pure `collectionView` leaves it out. */
   folder?: string;
+  /** The names of the `skills/*.md` files. Set by the backend, like `folder`. */
+  skills?: string[];
   lines: LineView[];
   agents: AgentView[];
   refused: RefusedFile[];

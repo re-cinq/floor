@@ -13,7 +13,7 @@ export interface CollectionWatcher {
 export function isWatchedPath(path: string): boolean {
   const slashed = path.split(sep).join("/");
 
-  return isReadPath(slashed) && !slashed.split("/").some((part) => part.startsWith("."));
+  return (isReadPath(slashed) || /^(skills\/[^/]+\.md|agent-skills\/skills\/[^/]+\/SKILL\.md)$/.test(slashed)) && !slashed.split("/").some((part) => part.startsWith("."));
 }
 
 export function watchCollection(dir: string, onChange: () => void, debounceMs = DEBOUNCE_MS): CollectionWatcher {
