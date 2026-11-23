@@ -173,13 +173,14 @@ describe("StudioConnection against a server that speaks the protocol by hand", (
 
   it("gives each answer to the request that has its id, whatever the order they come back in", async () => {
     const served = await protocolServer((socket) => {
+      // The first request is the page's own read of the collection; the two the test makes come after it.
       const asked: string[] = [];
 
       socket.send(hello);
       socket.on("message", (raw) => {
         asked.push((JSON.parse(raw.toString()) as { id: string }).id);
-        if (asked.length < 2) return;
-        asked.reverse().forEach((id, order) => socket.send(JSON.stringify({ id, type: "result", result: { answeredAs: order } })));
+        if (asked.length < 3) return;
+        asked.slice(1).reverse().forEach((id, order) => socket.send(JSON.stringify({ id, type: "result", result: { answeredAs: order } })));
       });
     });
     const connection = connected({ socket: served.address, token: "abc" });
