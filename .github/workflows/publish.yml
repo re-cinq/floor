@@ -1,19 +1,20 @@
 name: Publish
 
 # Publishes a version: the image to ghcr.io/re-cinq/floor, the chart to oci://ghcr.io/re-cinq/charts,
-# the wire contracts, the assembly-line rules, the client, the station SDK and the pipeline tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
+# the wire contracts, the assembly-line rules, the graph view, the client, the station SDK and the pipeline tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
 #
 # Pushing a `vX.Y.Z` tag is what starts this file, and the tag is the version: the packages carry
 # a placeholder on main, stamped just before they are built, so a release is one act and no
 # commit ever bumps a version. Any other tag is refused. The GitHub Release, with generated
 # notes, is written at the end, once everything the tag names is out.
 #
-# npm's auth is tokenless: Trusted Publishing mints a short-lived credential from the GitHub
-# OIDC token, so no NPM_TOKEN secret exists here. The trusted publisher is registered, for each
+# npm's auth is tokenless for every package already on the registry: Trusted Publishing mints a
+# short-lived credential from the GitHub OIDC token. The trusted publisher is registered, for each
 # package, against THIS file's path: renaming or moving it breaks publishing until it is
 # registered again. It cannot be registered before a package's first publish, since npm has
-# nothing to attach it to: the first version of each package is published by hand
-# (docs/releasing.md).
+# nothing to attach it to, so a package that has never been published goes out once with the
+# NPM_BOOTSTRAP_TOKEN secret, from this same workflow. Once its publisher is registered, the
+# secret is deleted (docs/releasing.md).
 #
 # The npm publish is direct: a version is installable the moment it is published, and a version
 # published to npm is there for good. The brake is in front of the tag, not behind it — the
@@ -191,6 +192,8 @@ jobs:
       - name: Publish the versions to npm
         env:
           VERSION: ${{ needs.release-tag.outputs.version }}
+          # Only a package with no version on the registry yet uses it; every other one publishes through OIDC.
+          NPM_BOOTSTRAP_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
         run: |
           set -o pipefail
           for package in packages/contracts packages/assembly-lines packages/graph packages/client packages/station packages/pipeline; do
@@ -200,7 +203,16 @@ jobs:
               echo "${name}@${VERSION} is on the registry already" | tee -a publish.log
               continue
             fi
-            (cd "${package}" && npm publish --access public --provenance --ignore-scripts) 2>&1 | tee -a publish.log
+            if npm view "${name}" version >/dev/null 2>&1; then
+              (cd "${package}" && npm publish --access public --provenance --ignore-scripts) 2>&1 | tee -a publish.log
+              continue
+            fi
+            if [ -z "${NPM_BOOTSTRAP_TOKEN}" ]; then
+              echo "::error::${name} has never been published. Add the NPM_BOOTSTRAP_TOKEN secret and run Publish again on this tag (docs/releasing.md)."
+              exit 1
+            fi
+            echo "${name} is new on the registry: its first version goes out with the bootstrap token" | tee -a publish.log
+            (cd "${package}" && NODE_AUTH_TOKEN="${NPM_BOOTSTRAP_TOKEN}" npm publish --access public --provenance --ignore-scripts) 2>&1 | tee -a publish.log
           done
           {
             echo "## Published to npm"
