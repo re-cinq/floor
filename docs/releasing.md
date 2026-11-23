@@ -1,7 +1,7 @@
 # Releasing
 
-A release is a version of six things, published together: the image, the chart, the wire
-contracts, the client, the station SDK and the pipeline tool. Pushing a `vX.Y.Z` tag is the whole act.
+A release is a version of eight things, published together: the image, the chart, the wire
+contracts, the assembly-line rules, the graph view, the client, the station SDK and the pipeline tool. Pushing a `vX.Y.Z` tag is the whole act.
 No commit bumps a version, and nothing waits for a hand afterwards.
 
 ## What a release publishes
@@ -55,30 +55,20 @@ nothing. The chart carries a placeholder too, and no `appVersion`: `helm package
 when it names none. A checkout has no `appVersion`, so an install from one must set `version`. `scripts/check-pack-list.mjs` then reads what each tarball would hold: the entry point
 and the license are there, and no test and no source map is.
 
-## Before the first release, once, by hand
+## A package's first version
 
-npm publishes from this repository without a token: Trusted Publishing trades the workflow's
-OIDC token for a credential that lives for minutes. A trusted publisher is registered on a
-package, and a package that was never published is not there to register it on. So the first
-version of each is published by a person. A package added later gets the same, alone.
+npm publishes from this repository through Trusted Publishing: the workflow trades its OIDC
+token for a credential that lives for minutes. A trusted publisher is registered on a package,
+and a package that was never published is not there to register it on. So `publish.yml`
+publishes a package with no version on the registry yet with a token instead, and every other
+package the usual way. Nothing is published by hand.
 
-```
-git switch --detach <the commit to release>
-scripts/release-version.sh v0.1.0
-npm ci --ignore-scripts
-npm run build -w @re-cinq/floor-contracts -w @re-cinq/floor-assembly-lines -w @re-cinq/floor-graph -w @re-cinq/floor-client -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
-node scripts/check-pack-list.mjs packages/contracts packages/assembly-lines packages/graph packages/client packages/station packages/pipeline
-npm login
-(cd packages/contracts && npm publish --access public --ignore-scripts)
-(cd packages/assembly-lines && npm publish --access public --ignore-scripts)
-(cd packages/graph && npm publish --access public --ignore-scripts)
-(cd packages/client    && npm publish --access public --ignore-scripts)
-(cd packages/station   && npm publish --access public --ignore-scripts)
-(cd packages/pipeline  && npm publish --access public --ignore-scripts)
-git restore packages package-lock.json
-```
-
-Then, for each of the six packages, on npmjs.com: Settings, Trusted Publisher, GitHub Actions.
+1. On npmjs.com, create a granular access token that can publish to the `@re-cinq` scope, with
+   a short expiry.
+2. Add it to the repository as the Actions secret `NPM_BOOTSTRAP_TOKEN`.
+3. Push the tag. The workflow publishes the new package with the token, and the rest through
+   OIDC. Without the secret, the run stops at the new package and names it.
+4. On npmjs.com, open the new package: Settings, Trusted Publisher, GitHub Actions.
 
 | field | value |
 |---|---|
@@ -86,8 +76,8 @@ Then, for each of the six packages, on npmjs.com: Settings, Trusted Publisher, G
 | repository | `floor` |
 | workflow filename | `publish.yml` |
 
-Then push the tag for the same version. The workflow finds all six packages on the registry
-already, leaves them, and publishes the image.
+5. Delete the `NPM_BOOTSTRAP_TOKEN` secret and revoke the token. The next release of that
+   package goes through OIDC.
 
 **The publisher is registered against the workflow's file name.** Renaming or moving
 `publish.yml` breaks publishing until it is registered again.
