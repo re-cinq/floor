@@ -26,7 +26,7 @@ helm install floor deploy/chart \
   --set postgres.existingSecret=floor-postgres --set postgres.secretKey=connectionString
 ```
 
-The operator's guide is [docs/install.md](../../docs/install.md). That is how someone else installs
+The operator's guide is [Install on a cluster](https://re-cinq.github.io/floor/reference/install/). That is how someone else installs
 floor; re:cinq's own floor is not installed by hand, see [How re:cinq deploys it](#how-recinq-deploys-it).
 
 `api.existingSecret` must hold two keys: `serviceToken` and `visitTokenSecret`. The cluster agent

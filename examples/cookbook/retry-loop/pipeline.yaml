@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
+line:
+  id: retry-loop
+  entry: attempt
+  exit: done
+  start:
+    on:
+      - task.requested
+    args:
+      task: "{task}"
+  args:
+    task:
+      kind: value
+      subject: true
+  nodes:
+    - id: attempt
+      station: solve-task
+    - id: done
+  edges:
+    - from: attempt
+      to: done
+      on: success
+    - from: attempt
+      to: attempt
+      on: failed
+      iteration_max: 3
+stations:
+  solve-task:
+    description: An agent solves the task, and is told what went wrong on a retry.
+    kind: agent
+    agent_definition: task-solver
+    outcomes:
+      - success
+      - failed
+    result_required: true
+    needs:
+      - name: task
+        kind: value
+    produces:
+      - name: answer
+        kind: file
+        path: answer.md

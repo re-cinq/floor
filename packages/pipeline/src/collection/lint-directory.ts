@@ -1,6 +1,6 @@
 // The overlay of a collection on a local directory, and the lines a lint prints about it: no floor, no network.
 import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { collectionOverlay, type CollectionOverlay } from "./collection.js";
 import type { Environment } from "./environment.js";
 import { isCollectionFile, type CollectionFile } from "./paths.js";
@@ -35,7 +35,7 @@ async function collectionFilesIn(root: string): Promise<CollectionFile[]> {
   const entries = await readdir(root, { recursive: true, withFileTypes: true });
   const paths = entries
     .filter((entry) => entry.isFile())
-    .map((entry) => join(entry.parentPath, entry.name).slice(root.length).replace(/^[\\/]+/, "").split("\\").join("/"))
+    .map((entry) => relative(root, join(entry.parentPath, entry.name)).split(sep).join("/"))
     .filter((path) => isCollectionFile(path) && !path.startsWith(".git/"));
 
   return Promise.all(paths.map(async (path) => ({ path, text: await readFile(join(root, path), "utf8") })));

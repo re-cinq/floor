@@ -3,7 +3,7 @@
 Put an assembly line into a running floor, start an assembly run of it, watch it, and write the
 pieces that do the work. Everything here is done from outside the floor, with the service token,
 through the published npm packages or plain HTTP. This page assumes a floor is
-[installed](install.md).
+[installed](https://re-cinq.github.io/floor/reference/install/).
 
 Two words carry the model. An **assembly line** is a definition you import once. An **assembly
 run** is one execution of it, and you start many.

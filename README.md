@@ -137,9 +137,11 @@ Floor's own GitHub app was deleted — see [docs/decisions.md](docs/decisions.md
 
 ## Getting started
 
-To design a workflow, start with a product decision you can trace on paper. The first tutorial turns a launch approval into a complete YAML file. The second changes it so two teams must sign off. [Define your first assembly line](docs/define-a-launch-approval.md) · [Add a second sign-off](docs/add-a-launch-review.md)
+The documentation is at **https://re-cinq.github.io/floor/**: what floor is, tutorials, the specifications of the pipeline file, the agent file and the collection, and the references.
 
-To run Floor on your own cluster, follow the [installation and first run tutorial](docs/tutorial.md). For an existing install, see [the CLI, client and HTTP API guide](docs/using.md).
+To design a workflow, start with a product decision you can trace on paper. The first tutorial turns a launch approval into a complete YAML file. The second changes it so two teams must sign off. [Define your first assembly line](https://re-cinq.github.io/floor/tutorials/define-a-launch-approval/) · [Add a second sign-off](https://re-cinq.github.io/floor/tutorials/add-a-launch-review/)
+
+To see a run on your machine, follow [Run floor and walk your first line](https://re-cinq.github.io/floor/tutorials/first-run/). To install on a cluster, see [Install on a cluster](https://re-cinq.github.io/floor/reference/install/), and for a first agent run there, the [installation and first run tutorial](docs/tutorial.md).
 
 Every [release](https://github.com/re-cinq/floor/releases) publishes the chart at
 `oci://ghcr.io/re-cinq/charts/floor`, the image at `ghcr.io/re-cinq/floor` for `linux/amd64` and

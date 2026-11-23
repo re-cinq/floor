@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
+line:
+  id: scheduled
+  entry: build
+  exit: done
+  fail: stopped
+  start:
+    on:
+      - schedule.morning-digest.tick
+    args:
+      day: "{scheduledFor}"
+  args:
+    day:
+      kind: value
+      subject: true
+  nodes:
+    - id: build
+      station: build-digest
+    - id: done
+    - id: stopped
+  edges:
+    - from: build
+      to: done
+      on: success
+    - from: build
+      to: stopped
+      on: failed
+stations:
+  build-digest:
+    description: A worker of yours builds the digest for the day.
+    kind: service
+    outcomes:
+      - success
+      - failed
+    needs:
+      - name: day
+        kind: value
+    produces:
+      - name: digest
+        kind: value
+schedules:
+  morning-digest:
+    cron: "0 7 * * 1-5"
+    timezone: Europe/Amsterdam
+    payload: {}

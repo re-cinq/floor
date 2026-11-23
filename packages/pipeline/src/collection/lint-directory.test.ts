@@ -33,6 +33,19 @@ describe("lintCollectionDirectory", () => {
     expect(await lintCollectionDirectory(root)).toMatchObject({ refused: [], counts: { agents: 1, pipelines: 1, extensions: 0 } });
   });
 
+  it("reads a collection named as the directory it is run in, with a path of . and of ./", async () => {
+    const root = collectionOnDisk({ "acme-flow/pipeline.yaml": PIPELINE_YAML, "acme-flow/agents/acme-worker.md": NEW_AGENT });
+    const startedIn = process.cwd();
+
+    process.chdir(root);
+    const counted = await Promise.all([".", "./"].map(async (written) => (await lintCollectionDirectory(written)).counts)).finally(() => process.chdir(startedIn));
+
+    expect(counted).toEqual([
+      { agents: 1, pipelines: 1, extensions: 0 },
+      { agents: 1, pipelines: 1, extensions: 0 },
+    ]);
+  });
+
   it("refuses an extension of an agent nothing ships, naming its path", async () => {
     const root = collectionOnDisk({ "triage/agents/ghost.extra.md": "Be careful." });
 

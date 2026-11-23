@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
+line:
+  id: fan-out
+  entry: split
+  exit: done
+  fail: stopped
+  start:
+    on:
+      - document.received
+    args:
+      document: "{document}"
+  args:
+    document:
+      kind: value
+      subject: true
+  nodes:
+    - id: split
+      station: list-sections
+      fanout:
+        over: sections
+        to: summarize
+    - id: summarize
+      station: summarize-section
+    - id: combine
+      station: join-summaries
+    - id: done
+    - id: stopped
+  edges:
+    - from: split
+      to: summarize
+      on: success
+    - from: split
+      to: stopped
+      on: failed
+    - from: summarize
+      to: combine
+      on: success
+    - from: summarize
+      to: stopped
+      on: failed
+    - from: combine
+      to: done
+      on: success
+    - from: combine
+      to: stopped
+      on: failed
+stations:
+  list-sections:
+    description: A worker of yours lists the sections of the document as a JSON array of strings.
+    kind: service
+    outcomes:
+      - success
+      - failed
+    needs:
+      - name: document
+        kind: value
+    produces:
+      - name: sections
+        kind: value
+  summarize-section:
+    description: An agent summarizes one section. It runs once for each entry of the list.
+    kind: agent
+    agent_definition: section-summarizer
+    outcomes:
+      - success
+      - failed
+    result_required: true
+    needs:
+      - name: item
+        kind: value
+    produces:
+      - name: summary
+        kind: value
+  join-summaries:
+    description: A worker of yours joins the summaries of every section.
+    kind: service
+    outcomes:
+      - success
+      - failed
+    needs:
+      - name: summaries
+        kind: value
+        collect: summary
+    produces:
+      - name: digest
+        kind: value
