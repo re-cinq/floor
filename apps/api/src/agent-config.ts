@@ -5,19 +5,22 @@ import { z } from "zod";
 import { issuesOf } from "./parse.js";
 
 // A header or env var the server needs, valued from the key `ref` of the cluster's agent-secrets.
-const secretRef = z.object({ name: z.string().min(1), ref: z.string().min(1) });
+const secretRef = z.object({
+  name: z.string().min(1).describe("The name of the header or environment variable."),
+  ref: z.string().min(1).describe("The key of the cluster's `agent-secrets` that holds its value."),
+});
 
 // One of the two ways to reach a server, never neither: a process the pod starts, or an address it calls.
 const mcpServer = z
   .object({
-    name: z.string().min(1),
-    transport: z.enum(["stdio", "http", "sse"]),
-    command: z.string().min(1).optional(),
-    args: z.array(z.string()).optional(),
-    url: z.url().optional(),
-    headers_secret: z.string().min(1).optional(),
-    headers: z.array(secretRef).optional(),
-    env: z.array(secretRef).optional(),
+    name: z.string().min(1).describe("The name the agent knows the server by."),
+    transport: z.enum(["stdio", "http", "sse"]).describe("How the server is reached. `stdio` is a process the pod starts. `http` and `sse` are an address it calls."),
+    command: z.string().min(1).describe("`stdio` only, and required there. The command that starts the server.").optional(),
+    args: z.array(z.string()).describe("`stdio` only. The command's arguments.").optional(),
+    url: z.url().describe("`http` and `sse` only, and required there. The server's address.").optional(),
+    headers_secret: z.string().min(1).describe("The key of `agent-secrets` that holds one whole header line, such as `Authorization: Bearer <token>`.").optional(),
+    headers: z.array(secretRef).describe("`http` and `sse` only. Headers sent to the server, each valued from `agent-secrets`.").optional(),
+    env: z.array(secretRef).describe("`stdio` only. Environment variables of the server's process, each valued from `agent-secrets`.").optional(),
   })
   .refine((server) => (server.transport === "stdio" ? Boolean(server.command) : Boolean(server.url)), {
     message: "a stdio server needs a command, any other a url",
@@ -27,20 +30,27 @@ const KUBERNETES_QUANTITY = /^\d+(\.\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$/;
 
 const quantity = z.string().regex(KUBERNETES_QUANTITY, "a Kubernetes quantity such as 250m, 1, 512Mi or 2Gi");
 
-const resourceQuantities = z.strictObject({ cpu: quantity.optional(), memory: quantity.optional(), "ephemeral-storage": quantity.optional() });
+const resourceQuantities = z.strictObject({
+  cpu: quantity.describe("A Kubernetes quantity, such as `500m`.").optional(),
+  memory: quantity.describe("A Kubernetes quantity, such as `2Gi`.").optional(),
+  "ephemeral-storage": quantity.describe("A Kubernetes quantity, such as `6Gi`.").optional(),
+});
 
-const podResources = z.strictObject({ requests: resourceQuantities.optional(), limits: resourceQuantities.optional() });
+const podResources = z.strictObject({
+  requests: resourceQuantities.describe("What the pod asks for.").optional(),
+  limits: resourceQuantities.describe("What the pod may not exceed.").optional(),
+});
 
 export const agentConfigSchema = z.looseObject({
-  skills: z.array(z.string()).optional(),
-  skills_source: z.url().optional(),
-  mcp_servers: z.array(mcpServer).optional(),
-  disallowed_tools: z.array(z.string()).optional(),
-  env: z.record(z.string(), z.string()).optional(),
-  permission_mode: z.enum(["auto", "bypass"]).optional(),
-  max_turns: z.number().int().positive().optional(),
-  model_secret_key: z.string().min(1).optional(),
-  pod_resources: podResources.optional(),
+  skills: z.array(z.string()).describe("Names of the skills the agent is given.").optional(),
+  skills_source: z.url().describe("Where the pod fetches each named skill and the agent's settings. Defaults to the floor's own `/skills`, which serves no skills.").optional(),
+  mcp_servers: z.array(mcpServer).describe("The MCP servers the agent can call.").optional(),
+  disallowed_tools: z.array(z.string()).describe("Tools the agent may not use.").optional(),
+  env: z.record(z.string(), z.string()).describe("Environment variables of the agent, as plain values.").optional(),
+  permission_mode: z.enum(["auto", "bypass"]).describe("How the agent asks before it acts. Defaults to `bypass`.").optional(),
+  max_turns: z.number().int().positive().describe("The most turns the agent takes in one visit.").optional(),
+  model_secret_key: z.string().min(1).describe("The key of `agent-secrets` that holds the model's API key.").optional(),
+  pod_resources: podResources.describe("The resources of the agent's container. With none, the cluster's default applies.").optional(),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;

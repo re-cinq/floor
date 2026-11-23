@@ -90,6 +90,36 @@ schedules:
 | The program behind a service station | wherever it runs. The file declares the station; the program that posts a review is lore's |
 | Runs, visits, their records and costs | in the floor's database. This is a backup of what a floor is told to do, and not of what it did |
 
+## A collection
+
+A collection is a folder of lines. Each line has its own folder, with its pipeline and its agents. An agent is a markdown file: the frontmatter holds its settings, and the body is its prompt. A file named `<agent>.extra.md` adds to the prompt of an agent the host already ships.
+
+```
+code-review/
+  pipeline.yaml
+  agents/
+    reviewer.md
+    reviewer.extra.md
+```
+
+`lint` checks a collection without a floor and without a token. A key that belongs to the host is named with `--host-key`, as often as needed.
+
+```
+floor-pipeline lint collection/ --host-key execution_mode
+```
+
+A refused file prints one line and the exit code is 1.
+
+```
+code-review/pipeline.yml: a collection does not read this path: a line folder holds pipeline.yaml, agents/<agent>.md and agents/<agent>.extra.md
+```
+
+A clean collection prints a summary and the exit code is 0.
+
+```
+collection ok: 1 agents, 1 pipelines, 0 extensions
+```
+
 ## Migrations
 
 `migrate` is for seeding a floor at deploy, and for changing it after. It runs a folder's files in the order of their names, each once.
