@@ -41,6 +41,9 @@ const AS_THE_FLOOR_SPELLS: Spellings = {
   price: { input_per_million: "inputPerMillion", output_per_million: "outputPerMillion", cache_read_per_million: "cacheReadPerMillion", cache_write_per_million: "cacheWritePerMillion" },
 };
 
+/** Every field the file spells its own way, floor's name to the file's: what a reference of the file is written in. */
+export const FILE_SPELLING: Spelling = turned({ ...AS_THE_FLOOR_SPELLS.edge, ...AS_THE_FLOOR_SPELLS.station, ...AS_THE_FLOOR_SPELLS.settings, ...AS_THE_FLOOR_SPELLS.price });
+
 const AS_THE_FILE_SPELLS: Spellings = {
   edge: turned(AS_THE_FLOOR_SPELLS.edge),
   station: turned(AS_THE_FLOOR_SPELLS.station),

@@ -643,6 +643,24 @@ and it spares a recipe younger than ten minutes.
 **Not done:** the visit records no name of the recipe it ran; its Agent's
 `agents.re-cinq.com/agent-definition` label says it while the Agent lives.
 
+## Collections, and the website
+
+- A **collection** is a folder of line folders, each holding `pipeline.yaml`
+  and `agents/<agent>.md`. Its parser, its layout rules and its lint were
+  lore's, where it is called a pack. They moved into `@re-cinq/floor-pipeline`
+  so that the floor owns the format it documents. Fetching a collection from a
+  git host and applying it to a floor stayed in lore.
+- `floor-pipeline lint <dir>` needs no floor. It cannot run the floor's own
+  `validateLine` or `agentConfigSchema`: both live in private packages a
+  published one cannot depend on. A collection that passes lint can still be
+  refused when it is put.
+- An agent file's frontmatter is strict. A key that is a host's own, such as
+  lore's `execution_mode`, is named with `--host-key` and is not the floor's
+  to read.
+- The website's field tables and JSON Schema files are generated from the zod
+  schemas by `packages/docs-reference`, from each field's `.describe()`.
+  `npm run docs:check` fails when a page is behind the code.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is

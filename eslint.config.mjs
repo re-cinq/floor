@@ -15,7 +15,7 @@ const FIRST_PARTY = { firstPartyScopes: ["@floor", "@re-cinq"] };
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/coverage/**", ".backup-2026-09-27/**"],
+    ignores: ["website/**", "**/dist/**", "**/node_modules/**", "**/coverage/**", ".backup-2026-09-27/**"],
   },
 
   // Type-aware TypeScript across every workspace package.

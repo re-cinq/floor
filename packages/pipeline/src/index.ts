@@ -1,6 +1,12 @@
-export { readPipelineFile, writePipelineFile, type PipelineFile } from "./file.js";
-export { fileOf, pipelineOf, type Pipeline } from "./shape.js";
+export { pipelineFileSchema, readPipelineFile, writePipelineFile, type PipelineFile } from "./file.js";
+export { FILE_SPELLING, fileOf, pipelineOf, type Pipeline } from "./shape.js";
 export { exportPipeline, lineIds } from "./export.js";
 export { importPipeline, type Put } from "./import.js";
 export { migrate, type Migrated, type MigrationFile } from "./migrate.js";
 export type { Floor } from "./floor.js";
+export { collectionOverlay, type CollectionFile, type CollectionOverlay, type CollectionOverlayInput, type OverlayAgent, type AgentSource, type ShippedCatalog, type Refusal } from "./collection/collection.js";
+export { lintCollectionDirectory, printCollectionLint } from "./collection/lint-directory.js";
+export { agentFrontmatterSchema, readAgentFile, floorSettingsOf, type ParsedAgentFile, type AgentFileSettings, type ShippedAgents, type AgentPrompts } from "./collection/agent-file.js";
+export { withEnvironment, settingsWithEnvironment, type Environment } from "./collection/environment.js";
+export { pipelineProblems, type PipelineProblem, type PipelineRule } from "./collection/lint-rules.js";
+export { agentFileOf, isCollectionFile, isReadPath, pipelineFolderOf } from "./collection/paths.js";

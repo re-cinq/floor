@@ -1,0 +1,27 @@
+---
+title: Floor
+description: A workflow engine for pipelines of AI agents.
+template: splash
+hero:
+  tagline: A workflow engine for pipelines of AI agents.
+  actions:
+    - text: View on GitHub
+      link: https://github.com/re-cinq/floor
+      icon: external
+---
+
+Floor stores assembly lines and decides what happens next. An assembly line is the versioned definition of your work. An assembly run is one execution of it.
+
+An event starts an assembly run. The run visits stations, and an agent, a service or a person works each one. Floor hands out the work and does none of it.
+
+You can read the code and the design notes in the [floor repository](https://github.com/re-cinq/floor).
+
+```mermaid
+flowchart LR
+    event["Event is posted"] --> run["Floor starts an assembly run<br/>of an assembly line"]
+    run --> station["Run visits a station:<br/>agent, service or human"]
+    station --> outcome["Station reports an outcome"]
+    outcome --> more{"More stations?"}
+    more -->|yes| station
+    more -->|no| settled["Run settles"]
+```

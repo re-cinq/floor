@@ -1,0 +1,1055 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "A floor pipeline file",
+  "type": "object",
+  "properties": {
+    "line": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The line's id. In a collection it equals the name of the folder the file is in."
+        },
+        "entry": {
+          "type": "string",
+          "description": "The node a run starts at."
+        },
+        "exit": {
+          "type": "string",
+          "description": "The node that ends a run as `success`."
+        },
+        "fail": {
+          "type": "string",
+          "description": "The node that ends a run as `failed`. With none, no node can."
+        },
+        "start": {
+          "type": "object",
+          "properties": {
+            "on": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Names of the events that start a run of this line. A name matches exactly."
+            },
+            "when": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "description": "Payload fields that must equal these values. Each is a top-level field of the event's payload, compared as text. A field the payload lacks does not match."
+            },
+            "args": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Argument name to a template, filled from the top-level fields of the event's payload, such as `{pr_url}`."
+            }
+          },
+          "required": [
+            "on",
+            "args"
+          ],
+          "additionalProperties": false,
+          "description": "The events that start a run of this line, and how their payload fills its arguments. With none, a run starts only by `POST /assembly-lines/{id}/start`."
+        },
+        "args": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "value",
+                  "file",
+                  "git"
+                ],
+                "description": "The kind of item a start gives for this argument."
+              },
+              "subject": {
+                "type": "boolean",
+                "description": "Marks the argument whose value names what the run is about. One open run exists for a repo and a subject. A second start with the same value joins that run."
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          "description": "The arguments a start gives, by name. Each becomes an item of the run's bag under that name."
+        },
+        "files": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "base64": {
+                    "type": "string",
+                    "description": "The file's bytes, in base64."
+                  }
+                },
+                "required": [
+                  "base64"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "description": "Files put in the bag of every run at its start, by item name. A file is written as its text, or as `{ base64: ... }` for bytes that are not text."
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The node's name, unique in the line."
+              },
+              "station": {
+                "type": "string",
+                "description": "The station this node runs. A node with no station is a marker and reports `success` at once. `name@hash` pins one version of the station."
+              },
+              "start": {
+                "type": "string",
+                "description": "Name of the event that opens this node in a run. Defaults to `node.<id>.start`."
+              },
+              "bind": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Need name to bag item name, for a need the bag holds under another name."
+              },
+              "reports": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "Name of the event that answers a visit waiting at this node."
+                    },
+                    "when": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean"
+                        ]
+                      },
+                      "description": "Payload fields that must equal these values. Each is a top-level field of the event's payload, compared as text. A field the payload lacks does not match."
+                    },
+                    "outcome": {
+                      "type": "string",
+                      "description": "The outcome the visit reports when the event arrives."
+                    }
+                  },
+                  "required": [
+                    "on",
+                    "outcome"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Events that answer a visit waiting at this node, in place of a report from the station's worker."
+              },
+              "fanout": {
+                "type": "object",
+                "properties": {
+                  "over": {
+                    "type": "string",
+                    "description": "The value this node's station produces that holds the list, a JSON array of strings."
+                  },
+                  "to": {
+                    "type": "string",
+                    "description": "The node that runs once for each entry of the list, with the entry as its `item` need."
+                  }
+                },
+                "required": [
+                  "over",
+                  "to"
+                ],
+                "additionalProperties": false,
+                "description": "Runs another node once for each entry of a list this node produces. The walk goes on past that node when every branch has reported."
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "description": "The nodes of the line."
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "The node the edge leaves."
+              },
+              "to": {
+                "type": "string",
+                "description": "The node the edge enters."
+              },
+              "on": {
+                "type": "string",
+                "description": "The outcome that takes this edge, or `always` for any outcome. An edge on the exact outcome wins over `always`."
+              },
+              "iteration_max": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How many times one run may take this edge. A run that needs it once more halts."
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "on"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Which node follows which, by outcome."
+        }
+      },
+      "required": [
+        "id",
+        "entry",
+        "exit",
+        "args",
+        "nodes",
+        "edges"
+      ],
+      "additionalProperties": false,
+      "description": "The assembly line. A file with none carries only stations, agent definitions, schedules or an archive."
+    },
+    "stations": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "service",
+              "human"
+            ],
+            "description": "Who does the work. `agent` is a model in a pod, `service` is a worker that claims visits, `human` is a person."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the station does, for a person reading the line. The floor does not act on it, and changing it makes no new version."
+          },
+          "agent_definition": {
+            "type": "string",
+            "description": "Agent stations only. The id of the agent definition the station runs."
+          },
+          "conversation": {
+            "type": "string",
+            "enum": [
+              "new",
+              "continue"
+            ],
+            "description": "Agent stations only. `continue` resumes the conversation of this node's last visit in the run that did not fail."
+          },
+          "conversation_key": {
+            "type": "string",
+            "description": "With `conversation: continue`. The name of a bag item. The conversation resumed is one from a run on the same repo that holds the same value under that name."
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The outcomes the station reports. `failed` can be reported whether it is listed or not."
+          },
+          "must_change": {
+            "type": "boolean",
+            "description": "Accepted and not acted on."
+          },
+          "result_required": {
+            "type": "boolean",
+            "description": "Agent stations only. An agent that ends without stating a result has `failed`. Without it, silence is read as `success`."
+          },
+          "needs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The need's name. The bag item of the same name fills it, unless the node's `bind` names another."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "value",
+                    "file",
+                    "git"
+                  ],
+                  "description": "The kind of item the need takes."
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Agent stations only. Where the item is put in the pod, relative to `/workspace`."
+                },
+                "access": {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "write"
+                  ],
+                  "description": "`git` needs only. `write` lets the visit push to the repository. Defaults to `read`."
+                },
+                "optional": {
+                  "type": "boolean",
+                  "description": "The visit opens without the item when the bag does not hold it."
+                },
+                "collect": {
+                  "type": "string",
+                  "description": "`value` needs only. The name of an item the body of a fan-out produces. The need is filled with a JSON array of what each branch produced, in branch order."
+                }
+              },
+              "required": [
+                "name",
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            "description": "The bag items a visit is given."
+          },
+          "produces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The name of the bag item the station writes."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "value",
+                    "file"
+                  ],
+                  "description": "The kind of item written."
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Agent stations only. The file the agent writes, relative to `/workspace`."
+                },
+                "from": {
+                  "type": "string",
+                  "const": "output",
+                  "description": "Agent stations only. The file is everything the agent said last. For kind `file`, and with no `path`."
+                }
+              },
+              "required": [
+                "name",
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            "description": "The bag items a visit writes."
+          },
+          "url": {
+            "type": "string",
+            "description": "Accepted and not acted on."
+          },
+          "route": {
+            "type": "string",
+            "description": "Human stations only. Kept for the page a person acts through. The floor does not read it."
+          }
+        },
+        "required": [
+          "kind",
+          "outcomes",
+          "needs",
+          "produces"
+        ],
+        "additionalProperties": false
+      },
+      "description": "The stations, by id."
+    },
+    "agent_definitions": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string",
+                "description": "The model the agent runs on."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "What the agent is told. `{name}` placeholders are filled when a visit opens."
+              },
+              "image": {
+                "type": "string",
+                "description": "The container image the agent runs in."
+              },
+              "timeout_minutes": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "How long a visit may run, in minutes. A visit past its deadline has `failed`."
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Which cluster agents may run it. A cluster agent claims a visit only when it offers every tag."
+              },
+              "config": {
+                "type": "object",
+                "properties": {
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Names of the skills the agent is given."
+                  },
+                  "skills_source": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Where the pod fetches each named skill and the agent's settings. Defaults to the floor's own `/skills`, which serves no skills."
+                  },
+                  "mcp_servers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The name the agent knows the server by."
+                        },
+                        "transport": {
+                          "type": "string",
+                          "enum": [
+                            "stdio",
+                            "http",
+                            "sse"
+                          ],
+                          "description": "How the server is reached. `stdio` is a process the pod starts. `http` and `sse` are an address it calls."
+                        },
+                        "command": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "`stdio` only, and required there. The command that starts the server."
+                        },
+                        "args": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "`stdio` only. The command's arguments."
+                        },
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "`http` and `sse` only, and required there. The server's address."
+                        },
+                        "headers_secret": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The key of `agent-secrets` that holds one whole header line, such as `Authorization: Bearer <token>`."
+                        },
+                        "headers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "The name of the header or environment variable."
+                              },
+                              "ref": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "The key of the cluster's `agent-secrets` that holds its value."
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "ref"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "`http` and `sse` only. Headers sent to the server, each valued from `agent-secrets`."
+                        },
+                        "env": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "The name of the header or environment variable."
+                              },
+                              "ref": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "The key of the cluster's `agent-secrets` that holds its value."
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "ref"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "`stdio` only. Environment variables of the server's process, each valued from `agent-secrets`."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "transport"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "The MCP servers the agent can call."
+                  },
+                  "disallowed_tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tools the agent may not use."
+                  },
+                  "env": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "Environment variables of the agent, as plain values."
+                  },
+                  "permission_mode": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "bypass"
+                    ],
+                    "description": "How the agent asks before it acts. Defaults to `bypass`."
+                  },
+                  "max_turns": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "The most turns the agent takes in one visit."
+                  },
+                  "model_secret_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The key of `agent-secrets` that holds the model's API key."
+                  },
+                  "pod_resources": {
+                    "type": "object",
+                    "properties": {
+                      "requests": {
+                        "type": "object",
+                        "properties": {
+                          "cpu": {
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                            "description": "A Kubernetes quantity, such as `500m`."
+                          },
+                          "memory": {
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                            "description": "A Kubernetes quantity, such as `2Gi`."
+                          },
+                          "ephemeral-storage": {
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                            "description": "A Kubernetes quantity, such as `6Gi`."
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "What the pod asks for."
+                      },
+                      "limits": {
+                        "type": "object",
+                        "properties": {
+                          "cpu": {
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                            "description": "A Kubernetes quantity, such as `500m`."
+                          },
+                          "memory": {
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                            "description": "A Kubernetes quantity, such as `2Gi`."
+                          },
+                          "ephemeral-storage": {
+                            "type": "string",
+                            "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                            "description": "A Kubernetes quantity, such as `6Gi`."
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "What the pod may not exceed."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "The resources of the agent's container. With none, the cluster's default applies."
+                  }
+                },
+                "additionalProperties": {},
+                "description": "Settings for the agent's pod. A key the floor does not know is kept and not acted on."
+              },
+              "prices": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "input_per_million": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "US dollars for a million input tokens."
+                    },
+                    "output_per_million": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "US dollars for a million output tokens."
+                    },
+                    "cache_read_per_million": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "US dollars for a million tokens read from the cache. The input price when not stated."
+                    },
+                    "cache_write_per_million": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "US dollars for a million tokens written to the cache. The input price when not stated."
+                    }
+                  },
+                  "required": [
+                    "input_per_million",
+                    "output_per_million"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Model name to what it costs, for a model that reports tokens and no cost. The floor holds no price of its own."
+              }
+            },
+            "required": [
+              "prompt",
+              "image",
+              "timeout_minutes"
+            ],
+            "additionalProperties": false,
+            "description": "The settings of the agent on every repository."
+          },
+          "variants": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string",
+                  "description": "The model the agent runs on."
+                },
+                "prompt": {
+                  "type": "string",
+                  "description": "What the agent is told. `{name}` placeholders are filled when a visit opens."
+                },
+                "image": {
+                  "type": "string",
+                  "description": "The container image the agent runs in."
+                },
+                "timeout_minutes": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "How long a visit may run, in minutes. A visit past its deadline has `failed`."
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Which cluster agents may run it. A cluster agent claims a visit only when it offers every tag."
+                },
+                "config": {
+                  "type": "object",
+                  "properties": {
+                    "skills": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Names of the skills the agent is given."
+                    },
+                    "skills_source": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Where the pod fetches each named skill and the agent's settings. Defaults to the floor's own `/skills`, which serves no skills."
+                    },
+                    "mcp_servers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "The name the agent knows the server by."
+                          },
+                          "transport": {
+                            "type": "string",
+                            "enum": [
+                              "stdio",
+                              "http",
+                              "sse"
+                            ],
+                            "description": "How the server is reached. `stdio` is a process the pod starts. `http` and `sse` are an address it calls."
+                          },
+                          "command": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "`stdio` only, and required there. The command that starts the server."
+                          },
+                          "args": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "`stdio` only. The command's arguments."
+                          },
+                          "url": {
+                            "type": "string",
+                            "format": "uri",
+                            "description": "`http` and `sse` only, and required there. The server's address."
+                          },
+                          "headers_secret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "The key of `agent-secrets` that holds one whole header line, such as `Authorization: Bearer <token>`."
+                          },
+                          "headers": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "description": "The name of the header or environment variable."
+                                },
+                                "ref": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "description": "The key of the cluster's `agent-secrets` that holds its value."
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "`http` and `sse` only. Headers sent to the server, each valued from `agent-secrets`."
+                          },
+                          "env": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "description": "The name of the header or environment variable."
+                                },
+                                "ref": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "description": "The key of the cluster's `agent-secrets` that holds its value."
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "`stdio` only. Environment variables of the server's process, each valued from `agent-secrets`."
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "transport"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "The MCP servers the agent can call."
+                    },
+                    "disallowed_tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Tools the agent may not use."
+                    },
+                    "env": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "Environment variables of the agent, as plain values."
+                    },
+                    "permission_mode": {
+                      "type": "string",
+                      "enum": [
+                        "auto",
+                        "bypass"
+                      ],
+                      "description": "How the agent asks before it acts. Defaults to `bypass`."
+                    },
+                    "max_turns": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "The most turns the agent takes in one visit."
+                    },
+                    "model_secret_key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The key of `agent-secrets` that holds the model's API key."
+                    },
+                    "pod_resources": {
+                      "type": "object",
+                      "properties": {
+                        "requests": {
+                          "type": "object",
+                          "properties": {
+                            "cpu": {
+                              "type": "string",
+                              "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                              "description": "A Kubernetes quantity, such as `500m`."
+                            },
+                            "memory": {
+                              "type": "string",
+                              "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                              "description": "A Kubernetes quantity, such as `2Gi`."
+                            },
+                            "ephemeral-storage": {
+                              "type": "string",
+                              "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                              "description": "A Kubernetes quantity, such as `6Gi`."
+                            }
+                          },
+                          "additionalProperties": false,
+                          "description": "What the pod asks for."
+                        },
+                        "limits": {
+                          "type": "object",
+                          "properties": {
+                            "cpu": {
+                              "type": "string",
+                              "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                              "description": "A Kubernetes quantity, such as `500m`."
+                            },
+                            "memory": {
+                              "type": "string",
+                              "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                              "description": "A Kubernetes quantity, such as `2Gi`."
+                            },
+                            "ephemeral-storage": {
+                              "type": "string",
+                              "pattern": "^\\d+(\\.\\d+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$",
+                              "description": "A Kubernetes quantity, such as `6Gi`."
+                            }
+                          },
+                          "additionalProperties": false,
+                          "description": "What the pod may not exceed."
+                        }
+                      },
+                      "additionalProperties": false,
+                      "description": "The resources of the agent's container. With none, the cluster's default applies."
+                    }
+                  },
+                  "additionalProperties": {},
+                  "description": "Settings for the agent's pod. A key the floor does not know is kept and not acted on."
+                },
+                "prices": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "input_per_million": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "US dollars for a million input tokens."
+                      },
+                      "output_per_million": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "US dollars for a million output tokens."
+                      },
+                      "cache_read_per_million": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "US dollars for a million tokens read from the cache. The input price when not stated."
+                      },
+                      "cache_write_per_million": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "US dollars for a million tokens written to the cache. The input price when not stated."
+                      }
+                    },
+                    "required": [
+                      "input_per_million",
+                      "output_per_million"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Model name to what it costs, for a model that reports tokens and no cost. The floor holds no price of its own."
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "`host/owner/name` to settings laid over `settings` for runs on that repository, by field, by key of `config` and by model of `prices`."
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "additionalProperties": false
+      },
+      "description": "The agent definitions, by id. A collection refuses this block and defines each agent in its own file."
+    },
+    "schedules": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "cron": {
+            "type": "string",
+            "description": "When the schedule ticks, as a cron expression."
+          },
+          "timezone": {
+            "type": "string",
+            "description": "The timezone the expression is read in. Defaults to UTC."
+          },
+          "payload": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "The payload of each `schedule.<name>.tick` event. The floor adds `scheduledFor`."
+          }
+        },
+        "required": [
+          "cron",
+          "payload"
+        ],
+        "additionalProperties": false
+      },
+      "description": "The schedules, by name. Each sends the event `schedule.<name>.tick`."
+    },
+    "archive": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of lines to archive."
+        },
+        "stations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of stations to archive."
+        },
+        "agent_definitions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of agent definitions to archive."
+        },
+        "schedules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names of schedules to archive."
+        }
+      },
+      "additionalProperties": false,
+      "description": "What importing this file takes away from the floor."
+    }
+  },
+  "additionalProperties": false
+}

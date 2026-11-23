@@ -119,6 +119,9 @@ jobs:
         run: npm run build
       - name: Lint
         run: npm run lint
+      # The website's field tables and JSON Schema files are made from the code. A change to a schema that leaves them behind fails here.
+      - name: Check the generated docs
+        run: npm run docs:check
 
   chart:
     name: helm chart
@@ -168,3 +171,15 @@ jobs:
       # and the second time the cluster agent crash-looped on a package the image did not hold.
       - name: The image holds every package the apps need
         run: bash scripts/check-image.sh floor:ci
+
+  website:
+    name: docs site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # A broken internal link fails this build, through starlight-links-validator.
+      - name: Build with Astro
+        uses: withastro/action@b7d53628f8b666036b0238aadb0b984a2a489f26 # v6
+        with:
+          path: ./website
+          node-version: ${{ env.NODE_VERSION }}
