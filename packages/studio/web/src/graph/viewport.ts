@@ -74,13 +74,13 @@ export function keepInView(current: ViewportTransform, drawing: Size, box: Size)
   };
 }
 
-export function revealArea(current: ViewportTransform, area: Box, box: Size): ViewportTransform {
+export function revealArea(current: ViewportTransform, area: Box, box: Size, coveredBelow = 0): ViewportTransform {
   if (isUnmeasured(box)) return current;
 
   return {
     ...current,
     x: offsetRevealing(current.x, area.minX * current.scale, area.maxX * current.scale, box.width),
-    y: offsetRevealing(current.y, area.minY * current.scale, area.maxY * current.scale, box.height),
+    y: offsetRevealing(current.y, area.minY * current.scale, area.maxY * current.scale, box.height - coveredBelow),
   };
 }
 

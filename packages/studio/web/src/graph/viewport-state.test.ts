@@ -118,6 +118,16 @@ describe("viewportReducer", () => {
     });
   });
 
+  it("pans to y -324 to bring a node at 600 to 700 above a 400px strip covering the bottom of the box", () => {
+    const area = { minX: 100, minY: 600, maxX: 300, maxY: 700 };
+    const tallBoxState = { ...largeDrawingState, box: { width: 1000, height: 800 }, transform: { scale: 1, x: 0, y: 0 } };
+
+    expect(viewportReducer(tallBoxState, { type: "revealed", area, coveredBelow: 400 })).toEqual({
+      ...tallBoxState,
+      transform: { scale: 1, x: 0, y: -324 },
+    });
+  });
+
   it("leaves the view where it is when revealing a node at 100 to 300 that is already inside a 1000 wide box", () => {
     const area = { minX: 100, minY: 100, maxX: 300, maxY: 200 };
 

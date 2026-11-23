@@ -21,7 +21,7 @@ interface ViewportEvents {
   scrolled: { delta: BoxOffset };
   pinched: { anchor: BoxPoint; delta: number };
   zoomed: { direction: ZoomDirection };
-  revealed: { area: Box };
+  revealed: { area: Box; coveredBelow?: number };
   fit: NoPayload;
 }
 
@@ -59,7 +59,7 @@ const RULES: { [Kind in ViewportKind]: Rule<Kind> } = {
   scrolled: (state, { delta }) => movedByPerson(state, panBy(state.transform, scrollAsDrag(delta))),
   pinched: (state, { anchor, delta }) => movedByPerson(state, zoomAt(state.transform, anchor, pinchAsZoom(delta))),
   zoomed: (state, { direction }) => movedByPerson(state, zoomAt(state.transform, boxCenter(state.box), ZOOM_FACTORS[direction])),
-  revealed: (state, { area }) => movedIfChanged(state, revealArea(state.transform, area, state.box)),
+  revealed: (state, { area, coveredBelow }) => movedIfChanged(state, revealArea(state.transform, area, state.box, coveredBelow)),
   fit: (state) => settled({ ...state, fitted: true }),
 };
 

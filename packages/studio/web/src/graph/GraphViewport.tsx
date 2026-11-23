@@ -15,17 +15,18 @@ import { initialViewport, viewportReducer } from "./viewport-state";
 export interface GraphViewportProps {
   drawing: Size;
   reveal?: Box;
+  coveredBelow?: number;
   children: ReactNode;
 }
 
-export default function GraphViewport({ drawing, reveal, children }: GraphViewportProps) {
+export default function GraphViewport({ drawing, reveal, coveredBelow, children }: GraphViewportProps) {
   const [{ transform }, dispatch] = useReducer(viewportReducer, drawing, initialViewport);
   const svgRef = useMeasuredBox<SVGSVGElement>(dispatch);
   const pointerHandlers = usePointerDrag(dispatch);
 
   useWheelNavigation(svgRef, dispatch);
   useRedrawn(drawing, dispatch);
-  useRevealed(reveal, dispatch);
+  useRevealed(reveal, coveredBelow, dispatch);
 
   return (
     <div className={styles.viewport}>

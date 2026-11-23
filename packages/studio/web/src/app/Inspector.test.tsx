@@ -301,6 +301,17 @@ describe("Inspector", () => {
     ]);
   });
 
+  it("marks the inspector maximized and Maximize pressed once Maximize is pressed", async () => {
+    render(<Inspector node={workNode} onClose={() => undefined} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Maximize" }));
+
+    expect({
+      pressed: screen.getByRole("button", { name: "Maximize" }).getAttribute("aria-pressed"),
+      maximized: screen.getByRole("complementary", { name: "Node inspector" }).hasAttribute("data-maximized"),
+    }).toEqual({ pressed: "true", maximized: true });
+  });
+
   it("offers no tabs for the marker node done", () => {
     const doneNode = nodeView({ id: "done" });
 

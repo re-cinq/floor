@@ -31,6 +31,8 @@ export interface RunGraphViewProps {
   onSelectNode?: (nodeId: string) => void;
   /** The node the inspector shows, drawn with a ring; its outgoing hops draw bold. */
   selectedNodeId?: string | null;
+  /** Height at the bottom of the graph that the inspector covers. */
+  coveredBelow?: number;
 }
 
 // The graph: wrapped onto the column count that shows it largest in the panel, then fitted to it by the viewport.
@@ -67,7 +69,7 @@ function GraphCanvas({ view, graph, panelBox }: GraphCanvasProps) {
   return (
     <>
       <div className={styles.canvas} {...tooltip.handlers}>
-        <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)}>
+        <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)} coveredBelow={view.coveredBelow}>
           <GraphSvg
             laid={laid}
             graph={graph}

@@ -193,6 +193,16 @@ describe("App line view", () => {
     expect(Object.fromEntries(new URLSearchParams(window.location.hash.slice(1)))).toMatchObject({ line: "flow" });
   });
 
+  it("clears the node and keeps the line when the inspector's Close is pressed", async () => {
+    const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work" });
+
+    await screen.findByRole("button", { name: /^work, agent/, pressed: true });
+    await userEvent.click(within(screen.getByRole("complementary", { name: "Node inspector" })).getByRole("button", { name: "Close" }));
+
+    await screen.findByRole("button", { name: /^work, agent/, pressed: false });
+    expect(Object.fromEntries(new URLSearchParams(window.location.hash.slice(1)))).toEqual({ socket: studio.url, token: studio.token, line: "flow" });
+  });
+
   it("keeps tab=Events in the address when another node is clicked", async () => {
     const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Events" });
 

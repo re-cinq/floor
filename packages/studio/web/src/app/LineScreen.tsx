@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { LineView, NodeView } from "@protocol";
 import { graphOf } from "@/graph/graph-of";
 import RunGraphView from "@/graph/RunGraphView";
 import Inspector, { type InspectorActions } from "./Inspector";
 import LineHeader from "./LineHeader";
 import ProblemsList from "./ProblemsList";
+import { useCoveredBelow } from "./use-covered-below";
 import styles from "./line.module.css";
 
 export interface LineScreenProps {
@@ -16,6 +17,9 @@ export interface LineScreenProps {
 
 export default function LineScreen({ line, node, inspector, onSelectNode }: LineScreenProps) {
   const definition = useMemo(() => graphOf(line), [line]);
+  const screenRef = useRef<HTMLDivElement>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
+  const coveredBelow = useCoveredBelow(screenRef, graphRef, node);
 
   useEffect(() => {
     const clearOnEscape = (event: KeyboardEvent) => event.key === "Escape" && onSelectNode(undefined);
@@ -26,15 +30,15 @@ export default function LineScreen({ line, node, inspector, onSelectNode }: Line
   }, [onSelectNode]);
 
   return (
-    <div className={styles.screen}>
+    <div ref={screenRef} className={styles.screen} data-inspecting={node ? "" : undefined}>
       <div className={styles.primary}>
         <LineHeader line={line} />
-        <div className={styles.graph}>
-          <RunGraphView definition={definition} selectedNodeId={node?.id} onSelectNode={onSelectNode} />
+        <div ref={graphRef} className={styles.graph}>
+          <RunGraphView definition={definition} selectedNodeId={node?.id} coveredBelow={coveredBelow} onSelectNode={onSelectNode} />
         </div>
         <ProblemsList problems={line.problems} onSelectNode={onSelectNode} />
       </div>
-      <Inspector node={node} actions={inspector} />
+      {node && <Inspector node={node} actions={inspector} onClose={() => onSelectNode(undefined)} />}
     </div>
   );
 }

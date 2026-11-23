@@ -76,6 +76,15 @@ describe("revealArea", () => {
     expect(revealArea({ scale: 1, x: 0, y: -2000 }, area, box)).toEqual({ scale: 1, x: 0, y: -76 });
   });
 
+  it("moves an area at y 600 to 700 to y -324 above a 400px strip covering the bottom of an 800px box", () => {
+    const lowArea = { minX: 100, minY: 600, maxX: 300, maxY: 700 };
+    expect(revealArea({ scale: 1, x: 0, y: 0 }, lowArea, { width: 1000, height: 800 }, 400)).toEqual({
+      scale: 1,
+      x: 0,
+      y: -324,
+    });
+  });
+
   it("leaves a transform at 0, 0 where it is in an unmeasured 0 x 0 box", () => {
     expect(revealArea({ scale: 1, x: 0, y: 0 }, area, { width: 0, height: 0 })).toEqual({ scale: 1, x: 0, y: 0 });
   });
