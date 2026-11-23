@@ -143,6 +143,15 @@ describe("StudioConnection against the real backend", () => {
     expect(snapshot.connection).toEqual({ status: "refused", reason: expect.stringContaining("token") });
   });
 
+  it("says the printed address may be from an earlier run when the token is wrong", async () => {
+    const { studio } = await studioOnDisk();
+    const connection = connected({ socket: studio.url, token: "not-the-token" });
+
+    const snapshot = await reaches(connection, ({ connection: state }) => state.status === "refused" || state.status === "closed");
+
+    expect(snapshot.connection).toMatchObject({ reason: expect.stringMatching(/address.*printed.*earlier run/i) });
+  });
+
   it("reports an address nothing listens on as closed and still retrying", async () => {
     const { studio } = await studioOnDisk();
     const { url, token } = studio;

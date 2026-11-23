@@ -125,6 +125,62 @@
   color: var(--text-muted);
 }
 
+.inspector [role="tablist"] {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.inspector [role="tab"] {
+  padding: var(--space-2) var(--space-4);
+  min-height: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.inspector [role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--accent, currentColor);
+  color: var(--text);
+  font-weight: var(--fw-medium);
+}
+
+.inspector [role="tabpanel"] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  font-size: var(--fs-sm);
+}
+
+/* A list's label is only in aria-label, so the caption shows it to sighted readers too. */
+.inspector ul[aria-label] {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.inspector ul[aria-label]::before {
+  content: attr(aria-label);
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+.inspector ul[aria-label]:empty {
+  display: none;
+}
+
+.inspector li {
+  overflow-wrap: anywhere;
+}
+
 .inspectorNode {
   font-size: var(--fs-md);
   font-weight: var(--fw-medium);

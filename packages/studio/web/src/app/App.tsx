@@ -46,9 +46,9 @@ function promptSaver(connection: StudioConnection | undefined, line: string | un
   const agent = node?.agent;
 
   if (!connection || !line || !agent?.version) return undefined;
-  const { name, version } = agent;
+  const { name } = agent;
 
-  return (prompt) => connection.writeAgent({ line, agent: name, prompt, version });
+  return (prompt, version) => connection.writeAgent({ line, agent: name, prompt, version });
 }
 
 function addressOfPage(): StudioAddress | undefined {

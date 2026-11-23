@@ -54,8 +54,8 @@ function refused(shell: Shell, exitCode: number, ...lines: string[]): Outcome {
 
 async function started(given: RunArguments, shell: Shell): Promise<Outcome> {
   const page = await startPageServer(shell.pageDir);
-  // The page's own origin is the only one the backend lets a browser use.
-  const studio = await startStudio({ dir: resolve(given.dir), port: given.port, hostKeys: given.hostKeys, origins: [page.origin] }).catch(async (cause: Error) => {
+  // Only the page's own origin may use the socket, whether the browser shows it as 127.0.0.1 or localhost.
+  const studio = await startStudio({ dir: resolve(given.dir), port: given.port, hostKeys: given.hostKeys, origins: [page.origin, page.origin.replace("127.0.0.1", "localhost")] }).catch(async (cause: Error) => {
     await page.close();
     throw cause;
   });

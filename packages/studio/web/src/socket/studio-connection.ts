@@ -202,7 +202,7 @@ export class StudioConnection {
   private refuse(socket: WebSocket): void {
     this.stop(socket, {
       status: "refused",
-      reason: "the studio is running but refused the connection: the token in this address is not the one it was started with, or this page's origin is not allowed. Open the address `floor-studio` printed.",
+      reason: "the studio is running but refused the connection: the token in this address is not the running studio's, or this page's origin is not allowed. Open the address `floor-studio` printed this time: the one in use may be from an earlier run, since each start prints a new one.",
     });
   }
 

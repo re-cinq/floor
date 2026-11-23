@@ -69,6 +69,13 @@ describe("studioCommand", () => {
     expect(await client.next()).toMatchObject({ type: "hello" });
   });
 
+  it("lets a page shown at localhost on the page port open the socket", async () => {
+    const { fragment, origin } = await startedStudio([collectionOnDisk(WORKER_COLLECTION), "--no-open"], collected().shell);
+    const client = await openClient(fragment.get("socket") ?? "", { token: fragment.get("token") ?? "", origin: `http://localhost:${new URL(origin).port}` });
+
+    expect(await client.next()).toMatchObject({ type: "hello" });
+  });
+
   it("serves the built page from its folder at the page url", async () => {
     const pageDir = mkdtempSync(join(tmpdir(), "floor-studio-built-"));
 
