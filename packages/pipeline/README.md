@@ -99,7 +99,7 @@ A collection is a folder of lines. Each line has its own folder, with its pipeli
 
 ```
 code-review/
-  pipeline.yaml
+  assembly-line.yaml
   agents/
     reviewer.md
     reviewer.extra.md
@@ -114,7 +114,7 @@ floor-pipeline lint collection/ --host-key execution_mode
 A refused file prints one line and the exit code is 1.
 
 ```
-code-review/pipeline.yml: a collection does not read this path: a line folder holds pipeline.yaml, agents/<agent>.md and agents/<agent>.extra.md
+code-review/assembly-line.yml: a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md
 ```
 
 A clean collection prints a summary and the exit code is 0.

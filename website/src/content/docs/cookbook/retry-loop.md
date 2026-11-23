@@ -8,9 +8,9 @@ sidebar:
 
 Use this when an agent can fail and a second try, told what went wrong, may succeed.
 
-<!-- generated:example:cookbook/retry-loop/pipeline.yaml -->
+<!-- generated:example:cookbook/retry-loop/assembly-line.yaml -->
 
-````yaml title="retry-loop/pipeline.yaml"
+````yaml title="retry-loop/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: retry-loop

@@ -25,7 +25,7 @@ const USAGE = `floor-pipeline <what to do> --floor <url>      with FLOOR_SERVICE
   apply <dir>                puts a collection to the floor: its agents, then each line with its stations.
                              \${NAME} in its files is filled from this environment. Nothing is put
                              when a file is refused
-  lint <dir>                 checks a collection: one folder a line, with its pipeline.yaml and agents/.
+  lint <dir>                 checks a collection: one folder a line, with its assembly-line.yaml and agents/.
                              Needs no floor and no token. A key the host owns is named with --host-key <name>,
                              as often as needed
 

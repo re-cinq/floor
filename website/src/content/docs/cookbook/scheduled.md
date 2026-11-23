@@ -8,9 +8,9 @@ sidebar:
 
 Use this when work repeats at fixed times, such as a digest on weekday mornings.
 
-<!-- generated:example:cookbook/scheduled/pipeline.yaml -->
+<!-- generated:example:cookbook/scheduled/assembly-line.yaml -->
 
-````yaml title="scheduled/pipeline.yaml"
+````yaml title="scheduled/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: scheduled

@@ -212,7 +212,7 @@ describe("collectionOverlay", () => {
       "code-review/agent/reviewer.md": TRIAGE_AGENT,
     });
     const reason =
-      "a collection does not read this path: a line folder holds pipeline.yaml, agents/<agent>.md and agents/<agent>.extra.md";
+      "a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md";
 
     expect({
       lines: overlay.pipelines.length,

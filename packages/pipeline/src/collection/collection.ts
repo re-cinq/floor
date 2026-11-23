@@ -1,4 +1,4 @@
-// A collection: one folder a line, holding `pipeline.yaml` and `agents/<agent>.md`. What the host ships and what the collection supplies, combined in memory with no floor in reach.
+// A collection: one folder a line, holding `assembly-line.yaml` and `agents/<agent>.md`. What the host ships and what the collection supplies, combined in memory with no floor in reach.
 import type { Pipeline } from "../shape.js";
 import { agentsOverlay, type CollectionOverlayInput, type OverlayAgent } from "./agents.js";
 import { pipelinesOverlay } from "./pipelines.js";
@@ -34,7 +34,7 @@ function extensionsIn(agents: CollectionOverlay["agents"]): number {
   return [...agents.values()].filter((agent) => agent.source === "extended").length;
 }
 
-const UNREAD_PATH = "a collection does not read this path: a line folder holds pipeline.yaml, agents/<agent>.md and agents/<agent>.extra.md";
+const UNREAD_PATH = "a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md";
 
 /** A file in a line folder that would be skipped in silence: a misspelt name must show, not quietly do nothing. */
 function unreadPathsOf({ files }: CollectionOverlayInput): Refusal[] {

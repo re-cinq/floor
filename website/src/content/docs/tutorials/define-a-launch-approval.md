@@ -22,7 +22,7 @@ Read the last row with your team. Ending the attempt and waiting for more inform
 
 ## 2. Write the rule in YAML
 
-Create a file called `pipeline.yaml` and copy the definition below. In a collection, put it in a folder called `launch-approval` so the folder matches the line's `id`. Keep the indentation when you copy it. In YAML, indentation groups the lines that belong together.
+Create a file called `assembly-line.yaml` and copy the definition below. In a collection, put it in a folder called `launch-approval` so the folder matches the line's `id`. Keep the indentation when you copy it. In YAML, indentation groups the lines that belong together.
 
 ```yaml
 line:

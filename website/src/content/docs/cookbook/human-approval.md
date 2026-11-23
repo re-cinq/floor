@@ -8,9 +8,9 @@ sidebar:
 
 Use this when a step needs a person to approve or reject before the run goes on.
 
-<!-- generated:example:cookbook/human-approval/pipeline.yaml -->
+<!-- generated:example:cookbook/human-approval/assembly-line.yaml -->
 
-````yaml title="human-approval/pipeline.yaml"
+````yaml title="human-approval/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: human-approval

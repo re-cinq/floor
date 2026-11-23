@@ -650,6 +650,10 @@ and it spares a recipe younger than ten minutes.
   lore's, where it is called a pack. They moved into `@re-cinq/floor-pipeline`
   so that the floor owns the format it documents. Fetching a collection from a
   git host and applying it to a floor stayed in lore.
+- A line folder holds its line in `assembly-line.yaml`. The file was
+  `pipeline.yaml`, and that name is still read, so that a collection written
+  before the rename keeps loading. A folder with both is refused. The website
+  and every message name the one it is now.
 - `floor-pipeline lint <dir>` needs no floor. It cannot run the floor's own
   `validateLine` or `agentConfigSchema`: both live in private packages a
   published one cannot depend on. A collection that passes lint can still be

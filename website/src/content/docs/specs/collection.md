@@ -16,33 +16,33 @@ my-collection/
   README.md                 ignored
   docs/                     ignored
   write-note/               a line folder
-    pipeline.yaml
+    assembly-line.yaml
     agents/
       note-writer.md
   review-note/
-    pipeline.yaml
+    assembly-line.yaml
     agents/
       note-reviewer.md
 ```
 
 | Path | What it is |
 | --- | --- |
-| `<line>/pipeline.yaml` | The line's pipeline file |
+| `<line>/assembly-line.yaml` | The line's pipeline file |
 | `<line>/agents/<agent>.md` | An agent file |
 | `<line>/agents/<agent>.extra.md` | An extension of an agent the host ships |
 | A file at the top level, anything under `docs/`, anything under a folder whose name starts with `.` | Ignored |
 | Any other `.md`, `.yml` or `.yaml` file in a line folder | Refused |
 | Any other file in a line folder | Ignored |
 
-1. `line.id` in `pipeline.yaml` MUST equal the name of its folder. If not, the file is refused with `the folder F must hold the pipeline of that name, and its line is X`.
-2. A refused path says `a collection does not read this path: a line folder holds pipeline.yaml, agents/<agent>.md and agents/<agent>.extra.md`. A file named `pipeline.yml` is refused this way.
+1. `line.id` in `assembly-line.yaml` MUST equal the name of its folder. If not, the file is refused with `the folder F must hold the pipeline of that name, and its line is X`.
+2. A refused path says `a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md`. A file named `assembly-line.yml` is refused this way.
 3. An agent's id is its file name. It MUST be unique in the whole collection, not only in its folder. A second file for the same agent is refused with `<agent> is already set by <path>`.
 4. A station MAY name an agent that another line's folder defines.
 5. A collection has no manifest and no version file.
 
 ## 2. Rules
 
-A collection is stricter than a pipeline file on its own. `floor-pipeline lint` checks each `pipeline.yaml` against these rules and refuses the file when one fails.
+A collection is stricter than a pipeline file on its own. `floor-pipeline lint` checks each `assembly-line.yaml` against these rules and refuses the file when one fails.
 
 | Rule id | Rule |
 | --- | --- |
@@ -63,7 +63,7 @@ A collection is stricter than a pipeline file on its own. `floor-pipeline lint` 
 
 ## 3. Environment variables
 
-`${NAME}` in `pipeline.yaml` and in an agent file's frontmatter is filled when the collection is applied. See [Placeholders](/floor/specs/placeholders/#3-environment-variables).
+`${NAME}` in `assembly-line.yaml` and in an agent file's frontmatter is filled when the collection is applied. See [Placeholders](/floor/specs/placeholders/#3-environment-variables).
 
 ## 4. Checking a collection
 
@@ -80,7 +80,7 @@ collection ok: 1 agents, 1 pipelines, 0 extensions
 A refused file prints `<path>: <reason>` and the exit code is 1.
 
 ```text
-write-note/pipeline.yaml: no arg carries subject: true, so the floor cannot refuse a second run for the same subject
+write-note/assembly-line.yaml: no arg carries subject: true, so the floor cannot refuse a second run for the same subject
 ```
 
 Lint needs no floor and no environment variables.
@@ -103,9 +103,9 @@ A host can load a collection its own way. Lore reads one from a git repository o
 
 The starter collection is in [`examples/starter`](https://github.com/re-cinq/floor/tree/main/examples/starter).
 
-<!-- generated:example:starter/write-note/pipeline.yaml -->
+<!-- generated:example:starter/write-note/assembly-line.yaml -->
 
-````yaml title="write-note/pipeline.yaml"
+````yaml title="write-note/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: write-note

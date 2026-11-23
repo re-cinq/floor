@@ -4,7 +4,7 @@ import type { CollectionOverlayInput, OverlayAgent } from "./agents.js";
 import { withEnvironment } from "./environment.js";
 import { enforce } from "./enforce.js";
 import { pipelineProblems } from "./lint-rules.js";
-import { pipelineFolderOf, type CollectionFile } from "./paths.js";
+import { FORMER_LINE_FILE, LINE_FILE, pipelineFolderOf, type CollectionFile } from "./paths.js";
 import { attempt, type Refusal } from "./refusal.js";
 import { readPipelineFile } from "../file.js";
 import { pipelineOf, type Pipeline } from "../shape.js";
@@ -18,8 +18,15 @@ export function pipelinesOverlay(input: CollectionOverlayInput, collectionAgents
   const pipelines: Pipeline[] = [];
   const refused: Refusal[] = [];
 
-  for (const file of pipelineFilesOf(input.files)) {
-    const result = attempt(file.path, () => pipelineOfFile(file, input, collectionAgents));
+  const lineFiles = pipelineFilesOf(input.files);
+  const superseded = supersededBy(lineFiles);
+
+  for (const file of lineFiles) {
+    const result = attempt(file.path, () => {
+      enforce(!superseded.has(file.path), `the folder ${file.folder} holds its line twice: ${LINE_FILE} is read, so remove ${FORMER_LINE_FILE}`);
+
+      return pipelineOfFile(file, input, collectionAgents);
+    });
 
     if ("refusal" in result) {
       refused.push(result.refusal);
@@ -30,6 +37,14 @@ export function pipelinesOverlay(input: CollectionOverlayInput, collectionAgents
   }
 
   return { pipelines, refused };
+}
+
+// The former name's file, in a folder that holds the line under its name too: two files would be two versions of one line.
+function supersededBy(lineFiles: readonly PipelineEntry[]): Set<string> {
+  const named = new Set(lineFiles.filter((file) => file.path.endsWith(`/${LINE_FILE}`)).map((file) => file.folder));
+  const former = lineFiles.filter((file) => file.path.endsWith(`/${FORMER_LINE_FILE}`) && named.has(file.folder));
+
+  return new Set(former.map((file) => file.path));
 }
 
 function pipelineFilesOf(files: readonly CollectionFile[]): PipelineEntry[] {
