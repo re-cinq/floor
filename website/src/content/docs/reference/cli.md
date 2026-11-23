@@ -23,7 +23,7 @@ sidebar:
 
 | Option | For | What it does |
 | --- | --- | --- |
-| `--floor <url>` | Every command but `lint` | The floor to talk to |
+| `--floor <url>` | Every command but `lint` | The floor to talk to. Leave it out when `FLOOR_API_URL` is set |
 | `--out <file>` | `export` | Writes to a file instead of standard output |
 | `--dir <dir>` | `export --all` | The folder to write into |
 | `--all` | `export` | Every line |
@@ -34,6 +34,7 @@ sidebar:
 
 | Variable | What it holds |
 | --- | --- |
+| `FLOOR_API_URL` | The floor to talk to, when `--floor` is not given. A station's worker reads the same name |
 | `FLOOR_SERVICE_TOKEN` | The service token. Every command but `lint` needs it |
 | `${NAME}` | In the files of a collection, filled from the environment by `apply` |
 
@@ -47,8 +48,8 @@ sidebar:
 ## Examples
 
 ```bash
-npx @re-cinq/floor-pipeline export launch-approval --floor $FLOOR_API_URL --out launch.yaml
-npx @re-cinq/floor-pipeline export --all --dir backup/ --floor $FLOOR_API_URL
+npx @re-cinq/floor-pipeline export launch-approval --out launch.yaml
+npx @re-cinq/floor-pipeline export --all --dir backup/
 ```
 
 ```text
@@ -56,7 +57,7 @@ npx @re-cinq/floor-pipeline export --all --dir backup/ --floor $FLOOR_API_URL
 ```
 
 ```bash
-npx @re-cinq/floor-pipeline import launch.yaml --floor $FLOOR_API_URL
+npx @re-cinq/floor-pipeline import launch.yaml
 ```
 
 ```text
@@ -66,7 +67,7 @@ launch.yaml:
 ```
 
 ```bash
-npx @re-cinq/floor-pipeline migrate migrations/ --floor $FLOOR_API_URL --wait-ready 180
+npx @re-cinq/floor-pipeline migrate migrations/ --wait-ready 180
 ```
 
 ```text
@@ -86,7 +87,7 @@ collection ok: 0 agents, 1 pipelines, 0 extensions
 ```
 
 ```bash
-npx @re-cinq/floor-pipeline apply collection/ --floor $FLOOR_API_URL
+npx @re-cinq/floor-pipeline apply collection/
 ```
 
 ```text

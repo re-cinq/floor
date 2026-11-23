@@ -8,13 +8,16 @@ The tool speaks the HTTP API of a [floor](https://github.com/re-cinq/floor) and 
 npm install @re-cinq/floor-pipeline      # the command is floor-pipeline
 
 export FLOOR_SERVICE_TOKEN=...
+export FLOOR_API_URL=http://localhost:8180
 
-floor-pipeline export code-review --floor http://localhost:8180 > code-review.yaml
-floor-pipeline export --all --dir backup/ --floor http://localhost:8180
-floor-pipeline import code-review.yaml --floor http://localhost:8180
-floor-pipeline migrate pipelines/ --floor http://localhost:8180
+floor-pipeline export code-review > code-review.yaml
+floor-pipeline export --all --dir backup/
+floor-pipeline import code-review.yaml
+floor-pipeline migrate pipelines/
 floor-pipeline migrate pipelines/ --floor http://floor-api:8080 --wait-ready 180
 ```
+
+`--floor <url>` names the floor for one call and wins over `FLOOR_API_URL`, the name a station's worker reads too.
 
 | command | what it does |
 |---|---|
@@ -123,7 +126,7 @@ collection ok: 1 agents, 1 pipelines, 0 extensions
 `apply` puts a collection to a floor: its agents, then each line with its stations. `${NAME}` in its files is filled from the environment. When a file is refused, nothing is put.
 
 ```
-FLOOR_SERVICE_TOKEN=... floor-pipeline apply collection/ --floor http://localhost:8180
+floor-pipeline apply collection/
 ```
 
 ## Migrations

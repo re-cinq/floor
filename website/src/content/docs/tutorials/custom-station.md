@@ -37,7 +37,7 @@ line:
     - { from: shout, to: broken, on: failed }
 ```
 
-Save it as `shout.yaml` and import it with `npx @re-cinq/floor-pipeline import shout.yaml --floor $FLOOR_API_URL`.
+Save it as `shout.yaml` and import it with `npx @re-cinq/floor-pipeline import shout.yaml`.
 
 ## 2. Write the worker with the SDK
 
