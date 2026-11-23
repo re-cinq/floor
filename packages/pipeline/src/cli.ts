@@ -6,6 +6,7 @@ import { parseArgs } from "node:util";
 import { exportPipeline, lineIds } from "./export.js";
 import { readPipelineFile, writePipelineFile } from "./file.js";
 import type { Floor } from "./floor.js";
+import { floorGiven } from "./floor-given.js";
 import { importPipeline, type Put } from "./import.js";
 import { migrate } from "./migrate.js";
 import { applyCollection } from "./collection/apply.js";
@@ -14,6 +15,7 @@ import { waitUntilReady } from "./ready.js";
 import { fileOf, pipelineOf } from "./shape.js";
 
 const USAGE = `floor-pipeline <what to do> --floor <url>      with FLOOR_SERVICE_TOKEN
+                               --floor may be left out when FLOOR_API_URL names the floor
 
   export <line>              one pipeline, written to standard output, or to --out <file>
   export --all --dir <dir>   every pipeline, one file each, named after its line: a backup
@@ -47,7 +49,7 @@ async function main(): Promise<void> {
   const run = commands[command];
 
   if (!run) throw new Error(USAGE);
-  const floor = floorOf(told);
+  const floor = floorGiven(told.values.floor, process.env, USAGE);
 
   await waitedFor(floor, told.values["wait-ready"]);
   await run(floor, told);
@@ -59,15 +61,6 @@ async function waitedFor(floor: Floor, waitReady: string | undefined): Promise<v
 
   if (!(seconds > 0)) throw new Error(`--wait-ready is a number of seconds above 0, and not "${waitReady}"`);
   await waitUntilReady({ floorUrl: floor.url, seconds });
-}
-
-function floorOf(told: Given): Floor {
-  const token = process.env.FLOOR_SERVICE_TOKEN;
-  const url = told.values.floor;
-
-  if (!url || !token) throw new Error(`a floor is named with --floor, and reached with FLOOR_SERVICE_TOKEN\n\n${USAGE}`);
-
-  return { url: url.replace(/\/$/, ""), token };
 }
 
 async function exported(floor: Floor, told: Given): Promise<void> {

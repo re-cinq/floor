@@ -73,10 +73,10 @@ At the end, an empty folder is a [collection](/floor/concepts/collection/) with 
    collection ok: 1 agents, 1 pipelines, 0 extensions
    ```
 
-6. Apply it with the image set.
+6. Apply it with the image set. `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` say which floor.
 
    ```sh
-   AGENT_IMAGE=ghcr.io/acme/agent:1 npx @re-cinq/floor-pipeline apply my-collection --floor $FLOOR_API_URL
+   AGENT_IMAGE=ghcr.io/acme/agent:1 npx @re-cinq/floor-pipeline apply my-collection
    ```
 
    ```text

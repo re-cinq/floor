@@ -73,7 +73,7 @@ stations:
 <!-- /generated -->
 
 ```sh
-npx floor-pipeline apply examples/first-run --floor $FLOOR_API_URL
+npx floor-pipeline apply examples/first-run
 ```
 
 ```text
