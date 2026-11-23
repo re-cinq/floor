@@ -6,6 +6,7 @@ import { useStudio, type StudioAddress } from "@/socket/use-studio";
 import { useColorScheme } from "@/theme/use-color-scheme";
 import LineScreen from "./LineScreen";
 import type { SavePrompt } from "./PromptEditor";
+import type { SaveSettings } from "./SettingsEditor";
 import type { InspectorActions } from "./Inspector";
 import { resolveSelection, type ResolvedSelection } from "./resolve-selection";
 import { AddressNeeded, CannotConnect, ChooseLine, Connecting, EmptyCollection, MissingLine, Refused, Unreadable } from "./Screens";
@@ -24,6 +25,7 @@ export default function App() {
   const resolved = resolveSelection(snapshot.collection, selection);
   const lineId = resolved.line?.id;
   const savePrompt = promptSaver(connection, lineId, resolved.node);
+  const saveSettings = settingsSaver(connection, lineId, resolved.node);
 
   return (
     <div className={shell.shell}>
@@ -35,7 +37,7 @@ export default function App() {
         scheme={{ pref: scheme.pref, onChoose: scheme.choose }}
       />
       <main className={shell.main}>
-        {address ? screenFor(snapshot, { requestedLine: selection.line, inspector: { savePrompt, tabChoice: { tab: selection.tab, choose: (tab) => select({ line: lineId, node: resolved.node?.id, tab }) } }, resolved, onSelectNode: (node) => select(node ? { line: lineId, node, tab: selection.tab } : { line: lineId }) }) : <AddressNeeded />}
+        {address ? screenFor(snapshot, { requestedLine: selection.line, inspector: { savePrompt, saveSettings, tabChoice: { tab: selection.tab, choose: (tab) => select({ line: lineId, node: resolved.node?.id, tab }) } }, resolved, onSelectNode: (node) => select(node ? { line: lineId, node, tab: selection.tab } : { line: lineId }) }) : <AddressNeeded />}
       </main>
     </div>
   );
@@ -49,6 +51,16 @@ function promptSaver(connection: StudioConnection | undefined, line: string | un
   const { name } = agent;
 
   return (prompt, version) => connection.writeAgent({ line, agent: name, prompt, version });
+}
+
+/** Settings are saved with the agent's prompt as it is, against the file version the form was read at. */
+function settingsSaver(connection: StudioConnection | undefined, line: string | undefined, node: NodeView | undefined): SaveSettings | undefined {
+  const agent = node?.agent;
+
+  if (!connection || !line || !agent?.version) return undefined;
+  const { name, prompt } = agent;
+
+  return (settings, version) => connection.writeAgent({ line, agent: name, prompt: prompt ?? "", settings, version });
 }
 
 function addressOfPage(): StudioAddress | undefined {

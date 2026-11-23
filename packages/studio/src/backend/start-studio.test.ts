@@ -197,6 +197,27 @@ describe("startStudio", () => {
     });
   });
 
+  it("refuses agent.write naming timeout_minutes and leaves the file untouched when timeout_minutes is the string \"30\"", async () => {
+    const { dir, client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({
+      id: "w6",
+      type: "agent.write",
+      line: "flow",
+      agent: "worker",
+      prompt: "Work {ticket}.\n",
+      settings: { image: "acme/agent:2", timeout_minutes: "30" },
+      version: textVersion(agentMarkdown("Work {ticket}.")),
+    });
+    const answer = await client.next();
+
+    expect({ answer, file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toMatchObject({
+      answer: { type: "refused", reason: expect.stringMatching(/timeout_minutes/) },
+      file: agentMarkdown("Work {ticket}."),
+    });
+  });
+
   it("refuses to start on a directory that does not exist", async () => {
     await expect(startStudio({ dir: "/no/such/collection", port: 0, hostKeys: [] })).rejects.toThrow(new Error("/no/such/collection is not a directory"));
   });

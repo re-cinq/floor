@@ -89,7 +89,7 @@ export class StudioConnection {
   }
 
   /** Asks the backend to write an agent's prompt, given the version of the file the page read. */
-  writeAgent(fields: { line: string; agent: string; prompt: string; version: string }): Promise<unknown> {
+  writeAgent(fields: { line: string; agent: string; prompt: string; settings?: Record<string, unknown>; version: string }): Promise<unknown> {
     return this.request("agent.write", fields);
   }
 

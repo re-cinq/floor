@@ -4,6 +4,7 @@ import InspectorTabs, { type InspectorTab, type TabChoice } from "./InspectorTab
 import styles from "./line.module.css";
 import type { SavePrompt } from "./PromptEditor";
 import PromptPanel from "./PromptPanel";
+import type { SaveSettings } from "./SettingsEditor";
 import SettingsPanel from "./SettingsPanel";
 import StationPanel from "./StationPanel";
 
@@ -11,6 +12,7 @@ import StationPanel from "./StationPanel";
 export interface InspectorActions {
   tabChoice?: TabChoice;
   savePrompt?: SavePrompt;
+  saveSettings?: SaveSettings;
 }
 
 /** The node inspector's place. It names the selected node and its station and offers the Station, Events, Prompt and Settings tabs; their panels are built later. */
@@ -22,7 +24,7 @@ export default function Inspector({ node, actions = {} }: { node: NodeView | und
         <>
           <p className={styles.inspectorNode}>{node.id}</p>
           <p className="muted">{node.station ? `station ${node.station}` : "a marker, with no station"}</p>
-          <InspectorTabs tabChoice={actions.tabChoice} tabs={tabsFor(node)} panels={{ Station: <StationPanel node={node} />, Events: <EventsPanel node={node} />, Prompt: <PromptPanel node={node} onSave={actions.savePrompt} />, Settings: <SettingsPanel node={node} /> }} />
+          <InspectorTabs tabChoice={actions.tabChoice} tabs={tabsFor(node)} panels={{ Station: <StationPanel node={node} />, Events: <EventsPanel node={node} />, Prompt: <PromptPanel node={node} onSave={actions.savePrompt} />, Settings: <SettingsPanel node={node} onSave={actions.saveSettings} /> }} />
         </>
       ) : (
         <p className="muted">Select a node in the graph to inspect it.</p>

@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { basename, join, resolve } from "node:path";
 import type { Duplex } from "node:stream";
 import { enforce } from "@re-cinq/floor-assembly-lines";
-import { collectionFilesIn } from "@re-cinq/floor-pipeline";
+import { collectionFilesIn, readAgentFile } from "@re-cinq/floor-pipeline";
 import { WebSocket, WebSocketServer } from "ws";
 import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
@@ -51,7 +51,10 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   const writeAgent = async (file: string, edit: AgentEdit) => {
     const path = join(dir, file);
 
-    await writeFile(path, editedAgentText(file, await readFile(path, "utf8"), edit));
+    const text = editedAgentText(file, await readFile(path, "utf8"), edit);
+
+    readAgentFile(basename(file, ".md"), text, hostKeys);
+    await writeFile(path, text);
   };
 
   const context: StudioContext = { readCollection, writeAgent };

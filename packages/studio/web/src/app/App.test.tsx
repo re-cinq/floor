@@ -1,38 +1,17 @@
 // @vitest-environment jsdom
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { basename } from "node:path";
+import { rmSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
-import { TYPO_COLLECTION, WORKER_COLLECTION, agentMarkdown, lineYaml } from "../../../src/backend/collection-view.fixtures";
+import { TYPO_COLLECTION, WORKER_COLLECTION, lineYaml } from "../../../src/backend/collection-view.fixtures";
 import { collectionOnDisk } from "../../../src/backend/studio.fixtures";
-import { startStudio, type Studio } from "../../../src/backend/start-studio";
+import { startStudio } from "../../../src/backend/start-studio";
 import App from "./App";
+import { closeStudios, openPage, running } from "./app-page.fixtures";
 
-const running: Studio[] = [];
-
-afterEach(async () => {
-  await Promise.all(running.splice(0).map((studio) => studio.close()));
-  window.location.hash = "";
-});
-
-interface OpenedPage {
-  dir: string;
-  studio: Studio;
-}
-
-async function openPage(files: CollectionFile[], options: { token?: string; hash?: string } = {}): Promise<OpenedPage> {
-  const dir = collectionOnDisk(files);
-  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [] });
-
-  running.push(studio);
-  window.location.hash = `#${new URLSearchParams({ socket: studio.url, token: options.token ?? studio.token }).toString()}${options.hash ?? ""}`;
-  render(<App />);
-
-  return { dir, studio };
-}
+afterEach(closeStudios);
 
 const BROKEN_LINE: CollectionFile = { path: "broken/assembly-line.yaml", text: "line: [unclosed" };
 
@@ -257,106 +236,6 @@ describe("App line view", () => {
 
     await waitFor(() => expect(countEdges()).toBe(before + 1));
     await screen.findByRole("button", { name: /^work, agent/, pressed: true });
-  });
-});
-
-describe("App prompt editing", () => {
-  it("writes 'Work on {ticket} carefully.' to the agent's file when the prompt is edited and saved", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-
-    const editor = await within(await screen.findByRole("tabpanel", { name: "Prompt" })).findByRole("textbox", { name: "Prompt" });
-
-    await userEvent.clear(editor);
-    await userEvent.type(editor, "Work on {{ticket} carefully.{Enter}");
-    await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
-
-    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work on {ticket} carefully.")));
-  });
-
-  it("keeps the unsaved ' edited' in the Prompt textbox when the line file changes on disk", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-    const editor = await within(await screen.findByRole("tabpanel", { name: "Prompt" })).findByRole("textbox", { name: "Prompt" });
-    const grown = lineYaml("flow", "worker").replace("    - id: done\n", "    - id: done\n    - id: extra\n").replace("      on: success\n", "      on: success\n    - from: work\n      to: extra\n      on: failed\n");
-
-    await userEvent.type(editor, " edited");
-    writeFileSync(join(dir, "flow", "assembly-line.yaml"), grown);
-    await screen.findAllByRole("button", { name: /^extra\b/ });
-
-    expect((screen.getByRole("textbox", { name: "Prompt" }) as HTMLTextAreaElement).value).toMatch(/ edited$/);
-  });
-
-  it("shows 'Changed elsewhere.' in the Prompt textbox when the agent file changes on disk without unsaved edits", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
-    await within(panel).findByRole("textbox", { name: "Prompt" });
-
-    writeFileSync(join(dir, "flow/agents/worker.md"), agentMarkdown("Changed elsewhere."));
-
-    await waitFor(() => expect((screen.getByRole("textbox", { name: "Prompt" }) as HTMLTextAreaElement).value).toBe("Changed elsewhere.\n"));
-  });
-
-  it("shows 'Changed elsewhere.' in the Prompt textbox when 'Take the version on disk' is chosen over unsaved ' edited'", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
-
-    await userEvent.type(await within(panel).findByRole("textbox", { name: "Prompt" }), " edited");
-    writeFileSync(join(dir, "flow/agents/worker.md"), agentMarkdown("Changed elsewhere."));
-    await userEvent.click(await screen.findByRole("button", { name: "Take the version on disk" }));
-
-    expect(await screen.findByDisplayValue("Changed elsewhere.")).toBeDefined();
-  });
-
-  it("writes 'Then more.' to the agent's file when saved after the prompt changed on disk to 'Changed elsewhere.'", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
-    await within(panel).findByRole("textbox", { name: "Prompt" });
-
-    writeFileSync(join(dir, "flow/agents/worker.md"), agentMarkdown("Changed elsewhere."));
-    const editor = await screen.findByDisplayValue("Changed elsewhere.");
-    await userEvent.clear(editor);
-    await userEvent.type(editor, "Then more.{Enter}");
-    await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
-
-    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Then more.")));
-  });
-
-  it("alerts 'changed on disk' and keeps the file as 'Changed elsewhere.' when the file changed after the page read it", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
-
-    await userEvent.type(await within(panel).findByRole("textbox", { name: "Prompt" }), " edited");
-    writeFileSync(join(dir, "flow/agents/worker.md"), agentMarkdown("Changed elsewhere."));
-    await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
-
-    expect([(await within(panel).findByRole("alert")).textContent, readFileSync(join(dir, "flow/agents/worker.md"), "utf8")]).toEqual([
-      expect.stringMatching(/changed on disk/),
-      agentMarkdown("Changed elsewhere."),
-    ]);
-  });
-
-  it("keeps the file as 'Changed elsewhere.' when Save is pressed after the disk change was pushed, before choosing a version", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
-
-    await userEvent.type(await within(panel).findByRole("textbox", { name: "Prompt" }), " edited");
-    writeFileSync(join(dir, "flow/agents/worker.md"), agentMarkdown("Changed elsewhere."));
-    await screen.findByRole("button", { name: "Take the version on disk" });
-    await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
-    await within(panel).findByRole("alert").catch(() => new Promise((settle) => setTimeout(settle, 500)));
-
-    expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Changed elsewhere."));
-  });
-
-  it("writes 'Work {ticket}.' followed by ' edited' over the disk version when 'Keep my edits' is chosen and the prompt is saved", async () => {
-    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
-    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
-
-    await userEvent.type(await within(panel).findByRole("textbox", { name: "Prompt" }), " edited");
-    writeFileSync(join(dir, "flow/agents/worker.md"), agentMarkdown("Changed elsewhere."));
-    await userEvent.click(await screen.findByRole("button", { name: "Keep my edits" }));
-    await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
-
-    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe("---\nimage: acme/agent:2\ntimeout_minutes: 10\n---\nWork {ticket}.\n edited"));
   });
 });
 
