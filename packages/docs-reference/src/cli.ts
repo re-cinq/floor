@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { regionOf } from "./generate.js";
 import { reference } from "./reference.js";
 import { fillRegions } from "./regions.js";
+import { overBudget } from "./word-budget.js";
 
 const ROOT = join(import.meta.dirname, "../../..");
 const PAGES = join(ROOT, "website/src/content/docs");
@@ -26,6 +27,18 @@ async function main(): Promise<void> {
   if (!isCheck) await Promise.all(changed.map(async (each) => mkdir(dirname(each.path), { recursive: true }).then(async () => writeFile(each.path, each.text))));
   changed.forEach((each) => console.log(`${isCheck ? "stale" : "written"}: ${each.path.slice(ROOT.length + 1)}`));
   if (isCheck && changed.length > 0) throw new Error("the website's generated parts are behind the code: run npm run docs:generate");
+  enforceBudgets(all);
+}
+
+// A page says in its frontmatter how many words of prose it may ask a person to read.
+function enforceBudgets(all: Written[]): void {
+  const over = all.flatMap((each) => {
+    const by = overBudget(each.text);
+
+    return by ? [`${each.path.slice(ROOT.length + 1)}: ${by.words} words of prose, and its wordBudget is ${by.budget}`] : [];
+  });
+
+  if (over.length > 0) throw new Error(`${over.join("\n")}\ncut what does not change what the reader does next`);
 }
 
 async function pages(): Promise<Written[]> {

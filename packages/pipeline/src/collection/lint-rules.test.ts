@@ -33,8 +33,8 @@ describe("pipelineProblems — the inputs an agent's recipe reads", () => {
     ]);
   });
 
-  it("reports nothing for the placeholders the floor fills: run_id, line_id, node_id, git_credential and git_credential_url", () => {
-    const floorFilled = new Map([["spec-tickets-decompose", "{run_id} {line_id} {node_id} {git_credential} {git_credential_url}"]]);
+  it("reports nothing for the placeholders the floor fills from the run, around a retry and in a fan-out branch", () => {
+    const floorFilled = new Map([["spec-tickets-decompose", "{run_id} {line_id} {node_id} {git_credential} {git_credential_url} {previous_error} {previous_failures} {item}"]]);
 
     expect(pipelineProblems(SPEC_TICKETS_DECOMPOSE_REUSED, floorFilled)).toEqual([]);
   });

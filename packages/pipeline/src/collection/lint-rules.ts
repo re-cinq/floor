@@ -21,17 +21,14 @@ import {
   type Station,
 } from "./lint-shape.js";
 
+export { PIPELINE_RULES } from "./lint-shape.js";
 export type { PipelineProblem, PipelineRule };
 
-// The floor fills these from the run itself, so no line declares them.
-const FLOOR_SUPPLIED = new Set(["run_id", "line_id", "node_id", "git_credential", "git_credential_url"]);
+// Filled by the floor around a retry or a fan-out branch, never seeded or produced by a line. An agent's prompt is given them whether its station declares them or not.
+const FLOOR_FILLED_NEEDS = new Set(["previous_error", "previous_failures", "item"]);
 
-// Filled by the floor around a retry or a fan-out branch, never seeded or produced by a line.
-const FLOOR_FILLED_NEEDS = new Set([
-  "previous_error",
-  "previous_failures",
-  "item",
-]);
+// The floor fills these from the run itself, so no line declares them.
+const FLOOR_SUPPLIED = new Set(["run_id", "line_id", "node_id", "git_credential", "git_credential_url", ...FLOOR_FILLED_NEEDS]);
 
 const PLACEHOLDER = /\{([a-z_][a-z0-9_.]*)\}/g;
 

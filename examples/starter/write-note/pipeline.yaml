@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
+line:
+  id: write-note
+  entry: write
+  exit: done
+  fail: stopped
+  start:
+    on:
+      - note.requested
+    args:
+      topic: "{topic}"
+  args:
+    topic:
+      kind: value
+      subject: true
+  nodes:
+    - id: write
+      station: write-note
+    - id: publish
+      station: publish-note
+    - id: done
+    - id: stopped
+  edges:
+    - from: write
+      to: publish
+      on: success
+    - from: write
+      to: write
+      on: failed
+      iteration_max: 1
+    - from: publish
+      to: done
+      on: success
+    - from: publish
+      to: stopped
+      on: failed
+stations:
+  write-note:
+    description: An agent writes one sentence about the topic into a file.
+    kind: agent
+    agent_definition: note-writer
+    outcomes:
+      - success
+      - failed
+    result_required: true
+    needs:
+      - name: topic
+        kind: value
+    produces:
+      - name: note
+        kind: file
+        path: note.md
+  publish-note:
+    description: A worker of yours reads the note and publishes it.
+    kind: service
+    outcomes:
+      - success
+      - failed
+    needs:
+      - name: note
+        kind: file
+    produces:
+      - name: note_url
+        kind: value

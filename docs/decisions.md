@@ -654,6 +654,10 @@ and it spares a recipe younger than ten minutes.
   `validateLine` or `agentConfigSchema`: both live in private packages a
   published one cannot depend on. A collection that passes lint can still be
   refused when it is put.
+- `floor-pipeline apply <dir>` puts a collection to a floor with no host:
+  agents first, then each line. It keeps the repository variants the floor
+  holds for an agent, and takes nothing away when a file leaves the
+  collection.
 - An agent file's frontmatter is strict. A key that is a host's own, such as
   lore's `execution_mode`, is named with `--host-key` and is not the floor's
   to read.
