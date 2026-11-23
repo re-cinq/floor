@@ -1,7 +1,7 @@
 // A line of the collection view as the definition the graph draws.
 import type { LineView, NodeView } from "@protocol";
 import type { StartedBy } from "@re-cinq/floor-assembly-lines";
-import type { AssemblyLineDefinition, DefinitionNode } from "./assembly-line-definition";
+import type { AssemblyLineDefinition, DefinitionNode } from "@re-cinq/floor-graph";
 
 export function graphOf(line: LineView): AssemblyLineDefinition {
   const namedByProblems = new Set(line.problems.map(({ node }) => node));

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { LineView, NodeView } from "@protocol";
 import { graphOf } from "@/graph/graph-of";
-import RunGraphView from "@/graph/RunGraphView";
+import { RunGraphView } from "@re-cinq/floor-graph";
 import Inspector, { type InspectorActions } from "./Inspector";
 import LineHeader from "./LineHeader";
 import ProblemsList from "./ProblemsList";
