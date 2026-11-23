@@ -1,7 +1,7 @@
 // zod mirrors of packages/store's definition body types (docs/entities/*.md), for POST/PUT validation.
 import { z } from "zod";
 import { isValidCron, isValidTimezone } from "@floor/store";
-import { agentConfigSchema } from "./agent-config.js";
+import { agentConfigSchema } from "@re-cinq/floor-pipeline/agent-config";
 
 const whenValue = z.union([z.string(), z.number(), z.boolean()]);
 

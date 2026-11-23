@@ -29,6 +29,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./agent-config": {
+      "types": "./dist/agent-config-schema.d.ts",
+      "default": "./dist/agent-config-schema.js"
     }
   },
   "files": [

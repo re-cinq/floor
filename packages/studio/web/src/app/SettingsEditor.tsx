@@ -1,7 +1,9 @@
 import { useState, type ChangeEvent } from "react";
 import type React from "react";
 import type { NodeView } from "@protocol";
+import ConfigForm from "./ConfigForm";
 import DiskVersionChoice from "./DiskVersionChoice";
+import { envPlaceholder } from "./env-placeholder";
 import SaveButton from "./SaveButton";
 import { CUSTOM, MODEL_GROUPS, isKnownModel } from "./model-choices";
 import { isNested, settingText, settingsDraft, typedSettings, type Settings } from "./settings-draft";
@@ -25,6 +27,7 @@ export default function SettingsEditor({ agent, onSave }: { agent: NonNullable<N
       {Object.entries(edited).map(([key, value]) => (
         <SettingField key={key} settingKey={key} value={value} isNested={isNested(seed.settings[key])} onEdit={editField} />
       ))}
+      <ConfigForm config={isNested(seed.settings.config) ? (seed.settings.config as Settings) : {}} />
       <SaveButton label="Save settings" onSave={() => onSave(typedSettings(seed.settings, edited), seed.version)} />
       <DiskVersionChoice
         isPending={settingsDraft.hasDiskVersion(received)}
@@ -44,19 +47,27 @@ interface SettingFieldProps {
 
 function SettingField({ settingKey, value, isNested: nested, onEdit }: SettingFieldProps) {
   const control = { "aria-label": settingKey, value: settingText(value), onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => onEdit(settingKey, event.target.value) };
-  const kind = settingKey === "model" ? "model" : nested ? "nested" : "plain";
+  const envName = envPlaceholder(settingText(value));
+  const kind = envName ? "env" : settingKey === "model" ? "model" : nested ? "nested" : "plain";
 
   return (
     <label>
       <span>{settingKey}</span>
-      {controlsByKind[kind](control)}
+      {controlsByKind[kind]({ ...control, envName, onOverride: () => onEdit(settingKey, "") })}
     </label>
   );
 }
 
-type ControlProps = React.JSX.IntrinsicElements["input"] & React.JSX.IntrinsicElements["textarea"] & React.JSX.IntrinsicElements["select"];
+type ControlProps = React.JSX.IntrinsicElements["input"] & React.JSX.IntrinsicElements["textarea"] & React.JSX.IntrinsicElements["select"] & { envName?: string; onOverride?: () => void };
 
-const controlsByKind: Record<"model" | "nested" | "plain", (props: ControlProps) => React.JSX.Element> = {
+const controlsByKind: Record<"env" | "model" | "nested" | "plain", (props: ControlProps) => React.JSX.Element> = {
+  env: ({ envName, onOverride }) => (
+    <>
+      <code>env: {envName}</code>
+      <span>Filled in from the host's {envName} when the collection is applied.</span>
+      <button type="button" aria-label="Override" onClick={onOverride}>Override</button>
+    </>
+  ),
   model: (props) => <ModelSelect {...props} />,
   nested: (props) => <textarea {...props} />,
   plain: (props) => <input {...props} />,
@@ -68,7 +79,7 @@ function ModelSelect(props: ControlProps) {
 
   return (
     <>
-      <select {...props} value={isCustom ? CUSTOM : model}>
+      <select {...props} value={isCustom ? "" : model}>
         {MODEL_GROUPS.map(({ agent, models }) => (
           <optgroup key={agent} label={agent}>
             {models.map((known) => (
@@ -76,7 +87,7 @@ function ModelSelect(props: ControlProps) {
             ))}
           </optgroup>
         ))}
-        <option value={CUSTOM}>{CUSTOM}</option>
+        <option value="">{CUSTOM}</option>
       </select>
       {isCustom && <input aria-label="Custom model" value={model} onChange={props.onChange} />}
     </>

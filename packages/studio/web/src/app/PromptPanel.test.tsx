@@ -20,6 +20,26 @@ describe("Inspector Prompt panel", () => {
     expect(within(screen.getByRole("tabpanel", { name: "Prompt" })).getByText("Review the pull request.")).toBeTruthy();
   });
 
+  it("shows 'Review the pull request {diff}.' and 'Then reply.' as two paragraphs for the prompt wrapped after 'pull'", async () => {
+    const reviewerNode = nodeView({
+      id: "review",
+      station: "review",
+      kind: "agent",
+      agent: { name: "reviewer", file: "agents/reviewer.md", version: null, prompt: "Review the pull\nrequest {diff}.\n\nThen reply.", settings: {} },
+      placeholders: {
+        placeholders: [{ name: "diff", source: "need-path", state: "filled", filledBy: ["fetch"], path: [] }],
+        unused: [],
+      },
+    });
+
+    render(<Inspector node={reviewerNode} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Prompt" }));
+
+    const promptPanel = screen.getByRole("tabpanel", { name: "Prompt" });
+
+    expect(promptPanel.querySelector("section p")?.textContent).toBe("Review the pull request {diff}.\n\nThen reply.");
+  });
+
   it("marks {diff} as filled in the Prompt panel for the prompt Review {diff} now.", async () => {
     const reviewerNode = nodeView({
       id: "review",

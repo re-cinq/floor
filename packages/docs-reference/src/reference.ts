@@ -1,6 +1,6 @@
 // The schemas a person's files are checked against, made from the floor's own: the pipeline file and the agent file, in the file's spelling.
 import { agentDefinitionBodySchema, lineBodySchema, scheduleBodySchema, stationBodySchema } from "@floor/api/dist/schemas.js";
-import { agentConfigSchema } from "@floor/api/dist/agent-config.js";
+import { agentConfigSchema } from "@re-cinq/floor-pipeline/agent-config";
 import { FILE_SPELLING, agentFrontmatterSchema, pipelineFileSchema } from "@re-cinq/floor-pipeline";
 import { z } from "zod";
 import type { JsonSchema } from "./field-table.js";

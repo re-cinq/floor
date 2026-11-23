@@ -1,4 +1,5 @@
 export { pipelineFileSchema, readPipelineFile, writePipelineFile, type PipelineFile } from "./file.js";
+export { agentConfigSchema, type AgentConfig } from "./agent-config-schema.js";
 export { FILE_SPELLING, fileOf, pipelineOf, type Pipeline } from "./shape.js";
 export { exportPipeline, lineIds } from "./export.js";
 export { importPipeline, type Put } from "./import.js";

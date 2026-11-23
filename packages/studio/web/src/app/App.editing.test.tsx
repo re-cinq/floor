@@ -99,7 +99,7 @@ describe("App prompt editing", () => {
     ]);
   });
 
-  it("writes 'Work {ticket}.' followed by ' edited' over the disk version when 'Keep my edits' is chosen and the prompt is saved", async () => {
+  it("writes 'Work {ticket}.' joined with ' edited' over the disk version when 'Keep my edits' is chosen and the prompt is saved", async () => {
     const { dir, editor } = await openPromptEditor();
 
     await userEvent.type(editor, " edited");
@@ -107,7 +107,22 @@ describe("App prompt editing", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Keep my edits" }));
     await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
 
-    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work {ticket}.\n edited")));
+    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work {ticket}. edited")));
+  });
+});
+
+describe("App prompt unwrapping on edit", () => {
+  it("writes 'Work on {ticket} now. please' without the soft break when ' please' is appended to 'Work on\\n{ticket} now.' and saved", async () => {
+    const wrappedCollection = [WORKER_COLLECTION[0], { path: "flow/agents/worker.md", text: agentMarkdown("Work on\n{ticket} now.") }];
+    const { dir } = await openPage(wrappedCollection, { hash: "&line=flow&node=work&tab=Prompt" });
+    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
+    await userEvent.click(await within(panel).findByRole("button", { name: "Edit prompt" }));
+    const editor = await within(panel).findByRole("textbox", { name: "Prompt" });
+
+    await userEvent.type(editor, " please");
+    await userEvent.click(within(panel).getByRole("button", { name: "Save prompt" }));
+
+    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work on {ticket} now. please")));
   });
 });
 
