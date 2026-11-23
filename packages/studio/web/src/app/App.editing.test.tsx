@@ -10,6 +10,17 @@ import { closeStudios, openPage, openPromptEditor } from "./app-page.fixtures";
 afterEach(closeStudios);
 
 describe("App prompt editing", () => {
+  it("shows no Prompt textbox until Edit prompt is pressed, then 'Work {ticket}.' in it", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
+    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
+    const beforeEdit = await within(panel).findByRole("button", { name: "Edit prompt" }).then(() => within(panel).queryByRole("textbox", { name: "Prompt" }));
+
+    await userEvent.click(within(panel).getByRole("button", { name: "Edit prompt" }));
+    const editor = (await within(panel).findByRole("textbox", { name: "Prompt" })) as HTMLTextAreaElement;
+
+    expect([beforeEdit, editor.value]).toEqual([null, "Work {ticket}.\n"]);
+  });
+
   it("writes 'Work on {ticket} carefully.' to the agent's file when the prompt is edited and saved", async () => {
     const { dir, editor } = await openPromptEditor();
 
@@ -97,6 +108,34 @@ describe("App prompt editing", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
 
     await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work {ticket}.\n edited")));
+  });
+});
+
+describe("App extra prompt editing", () => {
+  it("shows 'Work {ticket}.' in Prompt and 'Also check the tests.' in Extra prompt when the agent has both worker.md and worker.extra.md", async () => {
+    const extraCollection = [...WORKER_COLLECTION, { path: "flow/agents/worker.extra.md", text: "Also check the tests.\n" }];
+    await openPage(extraCollection, { hash: "&line=flow&node=work&tab=Prompt" });
+    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
+    await userEvent.click(await within(panel).findByRole("button", { name: "Edit prompt" }));
+    await userEvent.click(await within(panel).findByRole("button", { name: "Edit extra prompt" }));
+    const promptEditor = (await within(panel).findByRole("textbox", { name: "Prompt" })) as HTMLTextAreaElement;
+    const extraEditor = (await within(panel).findByRole("textbox", { name: "Extra prompt" })) as HTMLTextAreaElement;
+
+    expect([promptEditor.value, extraEditor.value]).toEqual(["Work {ticket}.\n", "Also check the tests.\n"]);
+  });
+
+  it("writes 'Also check the docs.' to the extra file when the extra prompt is edited and saved", async () => {
+    const extraCollection = [WORKER_COLLECTION[0], { path: "flow/agents/worker.extra.md", text: "Also check the tests.\n" }];
+    const { dir } = await openPage(extraCollection, { hash: "&line=flow&node=work&tab=Prompt" });
+    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
+    await userEvent.click(await within(panel).findByRole("button", { name: "Edit extra prompt" }));
+    const extraEditor = await within(panel).findByRole("textbox", { name: "Extra prompt" });
+
+    await userEvent.clear(extraEditor);
+    await userEvent.type(extraEditor, "Also check the docs.{Enter}");
+    await userEvent.click(within(panel).getByRole("button", { name: "Save extra prompt" }));
+
+    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.extra.md"), "utf8")).toBe("Also check the docs.\n"));
   });
 });
 

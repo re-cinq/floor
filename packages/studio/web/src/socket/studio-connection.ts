@@ -93,6 +93,11 @@ export class StudioConnection {
     return this.request("agent.write", fields);
   }
 
+  /** Asks the backend to write an agent's extra prompt file, given the version of the file the page read. */
+  writeExtra(fields: { line: string; agent: string; text: string; version: string }): Promise<unknown> {
+    return this.request("extra.write", fields);
+  }
+
   private change(part: Partial<StudioSnapshot>): void {
     this.current = { ...this.current, ...part };
     this.listeners.forEach((listener) => listener());

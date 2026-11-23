@@ -12,6 +12,7 @@ import StationPanel from "./StationPanel";
 export interface InspectorActions {
   tabChoice?: TabChoice;
   savePrompt?: SavePrompt;
+  saveExtra?: SavePrompt;
   saveSettings?: SaveSettings;
 }
 
@@ -24,7 +25,7 @@ export default function Inspector({ node, actions = {} }: { node: NodeView | und
         <>
           <p className={styles.inspectorNode}>{node.id}</p>
           <p className="muted">{node.station ? `station ${node.station}` : "a marker, with no station"}</p>
-          <InspectorTabs tabChoice={actions.tabChoice} tabs={tabsFor(node)} panels={{ Station: <StationPanel node={node} />, Events: <EventsPanel node={node} />, Prompt: <PromptPanel node={node} onSave={actions.savePrompt} />, Settings: <SettingsPanel node={node} onSave={actions.saveSettings} /> }} />
+          <InspectorTabs tabChoice={actions.tabChoice} tabs={tabsFor(node)} panels={{ Station: <StationPanel node={node} />, Events: <EventsPanel node={node} />, Prompt: <PromptPanel node={node} onSave={actions.savePrompt} onSaveExtra={actions.saveExtra} />, Settings: <SettingsPanel node={node} onSave={actions.saveSettings} /> }} />
         </>
       ) : (
         <p className="muted">Select a node in the graph to inspect it.</p>

@@ -177,6 +177,70 @@
   display: none;
 }
 
+/* Buttons keep their own width; the panel's column would otherwise stretch them edge to edge. */
+.inspector [role="tabpanel"] button {
+  align-self: flex-start;
+  margin-right: var(--space-3);
+}
+
+/* Text and editor take a whole row; the buttons after them share one. */
+.inspector section[aria-labelledby] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.inspector section[aria-labelledby] h3 {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  color: var(--text-muted);
+}
+
+/* A prompt is read as written: its line breaks, lists and fenced blocks stay. */
+.inspector section[aria-labelledby] p,
+.inspector section[aria-labelledby] textarea {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inspector section[aria-labelledby] textarea {
+  min-height: 24rem;
+  resize: vertical;
+}
+
+.inspector mark {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.inspector mark[data-state="optional"],
+.inspector mark[data-state="sometimes-empty"] {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.inspector mark[data-state="never-filled"],
+.inspector mark[data-state="unsupplied"] {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 .inspector li {
   overflow-wrap: anywhere;
 }

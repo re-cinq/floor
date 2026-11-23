@@ -12,7 +12,7 @@ import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
 import { collectionView } from "./collection-view.js";
 import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
-import { editedAgentText, textVersion, type AgentEdit } from "./agent-file-text.js";
+import { editedAgentText, textVersion, withOneNewline, type AgentEdit } from "./agent-file-text.js";
 import { answerFrame, type StudioContext } from "./requests.js";
 import { watchCollection } from "./watcher.js";
 
@@ -80,7 +80,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
 
 async function writeExtraFile(path: string, { text, version }: { text: string; version: string }): Promise<void> {
   enforce(version === textVersion(await readFile(path, "utf8")), `${basename(path)} changed on disk since it was read`);
-  await writeFile(path, text);
+  await writeFile(path, withOneNewline(text));
 }
 
 function refuseHttp(...given: [IncomingMessage, ServerResponse]): void {

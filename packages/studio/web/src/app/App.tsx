@@ -25,6 +25,7 @@ export default function App() {
   const resolved = resolveSelection(snapshot.collection, selection);
   const lineId = resolved.line?.id;
   const savePrompt = promptSaver(connection, lineId, resolved.node);
+  const saveExtra = extraSaver(connection, lineId, resolved.node);
   const saveSettings = settingsSaver(connection, lineId, resolved.node);
 
   return (
@@ -37,7 +38,7 @@ export default function App() {
         scheme={{ pref: scheme.pref, onChoose: scheme.choose }}
       />
       <main className={shell.main}>
-        {address ? screenFor(snapshot, { requestedLine: selection.line, inspector: { savePrompt, saveSettings, tabChoice: { tab: selection.tab, choose: (tab) => select({ line: lineId, node: resolved.node?.id, tab }) } }, resolved, onSelectNode: (node) => select(node ? { line: lineId, node, tab: selection.tab } : { line: lineId }) }) : <AddressNeeded />}
+        {address ? screenFor(snapshot, { requestedLine: selection.line, inspector: { savePrompt, saveExtra, saveSettings, tabChoice: { tab: selection.tab, choose: (tab) => select({ line: lineId, node: resolved.node?.id, tab }) } }, resolved, onSelectNode: (node) => select(node ? { line: lineId, node, tab: selection.tab } : { line: lineId }) }) : <AddressNeeded />}
       </main>
     </div>
   );
@@ -51,6 +52,15 @@ function promptSaver(connection: StudioConnection | undefined, line: string | un
   const { name } = agent;
 
   return (prompt, version) => connection.writeAgent({ line, agent: name, prompt, version });
+}
+
+/** The extra prompt is saved against the version of its file the editor was read at. */
+function extraSaver(connection: StudioConnection | undefined, line: string | undefined, node: NodeView | undefined): SavePrompt | undefined {
+  const agent = node?.agentDefinition;
+
+  if (!connection || !line || !agent) return undefined;
+
+  return (text, version) => connection.writeExtra({ line, agent, text, version });
 }
 
 /** Settings are saved with the agent's prompt as it is, against the file version the form was read at. */

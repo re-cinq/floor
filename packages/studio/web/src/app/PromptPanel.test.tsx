@@ -150,4 +150,81 @@ describe("Inspector Prompt panel", () => {
       unused: within(promptPanel.getByRole("list", { name: "Needs the prompt never uses" })).queryAllByRole("listitem").length,
     }).toEqual({ text: "Hi {x}.", marks: 0, rows: 1, unused: 0 });
   });
+
+  it("hides the marked prompt Review {diff} now. once Edit prompt opens it in the textbox", async () => {
+    const reviewerNode = nodeView({
+      id: "review",
+      station: "review",
+      kind: "agent",
+      agent: { name: "reviewer", file: "agents/reviewer.md", version: "v1", prompt: "Review {diff} now.", settings: {} },
+      placeholders: {
+        placeholders: [{ name: "diff", source: "need-path", state: "filled", filledBy: ["fetch"], path: [] }],
+        unused: [],
+      },
+    });
+
+    render(<Inspector node={reviewerNode} actions={{ savePrompt: async () => undefined }} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Prompt" }));
+
+    const promptPanel = within(screen.getByRole("tabpanel", { name: "Prompt" }));
+    const markedBefore = promptPanel.queryAllByRole("mark").length;
+    await userEvent.click(promptPanel.getByRole("button", { name: "Edit prompt" }));
+
+    expect([markedBefore, promptPanel.queryAllByRole("mark").length]).toEqual([1, 0]);
+  });
+
+  it("shows 'Review {diff} now.' again after ' edited' is typed, Cancel pressed and Edit prompt reopened", async () => {
+    const reviewerNode = nodeView({
+      id: "review",
+      station: "review",
+      kind: "agent",
+      agent: { name: "reviewer", file: "agents/reviewer.md", version: "v1", prompt: "Review {diff} now.", settings: {} },
+    });
+
+    render(<Inspector node={reviewerNode} actions={{ savePrompt: async () => undefined }} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Prompt" }));
+
+    const promptPanel = within(screen.getByRole("tabpanel", { name: "Prompt" }));
+    await userEvent.click(promptPanel.getByRole("button", { name: "Edit prompt" }));
+    await userEvent.type(promptPanel.getByRole("textbox"), " edited");
+    await userEvent.click(promptPanel.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(promptPanel.getByRole("button", { name: "Edit prompt" }));
+
+    expect((promptPanel.getByRole("textbox") as HTMLTextAreaElement).value).toEqual("Review {diff} now.");
+  });
+
+  it("shows 'Also check the tests.' under agents/reviewer.extra.md before its editor is opened", async () => {
+    const reviewerNode = nodeView({
+      id: "review",
+      station: "review",
+      kind: "agent",
+      agent: { name: "reviewer", file: "agents/reviewer.md", version: "v1", prompt: "Review the pull request.", settings: {} },
+      extra: { file: "agents/reviewer.extra.md", text: "Also check the tests.", version: "v2" },
+    });
+
+    render(<Inspector node={reviewerNode} actions={{ savePrompt: async () => undefined, saveExtra: async () => undefined }} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Prompt" }));
+
+    expect(screen.getByRole("region", { name: "agents/reviewer.extra.md" }).textContent).toMatch("Also check the tests.");
+  });
+
+  it("shows Save prompt only after ' edited' is typed into the opened prompt", async () => {
+    const reviewerNode = nodeView({
+      id: "review",
+      station: "review",
+      kind: "agent",
+      agent: { name: "reviewer", file: "agents/reviewer.md", version: "v1", prompt: "Review {diff} now.", settings: {} },
+    });
+
+    render(<Inspector node={reviewerNode} actions={{ savePrompt: async () => undefined }} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Prompt" }));
+
+    const promptPanel = within(screen.getByRole("tabpanel", { name: "Prompt" }));
+    await userEvent.click(promptPanel.getByRole("button", { name: "Edit prompt" }));
+    const saveBeforeTyping = promptPanel.queryByRole("button", { name: "Save prompt" }) !== null;
+    await userEvent.type(promptPanel.getByRole("textbox"), " edited");
+    const saveAfterTyping = promptPanel.queryByRole("button", { name: "Save prompt" }) !== null;
+
+    expect([saveBeforeTyping, saveAfterTyping]).toEqual([false, true]);
+  });
 });

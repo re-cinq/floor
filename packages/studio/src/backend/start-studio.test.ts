@@ -141,11 +141,14 @@ describe("startStudio", () => {
     expect({ answer: answer.type, file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toEqual({ answer: "result", file: agentMarkdown("Work on {ticket} carefully.") });
   });
 
-  it("answers extra.write with a result and rewrites worker.extra.md to the sent text", async () => {
+  it.each([
+    { sent: "Also check the docs.\n", case: "rewrites worker.extra.md to the sent text" },
+    { sent: "Also check the docs.", case: "ends worker.extra.md in one newline when the sent text has none" },
+  ])("answers extra.write with a result and $case", async ({ sent }) => {
     const { dir, client } = await connectedToExtraCollection();
 
     await client.next();
-    client.send({ id: "x1", type: "extra.write", line: "flow", agent: "worker", text: "Also check the docs.\n", version: textVersion(EXTRA_TEXT) });
+    client.send({ id: "x1", type: "extra.write", line: "flow", agent: "worker", text: sent, version: textVersion(EXTRA_TEXT) });
     const answer = await client.next();
 
     expect({ answer: answer.type, file: readFileSync(join(dir, "flow/agents/worker.extra.md"), "utf8") }).toEqual({ answer: "result", file: "Also check the docs.\n" });
@@ -161,6 +164,20 @@ describe("startStudio", () => {
     expect({ answer, file: readFileSync(join(dir, "flow/agents/worker.extra.md"), "utf8") }).toMatchObject({
       answer: { type: "refused", reason: expect.stringMatching(/changed on disk/) },
       file: "Also check the tests.\n",
+    });
+  });
+
+  it("refuses extra.write and writes nothing when the agent is the path ../../outside", async () => {
+    const { dir, client } = await connectedToExtraCollection();
+
+    await client.next();
+    client.send({ id: "x3", type: "extra.write", line: "flow", agent: "../../outside", text: "x\n", version: "v" });
+    const answer = await client.next();
+
+    expect({ answer, outside: existsSync(join(dir, "..", "outside.extra.md")), file: readFileSync(join(dir, "flow/agents/worker.extra.md"), "utf8") }).toMatchObject({
+      answer: { type: "refused", reason: expect.stringMatching(/has no extra file/) },
+      outside: false,
+      file: EXTRA_TEXT,
     });
   });
 

@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
 import { WORKER_COLLECTION } from "../../../src/backend/collection-view.fixtures";
 import { collectionOnDisk } from "../../../src/backend/studio.fixtures";
@@ -37,6 +38,8 @@ interface OpenedPromptEditor {
 export async function openPromptEditor(): Promise<OpenedPromptEditor> {
   const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
   const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
+
+  await userEvent.click(await within(panel).findByRole("button", { name: "Edit prompt" }));
 
   return { dir, panel, editor: await within(panel).findByRole("textbox", { name: "Prompt" }) };
 }

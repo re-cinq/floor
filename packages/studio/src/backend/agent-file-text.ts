@@ -11,7 +11,12 @@ export function withPrompt(text: string, prompt: string): string {
 
   enforce(frontmatter, "the agent file has no frontmatter");
 
-  return `${frontmatter[0]}${prompt.endsWith("\n") ? prompt : `${prompt}\n`}`;
+  return `${frontmatter[0]}${withOneNewline(prompt)}`;
+}
+
+/** `text` ending in a newline: added only when missing. */
+export function withOneNewline(text: string): string {
+  return text.endsWith("\n") ? text : `${text}\n`;
 }
 
 /** The agent file with `settings` set in its frontmatter, comments and key order kept, the body byte for byte. */
