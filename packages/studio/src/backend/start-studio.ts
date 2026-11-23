@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { basename, resolve } from "node:path";
 import type { Duplex } from "node:stream";
 import { enforce } from "@re-cinq/floor-assembly-lines";
 import { collectionFilesIn } from "@re-cinq/floor-pipeline";
@@ -43,7 +44,8 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   enforce((await stat(dir).catch(() => undefined))?.isDirectory(), `${dir} is not a directory`);
   const token = randomBytes(TOKEN_BYTES).toString("hex");
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
-  const readCollection = async () => collectionView(await collectionFilesIn(dir), hostKeys);
+  const folder = basename(resolve(dir));
+  const readCollection = async () => ({ ...collectionView(await collectionFilesIn(dir), hostKeys), folder });
   const context: StudioContext = { readCollection };
   const server = createServer(refuseHttp);
 

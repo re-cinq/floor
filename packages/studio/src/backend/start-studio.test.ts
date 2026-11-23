@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { PROTOCOL_VERSION } from "../protocol.js";
 import { WORKER_COLLECTION } from "./collection-view.fixtures.js";
@@ -40,6 +41,18 @@ describe("startStudio", () => {
     client.send({ id: "r1", type: "collection.read" });
 
     expect(await client.nextOfType("result")).toMatchObject({ id: "r1", result: { counts: { lines: 1, agents: 1, refused: 0, problems: 0 }, lines: [{ id: "flow" }] } });
+  });
+
+  it("names the collection's folder in the view it answers with", async () => {
+    const dir = collectionOnDisk(WORKER_COLLECTION);
+    const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [] });
+
+    running.push(studio);
+    const client = await openClient(studio.url, { token: studio.token });
+
+    client.send({ id: "r1", type: "collection.read" });
+
+    expect(await client.nextOfType("result")).toMatchObject({ result: { folder: basename(dir) } });
   });
 
   it("refuses with 401 a socket that carries no token", async () => {
