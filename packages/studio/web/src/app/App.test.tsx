@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { basename } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -100,6 +100,24 @@ describe("App against the real backend", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Cannot connect to the studio" })).toBeTruthy();
+  });
+
+  it("says the studio could not be read, with the reason, instead of Connecting, when the folder is gone", async () => {
+    const dir = collectionOnDisk(WORKER_COLLECTION);
+    const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [] });
+
+    running.push(studio);
+    rmSync(dir, { recursive: true });
+    window.location.hash = `#${new URLSearchParams({ socket: studio.url, token: studio.token }).toString()}`;
+    render(<App />);
+
+    const screenTitle = await screen.findByRole("heading", { name: "The studio could not be read" });
+
+    expect({ title: screenTitle.textContent, reason: screenTitle.parentElement?.textContent, connecting: screen.queryByRole("heading", { name: "Connecting to the studio" }) }).toMatchObject({
+      title: "The studio could not be read",
+      reason: expect.stringMatching(/ENOENT/),
+      connecting: null,
+    });
   });
 
   it("asks for a line to be chosen until one is", async () => {

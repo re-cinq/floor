@@ -1,3 +1,4 @@
+// The column count to wrap a line's layers into so its drawing shows largest in the box.
 import { fitTransform, type Size } from "./viewport";
 
 interface ColumnFit {

@@ -48,26 +48,19 @@ describe("keepInView", () => {
   const drawing = { width: 400, height: 200 };
   const box = { width: 1000, height: 1000 };
 
-  it("brings a 400 x 200 drawing dragged to x 5000 back to x 952 in a 1000 x 1000 box", () => {
-    expect(keepInView({ scale: 1, x: 5000, y: 100 }, drawing, box)).toEqual({ scale: 1, x: 952, y: 100 });
-  });
+  const resting = { scale: 1, x: 100, y: 100 };
 
-  it("brings a 400 x 200 drawing dragged to x -5000 back to x -352 in a 1000 x 1000 box", () => {
-    expect(keepInView({ scale: 1, x: -5000, y: 100 }, drawing, box)).toEqual({ scale: 1, x: -352, y: 100 });
-  });
-
-  it("brings a 400 x 200 drawing dragged to y 5000 back to y 952 in a 1000 x 1000 box", () => {
-    expect(keepInView({ scale: 1, x: 100, y: 5000 }, drawing, box)).toEqual({ scale: 1, x: 100, y: 952 });
-  });
-
-  it("brings a 400 x 200 drawing dragged to y -5000 back to y -152 in a 1000 x 1000 box", () => {
-    expect(keepInView({ scale: 1, x: 100, y: -5000 }, drawing, box)).toEqual({ scale: 1, x: 100, y: -152 });
+  it.each([
+    { axis: "x", dragged: 5000, held: 952 },
+    { axis: "x", dragged: -5000, held: -352 },
+    { axis: "y", dragged: 5000, held: 952 },
+    { axis: "y", dragged: -5000, held: -152 },
+  ])("brings a 400 x 200 drawing dragged to $axis $dragged back to $axis $held in a 1000 x 1000 box", ({ axis, dragged, held }) => {
+    expect(keepInView({ ...resting, [axis]: dragged }, drawing, box)).toEqual({ ...resting, [axis]: held });
   });
 
   it("leaves a transform at 100, 100 where it is in an unmeasured 0 x 0 box", () => {
-    const current = { scale: 1, x: 100, y: 100 };
-
-    expect(keepInView(current, drawing, { width: 0, height: 0 })).toEqual(current);
+    expect(keepInView(resting, drawing, { width: 0, height: 0 })).toEqual(resting);
   });
 });
 
@@ -81,5 +74,9 @@ describe("revealArea", () => {
 
   it("brings an area at 100 to 200 scrolled off the top back to y -76 in a 1000 high box", () => {
     expect(revealArea({ scale: 1, x: 0, y: -2000 }, area, box)).toEqual({ scale: 1, x: 0, y: -76 });
+  });
+
+  it("leaves a transform at 0, 0 where it is in an unmeasured 0 x 0 box", () => {
+    expect(revealArea({ scale: 1, x: 0, y: 0 }, area, { width: 0, height: 0 })).toEqual({ scale: 1, x: 0, y: 0 });
   });
 });

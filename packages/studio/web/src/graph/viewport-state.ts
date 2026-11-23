@@ -9,7 +9,7 @@ export interface ViewportState {
   fitted: boolean;
 }
 
-type ZoomDirection = "in" | "out";
+export type ZoomDirection = "in" | "out";
 
 // `{ type: "fit" } & unknown` is just `{ type: "fit" }`, and extra fields are still rejected.
 type NoPayload = unknown;
