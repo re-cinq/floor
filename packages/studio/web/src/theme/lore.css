@@ -1,0 +1,57 @@
+/*
+ * The lore family's shapes, from lore's app/lore.css: what the palette alone cannot express (full-pill
+ * controls, the headline weight, lowercase mono table heads). Only the rules this page has a use for.
+ * base.css is the default look; this file is what lore changes about it.
+ */
+
+[data-theme-family="lore"] h1,
+[data-theme-family="lore"] h2,
+[data-theme-family="lore"] h3 {
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-tight);
+  color: var(--heading-color);
+}
+
+/* :where() keeps these at element weight, so a component's own button class still wins. */
+:where([data-theme-family="lore"]) button {
+  min-height: var(--control);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--text-on-accent);
+  transition: background var(--transition);
+}
+
+:where([data-theme-family="lore"]) button:hover {
+  background: var(--primary-hover);
+}
+
+[data-theme-family="lore"] table {
+  font-family: var(--font-ui);
+}
+
+[data-theme-family="lore"] thead th {
+  font-weight: var(--fw-normal);
+  text-transform: lowercase;
+}
+
+[data-theme-family="lore"] .count-pill {
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font-family: var(--font-ui);
+  font-weight: var(--fw-medium);
+}
+
+[data-theme-family="lore"] code {
+  background: var(--sidebar-bg);
+}
+
+[data-theme-family="lore"] .empty-state {
+  border: 1px dashed var(--border-hover);
+  border-radius: var(--radius-lg);
+  padding: var(--space-7) var(--space-6);
+}
+
+[data-theme-family="lore"] .empty-state h2 {
+  color: var(--heading-color);
+}

@@ -92,11 +92,18 @@ export class StudioConnection {
     this.change({ connection: { status: "connecting" } });
     const socket = new WebSocket(address);
     let opened = false;
+    let ended = false;
+    // A failed handshake ends in `error` and `close` in a browser, and in `error` alone in Node.
+    const end = () => {
+      if (!ended) void this.dropped(socket, opened);
+      ended = true;
+    };
 
     this.socket = socket;
     socket.onopen = () => (opened = true);
     socket.onmessage = (event) => this.receive(socket, event.data);
-    socket.onclose = () => void this.dropped(socket, opened);
+    socket.onerror = end;
+    socket.onclose = end;
   }
 
   private addressOf(): string | undefined {

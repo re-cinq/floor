@@ -1,0 +1,345 @@
+/*
+ * Design tokens, copied from lore's app/theme.css: `:root` and the lore family only. `:root` holds the
+ * complete default theme (light); the lore blocks override the tokens that make it look like
+ * lore. Components read these through var(); no raw color or size goes anywhere else.
+ */
+
+/* ============================================================ DEFAULT ===== */
+/* Light. Rounded corners, soft shadows, frosted glass. Palette modeled on  */
+/* apple.com/mac. */
+
+:root {
+  --color-scheme: light;
+  --transition: 150ms ease;
+
+  --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-ui);
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-heading: var(--font-ui);
+
+  /* Type scale ($font-sizes). */
+  --fs-2xs: 10px;
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-md: 18px;
+  --fs-lg: 20px;
+  --fs-xl: 25px;
+
+  /* Font weights ($font-weight-*). */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Line heights ($line-height-*). */
+  --lh-1: 1;
+  --lh-sm: 1.25;
+  --lh-base: 1.5;
+  --lh-lg: 1.65;
+
+  /* Spacing ($spacers): margin, padding and gap. */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Radii ($border-radius-*). */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  --focus-ring-width: 3px;
+  --glass-blur: blur(20px) saturate(180%);
+
+  /* Stacking layers ($zindex-*), lowest first. */
+  --z-raised: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-backdrop: 40;
+  --z-offcanvas: 50;
+  --z-popover: 60;
+
+  /* Control sizes: the height of a button, input or row, and the square of an icon button. */
+  --control-sm: 32px;
+  --control: 36px;
+  --control-lg: 40px;
+  --control-xl: 44px;
+  --size-badge: 22px;
+
+  /* Text measures: the widest a block of copy or a form is allowed to run. */
+  --measure-sm: 640px;
+  --measure: 720px;
+  --measure-lg: 760px;
+
+  /* Column and tile widths for flex bases and grid minimums, named by their pixels. */
+  --size-96: 96px;
+  --size-150: 150px;
+  --size-160: 160px;
+  --size-180: 180px;
+  --size-200: 200px;
+  --size-220: 220px;
+  --size-280: 280px;
+  --size-480: 480px;
+
+  /* Letter spacing: capitals labels, headings. */
+  --tracking-caps: 0.06em;
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+
+  /* The live "something is running" pulse. */
+  --pulse-duration: 1.6s;
+
+  /* Absolute colors, for surfaces that must not follow the scheme. */
+  --white: #ffffff;
+  --black: #000000;
+
+  --bg: #f5f5f7;
+  --bg-surface: #ffffff;
+  --bg-hover: #ececee;
+  --bg-elevated: #ffffff;
+
+  --border: #d2d2d7;
+  --border-hover: #b8b8c0;
+  --focus-ring: rgba(0, 113, 227, 0.4);
+
+  --text: #1d1d1f;
+  --text-muted: #6e6e73;
+  --text-on-accent: #ffffff;
+
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+
+  --success: #1a7f37;
+  --warning: #9a6700;
+  --danger: #d70015;
+  --info: #0071e3;
+  --success-bg: #e4f3e8;
+  --warning-bg: #fbf3da;
+  /* Waiting on a person or a gate: the Lore family paints it violet; every other family reads it as a warning. */
+  --wait: var(--warning);
+  --wait-bg: var(--warning-bg);
+  --danger-bg: #ffe5e6;
+  --info-bg: #e3f0fd;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --backdrop: rgba(0, 0, 0, 0.5);
+
+  /* Categorical chart palette: spec-graph node types + neutral fallback. */
+  --chart-feature: #db2777;
+  --chart-spec: #7c3aed;
+  --chart-section: #0891b2;
+  --chart-statement: #2563eb;
+  --chart-criterion: #4f46e5;
+  --chart-test: #16a34a;
+  --chart-code: #ea580c;
+  --chart-adr: #d97706;
+  --chart-neutral: #94a3b8;
+
+  /* Brand surfaces. The default reads them as plain accent and hover colors; lore paints them navy, lavender and the re:cinq headline gradient. */
+  --primary: var(--accent);
+  --primary-hover: var(--accent-hover);
+  --pill-bg: var(--bg-hover);
+  --pill-bg-hover: var(--border);
+  --pill-fg: var(--text);
+  --sidebar-bg: var(--glass-bg);
+  --heading-color: var(--text);
+  --heading-gradient: none;
+}
+
+[data-color-scheme="dark"] {
+  --color-scheme: dark;
+
+  --bg: #000000;
+  --bg-surface: #1d1d1f;
+  --bg-hover: #2a2a2c;
+  --bg-elevated: #1d1d1f;
+
+  --border: #38383a;
+  --border-hover: #48484a;
+  --focus-ring: rgba(41, 151, 255, 0.5);
+
+  --text: #f5f5f7;
+  --text-muted: #86868b;
+  --text-on-accent: #ffffff;
+
+  --accent: #2997ff;
+  --accent-hover: #47a9ff;
+
+  --success: #30d158;
+  --warning: #ffd60a;
+  --danger: #ff453a;
+  --info: #0a84ff;
+  --success-bg: #0e2a17;
+  --warning-bg: #2a2410;
+  --danger-bg: #2e1416;
+  --info-bg: #11233f;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+
+  --glass-bg: rgba(29, 29, 31, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* =============================================================== LORE ===== */
+/* Lore v2, the re:cinq brand: IBM Plex Sans + JetBrains Mono, full-pill        */
+/* controls, 20px cards, navy + electric blue on white and lavender washes,     */
+/* deep navy in the dark scheme. Source: Claude Design project "Lore v2".       */
+
+[data-theme-family="lore"] {
+  --font-ui:
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --font-sans: var(--font-ui);
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-heading: var(--font-ui);
+
+  --fs-xl: 28px;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-blur: blur(20px);
+}
+
+[data-theme-family="lore"][data-color-scheme="light"] {
+  --color-scheme: light;
+
+  --bg: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-hover: #f1f2fe;
+  --bg-elevated: #ffffff;
+
+  --border: #e5e7ee;
+  --border-hover: #cbcfdb;
+  --focus-ring: rgba(0, 20, 235, 0.35);
+
+  --text: #000000;
+  --text-muted: #6b7385;
+  --text-on-accent: #ffffff;
+
+  --accent: #0014eb;
+  --accent-hover: #2a3cff;
+
+  --success: #1d6b40;
+  --warning: #7a4f00;
+  --danger: #a12c2c;
+  --info: #0014eb;
+  --success-bg: #e5f6ec;
+  --warning-bg: #fdf2dc;
+  --wait: #8e2ee0;
+  --wait-bg: #f3e8fc;
+  --danger-bg: #fce8e8;
+  --info-bg: #e8eafe;
+
+  --shadow: 0 2px 6px rgba(0, 5, 60, 0.06), 0 1px 2px rgba(0, 5, 60, 0.04);
+  --shadow-lg:
+    0 20px 50px -12px rgba(0, 5, 60, 0.18), 0 4px 12px rgba(0, 5, 60, 0.08);
+
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: #e5e7ee;
+  --backdrop: rgba(0, 5, 60, 0.45);
+
+  --primary: #010967;
+  --primary-hover: #1a2173;
+  --pill-bg: #e6e8fd;
+  --pill-bg-hover: #c9cdfb;
+  --pill-fg: #010967;
+  --sidebar-bg: #f7f8ff;
+  --heading-color: #010967;
+  --heading-gradient: linear-gradient(
+    96deg,
+    #000000 12%,
+    #010967 56%,
+    #0014eb 96%
+  );
+
+  /* Brand hues for the chart palette. */
+  --chart-feature: #8e2ee0;
+  --chart-spec: #010967;
+  --chart-section: #2a9bb0;
+  --chart-statement: #0014eb;
+  --chart-criterion: #6e1ed1;
+  --chart-test: #2f9e5f;
+  --chart-code: #e85d5d;
+  --chart-adr: #d99a1e;
+  --chart-neutral: #9aa1b5;
+}
+
+[data-theme-family="lore"][data-color-scheme="dark"] {
+  --color-scheme: dark;
+
+  --bg: #03072e;
+  --bg-surface: #080d45;
+  --bg-hover: #111866;
+  --bg-elevated: #0e1463;
+
+  --border: rgba(201, 205, 251, 0.12);
+  --border-hover: rgba(201, 205, 251, 0.24);
+  --focus-ring: rgba(138, 147, 255, 0.5);
+
+  --text: #ffffff;
+  --text-muted: #9aa1b5;
+  --text-on-accent: #ffffff;
+
+  --accent: #8a93ff;
+  --accent-hover: #b4baff;
+
+  --success: #8fe0ae;
+  --warning: #f6c76a;
+  --danger: #f49393;
+  --info: #b4baff;
+  --success-bg: rgba(116, 208, 151, 0.14);
+  --warning-bg: rgba(242, 181, 68, 0.14);
+  --wait: #c28eec;
+  --wait-bg: rgba(194, 142, 236, 0.16);
+  --danger-bg: rgba(232, 93, 93, 0.16);
+  --info-bg: rgba(138, 147, 255, 0.16);
+
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
+
+  --glass-bg: rgba(0, 5, 60, 0.9);
+  --glass-border: rgba(201, 205, 251, 0.12);
+  --backdrop: rgba(0, 2, 30, 0.6);
+
+  --primary: #2a3cff;
+  --primary-hover: #4d5dff;
+  --pill-bg: rgba(138, 147, 255, 0.16);
+  --pill-bg-hover: rgba(138, 147, 255, 0.28);
+  --pill-fg: #e6e8fd;
+  --sidebar-bg: #00053c;
+  --heading-color: #ffffff;
+  --heading-gradient: linear-gradient(
+    96deg,
+    #ffffff 12%,
+    #c9cdfb 56%,
+    #8a93ff 96%
+  );
+
+  /* Brand hues, lifted for the navy ground. */
+  --chart-feature: #c28eec;
+  --chart-spec: #e6e8fd;
+  --chart-section: #7fd3e2;
+  --chart-statement: #8a93ff;
+  --chart-criterion: #a557e5;
+  --chart-test: #8fe0ae;
+  --chart-code: #f49393;
+  --chart-adr: #f6c76a;
+  --chart-neutral: #6b7385;
+}
