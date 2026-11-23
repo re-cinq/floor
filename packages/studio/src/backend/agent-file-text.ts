@@ -11,7 +11,7 @@ export function withPrompt(text: string, prompt: string): string {
 
   enforce(frontmatter, "the agent file has no frontmatter");
 
-  return `${frontmatter[0]}${prompt}`;
+  return `${frontmatter[0]}${prompt.endsWith("\n") ? prompt : `${prompt}\n`}`;
 }
 
 /** The agent file with `settings` set in its frontmatter, comments and key order kept, the body byte for byte. */

@@ -43,6 +43,8 @@ export interface NodeView {
   /** Present for an agent station whose agent a file of the collection defines. */
   agent?: NodeAgent;
   placeholders?: PromptPlaceholders;
+  /** The agent's `<agent>.extra.md` file, when the collection has one. */
+  extra?: { file: string; text: string; version: string };
 }
 
 export interface LineView {

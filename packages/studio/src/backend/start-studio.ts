@@ -12,7 +12,7 @@ import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
 import { collectionView } from "./collection-view.js";
 import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
-import { editedAgentText, type AgentEdit } from "./agent-file-text.js";
+import { editedAgentText, textVersion, type AgentEdit } from "./agent-file-text.js";
 import { answerFrame, type StudioContext } from "./requests.js";
 import { watchCollection } from "./watcher.js";
 
@@ -57,7 +57,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     await writeFile(path, text);
   };
 
-  const context: StudioContext = { readCollection, writeAgent };
+  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit) };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {
@@ -76,6 +76,11 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     token,
     close: () => closed({ watcher, sockets, server }),
   };
+}
+
+async function writeExtraFile(path: string, { text, version }: { text: string; version: string }): Promise<void> {
+  enforce(version === textVersion(await readFile(path, "utf8")), `${basename(path)} changed on disk since it was read`);
+  await writeFile(path, text);
 }
 
 function refuseHttp(...given: [IncomingMessage, ServerResponse]): void {

@@ -75,6 +75,15 @@ describe("collectionView", () => {
     expect(work.agent).toMatchObject({ version: textVersion(workerFile?.text ?? "") });
   });
 
+  it("carries flow/agents/worker.extra.md with its version as extra of node work when no worker.md exists", () => {
+    const extraText = "Also check the tests.\n";
+    const files = [FLOW_LINE, { path: "flow/agents/worker.extra.md", text: extraText }];
+
+    const [work] = onlyLine(files).nodes;
+
+    expect(work.extra).toEqual({ file: "flow/agents/worker.extra.md", text: extraText, version: textVersion(extraText) });
+  });
+
   it("marks the node whose line names a fanout with that fanout", () => {
     const fanning = FLOW_LINE.text.replace("    - id: work\n      station: work\n", "    - id: work\n      station: work\n      fanout:\n        over: tickets\n        to: done\n");
 

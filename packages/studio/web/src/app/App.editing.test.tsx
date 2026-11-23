@@ -96,7 +96,7 @@ describe("App prompt editing", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Keep my edits" }));
     await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
 
-    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe("---\nimage: acme/agent:2\ntimeout_minutes: 10\n---\nWork {ticket}.\n edited"));
+    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work {ticket}.\n edited")));
   });
 });
 
@@ -122,6 +122,23 @@ describe("App settings editing", () => {
     await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work {ticket}.", "config:\n  env:\n    LOG: info\n")));
   });
 
+  it("alerts naming config and keeps the file unchanged when the nested config setting is saved as invalid YAML 'env: [unclosed'", async () => {
+    const original = agentMarkdown("Work {ticket}.", "config:\n  env:\n    LOG: debug\n");
+    const configCollection = [WORKER_COLLECTION[0], { path: "flow/agents/worker.md", text: original }];
+    const { dir } = await openPage(configCollection, { hash: "&line=flow&node=work&tab=Settings" });
+    const panel = await screen.findByRole("tabpanel", { name: "Settings" });
+    const configField = await within(panel).findByRole("textbox", { name: "config" });
+
+    await userEvent.clear(configField);
+    await userEvent.type(configField, "env: [[unclosed");
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    expect([(await within(panel).findByRole("alert")).textContent, readFileSync(join(dir, "flow/agents/worker.md"), "utf8")]).toEqual([
+      expect.stringMatching(/config/),
+      original,
+    ]);
+  });
+
   it("writes image 'acme/agent:3' to the agent's file when the image setting is edited and saved", async () => {
     const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Settings" });
     const panel = await screen.findByRole("tabpanel", { name: "Settings" });
@@ -129,6 +146,20 @@ describe("App settings editing", () => {
 
     await userEvent.clear(imageField);
     await userEvent.type(imageField, "acme/agent:3");
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe("---\nimage: acme/agent:3\ntimeout_minutes: 10\n---\nWork {ticket}.\n"));
+  });
+
+  it("writes image 'acme/agent:3' over the disk version 'acme/agent:9' when 'Keep my edits' is chosen and settings are saved", async () => {
+    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Settings" });
+    const panel = await screen.findByRole("tabpanel", { name: "Settings" });
+    const imageField = await within(panel).findByRole("textbox", { name: "image" });
+
+    await userEvent.clear(imageField);
+    await userEvent.type(imageField, "acme/agent:3");
+    writeFileSync(join(dir, "flow/agents/worker.md"), "---\nimage: acme/agent:9\ntimeout_minutes: 10\n---\nWork {ticket}.\n");
+    await userEvent.click(await screen.findByRole("button", { name: "Keep my edits" }));
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
 
     await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe("---\nimage: acme/agent:3\ntimeout_minutes: 10\n---\nWork {ticket}.\n"));

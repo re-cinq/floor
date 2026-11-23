@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { withSettings } from "./agent-file-text.js";
+import { withPrompt, withSettings } from "./agent-file-text.js";
+
+describe("withPrompt", () => {
+  it("ends the prompt New. with one newline when typed without a final Enter", () => {
+    expect(withPrompt("---\nimage: acme/agent:2\n---\nOld.\n", "New.")).toBe(
+      "---\nimage: acme/agent:2\n---\nNew.\n",
+    );
+  });
+});
 
 describe("withSettings", () => {
   it("rewrites image to acme/agent:3 keeping comments and key order", () => {

@@ -15,8 +15,10 @@ export const collectionReadRequest = z.strictObject({ id: requestId, type: z.lit
 
 export const agentWriteRequest = z.strictObject({ id: requestId, type: z.literal("agent.write"), line: z.string(), agent: z.string(), prompt: z.string(), settings: z.record(z.string(), z.unknown()).optional(), version: z.string() });
 
+export const extraWriteRequest = z.strictObject({ id: requestId, type: z.literal("extra.write"), line: z.string(), agent: z.string(), text: z.string(), version: z.string() });
+
 /** A new request type is one schema here and one handler in the backend's table. */
-export const requestSchema = z.discriminatedUnion("type", [collectionReadRequest, agentWriteRequest]);
+export const requestSchema = z.discriminatedUnion("type", [collectionReadRequest, agentWriteRequest, extraWriteRequest]);
 
 export type Request = z.infer<typeof requestSchema>;
 export type RequestKind = Request["type"];
@@ -24,7 +26,7 @@ export type RequestKind = Request["type"];
 export const REQUEST_TYPES: RequestKind[] = requestSchema.options.map(({ shape }) => shape.type.value);
 
 /** What a request is answered with, in a `result` frame. */
-export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" } ? { written: string } : never;
+export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" | "extra.write" } ? { written: string } : never;
 
 // Strict down to a node's agent; events, placeholders, needs, produces, edges, args, start and kind come from other packages and are only checked to be objects where required.
 const presentObject = <Shape>() => z.custom<Shape>((value) => typeof value === "object" && value !== null);
@@ -44,6 +46,7 @@ const nodeViewSchema = z.looseObject({
   events: presentObject<NodeEvents>(),
   agent: nodeAgentSchema.optional(),
   placeholders: z.custom<PromptPlaceholders>().optional(),
+  extra: z.looseObject({ file: z.string(), text: z.string(), version: z.string() }).optional(),
 });
 
 const viewProblemSchema = z.looseObject({ rule: z.string(), node: z.string().optional(), message: z.string() });

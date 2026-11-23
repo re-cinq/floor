@@ -18,14 +18,19 @@ async function started(origins: string[] = []): Promise<Studio> {
   return studio;
 }
 
-async function connectedToWorkerCollection() {
-  const dir = collectionOnDisk(WORKER_COLLECTION);
+const EXTRA_TEXT = "Also check the tests.\n";
+
+async function connectedTo(files: typeof WORKER_COLLECTION) {
+  const dir = collectionOnDisk(files);
   const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [] });
 
   running.push(studio);
 
   return { dir, client: await openClient(studio.url, { token: studio.token }) };
 }
+
+const connectedToWorkerCollection = () => connectedTo(WORKER_COLLECTION);
+const connectedToExtraCollection = () => connectedTo([WORKER_COLLECTION[0], { path: "flow/agents/worker.extra.md", text: EXTRA_TEXT }]);
 
 afterEach(async () => {
   await Promise.all(running.splice(0).map((studio) => studio.close()));
@@ -134,6 +139,29 @@ describe("startStudio", () => {
     const answer = await client.next();
 
     expect({ answer: answer.type, file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toEqual({ answer: "result", file: agentMarkdown("Work on {ticket} carefully.") });
+  });
+
+  it("answers extra.write with a result and rewrites worker.extra.md to the sent text", async () => {
+    const { dir, client } = await connectedToExtraCollection();
+
+    await client.next();
+    client.send({ id: "x1", type: "extra.write", line: "flow", agent: "worker", text: "Also check the docs.\n", version: textVersion(EXTRA_TEXT) });
+    const answer = await client.next();
+
+    expect({ answer: answer.type, file: readFileSync(join(dir, "flow/agents/worker.extra.md"), "utf8") }).toEqual({ answer: "result", file: "Also check the docs.\n" });
+  });
+
+  it("refuses extra.write as changed on disk and keeps worker.extra.md when the version is stale", async () => {
+    const { dir, client } = await connectedToExtraCollection();
+
+    await client.next();
+    client.send({ id: "x2", type: "extra.write", line: "flow", agent: "worker", text: "Also check the docs.\n", version: "not-the-version" });
+    const answer = await client.next();
+
+    expect({ answer, file: readFileSync(join(dir, "flow/agents/worker.extra.md"), "utf8") }).toMatchObject({
+      answer: { type: "refused", reason: expect.stringMatching(/changed on disk/) },
+      file: "Also check the tests.\n",
+    });
   });
 
   it("answers agent.write with a result and rewrites the frontmatter to image acme/agent:3 when settings carry it", async () => {

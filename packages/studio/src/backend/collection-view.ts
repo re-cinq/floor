@@ -80,7 +80,15 @@ function nodeViewOf(node: LineNode, line: ReadLine, surroundings: Surroundings, 
     ...stationFacts(station, { node, line, needContext }),
     events: nodeEvents(line.body, node, surroundings.lines, line.bodies),
     ...agentOf(node, { line, station }, surroundings),
+    ...extraOf(station?.agentDefinition, line, surroundings.files),
   };
+}
+
+function extraOf(agentName: string | undefined, line: ReadLine, files: readonly CollectionFile[]): Pick<NodeView, "extra"> {
+  const file = `${pipelineFolderOf(line.file)}/agents/${agentName}.extra.md`;
+  const text = agentName === undefined ? undefined : files.find((candidate) => candidate.path === file)?.text;
+
+  return text === undefined ? {} : { extra: { file, text, version: textVersion(text) } };
 }
 
 function stationFacts(station: StationBody | undefined, { node, line, needContext }: { node: LineNode; line: ReadLine; needContext: NeedContext }): Pick<NodeView, "kind" | "description" | "outcomes" | "needs" | "produces" | "agentDefinition"> {

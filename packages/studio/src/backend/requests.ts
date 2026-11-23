@@ -9,16 +9,14 @@ export interface StudioContext {
   readCollection(): Promise<CollectionView>;
   /** Rewrites the agent file at a collection-relative path, refused when it changed since it was read. */
   writeAgent(file: string, edit: AgentEdit): Promise<void>;
+  /** Rewrites an `.extra.md` file at a collection-relative path, refused when it changed since it was read. */
+  writeExtra(file: string, edit: { text: string; version: string }): Promise<void>;
 }
 
 interface Handler<Asked extends Request> {
   type: Asked["type"];
   handle(context: StudioContext, request: Asked): Promise<ResultOf<Asked>>;
 }
-
-type CollectionRead = Extract<Request, { type: "collection.read" }>;
-
-const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
 
 function agentFileOf({ lines }: CollectionView, lineId: string, agentName: string): string | undefined {
   const nodes = lines.find(({ id }) => id === lineId)?.nodes ?? [];
@@ -42,8 +40,34 @@ const agentWrite: Handler<AgentWrite> = {
   },
 };
 
+function extraFileOf({ lines }: CollectionView, lineId: string, agentName: string): string | undefined {
+  const nodes = lines.find(({ id }) => id === lineId)?.nodes ?? [];
+
+  const node = nodes.find((each) => each.agentDefinition === agentName && each.extra);
+
+  return node?.extra?.file;
+}
+
+type ExtraWrite = Extract<Request, { type: "extra.write" }>;
+
+const extraWrite: Handler<ExtraWrite> = {
+  type: "extra.write",
+  handle: async (context, { line, agent, text, version }) => {
+    const file = extraFileOf(await context.readCollection(), line, agent);
+
+    enforce(file, `line ${line} has no extra file for agent ${agent}`);
+    await context.writeExtra(file, { text, version });
+
+    return { written: file };
+  },
+};
+
+type CollectionRead = Extract<Request, { type: "collection.read" }>;
+
+const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
+
 /** One handler for each request type: a test holds the list to `REQUEST_TYPES`. */
-export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite>)[] = [collectionRead, agentWrite];
+export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite>)[] = [collectionRead, agentWrite, extraWrite];
 
 export async function answerFrame(text: string, context: StudioContext): Promise<ServerFrame> {
   const held = parsedJson(text);
