@@ -23,6 +23,7 @@ export function registerProblemResponses(server: Server): void {
     const refused = request.response;
 
     if (!Boom.isBoom(refused)) return toolkit.continue;
+    if (namesNothing(refused, request.params)) return notFound(toolkit, `nothing is at ${request.path}`);
     const { statusCode, payload, headers } = refused.output;
     const problem = problemResponse(toolkit, { status: statusCode, title: payload.error, detail: payload.message });
 
@@ -30,6 +31,14 @@ export function registerProblemResponses(server: Server): void {
 
     return problem;
   });
+}
+
+// Postgres, refusing text that cannot be the uuid or the number an id is.
+const NOT_AN_ID = "22P02";
+
+// An id in the path that cannot be an id names nothing: the database says so before any row is looked for.
+function namesNothing(refused: object, params: object): boolean {
+  return "code" in refused && refused.code === NOT_AN_ID && Object.keys(params).length > 0;
 }
 
 export function notFound(toolkit: ResponseToolkit, detail: string): ReturnType<ResponseToolkit["response"]> {
