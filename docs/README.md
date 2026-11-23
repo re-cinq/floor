@@ -8,10 +8,11 @@ underneath it.
 
 ## Start here
 
-- [Define your first assembly line](define-a-launch-approval.md) walks through a product manager's launch decision and turns it into a working YAML definition.
-- [Add a second sign-off](add-a-launch-review.md) changes that definition so Communications gets a say before launch.
-- [Install Floor and run your first line](tutorial.md) takes you from a Kubernetes cluster to a running line.
-- [Install](install.md): a release into a cluster with Helm; upgrade, a second cluster, uninstall
+**The documentation people read is the website, https://re-cinq.github.io/floor/.** It holds what floor is, the tutorials, the specifications of the pipeline file, the agent file and the collection, and the references. Its sources are in [`website/`](../website/), and its field tables are generated from the code.
+
+The pages in this folder are the design underneath it, and what the code's own comments point at.
+
+- [Install Floor and run your first line](tutorial.md) takes you from a Kubernetes cluster to a running agent line. The website has no page for this yet.
 - [Use](using.md): the CLI, the client, a service station of your own, and the HTTP API
 
 ## The entities

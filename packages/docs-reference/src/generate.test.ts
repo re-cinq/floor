@@ -20,6 +20,10 @@ describe("regionOf", () => {
     expect(regionOf("example:starter/hello/agents/greeter.md", sources)).toContain('````markdown title="hello/agents/greeter.md"');
   });
 
+  it("fences a worker's code by its language", () => {
+    expect([regionOf("example:code/relay/relay.mjs", sources), regionOf("example:code/station/worker.ts", sources)].map((fenced) => fenced.split(" ")[0])).toEqual(["````js", "````ts"]);
+  });
+
   it("refuses a table it does not have", () => {
     expect(() => regionOf("fields:nope", sources)).toThrow(/^no field table is named "nope": pipeline, line, /);
   });

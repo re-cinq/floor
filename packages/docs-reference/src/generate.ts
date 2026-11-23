@@ -13,6 +13,8 @@ const LANGUAGES = new Map([
   ["yml", "yaml"],
   ["md", "markdown"],
   ["json", "json"],
+  ["mjs", "js"],
+  ["ts", "ts"],
 ]);
 
 export function regionOf(name: string, sources: Sources): string {

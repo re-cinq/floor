@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
+line:
+  id: first-run
+  entry: greet
+  exit: done
+  start:
+    on:
+      - greeting.requested
+    args:
+      name: "{name}"
+  args:
+    name:
+      kind: value
+      subject: true
+  nodes:
+    - id: greet
+      station: greeter
+    - id: done
+  edges:
+    - from: greet
+      to: done
+      on: success
+stations:
+  greeter:
+    description: A worker of yours writes a greeting for the name.
+    kind: service
+    outcomes:
+      - success
+    needs:
+      - name: name
+        kind: value
+    produces:
+      - name: greeting
+        kind: value

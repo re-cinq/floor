@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
+line:
+  id: on-run-settled
+  entry: alert
+  exit: done
+  fail: stopped
+  start:
+    on:
+      - internal.run.settled
+    when:
+      outcome: failed
+    args:
+      run_id: "{runId}"
+      line_id: "{lineId}"
+  args:
+    run_id:
+      kind: value
+      subject: true
+    line_id:
+      kind: value
+  nodes:
+    - id: alert
+      station: send-alert
+    - id: done
+    - id: stopped
+  edges:
+    - from: alert
+      to: done
+      on: success
+    - from: alert
+      to: stopped
+      on: failed
+stations:
+  send-alert:
+    description: A worker of yours tells the team which run of which line failed.
+    kind: service
+    outcomes:
+      - success
+      - failed
+    needs:
+      - name: run_id
+        kind: value
+      - name: line_id
+        kind: value
+    produces: []

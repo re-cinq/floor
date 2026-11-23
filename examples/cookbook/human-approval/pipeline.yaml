@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
+line:
+  id: human-approval
+  entry: approve
+  exit: done
+  fail: declined
+  start:
+    on:
+      - release.requested
+    args:
+      release: "{release}"
+  args:
+    release:
+      kind: value
+      subject: true
+  nodes:
+    - id: approve
+      station: approve-release
+      reports:
+        - on: release.answered
+          when:
+            decision: approved
+          outcome: approved
+        - on: release.answered
+          when:
+            decision: rejected
+          outcome: rejected
+    - id: done
+    - id: declined
+  edges:
+    - from: approve
+      to: done
+      on: approved
+    - from: approve
+      to: declined
+      on: rejected
+stations:
+  approve-release:
+    description: A person approves or rejects the release.
+    kind: human
+    outcomes:
+      - approved
+      - rejected
+    needs:
+      - name: release
+        kind: value
+    produces: []

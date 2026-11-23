@@ -7,7 +7,7 @@ Those two words are different things throughout: an assembly line is the definit
 an assembly run is one execution of it. You import an assembly line once and start many assembly
 runs of it.
 
-If you are deciding what the line should do, start with [Define your first assembly line](define-a-launch-approval.md).
+If you are deciding what the line should do, start with [Define your first assembly line](https://re-cinq.github.io/floor/tutorials/define-a-launch-approval/).
 
 If you only want to see a run happen on your laptop, skip all of this and use the dev loop:
 `npm start`, then `scripts/walk-agent.sh`. See [dev_loop.md](dev_loop.md). This page is about a real
@@ -244,7 +244,7 @@ first.
 ## Next
 
 - [using.md](using.md) — the CLI, the client, writing a service station, and the HTTP API
-- [install.md](install.md) — upgrading, a second cluster, uninstalling
+- [Install on a cluster](https://re-cinq.github.io/floor/reference/install/) — upgrading, a second cluster, uninstalling
 - [assembly_run_storage.md](assembly_run_storage.md) — the model underneath all of the above
 - [api_sketch.md](api_sketch.md) — every endpoint
 - [entities/assembly-line.md](entities/assembly-line.md) — how to write a line of your own
