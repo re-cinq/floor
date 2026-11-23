@@ -50,4 +50,10 @@ describe("isReadPath", () => {
   ])("answers %s for the path %s", (path, expected) => {
     expect(isReadPath(path)).toEqual(expected);
   });
+
+  it("answers false for the dot folders ../assembly-line.yaml, ./assembly-line.yaml and ../agents/w.md", () => {
+    const dotFolderPaths = ["../assembly-line.yaml", "./assembly-line.yaml", "../agents/w.md"];
+
+    expect(dotFolderPaths.map(isReadPath)).toEqual([false, false, false]);
+  });
 });

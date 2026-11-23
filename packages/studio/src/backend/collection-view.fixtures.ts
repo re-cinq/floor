@@ -41,3 +41,99 @@ export const WORKER_COLLECTION: CollectionFile[] = [
 ];
 
 export const TYPO_COLLECTION: CollectionFile[] = [WORKER_COLLECTION[0], { path: "flow/agents/worker.md", text: agentMarkdown("Work {ticket} and tell {typo}.") }];
+
+export const WRITE_REVIEW_COLLECTION: CollectionFile[] = [
+  {
+    path: "flow/assembly-line.yaml",
+    text: `line:
+  id: flow
+  entry: write
+  exit: done
+  args: {}
+  nodes:
+    - id: write
+      station: write
+    - id: review
+      station: review
+    - id: done
+  edges:
+    - from: write
+      to: review
+      on: success
+    - from: review
+      to: done
+      on: success
+stations:
+  write:
+    description: Writes the draft.
+    kind: agent
+    agent_definition: worker
+    outcomes:
+      - success
+    needs: []
+    produces:
+      - name: draft
+        kind: value
+  review:
+    description: Reviews the draft.
+    kind: agent
+    agent_definition: worker
+    outcomes:
+      - success
+    needs:
+      - name: draft
+        kind: value
+    produces: []
+`,
+  },
+  WORKER_COLLECTION[1],
+];
+
+export const PLAN_WRITE_COLLECTION: CollectionFile[] = [
+  {
+    path: "flow/assembly-line.yaml",
+    text: `line:
+  id: flow
+  entry: plan
+  exit: done
+  args:
+    draft:
+      kind: value
+  nodes:
+    - id: plan
+      station: plan
+    - id: write
+      station: write
+    - id: done
+  edges:
+    - from: plan
+      to: write
+      on: success
+    - from: write
+      to: done
+      on: success
+stations:
+  plan:
+    description: Plans the draft.
+    kind: agent
+    agent_definition: worker
+    outcomes:
+      - success
+    needs:
+      - name: draft
+        kind: value
+    produces: []
+  write:
+    description: Writes the draft.
+    kind: agent
+    agent_definition: worker
+    outcomes:
+      - success
+    needs: []
+    produces:
+      - name: draft
+        kind: value
+`,
+  },
+  WORKER_COLLECTION[1],
+];

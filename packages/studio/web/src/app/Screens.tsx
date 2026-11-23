@@ -30,6 +30,14 @@ export function CannotConnect({ reason }: { reason: string }) {
   );
 }
 
+export function Unreadable({ reason }: { reason: string }) {
+  return (
+    <Screen title="The studio could not be read">
+      <p>{reason}</p>
+    </Screen>
+  );
+}
+
 export function Refused({ reason }: { reason: string }) {
   return (
     <Screen title="The studio refused this page">

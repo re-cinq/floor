@@ -5,6 +5,8 @@
 }
 
 .sidebar {
+  /* Holds the theme switch's visually hidden inputs, which would otherwise hang off the page and make it scroll. */
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: none;

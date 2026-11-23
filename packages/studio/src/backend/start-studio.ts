@@ -1,9 +1,9 @@
 // The backend: one WebSocket server on the loopback address, a token and an origin check at the upgrade, a handler table for requests, and a watcher that pushes the collection again when a file changes.
 import { randomBytes } from "node:crypto";
-import { stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { basename, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type { Duplex } from "node:stream";
 import { enforce } from "@re-cinq/floor-assembly-lines";
 import { collectionFilesIn } from "@re-cinq/floor-pipeline";
@@ -12,6 +12,7 @@ import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
 import { collectionView } from "./collection-view.js";
 import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
+import { editedAgentText, type AgentEdit } from "./agent-file-text.js";
 import { answerFrame, type StudioContext } from "./requests.js";
 import { watchCollection } from "./watcher.js";
 
@@ -46,7 +47,14 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const folder = basename(resolve(dir));
   const readCollection = async () => ({ ...collectionView(await collectionFilesIn(dir), hostKeys), folder });
-  const context: StudioContext = { readCollection };
+
+  const writeAgent = async (file: string, edit: AgentEdit) => {
+    const path = join(dir, file);
+
+    await writeFile(path, editedAgentText(file, await readFile(path, "utf8"), edit));
+  };
+
+  const context: StudioContext = { readCollection, writeAgent };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {
@@ -80,6 +88,8 @@ function refuseUpgrade(socket: Duplex, { status, reason }: UpgradeRefusal): void
 
 function serve(socket: WebSocket, context: StudioContext): void {
   send(socket, { type: "hello", version: PROTOCOL_VERSION });
+  // ws closes the socket itself (1009 on an oversized frame); the listener only keeps the error from going unhandled.
+  socket.on("error", () => undefined);
   socket.on("message", (frame) => void answerFrame(frame.toString(), context).then((answer) => send(socket, answer)));
 }
 
@@ -87,11 +97,13 @@ function send(socket: WebSocket, frame: ServerFrame): void {
   if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(frame));
 }
 
-// A read that fails, say the folder is gone mid-edit, sends nothing: the next change reads again.
 async function pushCollection(sockets: WebSocketServer, readCollection: () => Promise<CollectionView>): Promise<void> {
-  const collection = await readCollection().catch(() => undefined);
+  const frame: ServerFrame = await readCollection().then(
+    (collection): ServerFrame => ({ type: "collection", collection }),
+    (error: Error): ServerFrame => ({ type: "refused", reason: error.message }),
+  );
 
-  if (collection) sockets.clients.forEach((socket) => send(socket, { type: "collection", collection }));
+  sockets.clients.forEach((socket) => send(socket, frame));
 }
 
 async function closed({ watcher, sockets, server }: { watcher: { close(): void }; sockets: WebSocketServer; server: ReturnType<typeof createServer> }): Promise<void> {

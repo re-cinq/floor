@@ -103,3 +103,7 @@ function withinLimits(value: number, lower: number, upper: number): number {
 function isUnmeasured(box: Size): boolean {
   return box.width === 0 || box.height === 0;
 }
+
+export function svgTransformOf(transform: ViewportTransform): string {
+  return `translate(${transform.x} ${transform.y}) scale(${transform.scale})`;
+}

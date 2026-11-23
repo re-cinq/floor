@@ -1,10 +1,14 @@
 // A request in, one frame out. Adding a request type is its schema in the protocol and its handler in `HANDLERS`.
 import { REQUEST_TYPES, requestSchema, type Request, type RequestKind, type ResultOf, type ServerFrame } from "../protocol.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 import { z } from "zod";
 import type { CollectionView } from "../view.js";
+import type { AgentEdit } from "./agent-file-text.js";
 
 export interface StudioContext {
   readCollection(): Promise<CollectionView>;
+  /** Rewrites the agent file at a collection-relative path, refused when it changed since it was read. */
+  writeAgent(file: string, edit: AgentEdit): Promise<void>;
 }
 
 interface Handler<Asked extends Request> {
@@ -16,8 +20,30 @@ type CollectionRead = Extract<Request, { type: "collection.read" }>;
 
 const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
 
+function agentFileOf({ lines }: CollectionView, lineId: string, agentName: string): string | undefined {
+  const nodes = lines.find(({ id }) => id === lineId)?.nodes ?? [];
+
+  const agents = nodes.map((node) => node.agent);
+
+  return agents.find((each) => each?.name === agentName)?.file;
+}
+
+type AgentWrite = Extract<Request, { type: "agent.write" }>;
+
+const agentWrite: Handler<AgentWrite> = {
+  type: "agent.write",
+  handle: async (context, { line, agent, prompt, settings, version }) => {
+    const file = agentFileOf(await context.readCollection(), line, agent);
+
+    enforce(file, `line ${line} has no agent ${agent}`);
+    await context.writeAgent(file, { prompt, settings, version });
+
+    return { written: file };
+  },
+};
+
 /** One handler for each request type: a test holds the list to `REQUEST_TYPES`. */
-export const HANDLERS: Handler<CollectionRead>[] = [collectionRead];
+export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite>)[] = [collectionRead, agentWrite];
 
 export async function answerFrame(text: string, context: StudioContext): Promise<ServerFrame> {
   const held = parsedJson(text);
@@ -34,7 +60,7 @@ async function handled(request: Request, context: StudioContext): Promise<Server
 
   if (!handler) return { id: request.id, type: "refused", reason: `no handler for ${request.type}` };
 
-  return handler.handle(context, request).then(
+  return (handler as Handler<Request>).handle(context, request).then(
     (result): ServerFrame => ({ id: request.id, type: "result", result }),
     (cause: unknown): ServerFrame => ({ id: request.id, type: "refused", reason: cause instanceof Error ? cause.message : String(cause) }),
   );

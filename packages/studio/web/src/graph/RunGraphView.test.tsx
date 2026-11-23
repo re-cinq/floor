@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useState } from "react";
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RunGraphView from "./RunGraphView";
@@ -107,6 +107,24 @@ describe("RunGraphView", () => {
 
     expect([Number(svg?.getAttribute("width")) > 0, Number(svg?.getAttribute("height")) > 0]).toEqual([true, true]);
   });
+
+  it("draws the node review of code-review inside the Graph viewport", () => {
+    render(<RunGraphView definition={codeReviewDefinition} />);
+
+    expect(within(screen.getByRole("group", { name: "Graph viewport" })).getByRole("group", { name: /^review,/ })).toBeTruthy();
+  });
+});
+
+describe("RunGraphView wrapping to the box", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("draws code-review on one row, 512 by 200, in a 560 by 200 box too narrow for the width rule", () => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({ width: 560, height: 200 } as DOMRect);
+    const { container } = render(<RunGraphView definition={codeReviewDefinition} />);
+    const svg = container.querySelector("svg[role='img']");
+
+    expect([svg?.getAttribute("width"), svg?.getAttribute("height")]).toEqual(["512", "200"]);
+  });
 });
 
 describe("RunGraphView selection", () => {
@@ -161,6 +179,20 @@ describe("RunGraphView selection", () => {
     const { container } = render(<Selectable definition={implementationDefinition} />);
 
     expect([...container.querySelectorAll("[data-edge]")].some((edge) => edge.hasAttribute("data-emphasis"))).toBe(false);
+  });
+});
+
+describe("RunGraphView bringing a selected node into view", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("pans to translate(-52.69339005235602 -402.73650196335086) when done, below the zoomed view, is selected", () => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 300));
+    const { container, rerender } = render(<RunGraphView definition={codeReviewDefinition} />);
+    for (let press = 0; press < 4; press++) fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    rerender(<RunGraphView definition={codeReviewDefinition} selectedNodeId="done" />);
+    const drawing = container.querySelector("svg[role='img']")?.parentElement;
+
+    expect(drawing?.getAttribute("transform")).toBe("translate(-52.69339005235602 -402.73650196335086) scale(1.9173347513089007)");
   });
 });
 

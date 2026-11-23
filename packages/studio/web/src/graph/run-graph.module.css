@@ -1,15 +1,15 @@
-.panel {
-  margin-bottom: var(--space-6);
+.panel,
+.canvas {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 .heading {
   font-size: var(--fs-md);
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
   margin-bottom: var(--space-3);
-}
-/* Drawn at its natural size and wrapped to the panel's width (run-viz FR4.1a); a single column wider than the panel scrolls rather than shrinks. */
-.scroll {
-  overflow-x: auto;
 }
 .svg {
   display: block;

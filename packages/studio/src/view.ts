@@ -12,10 +12,18 @@ export interface ViewProblem {
 export interface NodeAgent {
   name: string;
   file: string;
+  version: string | null;
+  prompt: string | null;
+  settings: Record<string, unknown>;
 }
 
 export interface NodeNeed extends NeedSpec {
   coverage: NeedCoverage;
+}
+
+export interface NodeProduce extends ProduceSpec {
+  /** The ids of the line's other nodes whose station needs this produce by name. */
+  readBy: string[];
 }
 
 export interface NodeView {
@@ -29,7 +37,7 @@ export interface NodeView {
   description?: string;
   outcomes: string[];
   needs: NodeNeed[];
-  produces: ProduceSpec[];
+  produces: NodeProduce[];
   agentDefinition?: string;
   events: NodeEvents;
   /** Present for an agent station whose agent a file of the collection defines. */

@@ -1,7 +1,9 @@
-import { basename } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { PROTOCOL_VERSION } from "../protocol.js";
-import { WORKER_COLLECTION } from "./collection-view.fixtures.js";
+import { textVersion } from "./agent-file-text.js";
+import { agentMarkdown, WORKER_COLLECTION } from "./collection-view.fixtures.js";
 import { collectionOnDisk, openClient, refusalStatus } from "./studio.fixtures.js";
 import { startStudio, type Studio } from "./start-studio.js";
 
@@ -14,6 +16,15 @@ async function started(origins: string[] = []): Promise<Studio> {
   running.push(studio);
 
   return studio;
+}
+
+async function connectedToWorkerCollection() {
+  const dir = collectionOnDisk(WORKER_COLLECTION);
+  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [] });
+
+  running.push(studio);
+
+  return { dir, client: await openClient(studio.url, { token: studio.token }) };
 }
 
 afterEach(async () => {
@@ -44,11 +55,7 @@ describe("startStudio", () => {
   });
 
   it("names the collection's folder in the view it answers with", async () => {
-    const dir = collectionOnDisk(WORKER_COLLECTION);
-    const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [] });
-
-    running.push(studio);
-    const client = await openClient(studio.url, { token: studio.token });
+    const { dir, client } = await connectedToWorkerCollection();
 
     client.send({ id: "r1", type: "collection.read" });
 
@@ -99,6 +106,16 @@ describe("startStudio", () => {
     expect(await client.nextOfType("refused")).toMatchObject({ id: "r3", reason: expect.stringContaining('unknown request type "run.start"') });
   });
 
+  it("closes the socket with code 1009 when a frame is 4 MiB plus one byte", async () => {
+    const { url, token } = await started();
+    const client = await openClient(url, { token });
+    const closeCode = new Promise((resolve) => client.socket.once("close", resolve));
+
+    client.socket.send("a".repeat(4 * 1024 * 1024 + 1));
+
+    await expect(closeCode).resolves.toBe(1009);
+  });
+
   it("closes every open socket when it is closed", async () => {
     const studio = await started();
     const client = await openClient(studio.url, { token: studio.token });
@@ -107,6 +124,77 @@ describe("startStudio", () => {
     await studio.close();
 
     await expect(closed).resolves.toBeDefined();
+  });
+
+  it("answers agent.write with a result and rewrites the agent's prompt under its frontmatter", async () => {
+    const { dir, client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({ id: "w1", type: "agent.write", line: "flow", agent: "worker", prompt: "Work on {ticket} carefully.\n", version: textVersion(agentMarkdown("Work {ticket}.")) });
+    const answer = await client.next();
+
+    expect({ answer: answer.type, file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toEqual({ answer: "result", file: agentMarkdown("Work on {ticket} carefully.") });
+  });
+
+  it("answers agent.write with a result and rewrites the frontmatter to image acme/agent:3 when settings carry it", async () => {
+    const { dir, client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({
+      id: "w4",
+      type: "agent.write",
+      line: "flow",
+      agent: "worker",
+      prompt: "Work {ticket}.\n",
+      settings: { image: "acme/agent:3", timeout_minutes: 10 },
+      version: textVersion(agentMarkdown("Work {ticket}.")),
+    });
+    const answer = await client.next();
+
+    expect({ answer: answer.type, file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toEqual({
+      answer: "result",
+      file: "---\nimage: acme/agent:3\ntimeout_minutes: 10\n---\nWork {ticket}.\n",
+    });
+  });
+
+  it("refuses agent.write as changed and leaves the file untouched when version is not the file's current hash", async () => {
+    const { dir, client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({ id: "w2", type: "agent.write", line: "flow", agent: "worker", prompt: "New.\n", version: "not-the-version" });
+    const answer = await client.next();
+
+    expect({ answer, file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toMatchObject({
+      answer: { type: "refused", reason: expect.stringMatching(/changed/) },
+      file: agentMarkdown("Work {ticket}."),
+    });
+  });
+
+  it("refuses agent.write mentioning version and leaves the file untouched when version is missing", async () => {
+    const { dir, client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({ id: "w3", type: "agent.write", line: "flow", agent: "worker", prompt: "New.\n" });
+    const answer = await client.next();
+
+    expect({ answer, file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toMatchObject({
+      answer: { type: "refused", reason: expect.stringMatching(/version/) },
+      file: agentMarkdown("Work {ticket}."),
+    });
+  });
+
+  it("refuses agent.write as having no agent and writes nothing when the agent is the path-like ../../outside", async () => {
+    const { dir, client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({ id: "w5", type: "agent.write", line: "flow", agent: "../../outside", prompt: "x\n", version: "v" });
+    const answer = await client.next();
+
+    expect({ answer, outside: existsSync(join(dir, "..", "outside.md")), file: readFileSync(join(dir, "flow/agents/worker.md"), "utf8") }).toMatchObject({
+      answer: { type: "refused", reason: expect.stringMatching(/has no agent/) },
+      outside: false,
+      file: agentMarkdown("Work {ticket}."),
+    });
   });
 
   it("refuses to start on a directory that does not exist", async () => {

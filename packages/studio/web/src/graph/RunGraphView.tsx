@@ -1,25 +1,27 @@
 // Renders an assembly line — lays out the nodes/connectors from graph-view-model and hands drawing to its sibling files; every node also says its outcomes and badges as text, so meaning never rests on color alone.
 import { useMemo } from "react";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import { layoutAssemblyLine } from "./dag-layout";
-import { columnsFor } from "./dag-wrap";
+import { layerByLongestPath, layoutAssemblyLine } from "./dag-layout";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
 import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
 import GraphNode from "./GraphNode";
+import GraphViewport from "./GraphViewport";
 import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
 import { nodeTooltipOf } from "./node-tooltip";
 import RunGraphLegend from "./RunGraphLegend";
-import { useElementWidth } from "./use-element-width";
+import { useElementSize } from "./use-element-size";
+import { columnsToFit } from "./wrap-to-fit";
+import type { Size } from "./viewport";
 import {
   LAYER_GAP,
   NODE_WIDTH,
-  VIEW_PADDING,
   edgeMapKey,
   fitView,
   nodeHeightFor,
+  revealBoxOf,
   toLayoutDefinition,
 } from "./run-graph-geometry";
 import styles from "./run-graph.module.css";
@@ -31,9 +33,9 @@ export interface RunGraphViewProps {
   selectedNodeId?: string | null;
 }
 
-// The graph: drawn at its natural size and wrapped onto as many rows as the panel's width needs.
+// The graph: wrapped onto the column count that shows it largest in the panel, then fitted to it by the viewport.
 export default function RunGraphView(props: RunGraphViewProps) {
-  const [panelRef, panelWidth] = useElementWidth<HTMLElement>();
+  const [panelRef, panelBox] = useElementSize<HTMLElement>();
   const graph = useMemo(() => deriveVisibleGraph(props.definition), [props.definition]);
 
   if (graph.nodes.length === 0) {
@@ -42,7 +44,7 @@ export default function RunGraphView(props: RunGraphViewProps) {
 
   return (
     <section ref={panelRef} className={styles.panel} aria-label={`Graph of ${props.definition.name}`}>
-      <GraphCanvas view={props} graph={graph} panelWidth={panelWidth} />
+      <GraphCanvas view={props} graph={graph} panelBox={panelBox} />
       <RunGraphLegend families={familiesOf(graph)} />
     </section>
   );
@@ -51,43 +53,53 @@ export default function RunGraphView(props: RunGraphViewProps) {
 interface GraphCanvasProps {
   view: RunGraphViewProps;
   graph: VisibleGraph;
-  panelWidth: number | null;
+  panelBox: Size | null;
 }
 
-/** The drawing in its scroll box, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
-function GraphCanvas({ view, graph, panelWidth }: GraphCanvasProps) {
+/** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
+function GraphCanvas({ view, graph, panelBox }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
   const laid = useMemo(
-    () => layoutGraph(graph, view.definition, columnsOf(panelWidth)),
-    [graph, view.definition, panelWidth],
+    () => layoutGraph(graph, view.definition, columnsInBox(graph, view.definition, panelBox)),
+    [graph, view.definition, panelBox],
   );
 
   return (
     <>
-      <div className={styles.scroll} {...tooltip.handlers}>
-        <GraphSvg
-          laid={laid}
-          graph={graph}
-          name={view.definition.name}
-          onSelectNode={view.onSelectNode}
-          selectedNodeId={view.selectedNodeId}
-          describedNode={describedNodeOf(tooltip)}
-        />
+      <div className={styles.canvas} {...tooltip.handlers}>
+        <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)}>
+          <GraphSvg
+            laid={laid}
+            graph={graph}
+            name={view.definition.name}
+            onSelectNode={view.onSelectNode}
+            selectedNodeId={view.selectedNodeId}
+            describedNode={describedNodeOf(tooltip)}
+          />
+        </GraphViewport>
       </div>
       <GraphTooltip {...tooltip} definition={view.definition} />
     </>
   );
 }
 
-/** Unmeasured (before the first resize report), the line stays on one row. The retry arrows of a wrapped line run up a gutter left of the first column, which the panel must hold too. */
-function columnsOf(panelWidth: number | null): number {
-  return panelWidth === null
-    ? Number.POSITIVE_INFINITY
-    : columnsFor(panelWidth - LAYER_GAP / 3, {
-        layerGap: LAYER_GAP,
-        nodeWidth: NODE_WIDTH,
-        padding: VIEW_PADDING,
-      });
+/** The column count whose wrapped drawing shows largest in the box; unmeasured, one row. */
+function columnsInBox(graph: VisibleGraph, definition: AssemblyLineDefinition, box: Size | null): number {
+  if (box === null) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const layers = layerByLongestPath(toLayoutDefinition(graph, definition)).values();
+  const layerCount = Math.max(...layers) + 1;
+
+  return columnsToFit(layerCount, box, (columns) => layoutGraph(graph, definition, columns).view);
+}
+
+function revealOf(laid: ReturnType<typeof layoutGraph>, selectedNodeId: string | null | undefined) {
+  const { nodes } = laid.layout;
+  const selected = nodes.find((node) => node.id === selectedNodeId);
+
+  return selected && revealBoxOf(selected, laid.view, laid.nodeHeight);
 }
 
 function familiesOf(graph: VisibleGraph) {
@@ -241,7 +253,7 @@ function layoutGraph(
   };
 }
 
-/** The graph's pitch: full-size nodes, the rows of a layer a node apart, and as many columns per band as the panel holds. */
+/** The graph's pitch: full-size nodes, the rows of a layer a node apart, and the columns per band the panel's box picks. */
 function layoutOptions(nodeHeight: number, columnsPerBand: number) {
   return {
     layerGap: LAYER_GAP,

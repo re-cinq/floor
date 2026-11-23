@@ -16,16 +16,3 @@ export function wrapLayer(layer: number, columnsPerBand: number): WrappedLayer {
   };
 }
 
-export interface ColumnPitch {
-  layerGap: number;
-  nodeWidth: number;
-  /** Space kept clear on each side of the drawing. */
-  padding: number;
-}
-
-/** How many columns fit in a width: the first takes a node's width, every further one a full pitch. Never fewer than one. */
-export function columnsFor(width: number, pitch: ColumnPitch): number {
-  const usable = width - pitch.padding * 2 - pitch.nodeWidth;
-
-  return Math.max(1, Math.floor(usable / pitch.layerGap) + 1);
-}

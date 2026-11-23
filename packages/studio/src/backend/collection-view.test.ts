@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
+import { textVersion } from "./agent-file-text.js";
 import { collectionView } from "./collection-view.js";
-import { TYPO_COLLECTION, WORKER_COLLECTION, agentMarkdown, lineYaml } from "./collection-view.fixtures.js";
+import { PLAN_WRITE_COLLECTION, TYPO_COLLECTION, WORKER_COLLECTION, WRITE_REVIEW_COLLECTION, agentMarkdown, lineYaml } from "./collection-view.fixtures.js";
 
 const [FLOW_LINE, WORKER_AGENT] = WORKER_COLLECTION;
 
@@ -35,6 +36,18 @@ describe("collectionView", () => {
     });
   });
 
+  it("names node review as a reader of the draft that node write produces", () => {
+    const [write] = onlyLine(WRITE_REVIEW_COLLECTION).nodes;
+
+    expect(write.produces).toEqual([{ name: "draft", kind: "value", readBy: ["review"] }]);
+  });
+
+  it("leaves readBy empty for the draft that node write produces when only upstream node plan needs draft", () => {
+    const [, write] = onlyLine(PLAN_WRITE_COLLECTION).nodes;
+
+    expect(write.produces).toEqual([{ name: "draft", kind: "value", readBy: [] }]);
+  });
+
   it("marks the need ticket of node work seeded when ticket is a line argument", () => {
     const [work] = onlyLine(WORKER_COLLECTION).nodes;
 
@@ -47,6 +60,19 @@ describe("collectionView", () => {
       placeholders: { placeholders: [{ name: "ticket", state: "seeded" }, { name: "typo", state: "unsupplied" }], unused: [] },
       events: { startedBy: [{ event: "node.work.start", origin: "line-start" }] },
     });
+  });
+
+  it("carries the prompt Work {ticket}. of agent worker on node work", () => {
+    const [work] = onlyLine(WORKER_COLLECTION).nodes;
+
+    expect(work.agent).toEqual({ name: "worker", file: "flow/agents/worker.md", version: textVersion(WORKER_COLLECTION.find((file) => file.path === "flow/agents/worker.md")?.text ?? ""), prompt: "Work {ticket}.\n", settings: { image: "acme/agent:2", timeout_minutes: 10 } });
+  });
+
+  it("carries the sha256 version of flow/agents/worker.md as read on agent worker of node work", () => {
+    const [work] = onlyLine(WORKER_COLLECTION).nodes;
+    const workerFile = WORKER_COLLECTION.find((file) => file.path === "flow/agents/worker.md");
+
+    expect(work.agent).toMatchObject({ version: textVersion(workerFile?.text ?? "") });
   });
 
   it("marks the node whose line names a fanout with that fanout", () => {
@@ -132,6 +158,13 @@ describe("collectionView", () => {
     const { agents, refused } = collectionView(files, ["review_required"]);
 
     expect({ refused, settings: agents[0]?.settings }).toEqual({ refused: [], settings: { image: "acme/agent:2", timeout_minutes: 10 } });
+  });
+
+  it("refuses ../outside/assembly-line.yaml and flow/agents/../../x.md as unread paths and shows only the flow line", () => {
+    const files = [...WORKER_COLLECTION, { path: "../outside/assembly-line.yaml", text: lineYaml("outside", "worker") }, { path: "flow/agents/../../x.md", text: agentMarkdown("Go.") }];
+    const { lines, refused } = collectionView(files, []);
+
+    expect({ lines: lines.map((line) => line.file), refused: refused.map((file) => file.path) }).toEqual({ lines: ["flow/assembly-line.yaml"], refused: ["../outside/assembly-line.yaml", "flow/agents/../../x.md"] });
   });
 
   it("counts lines, agents, refused files and problems", () => {

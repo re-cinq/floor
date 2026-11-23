@@ -1,12 +1,13 @@
 // The layout of a collection: `<line>/assembly-line.yaml`, `<line>/agents/<agent>.md` and `<line>/agents/<agent>.extra.md`. A line folder written before the file was renamed holds `pipeline.yaml`, which is read as the same thing.
-const PIPELINE_FILE = /^([^/]+)\/(assembly-line|pipeline)\.yaml$/;
+const FOLDER = String.raw`(?!\.\.?\/)[^/]+`;
+const PIPELINE_FILE = new RegExp(String.raw`^(${FOLDER})\/(assembly-line|pipeline)\.yaml$`);
 
 /** The name a line's file has. */
 export const LINE_FILE = "assembly-line.yaml";
 
 /** The name it had, still read. */
 export const FORMER_LINE_FILE = "pipeline.yaml";
-const AGENT_FILE = /^[^/]+\/agents\/([^/]+?)(\.extra)?\.md$/;
+const AGENT_FILE = new RegExp(String.raw`^${FOLDER}\/agents\/([^/]+?)(\.extra)?\.md$`);
 
 /** A file of a collection: its path from the collection's root, and its text. */
 export interface CollectionFile {

@@ -61,7 +61,7 @@ npm run dev:web -w @re-cinq/floor-studio                           # serves http
 
 Open `http://localhost:5173/` with the fragment the command printed (`#socket=...&token=...`). The backend refuses a browser page whose origin it was not told, so start it with the dev server's origin allowed by calling `startStudio({ ..., origins: ["http://localhost:5173"] })` from a script; the command itself allows only its own page.
 
-The page keeps the selected line and node in the same fragment (`&line=<id>&node=<id>`), so a reload keeps the place. A `collection` push redraws it in place and keeps the selection while the line and node still exist. Its screens: no address, connecting, cannot connect (it retries with backoff and reads the collection again once it is back), refused (a wrong token, or another protocol version, is not retried), an empty folder, and the line view. The right-hand inspector shows the selected node's id and station; its tabs are not built yet.
+The page keeps the selected line and node in the same fragment (`&line=<id>&node=<id>&tab=<tab>`), so a reload keeps the place. Choosing another node keeps the tab (the first tab when that node lacks it); Escape clears the node and the tab. A `collection` push redraws it in place and keeps the selection while the line and node still exist. Its screens: no address, connecting, cannot connect (it retries with backoff and reads the collection again once it is back), refused (a wrong token, or another protocol version, is not retried), unreadable (the collection could not be read, with the reason; an unasked `refused` push, such as the folder being deleted, replaces a collection already drawn), an empty folder, and the line view. The right-hand inspector shows the selected node's id and station, with tabs by kind (the arrow keys move between them and wrap, Home and End go to the first and last): none for a marker, Station and Events for a station, plus Prompt and Settings for an agent. The Station tab shows the description, each need with a sentence on how it is covered, each produce with the downstream nodes that read it, and the outcomes. The Events tab lists what starts the node (an edge, an outside event, or the line's own start, with its condition), the outside events that answer it with the outcome each reports, and what it raises: its events, each outcome with the node the edge it takes starts (or that the run stops there), and the lines a settled run starts. The Prompt tab shows the agent's prompt with each `{placeholder}` marked by its state (by the same name rule the lint uses, `placeholderPattern`), a table of the placeholders with their source, state and the nodes that fill them, and the needs the prompt never uses. The Settings tab lists each setting the agent file writes, as `key: value`, with objects and lists as compact JSON.
 
 ## Use the backend on its own
 
@@ -84,7 +84,7 @@ Every frame is JSON in one WebSocket message. A request carries an `id` the clie
 | backend to client | `{ type: "hello", version }` | first, when a socket opens. `version` is `PROTOCOL_VERSION` |
 | client to backend | `{ id, type: "collection.read" }` | the client wants the whole collection |
 | backend to client | `{ id, type: "result", result }` | the answer to a request. For `collection.read`, `result` is the collection view |
-| backend to client | `{ id?, type: "refused", reason }` | a frame that is not JSON, fails its schema, or has an unknown `type`, or a request that failed. The `id` is there when one could be read. The socket stays open |
+| backend to client | `{ id?, type: "refused", reason }` | a frame that is not JSON, fails its schema, or has an unknown `type`, or a request that failed. The `id` is there when one could be read. Also pushed unasked, without an `id`, when a re-read after a change on disk fails, such as the folder being deleted. The socket stays open |
 | backend to client | `{ type: "collection", collection }` | a file the collection reads changed on disk, whoever changed it: the whole view again |
 
 A new request type is one schema in `src/protocol.ts` and one handler in the table in `src/backend/requests.ts`.
@@ -96,7 +96,7 @@ A new request type is one schema in `src/protocol.ts` and one handler in the tab
 - A line with problems is still a line. It is read on its own, so a line the collection's overlay would refuse for its problems appears with `problems` listing each one: `rule`, the `node` when there is one, and the `message`. The rules of the lint and the floor's own check of a line body are both there, and a fault they both name is listed once, as the lint's rule.
 - A file that cannot be read at all, such as YAML that does not parse, an agent file with no frontmatter, or a `pipeline.yaml` beside an `assembly-line.yaml`, is in `refused` with its path and the reason. The other files still draw.
 - Settings are shown as the file writes them: `${NAME}` is not filled from the environment.
-- Each node holds its station's `kind`, `description`, `outcomes`, `needs` and `produces`, each need with its `coverage` from `needCoverage`, its `events` from `nodeEvents`, and, for an agent station whose agent a file defines, `agent` and the `placeholders` of that agent's prompt from `promptPlaceholders`.
+- Each node holds its station's `kind`, `description`, `outcomes`, `needs` and `produces`, each need with its `coverage` from `needCoverage`, each produce with `readBy`, the nodes downstream of it (by `downstreamOf`) whose station needs it, its `events` from `nodeEvents`, and, for an agent station whose agent a file defines, `agent` and the `placeholders` of that agent's prompt from `promptPlaceholders`.
 
 ## Security
 
@@ -110,4 +110,4 @@ A refused upgrade gets no socket at all.
 
 ## Change watching
 
-The backend watches `dir` with `fs.watch` and `recursive: true`. It ignores a path the collection does not read and anything under a dot folder, waits about 100 ms for the changes to settle, then pushes one `collection` frame to every open socket. A file that is deleted or renamed is handled the same way. A watcher error does not stop the backend.
+The backend watches `dir` with `fs.watch` and `recursive: true`. It ignores a path the collection does not read and anything under a dot folder, waits about 100 ms for the changes to settle, then pushes one `collection` frame to every open socket, or one `refused` frame without an `id` when the read fails. A file that is deleted or renamed is handled the same way. A watcher error does not stop the backend.

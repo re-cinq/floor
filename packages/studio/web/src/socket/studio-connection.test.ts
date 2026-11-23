@@ -83,6 +83,24 @@ function lineIdsOf({ collection }: StudioSnapshot): string[] | undefined {
 
 const hello = JSON.stringify({ type: "hello", version: PROTOCOL_VERSION });
 
+async function connectedThenDropped(served: ServedProtocol): Promise<StudioConnection> {
+  const connection = connected({ socket: served.address, token: "abc" });
+
+  await reaches(connection, ({ collection }) => collection !== null);
+  served.sockets.forEach((socket) => socket.terminate());
+
+  return connection;
+}
+
+function replyingToReads(answerFor: (served: ServedProtocol) => object): (socket: ServerSocket, served: ServedProtocol) => void {
+  return (socket, served) => {
+    const answer = answerFor(served);
+
+    socket.send(hello);
+    socket.on("message", (raw) => socket.send(JSON.stringify({ id: (JSON.parse(raw.toString()) as { id: string }).id, ...answer })));
+  };
+}
+
 describe("StudioConnection against the real backend", () => {
   it("opens, asks for the collection and holds its view", async () => {
     const { studio } = await studioOnDisk();
@@ -158,23 +176,43 @@ describe("StudioConnection against the real backend", () => {
 describe("StudioConnection against a server that speaks the protocol by hand", () => {
   it("reconnects after a drop and reads the collection again", async () => {
     const view = collectionView(WORKER_COLLECTION, []);
-    const served = await protocolServer((socket) => {
-      socket.send(hello);
-      socket.on("message", (raw) => {
-        const { id } = JSON.parse(raw.toString()) as { id: string };
+    const served = await protocolServer(replyingToReads(() => ({ type: "result", result: view })));
+    const connection = await connectedThenDropped(served);
 
-        socket.send(JSON.stringify({ id, type: "result", result: view }));
-      });
-    });
-    const connection = connected({ socket: served.address, token: "abc" });
-
-    await reaches(connection, ({ collection }) => collection !== null);
-    served.sockets.forEach((socket) => socket.terminate());
     await reaches(connection, ({ connection: state }) => state.status === "closed");
     await reaches(connection, ({ connection: state }) => state.status === "open");
     await reaches(connection, () => served.reads() === 2);
 
     expect(served.reads()).toBe(2);
+  });
+
+  it("drops the collection it held and keeps the reason when the read after a reconnect is refused", async () => {
+    const view = collectionView(WORKER_COLLECTION, []);
+    const served = await protocolServer(replyingToReads(({ sockets }) => (sockets.size === 1 ? { type: "result", result: view } : { type: "refused", reason: "the folder is gone" })));
+    const connection = await connectedThenDropped(served);
+
+    const snapshot = await reaches(connection, ({ readError }) => readError !== null);
+
+    expect(snapshot).toMatchObject({ collection: null, readError: "the folder is gone" });
+  });
+
+  it("drops the collection it held and carries a read error when a pushed collection has a work node agent with prompt 5", async () => {
+    const view = collectionView(WORKER_COLLECTION, []);
+    const [flow] = view.lines;
+    const nodes = flow.nodes.map((node) => (node.id === "work" ? { ...node, agent: { ...node.agent, prompt: 5 } } : node));
+    const refusedPush = JSON.stringify({ type: "collection", collection: { ...view, lines: [{ ...flow, nodes }] } });
+    const served = await protocolServer((socket) => {
+      socket.send(hello);
+      socket.on("message", (raw) => {
+        socket.send(JSON.stringify({ id: (JSON.parse(raw.toString()) as { id: string }).id, type: "result", result: view }));
+        socket.send(refusedPush);
+      });
+    });
+    const connection = connected({ socket: served.address, token: "abc" });
+
+    const snapshot = await reaches(connection, ({ connection: state, readError }) => readError !== null || state.status === "closed");
+
+    expect(snapshot).toMatchObject({ collection: null, readError: expect.any(String) });
   });
 
   it("gives each answer to the request that has its id, whatever the order they come back in", async () => {

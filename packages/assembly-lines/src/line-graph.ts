@@ -29,6 +29,13 @@ export function reachableAvoiding(goingOut: ReadonlyMap<string, string[]>, sourc
   return reached;
 }
 
+/** Every node an edge path leads to from `start`; `start` itself only when a cycle returns to it. */
+export function downstreamOf(start: string, edges: readonly LineEdge[]): Set<string> {
+  const goingOut = goingOutOf(edges);
+
+  return reachableAvoiding(goingOut, goingOut.get(start) ?? [], new Set());
+}
+
 // From the entry, and from every node the line starts by a name of its own: a person or an outside system arrives there without an edge, and what it leads to is reached too.
 export function reachedFrom(line: LineBody): Set<string> {
   const goingOut = edgesByFrom(line);

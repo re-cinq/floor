@@ -1,10 +1,9 @@
 // Pure: every `{name}` a prompt reads, what supplies it, and whether it is filled on every path into the node — answered from the same naming rules `promptParameters` applies, so a tool and the cluster agent cannot disagree.
 import { EXEMPT_NEEDS, coverageContextOf, needCoverage, type NeedContext, type NeedCoverage } from "./line-needs.js";
+import { placeholderPattern } from "./placeholder-pattern.js";
 import { BROKER_PARAMETER_NAMES, RUN_PARAMETER_NAMES, declaredParameters, type DeclaredParameter } from "./prompt-parameters.js";
 import type { LineBody, LineNode, StationBody } from "@re-cinq/floor-contracts";
 
-// The agent subsystem's `renderPrompt` replaces `{key}` for letters, digits, `_`, `.` and `-`, and leaves what it does not know as it is. A name here must also start with a letter or `_`, as every need does, so `a{3}` and `{}` are not read as placeholders; a JSON object never matches, its braces enclose quotes.
-const PLACEHOLDER = /\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g;
 const PATH_SUFFIX = "_path";
 
 export type PlaceholderSource = "value-need" | "need-path" | "produce-path" | "floor" | "none";
@@ -37,7 +36,7 @@ export interface PromptPlaceholderInput {
 
 /** Each distinct name in `{name}` form, in order of first appearance. */
 export function placeholderNames(prompt: string): string[] {
-  return [...new Set([...prompt.matchAll(PLACEHOLDER)].map(([, name]) => name))];
+  return [...new Set([...prompt.matchAll(placeholderPattern("g"))].map(([, name]) => name))];
 }
 
 export function promptPlaceholders(input: PromptPlaceholderInput): PromptPlaceholders {

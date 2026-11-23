@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { PROTOCOL_VERSION, REQUEST_TYPES, requestSchema, serverFrameSchema } from "./protocol.js";
+import { collectionView } from "./backend/collection-view.js";
+import { WORKER_COLLECTION } from "./backend/collection-view.fixtures.js";
+import { PROTOCOL_VERSION, REQUEST_TYPES, collectionFrame, requestSchema, serverFrameSchema } from "./protocol.js";
 
 describe("requestSchema", () => {
   it("reads a collection.read request with an id", () => {
@@ -19,7 +21,7 @@ describe("requestSchema", () => {
   });
 
   it("lists every request type there is", () => {
-    expect(REQUEST_TYPES).toEqual(["collection.read"]);
+    expect(REQUEST_TYPES).toEqual(["collection.read", "agent.write"]);
   });
 });
 
@@ -36,5 +38,28 @@ describe("serverFrameSchema", () => {
 
   it("refuses a collection push that holds no collection", () => {
     expect(serverFrameSchema.safeParse({ type: "collection", collection: 7 }).success).toBe(false);
+  });
+});
+
+describe("collectionFrame", () => {
+  const withWorkNode = (change: Record<string, unknown>) => {
+    const collection = collectionView(WORKER_COLLECTION, []);
+    const [flow] = collection.lines;
+    const nodes = flow.nodes.map((node) => (node.id === "work" ? { ...node, ...change } : node));
+
+    return { type: "collection", collection: { ...collection, lines: [{ ...flow, nodes }] } };
+  };
+
+  it("accepts the worker collection", () => {
+    expect(collectionFrame.safeParse(withWorkNode({})).success).toBe(true);
+  });
+
+  it.each([
+    { field: "agent prompt 5", change: { agent: { name: "worker", file: "agents/worker.md", prompt: 5, settings: {} } } },
+    { field: "events undefined", change: { events: undefined } },
+    { field: "needs [undefined]", change: { needs: [undefined] } },
+    { field: "produces [7]", change: { produces: [7] } },
+  ])("refuses a collection whose work node has $field", ({ change }) => {
+    expect(collectionFrame.safeParse(withWorkNode(change)).success).toBe(false);
   });
 });

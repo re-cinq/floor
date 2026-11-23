@@ -40,6 +40,7 @@ getNextTransition(
 | `declaredParameters`, `needPathOf`, `RUN_PARAMETER_NAMES`, `BROKER_PARAMETER_NAMES` | the names those values have, worked out from a station's declaration instead of a brief |
 | `nodeEvents`, `CollectionLine`, `DISPATCH_EVENT`, `REPORTED_EVENT`, `RUN_SETTLED_EVENT` | the events that start a node, answer it and leave it |
 | `needCoverage`, `coverageContextOf`, `needMissesOf`, `EXEMPT_NEEDS` | how one need at one node is covered: seeded, filled on every path, sometimes empty (with one path), never filled, and the rest |
+| `placeholderPattern` | the `{name}` rule as a fresh `RegExp`; also at the browser-safe subpath `@re-cinq/floor-assembly-lines/placeholder-pattern`, which loads no Node module |
 | `promptPlaceholders`, `placeholderNames` | each `{name}` a prompt reads, what supplies it, whether it is filled on every path into the node, and the needs it never mentions |
 | `Refusal`, `enforce` | the error a request that can never be accepted throws, and the check that throws it |
 | `FAN_STATIONS`, `fanLine` | the stations and the line of a small fan-out, for tests |

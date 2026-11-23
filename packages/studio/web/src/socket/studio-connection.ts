@@ -1,6 +1,6 @@
-// The page's one link to the backend: a WebSocket opened with the launch token, every frame checked against the protocol's schema, requests matched to their answers by id, and a reconnect with backoff that reads the collection again. Pushes are not replayed, so a connection that drops and returns asks again.
+// The page's one link to the backend: a WebSocket opened with the launch token, every frame checked against the protocol's schema, requests matched to their answers by id, and a reconnect with backoff that reads the collection again. Pushes are not replayed, so a connection that drops and returns asks again. A read that fails, whether the page asked or the backend re-read on its own and pushed an unasked `refused`, replaces the collection with its reason.
 import type { ZodError } from "zod";
-import { collectionFrame, PROTOCOL_VERSION, serverFrameSchema, type CollectionView, type Request, type ServerFrame } from "@protocol";
+import { collectionViewSchema, PROTOCOL_VERSION, serverFrameSchema, type CollectionView, type Request, type ServerFrame } from "@protocol";
 
 export type ConnectionState =
   | { status: "connecting" }
@@ -28,7 +28,6 @@ const LONGEST_RETRY_MS = 10_000;
 const PROBE_TIMEOUT_MS = 2000;
 const UNREACHABLE = "cannot reach the studio";
 const DROPPED = "the connection to the studio dropped";
-const collectionSchema = collectionFrame.shape.collection;
 
 /** What one socket has been through, so its end can be told apart from a refused handshake. */
 interface Attempt {
@@ -79,14 +78,19 @@ export class StudioConnection {
   }
 
   /** Sends a request and resolves with the `result` of the frame that carries its id; rejects with the reason of a `refused` one. */
-  request(type: Request["type"]): Promise<unknown> {
+  request(type: Request["type"], fields: Record<string, unknown> = {}): Promise<unknown> {
     return new Promise((resolve, reject) => {
       this.requests += 1;
       const id = `r${this.requests}`;
 
       this.waiting.set(id, { resolve, reject });
-      this.socket?.send(JSON.stringify({ id, type }));
+      this.socket?.send(JSON.stringify({ ...fields, id, type }));
     });
+  }
+
+  /** Asks the backend to write an agent's prompt, given the version of the file the page read. */
+  writeAgent(fields: { line: string; agent: string; prompt: string; version: string }): Promise<unknown> {
+    return this.request("agent.write", fields);
   }
 
   private change(part: Partial<StudioSnapshot>): void {
@@ -131,9 +135,10 @@ export class StudioConnection {
   }
 
   private receive(socket: WebSocket, raw: unknown): void {
-    const frame = typeof raw === "string" ? readFrame(raw) : { problem: "it was not text" };
+    const frame = typeof raw === "string" ? readFrame(raw) : unreadableFrame("it was not text");
 
-    if ("problem" in frame) return this.stop(socket, { status: "closed", reason: `the studio sent a frame this page cannot read: ${frame.problem}`, retrying: false });
+    if (frame.type === "unreadable collection") return this.unreadable(frame.problem);
+    if (frame.type === "unreadable") return this.stop(socket, { status: "closed", reason: `the studio sent a frame this page cannot read: ${frame.problem}`, retrying: false });
     if (frame.type === "hello") return this.greeted(socket, frame.version);
     if (frame.type === "collection") return this.change({ collection: frame.collection, readError: null });
     this.answer(frame);
@@ -150,22 +155,33 @@ export class StudioConnection {
   }
 
   private answer(frame: Extract<ServerFrame, { type: "result" | "refused" }>): void {
-    const waiting = frame.id === undefined ? undefined : this.waiting.get(frame.id);
+    if (frame.type === "result") return this.settle(frame.id)?.resolve(frame.result);
+    if (frame.id === undefined) return this.unreadable(frame.reason);
+    this.settle(frame.id)?.reject(new Error(frame.reason));
+  }
 
-    if (frame.id !== undefined) this.waiting.delete(frame.id);
-    if (frame.type === "result") return waiting?.resolve(frame.result);
-    waiting?.reject(new Error(frame.reason));
+  private settle(id: string): Waiting | undefined {
+    const waiting = this.waiting.get(id);
+
+    this.waiting.delete(id);
+
+    return waiting;
+  }
+
+  /** The collection could not be read, by the page's own request or by a re-read the backend pushed; what the page held is no longer the collection. */
+  private unreadable(reason: string): void {
+    this.change({ collection: null, readError: reason });
   }
 
   private async readCollection(): Promise<void> {
     const result = await this.request("collection.read").then(
-      (held) => collectionSchema.safeParse(held),
+      (held) => collectionViewSchema.safeParse(held),
       (reason: Error) => ({ success: false as const, error: reason }),
     );
 
     if (this.stopped) return;
     if (result.success) return this.change({ collection: result.data, readError: null });
-    this.change({ readError: result.error.message });
+    this.unreadable(result.error.message);
   }
 
   /** Ends this socket for a reason that retrying cannot fix. */
@@ -207,10 +223,23 @@ export class StudioConnection {
   }
 }
 
-function readFrame(text: string): ServerFrame | { problem: string } {
-  const parsed = serverFrameSchema.safeParse(parseJson(text));
+/** A frame the protocol refuses. A pushed collection it refuses is an unreadable collection; any other ends the connection. */
+type UnreadableFrame = { type: "unreadable"; problem: string } | { type: "unreadable collection"; problem: string };
 
-  return parsed.success ? parsed.data : { problem: firstIssue(parsed.error) };
+const unreadableFrame = (problem: string, json?: unknown): UnreadableFrame => ({
+  type: hasType(json, "collection") ? "unreadable collection" : "unreadable",
+  problem,
+});
+
+function readFrame(text: string): ServerFrame | UnreadableFrame {
+  const json = parseJson(text);
+  const parsed = serverFrameSchema.safeParse(json);
+
+  return parsed.success ? parsed.data : unreadableFrame(firstIssue(parsed.error), json);
+}
+
+function hasType(json: unknown, type: string): boolean {
+  return typeof json === "object" && json !== null && "type" in json && json.type === type;
 }
 
 function parseJson(text: string): unknown {

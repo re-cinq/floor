@@ -1,12 +1,26 @@
+/* The inspector always sits under the graph, never beside it, and scrolls inside its own box. */
 .screen {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--size-220);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: var(--space-6);
-  align-items: start;
+  height: 100%;
 }
 
+/* The graph takes the height the header and the problems leave, so the page itself never scrolls. */
 .primary {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.graph {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .header {
@@ -62,6 +76,8 @@
 
 .problems {
   margin-top: var(--space-6);
+  max-height: 30%;
+  overflow-y: auto;
 }
 
 .problems h2 {
@@ -91,8 +107,8 @@
 }
 
 .inspector {
-  position: sticky;
-  top: 0;
+  max-height: 40vh;
+  overflow-y: auto;
   padding: var(--space-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -113,14 +129,4 @@
   font-size: var(--fs-md);
   font-weight: var(--fw-medium);
   overflow-wrap: anywhere;
-}
-
-@media (max-width: 1200px) {
-  .screen {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .inspector {
-    position: static;
-  }
 }

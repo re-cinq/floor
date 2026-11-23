@@ -25,6 +25,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./placeholder-pattern": {
+      "types": "./dist/placeholder-pattern.d.ts",
+      "default": "./dist/placeholder-pattern.js"
     }
   },
   "files": [

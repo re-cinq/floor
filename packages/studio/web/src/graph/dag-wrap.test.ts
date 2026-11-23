@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { columnsFor, wrapLayer } from "./dag-wrap";
+import { wrapLayer } from "./dag-wrap";
 
 describe("wrapLayer", () => {
   it("puts layers 0..6 at 3 columns into bands 0,0,0,1,1,1,2", () => {
@@ -22,14 +22,3 @@ describe("wrapLayer", () => {
   });
 });
 
-describe("columnsFor", () => {
-  const pitch = { layerGap: 240, nodeWidth: 216, padding: 28 };
-
-  it("fits 4 columns of 216px at a 240px pitch in 1000px", () => {
-    expect(columnsFor(1000, pitch)).toBe(4);
-  });
-
-  it("never answers fewer than 1 column, even for a 200px panel", () => {
-    expect(columnsFor(200, pitch)).toBe(1);
-  });
-});

@@ -39,6 +39,8 @@ const MIN_VIEW_HEIGHT = 200;
 
 export interface FittedView {
   viewBox: string;
+  originX: number;
+  originY: number;
   width: number;
   height: number;
 }
@@ -47,13 +49,24 @@ export interface FittedView {
 export function fitView(box: Box): FittedView {
   const width = Math.max(box.maxX - box.minX + PADDING * 2, MIN_VIEW_WIDTH);
   const height = Math.max(box.maxY - box.minY + PADDING * 2, MIN_VIEW_HEIGHT);
-  const cy = (box.minY + box.maxY) / 2;
+  const originX = box.minX - PADDING;
+  const originY = (box.minY + box.maxY) / 2 - height / 2;
 
   return {
-    viewBox: `${box.minX - PADDING} ${cy - height / 2} ${width} ${height}`,
+    viewBox: `${originX} ${originY} ${width} ${height}`,
+    originX,
+    originY,
     width,
     height,
   };
+}
+
+// A node's box in drawing coordinates, which start at the viewBox origin rather than at the layout's.
+export function revealBoxOf(node: { x: number; y: number }, view: FittedView, nodeHeight: number): Box {
+  const minX = node.x - NODE_WIDTH / 2 - view.originX;
+  const minY = node.y - nodeHeight / 2 - view.originY;
+
+  return { minX, minY, maxX: minX + NODE_WIDTH, maxY: minY + nodeHeight };
 }
 
 // Uniform node height: tall enough for the longest outcome list a source node shows; bare nodes stay the base height.

@@ -69,4 +69,12 @@ describe("a change on disk", () => {
 
     expect(await client.nextOfType("collection")).toMatchObject({ collection: { lines: [{ nodes: [{ description: "Works it." }, { id: "done" }] }] } });
   });
+
+  it("pushes a refused frame without an id, naming ENOENT, when the collection folder is deleted after the first read", async () => {
+    const { dir, client } = await watched();
+
+    rmSync(dir, { recursive: true });
+
+    expect(await client.nextOfType("refused")).toEqual({ type: "refused", reason: expect.stringContaining("ENOENT") });
+  });
 });

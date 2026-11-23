@@ -5,7 +5,7 @@ import { REQUEST_TYPES } from "../protocol.js";
 import { HANDLERS, answerFrame } from "./requests.js";
 
 const VIEW = collectionView(WORKER_COLLECTION, []);
-const CONTEXT = { readCollection: async () => VIEW };
+const CONTEXT = { readCollection: async () => VIEW, writeAgent: async () => undefined };
 
 describe("HANDLERS", () => {
   it("holds one handler for each request type of the protocol", () => {
@@ -23,7 +23,7 @@ describe("answerFrame", () => {
   });
 
   it("refuses an unknown request type, naming it, with the id it carried", async () => {
-    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.start" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.start"; known: collection.read' });
+    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.start" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.start"; known: collection.read, agent.write' });
   });
 
   it("refuses a request that fails its schema, with the id it carried and the field named", async () => {
@@ -35,7 +35,7 @@ describe("answerFrame", () => {
   });
 
   it("refuses a request whose handler fails, with the reason", async () => {
-    const failing = { readCollection: async () => Promise.reject(new Error("the folder is gone")) };
+    const failing = { ...CONTEXT, readCollection: async () => Promise.reject(new Error("the folder is gone")) };
 
     expect(await answerFrame(JSON.stringify({ id: "r4", type: "collection.read" }), failing)).toEqual({ id: "r4", type: "refused", reason: "the folder is gone" });
   });

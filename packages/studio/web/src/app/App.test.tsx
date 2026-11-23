@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { basename } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
-import { TYPO_COLLECTION, WORKER_COLLECTION, lineYaml } from "../../../src/backend/collection-view.fixtures";
+import { TYPO_COLLECTION, WORKER_COLLECTION, agentMarkdown, lineYaml } from "../../../src/backend/collection-view.fixtures";
 import { collectionOnDisk } from "../../../src/backend/studio.fixtures";
 import { startStudio, type Studio } from "../../../src/backend/start-studio";
 import App from "./App";
@@ -111,12 +111,25 @@ describe("App against the real backend", () => {
     window.location.hash = `#${new URLSearchParams({ socket: studio.url, token: studio.token }).toString()}`;
     render(<App />);
 
-    const screenTitle = await screen.findByRole("heading", { name: "The studio could not be read" });
+    const unreadable = (await screen.findByRole("heading", { name: "The studio could not be read" })).parentElement;
 
-    expect({ title: screenTitle.textContent, reason: screenTitle.parentElement?.textContent, connecting: screen.queryByRole("heading", { name: "Connecting to the studio" }) }).toMatchObject({
-      title: "The studio could not be read",
+    expect({ reason: unreadable?.textContent, connecting: screen.queryByRole("heading", { name: "Connecting to the studio" }) }).toMatchObject({
       reason: expect.stringMatching(/ENOENT/),
       connecting: null,
+    });
+  });
+
+  it("replaces the lines with 'The studio could not be read' and ENOENT when the folder is deleted after loading", async () => {
+    const { dir } = await openPage(WORKER_COLLECTION);
+
+    await screen.findByRole("link", { name: /flow/ });
+    rmSync(dir, { recursive: true });
+
+    const unreadable = (await screen.findByRole("heading", { name: "The studio could not be read" })).parentElement;
+
+    expect({ reason: unreadable?.textContent, staleLine: screen.queryByRole("link", { name: /flow/ }) }).toMatchObject({
+      reason: expect.stringMatching(/ENOENT/),
+      staleLine: null,
     });
   });
 
@@ -158,7 +171,7 @@ describe("App line view", () => {
     const inspector = screen.getByRole("complementary", { name: "Node inspector" });
 
     expect({ inspected: inspector.textContent, address: Object.fromEntries(new URLSearchParams(window.location.hash.slice(1))) }).toEqual({
-      inspected: "nodework" + "station work",
+      inspected: expect.stringContaining("nodework" + "station work"),
       address: { socket: studio.url, token: studio.token, line: "flow", node: "work" },
     });
   });
@@ -171,6 +184,26 @@ describe("App line view", () => {
     expect(node.getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("selects the Events tab on a reload when the address names tab=Events", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Events" });
+
+    expect(await screen.findByRole("tab", { name: "Events", selected: true })).toBeTruthy();
+  });
+
+  it("selects the Station tab when the address names tab=Bogus", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Bogus" });
+
+    expect(await screen.findByRole("tab", { name: "Station", selected: true })).toBeTruthy();
+  });
+
+  it("keeps tab=Events in the address after a click on the Events tab", async () => {
+    const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work" });
+
+    await userEvent.click(await screen.findByRole("tab", { name: "Events" }));
+
+    expect(Object.fromEntries(new URLSearchParams(window.location.hash.slice(1)))).toEqual({ socket: studio.url, token: studio.token, line: "flow", node: "work", tab: "Events" });
+  });
+
   it("clears the node on Escape and leaves the line", async () => {
     await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work" });
 
@@ -179,6 +212,25 @@ describe("App line view", () => {
 
     await screen.findByRole("button", { name: /^work, agent/, pressed: false });
     expect(Object.fromEntries(new URLSearchParams(window.location.hash.slice(1)))).toMatchObject({ line: "flow" });
+  });
+
+  it("keeps tab=Events in the address when another node is clicked", async () => {
+    const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Events" });
+
+    await userEvent.click(await screen.findByRole("button", { name: /^done, / }));
+
+    await screen.findByRole("button", { name: /^done, /, pressed: true });
+    expect(Object.fromEntries(new URLSearchParams(window.location.hash.slice(1)))).toEqual({ socket: studio.url, token: studio.token, line: "flow", node: "done", tab: "Events" });
+  });
+
+  it("clears the tab with the node on Escape", async () => {
+    const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Events" });
+
+    await screen.findByRole("button", { name: /^work, agent/, pressed: true });
+    await userEvent.keyboard("{Escape}");
+
+    await screen.findByRole("button", { name: /^work, agent/, pressed: false });
+    expect(Object.fromEntries(new URLSearchParams(window.location.hash.slice(1)))).toEqual({ socket: studio.url, token: studio.token, line: "flow" });
   });
 
   it("lists a line's problems by rule, node and message, and selects the node a problem names", async () => {
@@ -205,6 +257,34 @@ describe("App line view", () => {
 
     await waitFor(() => expect(countEdges()).toBe(before + 1));
     await screen.findByRole("button", { name: /^work, agent/, pressed: true });
+  });
+});
+
+describe("App prompt editing", () => {
+  it("writes 'Work on {ticket} carefully.' to the agent's file when the prompt is edited and saved", async () => {
+    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
+
+    const editor = await within(await screen.findByRole("tabpanel", { name: "Prompt" })).findByRole("textbox", { name: "Prompt" });
+
+    await userEvent.clear(editor);
+    await userEvent.type(editor, "Work on {{ticket} carefully.{Enter}");
+    await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
+
+    await waitFor(() => expect(readFileSync(join(dir, "flow/agents/worker.md"), "utf8")).toBe(agentMarkdown("Work on {ticket} carefully.")));
+  });
+
+  it("alerts 'changed on disk' and keeps the file as 'Changed elsewhere.' when the file changed after the page read it", async () => {
+    const { dir } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Prompt" });
+    const panel = await screen.findByRole("tabpanel", { name: "Prompt" });
+
+    await userEvent.type(await within(panel).findByRole("textbox", { name: "Prompt" }), " edited");
+    writeFileSync(join(dir, "flow/agents/worker.md"), agentMarkdown("Changed elsewhere."));
+    await userEvent.click(screen.getByRole("button", { name: "Save prompt" }));
+
+    expect([(await within(panel).findByRole("alert")).textContent, readFileSync(join(dir, "flow/agents/worker.md"), "utf8")]).toEqual([
+      expect.stringMatching(/changed on disk/),
+      agentMarkdown("Changed elsewhere."),
+    ]);
   });
 });
 
