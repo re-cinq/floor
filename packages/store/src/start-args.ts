@@ -1,5 +1,4 @@
-import { gitArgNames } from "./line-args.js";
-import { Refusal, enforce } from "./refusal.js";
+import { Refusal, enforce, gitArgNames } from "@re-cinq/floor-assembly-lines";
 import type { Item, LineArgSpec } from "./types.js";
 
 /** A refusal that carries every problem, so the caller fixes them in one go. */

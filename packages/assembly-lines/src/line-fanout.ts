@@ -1,6 +1,6 @@
 // Pure: what makes a fan-out region self-consistent — a source that lists items, a body that runs once per item and can fail, and joins that collect only what a body produces.
 import { hasStation, resolvedStationOf } from "./line-stations.js";
-import type { LineBody, LineNode, StationBody } from "./types.js";
+import type { LineBody, LineNode, StationBody } from "@re-cinq/floor-contracts";
 
 type FanSource = LineNode & { fanout: NonNullable<LineNode["fanout"]> };
 type Bodies = ReadonlyMap<string, StationBody> | undefined;

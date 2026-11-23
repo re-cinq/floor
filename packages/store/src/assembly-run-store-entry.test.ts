@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Refusal } from "./refusal.js";
+import { Refusal } from "@re-cinq/floor-assembly-lines";
 import { setupStoreFixture } from "./assembly-run-store.fixtures.js";
 import type { LineBody, StationBody } from "./types.js";
 

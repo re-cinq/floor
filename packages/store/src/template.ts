@@ -1,5 +1,5 @@
 // The one template engine (docs/assembly_run_storage.md, "Templates"): `{name}` over declared names only, logic-less, single-pass.
-import { enforce } from "./refusal.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 
 const PLACEHOLDER = /\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 const MAX_VALUE_BYTES = 4096;

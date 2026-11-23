@@ -1,7 +1,7 @@
 // Row <-> domain mapping, and the one place a caller chooses pool vs. a transaction's own client.
 
 import type { Pool, PoolClient } from "pg";
-import type { NodeVisit } from "@floor/assembly-lines";
+import type { NodeVisit } from "@re-cinq/floor-assembly-lines";
 import { itemsOf, producedValue } from "./fan-items.js";
 import { canonicalRepo } from "./repo-name.js";
 import type { AgentSettings, Brief, Item, Report, Run, Visit } from "./types.js";

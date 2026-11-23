@@ -1,6 +1,6 @@
 // What a fan-out gives the visits around it: a branch's own entry, and the join's collection of what the branches produced. Both are filled in at open, from the visits already on record, so a redelivered open fills them the same.
 import { itemsOf, producedValue } from "./fan-items.js";
-import { enforce } from "./refusal.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 import type { Item, LineBody, LineNode, StationBody, Visit } from "./types.js";
 
 /** The `item` need of a branch of `node`: its entry of the list the newest successful visit of the fanning-out node reported. */

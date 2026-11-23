@@ -1,7 +1,7 @@
 // The clusters a floor drives, and what each holds of every agent definition. An agent definition is pushed, not fetched per visit: a new latest version queues one claimable event per cluster, and a cluster reports back what its kube really holds, so a version edited by hand in kube becomes the floor's own newest.
 
 import type { Pool, PoolClient } from "pg";
-import { definitionHash } from "@floor/assembly-lines";
+import { definitionHash } from "@re-cinq/floor-assembly-lines";
 import type { SubsystemVersions } from "@re-cinq/floor-contracts";
 import { CLUSTER_LIVE_MINUTES, presenceState, type AgentPresence } from "./agent-presence.js";
 import { DefinitionsStore, type PutResult } from "./definitions.js";

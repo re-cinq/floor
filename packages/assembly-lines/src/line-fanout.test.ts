@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FAN_STATIONS, fanLine } from "./fanout.fixtures.js";
 import { validateLine } from "./line-validation.js";
-import type { StationBody } from "./types.js";
+import type { StationBody } from "@re-cinq/floor-contracts";
 
 const bodies = new Map<string, StationBody>(Object.entries(FAN_STATIONS));
 const known = { stations: new Set(bodies.keys()), bodies };

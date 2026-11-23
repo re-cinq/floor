@@ -32,6 +32,7 @@ export default tseslint.config(
             "packages/*/vitest.config.ts",
             "apps/*/vitest.config.ts",
           ],
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 16,
         },
         tsconfigRootDir: import.meta.dirname,
       },

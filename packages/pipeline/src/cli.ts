@@ -10,7 +10,7 @@ import { floorGiven } from "./floor-given.js";
 import { importPipeline, type Put } from "./import.js";
 import { migrate } from "./migrate.js";
 import { applyCollection } from "./collection/apply.js";
-import { printCollectionLint, readCollectionDirectory } from "./collection/lint-directory.js";
+import { lintCommand, readCollectionDirectory } from "./collection/lint-directory.js";
 import { waitUntilReady } from "./ready.js";
 import { fileOf, pipelineOf } from "./shape.js";
 
@@ -27,12 +27,13 @@ const USAGE = `floor-pipeline <what to do> --floor <url>      with FLOOR_SERVICE
                              when a file is refused
   lint <dir>                 checks a collection: one folder a line, with its assembly-line.yaml and agents/.
                              Needs no floor and no token. A key the host owns is named with --host-key <name>,
-                             as often as needed
+                             as often as needed. The agents and lines the host ships are a directory in the
+                             same layout, named with --shipped <dir>. Exits 2 when no directory is given
 
   --wait-ready <seconds>     first waits up to that long for the floor's /readyz to answer 200,
                              for a job that starts with the floor`;
 
-const OPTIONS = { floor: { type: "string" }, out: { type: "string" }, dir: { type: "string" }, all: { type: "boolean" }, "wait-ready": { type: "string" }, "host-key": { type: "string", multiple: true } } as const;
+const OPTIONS = { floor: { type: "string" }, out: { type: "string" }, dir: { type: "string" }, all: { type: "boolean" }, "wait-ready": { type: "string" }, "host-key": { type: "string", multiple: true }, shipped: { type: "string" } } as const;
 
 type Given = ReturnType<typeof given>;
 
@@ -114,10 +115,9 @@ async function applied(floor: Floor, told: Given): Promise<void> {
 }
 
 async function linted(told: Given): Promise<void> {
-  const [, dir] = told.positionals;
+  const [, directory] = told.positionals;
 
-  if (!dir) throw new Error(USAGE);
-  process.exitCode = await printCollectionLint(dir, told.values["host-key"] ?? [], console.log);
+  process.exitCode = await lintCommand({ directory, hostKeys: told.values["host-key"] ?? [], shippedDirectory: told.values.shipped }, USAGE, { out: console.log, err: console.error });
 }
 
 function said(file: string, put: Put[]): void {

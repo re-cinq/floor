@@ -78,6 +78,14 @@ const FILE_NEED = SOUND.replace(
 );
 
 
+const MAKER_BEFORE_WORK = FILE_NEED.replace("entry: work", "entry: make")
+  .replace("    - id: work\n", "    - id: make\n      station: make\n    - id: work\n")
+  .replace("edges:\n", "edges:\n    - from: make\n      to: work\n      on: success\n")
+  .replace(
+    "stations:\n",
+    "stations:\n  make:\n    kind: service\n    outcomes:\n      - success\n    needs: []\n    produces:\n      - name: ticket\n        kind: file\n",
+  );
+
 describe("pipelineProblems — the bag a node reads", () => {
   it("reports unseeded-need for a node binding target to a git arg the line does not declare, as feature-planning's plan-grounding bound base", () => {
     expect(problems(BOUND_TO_REMOVED_ARG)).toEqual([
@@ -125,7 +133,11 @@ describe("pipelineProblems — the bag a node reads", () => {
     ).toEqual([]);
   });
 
-  it("reports nothing for a need a station in the line produces", () => {
+  it("reports nothing for a need a station upstream of the node produces", () => {
+    expect(problems(MAKER_BEFORE_WORK)).toEqual([]);
+  });
+
+  it("reports unseeded-need for a need only the node itself produces, which arrives empty on its first visit", () => {
     expect(
       problems(
         FILE_NEED.replace(
@@ -133,7 +145,7 @@ describe("pipelineProblems — the bag a node reads", () => {
           "    produces:\n      - name: ticket\n        kind: file\n",
         ),
       ),
-    ).toEqual([]);
+    ).toMatchObject([{ node: "work", rule: "unseeded-need" }]);
   });
 
   it("reports nothing for a need the line's files seed", () => {

@@ -1,5 +1,5 @@
 // Pure graph primitives shared by every line check: outgoing edges by source, and reachability with an optional set of nodes that stop the walk from going any further.
-import type { LineBody, LineEdge } from "./types.js";
+import type { LineBody, LineEdge } from "@re-cinq/floor-contracts";
 
 export function goingOutOf(edges: readonly LineEdge[]): Map<string, string[]> {
   const goingOut = new Map<string, string[]>();
@@ -36,4 +36,28 @@ export function reachedFrom(line: LineBody): Set<string> {
   const entered = [line.entry, ...startedByName.map((node) => node.id)];
 
   return reachableAvoiding(goingOut, entered, new Set());
+}
+
+/** One shortest walk of node ids from a source to `target` that goes through no blocked node on the way (the target and the source may themselves be blocked), or null when there is none. */
+export function pathAvoiding(goingOut: ReadonlyMap<string, string[]>, sources: string[], blocked: ReadonlySet<string>, target: string): string[] | null {
+  const cameFrom = new Map<string, string | null>(sources.map((source) => [source, null]));
+  const pending = [...sources];
+
+  for (let index = 0; index < pending.length; index += 1) {
+    const current = pending[index];
+    const fresh = blocked.has(current) ? [] : (goingOut.get(current) ?? []).filter((to) => !cameFrom.has(to));
+
+    fresh.forEach((to) => cameFrom.set(to, current));
+    pending.push(...fresh);
+  }
+
+  return cameFrom.has(target) ? walkBack(cameFrom, target) : null;
+}
+
+function walkBack(cameFrom: ReadonlyMap<string, string | null>, target: string): string[] {
+  const path = [target];
+
+  for (let before = cameFrom.get(target); before; before = cameFrom.get(before)) path.unshift(before);
+
+  return path;
 }

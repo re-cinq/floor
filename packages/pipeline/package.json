@@ -49,7 +49,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@re-cinq/floor-assembly-lines": "*",
     "@re-cinq/floor-client": "*",
+    "@re-cinq/floor-contracts": "*",
     "yaml": "^2.7.0",
     "zod": "^4.5.4"
   },

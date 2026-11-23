@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Refusal } from "./refusal.js";
+import { Refusal } from "@re-cinq/floor-assembly-lines";
 import type { LineBody } from "./types.js";
 import {
   FIXED_NOW,

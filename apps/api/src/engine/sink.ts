@@ -1,5 +1,5 @@
 // The sink (docs/assembly_run_storage.md, "The agent kind runs on the ai-agent-subsystem"): each event the pod's supervisor posts becomes a record, and the one that ends the visit becomes its report.
-import { readAgentVerdict } from "@floor/assembly-lines";
+import { readAgentVerdict } from "@re-cinq/floor-assembly-lines";
 import { enforce, type RecordKind, type Report, type StationBody, type Visit } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { pricedBy } from "./pricing.js";

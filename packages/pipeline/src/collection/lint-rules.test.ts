@@ -34,7 +34,7 @@ describe("pipelineProblems — the inputs an agent's recipe reads", () => {
   });
 
   it("reports nothing for the placeholders the floor fills from the run, around a retry and in a fan-out branch", () => {
-    const floorFilled = new Map([["spec-tickets-decompose", "{run_id} {line_id} {node_id} {git_credential} {git_credential_url} {previous_error} {previous_failures} {item}"]]);
+    const floorFilled = new Map([["spec-tickets-decompose", "{run_id} {line_id} {node_id} {previous_error} {previous_failures} {item}"]]);
 
     expect(pipelineProblems(SPEC_TICKETS_DECOMPOSE_REUSED, floorFilled)).toEqual([]);
   });
@@ -113,5 +113,32 @@ describe("pipelineProblems — where an agent is declared", () => {
           'station "decompose" names agent definition "triage-guess", and nothing defines it: a collection defines an agent in <line>/agents/<agent>.md',
       },
     ]);
+  });
+});
+
+describe("pipelineProblems — how a retry and a conversation are bounded", () => {
+  const SELF_EDGE = "    - from: work\n      to: done\n      on: failed";
+
+  it("reports unbounded-retry for an edge from work back to work without iteration_max", () => {
+    const retrying = SOUND.replace(SELF_EDGE, "    - from: work\n      to: work\n      on: failed");
+
+    expect(problems(retrying)).toMatchObject([{ line: "sound", node: "work", rule: "unbounded-retry", detail: expect.stringContaining("iteration_max") }]);
+  });
+
+  it("reports nothing for an edge from work back to work carrying iteration_max", () => {
+    const bounded = SOUND.replace(SELF_EDGE, "    - from: work\n      to: work\n      on: failed\n      iteration_max: 3");
+
+    expect(rules(bounded)).toEqual([]);
+  });
+
+  it("reports unresolvable-conversation-key naming unknown_arg for a station whose conversation_key is not a declared arg", () => {
+    const keyed = SPEC_TICKETS_DECOMPOSE_REUSED.replace("    outcomes:", "    conversation: continue\n    conversation_key: unknown_arg\n    outcomes:");
+
+    expect(problems(keyed)).toContainEqual({
+      line: "triage",
+      node: undefined,
+      rule: "unresolvable-conversation-key",
+      detail: 'station "decompose" sets conversation_key to "unknown_arg", which is not a declared arg',
+    });
   });
 });

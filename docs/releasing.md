@@ -11,6 +11,7 @@ No commit bumps a version, and nothing waits for a hand afterwards.
 | the image | `ghcr.io/re-cinq/floor`, for `linux/amd64` and `linux/arm64` | `1.2.3` and `1.2` |
 | the chart | `oci://ghcr.io/re-cinq/charts/floor` | `1.2.3`, running the image `1.2.3` |
 | the wire contracts | npm, `@re-cinq/floor-contracts` | `1.2.3` |
+| the assembly-line rules | npm, `@re-cinq/floor-assembly-lines` | `1.2.3` |
 | the client | npm, `@re-cinq/floor-client` | `1.2.3` |
 | the station SDK | npm, `@re-cinq/floor-station` | `1.2.3` |
 | the pipeline tool | npm, `@re-cinq/floor-pipeline` | `1.2.3` |
@@ -46,7 +47,7 @@ commit must be on `main`, and `main` takes a pull request.
 
 ## The version is the tag
 
-The four packages carry a placeholder version on `main`. `scripts/release-version.sh v1.2.3`
+The five packages carry a placeholder version on `main`. `scripts/release-version.sh v1.2.3`
 stamps `1.2.3` into them, and into the ranges they ask of one another, just before they are built, in the workflow's checkout, and commits
 nothing. The chart carries a placeholder too, and no `appVersion`: `helm package --version 1.2.3
 --app-version 1.2.3` stamps both, and the `appVersion` is the image tag an install of the chart runs
@@ -64,17 +65,18 @@ version of each is published by a person. A package added later gets the same, a
 git switch --detach <the commit to release>
 scripts/release-version.sh v0.1.0
 npm ci --ignore-scripts
-npm run build -w @re-cinq/floor-contracts -w @re-cinq/floor-client -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
-node scripts/check-pack-list.mjs packages/contracts packages/client packages/station packages/pipeline
+npm run build -w @re-cinq/floor-contracts -w @re-cinq/floor-assembly-lines -w @re-cinq/floor-client -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
+node scripts/check-pack-list.mjs packages/contracts packages/assembly-lines packages/client packages/station packages/pipeline
 npm login
 (cd packages/contracts && npm publish --access public --ignore-scripts)
+(cd packages/assembly-lines && npm publish --access public --ignore-scripts)
 (cd packages/client    && npm publish --access public --ignore-scripts)
 (cd packages/station   && npm publish --access public --ignore-scripts)
 (cd packages/pipeline  && npm publish --access public --ignore-scripts)
 git restore packages package-lock.json
 ```
 
-Then, for each of the four packages, on npmjs.com: Settings, Trusted Publisher, GitHub Actions.
+Then, for each of the five packages, on npmjs.com: Settings, Trusted Publisher, GitHub Actions.
 
 | field | value |
 |---|---|
@@ -82,7 +84,7 @@ Then, for each of the four packages, on npmjs.com: Settings, Trusted Publisher, 
 | repository | `floor` |
 | workflow filename | `publish.yml` |
 
-Then push the tag for the same version. The workflow finds all four packages on the registry
+Then push the tag for the same version. The workflow finds all five packages on the registry
 already, leaves them, and publishes the image.
 
 **The publisher is registered against the workflow's file name.** Renaming or moving

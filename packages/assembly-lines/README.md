@@ -1,21 +1,106 @@
-# @floor/assembly-lines
+# @re-cinq/floor-assembly-lines
 
-The walk kernel: a pure replay over persisted visits (`getNextTransition`),
-plus content-hashing for versioned definitions (`definitionHash`). See
-[docs/assembly_run_storage.md](../../docs/assembly_run_storage.md), "Routing:
-the kernel decides, events carry".
+The rules of a floor's assembly line, as pure functions with no I/O and no database. It holds four things: the walk kernel, which says which edge a run takes next and when it ends; the checks a line must pass before a floor stores it; the parameters a prompt is given; and the answers a tool that draws a line needs, which events start and leave each node and what each `{placeholder}` of a prompt is filled with. The floor's store, its cluster agent and the tools that read a line before it reaches a floor all use these, so they cannot disagree.
+
+```
+npm install @re-cinq/floor-assembly-lines
+```
+
+```ts
+import { getNextTransition, validateLine } from "@re-cinq/floor-assembly-lines";
+
+const line = {
+  entry: "write",
+  exit: "done",
+  args: {},
+  nodes: [{ id: "write", station: "writer" }, { id: "done" }],
+  edges: [{ from: "write", to: "done", on: "success" }],
+};
+
+// Every problem a line has, or an empty list.
+validateLine(line, { stations: new Set(["writer"]) });
+
+// What the walk does next, from the visits so far.
+getNextTransition(
+  { name: "demo", entry: "write", exit: "done", edges: line.edges },
+  [{ nodeId: "write", iteration: 1, outcome: "success" }],
+); // { kind: "finish" }
+```
+
+## What it exports
+
+| export | what it does |
+|---|---|
+| `getNextTransition`, `selectEdge`, `endsRun`, `isTerminalNode`, `visitsSinceHandRun` | the walk kernel: replay the visits of a run and say what happens next |
+| `definitionHash` | the content hash of a versioned definition |
+| `readAgentVerdict` | reads an agent's verdict from what it reported |
+| `validateLine`, `KnownDefinitions` | every problem a line body has: names, edges, reachability, arguments, outcomes, cycles, needs, fan-outs |
+| `gitArgNames`, `nodeStartedBy`, `requireNode`, `startEventName` | small readers of a line: its git arguments, and the event that starts a node |
+| `promptParameters`, `runParameters`, `WORKSPACE` | the values a prompt's `{placeholders}` are filled with |
+| `declaredParameters`, `needPathOf`, `RUN_PARAMETER_NAMES`, `BROKER_PARAMETER_NAMES` | the names those values have, worked out from a station's declaration instead of a brief |
+| `nodeEvents`, `CollectionLine`, `DISPATCH_EVENT`, `REPORTED_EVENT`, `RUN_SETTLED_EVENT` | the events that start a node, answer it and leave it |
+| `needCoverage`, `coverageContextOf`, `needMissesOf`, `EXEMPT_NEEDS` | how one need at one node is covered: seeded, filled on every path, sometimes empty (with one path), never filled, and the rest |
+| `promptPlaceholders`, `placeholderNames` | each `{name}` a prompt reads, what supplies it, whether it is filled on every path into the node, and the needs it never mentions |
+| `Refusal`, `enforce` | the error a request that can never be accepted throws, and the check that throws it |
+| `FAN_STATIONS`, `fanLine` | the stations and the line of a small fan-out, for tests |
+
+### Events of a node
+
+`nodeEvents(line, node, lines, bodies)` says what starts a node, what answers it and what it raises. `lines` is every line of the collection, so a node that ends a run can name the lines that start on `internal.run.settled`.
+
+```ts
+const line = {
+  entry: "write", exit: "done", args: {},
+  nodes: [{ id: "write", station: "writer" }, { id: "done" }],
+  edges: [{ from: "write", to: "done", on: "success" }],
+};
+const bodies = new Map([["writer", { kind: "agent", outcomes: ["success", "failed"], needs: [], produces: [] }]]);
+
+nodeEvents(line, line.nodes[0], [], bodies);
+// {
+//   startedBy: [{ event: "node.write.start", origin: "line-start" }],
+//   answeredBy: [],
+//   raises: [
+//     { kind: "event", event: "station_run.dispatch" },
+//     { kind: "event", event: "station_run.reported" },
+//     { kind: "outcome", outcome: "success", leadsTo: { on: "success", node: "done", event: "node.done.start" } },
+//     { kind: "outcome", outcome: "failed", leadsTo: null },
+//   ],
+// }
+```
+
+`origin` is `walk` when an edge leads to the node, `outside` when the node names its own `start`, `line-start` when the line's own start raises it, and `none` when nothing does. `leadsTo` is the edge `selectEdge` takes, so an exact outcome wins over `always`, and `null` when no edge takes that outcome.
+
+### Placeholders of a prompt
+
+`promptPlaceholders({ prompt, line, node, station, bodies })` gives one row per distinct `{name}` and the needs the prompt never mentions.
+
+```ts
+promptPlaceholders({ prompt: "Fix {ticket} in {repo_path}. {typo}", line, node, station, bodies });
+// {
+//   placeholders: [
+//     { name: "ticket", source: "value-need", state: "sometimes-empty", filledBy: ["open"], path: ["start", "skip", "join"] },
+//     { name: "repo_path", source: "need-path", state: "seeded", filledBy: [], path: [] },
+//     { name: "typo", source: "none", state: "unsupplied", filledBy: [], path: [] },
+//   ],
+//   unused: [],
+// }
+```
+
+`source` is `value-need`, `need-path` (a file or git need, read as `{name_path}`), `produce-path`, `floor` or `none`. `state` is `unsupplied` when nothing supplies the name, otherwise how the need is covered. `path` is one walk from a start point to the node that passes no producer, for `sometimes-empty`. A name is letters, digits, `_`, `.` and `-` and starts with a letter or `_`, the agent subsystem's own rule with the first character narrowed, so `a{3}` and a JSON object are not placeholders.
+
+The shapes of a line, a station and a brief come from [`@re-cinq/floor-contracts`](https://github.com/re-cinq/floor/tree/main/packages/contracts).
 
 ## Where this fits
 
 The bottom of the stack, and the only part with no I/O at all: given a line and the visits a run
-has so far, it says which edge is taken next. [`packages/store`](../store/README.md) is its only
-caller — it asks once, inside the transaction that writes a report. It depends on nothing of ours,
+has so far, it says which edge is taken next. [`packages/store`](../store/README.md) asks it once, inside the transaction that writes a report, and validates a line with it before storing one; the cluster agent asks it for a prompt's parameters. It depends on nothing of ours but the shapes in `@re-cinq/floor-contracts`,
 which is why its tests are plain values and no database.
 
 A walk ends in one of two places: at the line's `exit`, which is `finish`, or at its `fail`
 node when it names one, which is `halt` with outcome `failed` and a reason naming the node whose
 edge led there. Neither terminal is ever launched. `isTerminalNode` is that rule for anyone else who
-needs it; the store's line validation asks it which nodes owe no outgoing edge.
+needs it; line validation asks it which nodes owe no outgoing edge.
 
 A transition is one of four: `launch` a node, `await` an open visit, `finish` at the exit, or `halt`,
 which is every other way a walk ends: a spent budget (`iteration_max`), an `error`, or the line's own
@@ -54,7 +139,8 @@ in, unless it is the first writer), which waits on a separate decision.
 
 ## Tests
 
-68 cases across `transition.test.ts` and `definition-hash.test.ts`, ported
+The walk kernel's cases are in `transition*.test.ts` and `definition-hash.test.ts`, ported
 and trimmed from lore's test files; each file's header says what was
 dropped and why (mainly the failure-classification cases, which have no
-counterpart here, and the builtin-line walk, which needs the loader).
+counterpart here, and the builtin-line walk, which needs the loader). The line checks and the prompt
+parameters keep their tests beside them in `line-*.test.ts` and `prompt-parameters.test.ts`; the events, the need coverage and the placeholders in `node-events.test.ts`, `need-coverage.test.ts` and `prompt-placeholders.test.ts`.

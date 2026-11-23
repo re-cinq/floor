@@ -1,5 +1,5 @@
 // The cursor of a run list: where the last run on a page stands in the list's order, `(created_at, id)`, as one string a client hands back unchanged.
-import { enforce } from "./refusal.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 
 export interface RunPosition {
   /** Postgres's own text for created_at, microseconds and offset included: a JS Date holds milliseconds and would move a run across the page boundary. */

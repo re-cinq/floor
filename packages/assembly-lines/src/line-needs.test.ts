@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateLine } from "./line-validation.js";
 import type { KnownDefinitions } from "./line-validation.js";
-import type { LineBody, StationBody } from "./types.js";
+import type { LineBody, StationBody } from "@re-cinq/floor-contracts";
 
 function station(outcomes: string[], needs: StationBody["needs"], produces: StationBody["produces"] = []): StationBody {
   return { kind: "agent", outcomes, needs, produces };

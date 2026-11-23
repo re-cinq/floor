@@ -6,7 +6,7 @@ The Floor's HTTP API (docs/api_sketch.md): a thin hapi layer over `@floor/store`
 
 The centre, and the only process that touches Postgres: it links
 [`@floor/store`](../../packages/store/README.md) and, through it,
-[`@floor/assembly-lines`](../../packages/assembly-lines/README.md). Everything else — the cluster
+[`@re-cinq/floor-assembly-lines`](../../packages/assembly-lines/README.md). Everything else — the cluster
 agent, every service worker, lore, the CLIs — reaches a floor only through the routes here.
 
 Two jobs in one process. It **serves** every request, on every replica. It also **runs the loop**

@@ -1,7 +1,7 @@
 // Versioned definitions: lines, stations, agent definitions, schedules. Content-hashed; a version row never changes, so a reference to one is forever.
 
 import type { Pool, PoolClient } from "pg";
-import { definitionHash } from "@floor/assembly-lines";
+import { definitionHash } from "@re-cinq/floor-assembly-lines";
 
 /** A `migration` is a pipeline file that ran: its name, and the sha256 of what it held when it did. */
 export type DefinitionKind = "line" | "station" | "agent_definition" | "schedule" | "migration";

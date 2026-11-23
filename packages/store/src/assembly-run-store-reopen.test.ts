@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
-import { Refusal } from "./refusal.js";
+import { Refusal } from "@re-cinq/floor-assembly-lines";
 
 const { store, events, openEntryVisit } = setupStoreFixture();
 

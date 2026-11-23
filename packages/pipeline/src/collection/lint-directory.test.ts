@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { pipelineYaml } from "./collection.fixtures.js";
-import { lintCollectionDirectory, printCollectionLint } from "./lint-directory.js";
+import { lintCollectionDirectory, lintCommand, printCollectionLint, shippedCatalogIn } from "./lint-directory.js";
 
 const PIPELINE_YAML = pipelineYaml("acme-flow", "acme-worker");
 
@@ -106,6 +106,48 @@ describe("lintCollectionDirectory", () => {
   });
 });
 
+describe("shippedCatalogIn", () => {
+  it("names the line folders and the agents of a directory laid out as a collection", async () => {
+    const root = collectionOnDisk({ "code-review/assembly-line.yaml": pipelineYaml("code-review", "reviewer"), "code-review/agents/reviewer.md": NEW_AGENT });
+
+    const catalog = await shippedCatalogIn(root);
+
+    expect({ pipelines: catalog.pipelines, agents: [...catalog.agents.keys()] }).toEqual({ pipelines: ["code-review"], agents: ["reviewer"] });
+  });
+
+  it("refuses a directory whose agent file is malformed, naming the file", async () => {
+    const root = collectionOnDisk({ "code-review/agents/reviewer.md": "no frontmatter" });
+
+    await expect(shippedCatalogIn(root)).rejects.toThrow(/code-review\/agents\/reviewer\.md/);
+  });
+});
+
+describe("lintCollectionDirectory with a shipped catalog", () => {
+  const SHIPPED_ROOT_FILES = { "code-review/assembly-line.yaml": pipelineYaml("code-review", "reviewer"), "code-review/agents/reviewer.md": NEW_AGENT };
+
+  it("refuses nothing for an extension of an agent the shipped directory defines", async () => {
+    const shipped = await shippedCatalogIn(collectionOnDisk(SHIPPED_ROOT_FILES));
+    const root = collectionOnDisk({ "code-review/agents/reviewer.extra.md": "Be careful." });
+
+    expect(await lintCollectionDirectory(root, [], shipped)).toMatchObject({ refused: [], counts: { agents: 1, pipelines: 0, extensions: 1 } });
+  });
+
+  it("refuses nothing for a pipeline naming a shipped agent it does not define", async () => {
+    const shipped = await shippedCatalogIn(collectionOnDisk(SHIPPED_ROOT_FILES));
+    const root = collectionOnDisk({ "acme-flow/assembly-line.yaml": pipelineYaml("acme-flow", "reviewer") });
+
+    expect(await lintCollectionDirectory(root, [], shipped)).toMatchObject({ refused: [], counts: { agents: 0, pipelines: 1, extensions: 0 } });
+  });
+
+  it("refuses the extension and the pipeline when nothing is shipped", async () => {
+    const root = collectionOnDisk({ "code-review/agents/reviewer.extra.md": "Be careful.", "acme-flow/assembly-line.yaml": pipelineYaml("acme-flow", "reviewer") });
+
+    const { refused } = await lintCollectionDirectory(root);
+
+    expect(refused.map(({ path }) => path)).toEqual(["acme-flow/assembly-line.yaml", "code-review/agents/reviewer.extra.md"]);
+  });
+});
+
 describe("printCollectionLint", () => {
   it("prints each refused file with its reason and exits 1", async () => {
     const root = collectionOnDisk({ "triage/agents/ghost.extra.md": "Be careful." });
@@ -135,5 +177,53 @@ describe("printCollectionLint", () => {
     const code = await printCollectionLint(root, ["execution_mode"], out);
 
     expect({ code, lines }).toEqual({ code: 0, lines: ["collection ok: 1 agents, 0 pipelines, 0 extensions"] });
+  });
+});
+
+describe("lintCommand", () => {
+  const USAGE = "floor-pipeline lint <dir>";
+
+  function outputs() {
+    const out: string[] = [];
+    const err: string[] = [];
+
+    return { out, err, writers: { out: (line: string) => out.push(line), err: (line: string) => err.push(line) } };
+  }
+
+  it("prints the usage to the error output and exits 2 when no directory is given", async () => {
+    const { out, err, writers } = outputs();
+
+    const code = await lintCommand({ hostKeys: [] }, USAGE, writers);
+
+    expect({ code, out, err }).toEqual({ code: 2, out: [], err: [USAGE] });
+  });
+
+  it("exits 0 for an extension of an agent the --shipped directory defines", async () => {
+    const shippedDirectory = collectionOnDisk({ "code-review/agents/reviewer.md": NEW_AGENT });
+    const directory = collectionOnDisk({ "code-review/agents/reviewer.extra.md": "Be careful." });
+    const { out, err, writers } = outputs();
+
+    const code = await lintCommand({ directory, hostKeys: [], shippedDirectory }, USAGE, writers);
+
+    expect({ code, out, err }).toEqual({ code: 0, out: ["collection ok: 1 agents, 0 pipelines, 1 extensions"], err: [] });
+  });
+
+  it("exits 1 for the same extension when no --shipped directory is given", async () => {
+    const directory = collectionOnDisk({ "code-review/agents/reviewer.extra.md": "Be careful." });
+    const { out, writers } = outputs();
+
+    const code = await lintCommand({ directory, hostKeys: [] }, USAGE, writers);
+
+    expect({ code, out }).toEqual({ code: 1, out: ["code-review/agents/reviewer.extra.md: an extension needs a shipped agent, and nothing ships reviewer"] });
+  });
+
+  it("reads a host key in the --shipped directory when it is named", async () => {
+    const shippedDirectory = collectionOnDisk({ "code-review/agents/reviewer.md": "---\nimage: acme/agent:2\ntimeout_minutes: 10\nexecution_mode: station\n---\nWork.\n" });
+    const directory = collectionOnDisk({ "code-review/agents/reviewer.extra.md": "Be careful." });
+    const { out, writers } = outputs();
+
+    const code = await lintCommand({ directory, hostKeys: ["execution_mode"], shippedDirectory }, USAGE, writers);
+
+    expect({ code, out }).toEqual({ code: 0, out: ["collection ok: 1 agents, 0 pipelines, 1 extensions"] });
   });
 });

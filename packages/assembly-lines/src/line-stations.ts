@@ -1,5 +1,5 @@
 // A node's station, resolved (or not) against what the caller knows: shared by every check that reads a station body, since a pinned or unrecognised name means "we cannot see inside this one".
-import type { LineNode, StationBody } from "./types.js";
+import type { LineNode, StationBody } from "@re-cinq/floor-contracts";
 
 export function hasStation(node: LineNode): node is LineNode & { station: string } {
   return Boolean(node.station);

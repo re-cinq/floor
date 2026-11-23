@@ -1,6 +1,6 @@
 // Pure: what an event from outside means to one line — whether it starts it, with which items, and which waiting node it answers.
 import { canonicalRepo, gitRefOf } from "./repo-name.js";
-import { enforce } from "./refusal.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 import { renderTemplate } from "./template.js";
 import type { Item, LineBody, WhenValue } from "./types.js";
 

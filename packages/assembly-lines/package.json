@@ -1,8 +1,23 @@
 {
-  "name": "@floor/assembly-lines",
+  "name": "@re-cinq/floor-assembly-lines",
   "version": "0.1.0",
-  "private": true,
-  "description": "The walk kernel: pure edge-selection and back-edge accounting replayed over persisted visits, plus content-hashing for versioned definitions. Ported from lore's @re-cinq/lore-assembly-lines (transition.ts, definition-hash.ts) and adapted to the Floor's vocabulary: a node's outcomes are declared by its station rather than fixed to three, a node's human-ness is its station kind rather than a node type, and there is no failure classification, so every failure spends its edge's iteration budget.",
+  "description": "The rules of a floor's assembly line, as pure functions: which edge a walk takes next and when it ends, the checks a line must pass before it is stored, and the parameters a prompt is given. No I/O and no database.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/re-cinq/floor.git",
+    "directory": "packages/assembly-lines"
+  },
+  "homepage": "https://github.com/re-cinq/floor/tree/main/packages/assembly-lines#readme",
+  "bugs": {
+    "url": "https://github.com/re-cinq/floor/issues"
+  },
+  "keywords": [
+    "floor",
+    "assembly-line",
+    "pipeline",
+    "validation"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,12 +27,25 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc --watch -p tsconfig.build.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@re-cinq/floor-contracts": "*"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

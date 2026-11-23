@@ -1,4 +1,4 @@
-import { definitionHash } from "@floor/assembly-lines";
+import { definitionHash } from "@re-cinq/floor-assembly-lines";
 import { describe, expect, it } from "vitest";
 import { authHeaders, injectJson, setupTestServer } from "../test-server.js";
 

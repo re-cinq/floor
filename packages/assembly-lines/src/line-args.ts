@@ -1,4 +1,4 @@
-import type { LineArgSpec } from "./types.js";
+import type { LineArgSpec } from "@re-cinq/floor-contracts";
 
 // Which of a line's arguments are of kind git, in the order the line declares them.
 export function gitArgNames(args: Record<string, LineArgSpec>): string[] {

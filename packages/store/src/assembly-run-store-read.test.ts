@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Refusal } from "./refusal.js";
+import { Refusal } from "@re-cinq/floor-assembly-lines";
 import { FIXED_NOW, setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
 
 const { pool, store, seedReviewLine, seedDigestLine, openEntryVisit } = setupStoreFixture();

@@ -1,5 +1,5 @@
 // A node's start event: `node.<id>.start` unless the line names another, for a node a person or an outside system starts.
-import type { LineBody, LineNode } from "./types.js";
+import type { LineBody, LineNode } from "@re-cinq/floor-contracts";
 import { enforce } from "./refusal.js";
 
 export function startEventName(node: LineNode): string {

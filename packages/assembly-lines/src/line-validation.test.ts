@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateLine } from "./line-validation.js";
-import type { LineBody, LineEdge } from "./types.js";
+import type { LineBody, LineEdge } from "@re-cinq/floor-contracts";
 
 const NO_STATIONS = { stations: new Set<string>() };
 

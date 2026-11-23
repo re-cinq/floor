@@ -1,7 +1,6 @@
 // The one object through which a run's state is read and changed. See docs/assembly_run_storage.md, "The store", and README.md for what this file does and does not implement yet.
 
 import type { Pool, PoolClient } from "pg";
-import { endsRun, getNextTransition, isTerminalNode, type Transition } from "@floor/assembly-lines";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
@@ -10,8 +9,7 @@ import { enforceStartArgs } from "./start-args.js";
 import { aboutRun } from "./run-args.js";
 import { clearTheWayByHand, refuseBesideOpenRun } from "./reopen-run.js";
 import { deriveSubjectKey, foldLineFiles } from "./resolve.js";
-import { Refusal, enforce } from "./refusal.js";
-import { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
+import { Refusal, endsRun, enforce, getNextTransition, isTerminalNode, nodeStartedBy, requireNode, startEventName, type Transition } from "@re-cinq/floor-assembly-lines";
 import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
 import { OpenVisitResolver, type OpenContext, type OpenRequest } from "./open-visit.js";
 import { enforceFilesExist, lineToStart } from "./start-line.js";

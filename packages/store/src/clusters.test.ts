@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { definitionHash } from "@floor/assembly-lines";
+import { definitionHash } from "@re-cinq/floor-assembly-lines";
 import { AGENT_DEFINITION_CHANGED, ClusterStore } from "./clusters.js";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";

@@ -98,9 +98,15 @@ ai-agent-subsystem, translating the brief:
 | a `value` need | a parameter that fills the prompt's `{placeholder}` |
 | anything with a path | a parameter, `{<name>_path}`: where it is in the workspace |
 | the run, its assembly line and the node | three parameters, `{run_id}`, `{line_id}` and `{node_id}`; a value need of the same name wins |
-| a `file` produce | a watched path, uploaded to the blob store when the agent ends |
+| a `file` produce with a `path` | a watched path, uploaded to the blob store when the agent ends, and a parameter `{<name>_path}` |
+| a git need | two more parameters, `{git_credential}` and `{git_credential_url}`, for the clone's credential helper |
 | the previous conversation | restored before the agent starts, saved after |
 | turns, cost, the result | streamed to the visit's sink endpoint |
+
+`floor-pipeline lint` and the tools that draw a line answer from the same naming:
+`declaredParameters` in `@re-cinq/floor-assembly-lines` says which parameters a station's
+declaration gives its prompt, and `promptPlaceholders` says, for each `{name}` a prompt reads, what
+supplies it and whether it is filled on every path into the node.
 
 The subsystem's supervisor does the fetching, cloning, prompt filling,
 uploading and posting. The floor's sink endpoint turns those events, one

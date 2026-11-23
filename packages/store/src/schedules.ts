@@ -1,6 +1,6 @@
 // Schedules (docs/api_sketch.md, "Schedules"): a name, a cron and an event payload, holding exactly one pending event. Handling its tick enqueues the next occurrence.
 import { CronExpressionParser } from "cron-parser";
-import { definitionHash } from "@floor/assembly-lines";
+import { definitionHash } from "@re-cinq/floor-assembly-lines";
 import type { DefinitionsStore, PutResult } from "./definitions.js";
 import type { EventStore, FloorEvent } from "./events.js";
 import type { ScheduleBody } from "./types.js";

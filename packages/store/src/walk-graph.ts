@@ -1,6 +1,6 @@
 // Builds the kernel's WalkGraph from a line body: each node's kind comes from the station it points at, resolved once per next() call.
 
-import type { WalkGraph, WalkEdge } from "@floor/assembly-lines";
+import type { WalkGraph, WalkEdge } from "@re-cinq/floor-assembly-lines";
 import type { DefinitionsStore } from "./definitions.js";
 import type { LineBody, StationBody } from "./types.js";
 

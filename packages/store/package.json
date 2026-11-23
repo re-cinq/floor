@@ -21,7 +21,7 @@
     "migrate": "node dist/migrate-cli.js"
   },
   "dependencies": {
-    "@floor/assembly-lines": "*",
+    "@re-cinq/floor-assembly-lines": "*",
     "@re-cinq/floor-contracts": "*",
     "cron-parser": "^5.10.1",
     "pg": "^8.23.0"

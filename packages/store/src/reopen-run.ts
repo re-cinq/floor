@@ -1,7 +1,7 @@
 // A start by hand on a finished run (docs/decisions.md, "A start by hand reopens a finished run"): the run keeps its bag and its history, and what its settling left open is closed so the walk does not wait on it.
 import postgres, { type PoolClient } from "pg";
 import type { EventStore } from "./events.js";
-import { Refusal } from "./refusal.js";
+import { Refusal } from "@re-cinq/floor-assembly-lines";
 import type { Queryable } from "./rows.js";
 import { aboutRun } from "./run-args.js";
 import { closeOpenVisits, openRunBySubject, reopenRun } from "./sql.js";

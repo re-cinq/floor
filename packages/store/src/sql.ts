@@ -2,7 +2,7 @@
 
 import { canonicalItems, canonicalRepoOrNull } from "./repo-name.js";
 import type { PoolClient } from "pg";
-import { Refusal, enforce } from "./refusal.js";
+import { Refusal, enforce } from "@re-cinq/floor-assembly-lines";
 import { decodeRunCursor, type RunPosition } from "./run-cursor.js";
 import { addCondition, addRepoCondition, toRun, toVisit, type Queryable, type StationRunRow } from "./rows.js";
 import type { Report, Run, Visit } from "./types.js";

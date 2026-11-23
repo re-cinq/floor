@@ -1,5 +1,6 @@
 // What a pipeline must hold to run at all, and why each rule.
 
+import type { StationBody } from "@re-cinq/floor-contracts";
 import type { AgentPrompts } from "./agent-file.js";
 import {
   ambiguousEdges,
@@ -9,11 +10,11 @@ import {
   unreachableNodes,
   unroutedOutcomes,
 } from "./graph-rules.js";
+import { supplyOf, unseededNeeds, unsuppliedInputs, type Supply } from "./lint-supply.js";
 import {
   problem,
   readPipeline,
   stationOf,
-  type BagItem,
   type Checked,
   type Node,
   type PipelineProblem,
@@ -23,14 +24,6 @@ import {
 
 export { PIPELINE_RULES } from "./lint-shape.js";
 export type { PipelineProblem, PipelineRule };
-
-// Filled by the floor around a retry or a fan-out branch, never seeded or produced by a line. An agent's prompt is given them whether its station declares them or not.
-const FLOOR_FILLED_NEEDS = new Set(["previous_error", "previous_failures", "item"]);
-
-// The floor fills these from the run itself, so no line declares them.
-const FLOOR_SUPPLIED = new Set(["run_id", "line_id", "node_id", "git_credential", "git_credential_url", ...FLOOR_FILLED_NEEDS]);
-
-const PLACEHOLDER = /\{([a-z_][a-z0-9_.]*)\}/g;
 
 export function pipelineProblems(
   yamlText: string,
@@ -67,9 +60,10 @@ function allNodeProblems(
   checked: Checked,
   prompts: AgentPrompts,
 ): PipelineProblem[] {
+  const supply = supplyOf(checked);
   const { nodes } = checked.line;
 
-  return nodes.flatMap((node) => nodeProblems(checked, node, prompts));
+  return nodes.flatMap((node, index) => nodeProblems(supply, { node, index }, prompts));
 }
 
 // An agent is declared once, in its .md file: a pipeline file only names it from a station.
@@ -155,146 +149,29 @@ function unkeyedDetail(keys: string[]): string {
 }
 
 function nodeProblems(
-  checked: Checked,
-  node: Node,
+  supply: Supply,
+  position: { node: Node; index: number },
   prompts: AgentPrompts,
 ): PipelineProblem[] {
+  const { node, index } = position;
+  const { checked, line, bodies } = supply;
   const station = stationOf(checked, node);
 
   if (!station) {
     return [];
   }
 
+  const stationNode = {
+    node: line.nodes[index],
+    body: bodies.get(node.station ?? "") as StationBody,
+  };
+  const definition = station.agent_definition ?? node.station ?? "";
+
   return [
     ...unroutedOutcomes(checked, node, station),
-    ...unsuppliedInputs(checked, node, station, prompts),
-    ...unseededNeeds(checked, node, station),
+    ...unsuppliedInputs(supply, stationNode, { definition, text: prompts.get(definition) }),
+    ...unseededNeeds(supply, stationNode),
   ];
-}
-
-// The floor's own check (its line-needs.ts). A git need is only ever seeded, by a git arg. Any other need is seeded by an arg or a line file, or produced by a station; the floor further asks that a producer sits on EVERY path into the node, which this does not.
-function unseededNeeds(
-  checked: Checked,
-  node: Node,
-  station: Station,
-): PipelineProblem[] {
-  return (station.needs ?? [])
-    .filter((need) => !need.optional && need.collect === undefined)
-    .map((need) => ({ need, bagName: bagNameOf(node, need) }))
-    .filter(({ bagName }) => !FLOOR_FILLED_NEEDS.has(bagName))
-    .filter(({ need, bagName }) => !isSeeded(checked, need, bagName))
-    .map(({ need, bagName }) =>
-      problem(
-        checked,
-        node.id,
-        "unseeded-need",
-        unseededDetail(node, need, bagName),
-      ),
-    );
-}
-
-function bagNameOf(node: Node, need: BagItem): string {
-  const name = need.name ?? "";
-
-  return node.bind?.[name] ?? name;
-}
-
-function isSeeded(checked: Checked, need: BagItem, bagName: string): boolean {
-  const { args, files } = checked.line;
-
-  if (need.kind === "git") {
-    return Object.entries(args).some(
-      ([name, arg]) => name === bagName && arg.kind === "git",
-    );
-  }
-
-  return (
-    bagName in args ||
-    bagName in (files ?? {}) ||
-    producedNames(checked).has(bagName)
-  );
-}
-
-function producedNames(checked: Checked): Set<string> {
-  return new Set(
-    Object.values(checked.stations).flatMap((station) =>
-      namesOf(station.produces ?? []),
-    ),
-  );
-}
-
-function unseededDetail(node: Node, need: BagItem, bagName: string): string {
-  const label =
-    need.name === bagName
-      ? `"${need.name}"`
-      : `"${need.name}" (bound as "${bagName}")`;
-
-  return need.kind === "git"
-    ? `node "${node.id}" needs ${label} as kind "git", which nothing in the line seeds`
-    : `node "${node.id}" needs ${label}, which nothing in the line seeds or produces`;
-}
-
-// A recipe reused from another line reads inputs this line may never put in the bag.
-function unsuppliedInputs(
-  checked: Checked,
-  node: Node,
-  station: Station,
-  prompts: AgentPrompts,
-): PipelineProblem[] {
-  const definition = station.agent_definition ?? node.station ?? "";
-  const missing = missingInputsOf(station, prompts.get(definition));
-
-  return missing.length === 0
-    ? []
-    : [
-        problem(
-          checked,
-          node.id,
-          "unsupplied-input",
-          unsuppliedDetail(definition, missing),
-        ),
-      ];
-}
-
-function missingInputsOf(
-  station: Station,
-  prompt: string | null | undefined,
-): string[] {
-  return station.kind === "agent" && prompt
-    ? unsuppliedPlaceholders(prompt, suppliedNames(station))
-    : [];
-}
-
-function unsuppliedDetail(definition: string, missing: string[]): string {
-  return `the ${definition} prompt reads ${missing.join(", ")}, which the station lists in neither its needs nor its produces`;
-}
-
-function unsuppliedPlaceholders(
-  prompt: string,
-  supplied: Set<string>,
-): string[] {
-  const named = new Set(
-    [...prompt.matchAll(PLACEHOLDER)].map(([, name]) => name as string),
-  );
-
-  return (
-    [...named]
-      .filter((name) => !FLOOR_SUPPLIED.has(name))
-      .filter((name) => !supplied.has(name))
-      // A file item named `ticket` is read as `{ticket_path}`, where the floor put it.
-      .filter((name) => !supplied.has(name.replace(/_path$/, "")))
-      .sort()
-  );
-}
-
-function suppliedNames(station: Station): Set<string> {
-return new Set([...namesOf(station.needs ?? []), ...namesOf(station.produces ?? [])]);
-}
-
-function namesOf(bagItems: { name?: string }[]): string[] {
-  return bagItems
-    .map((bagItem) => bagItem.name)
-    .filter((name): name is string => typeof name === "string");
 }
 
 // A walk revisiting a node needs iteration_max to bound the loop.

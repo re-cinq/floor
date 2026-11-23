@@ -12,10 +12,11 @@ run** is one execution of it, and you start many.
 |---|---|
 | move assembly lines between files and a floor | the CLI, `@re-cinq/floor-pipeline` |
 | start, list and watch runs from a program | the client, `@re-cinq/floor-client` |
+| check a line against the floor's own rules, with no floor | the rules, `@re-cinq/floor-assembly-lines` |
 | do a step's work in your own service | the station SDK, `@re-cinq/floor-station` |
 | do any of it from a shell or another language | the HTTP API, [api_sketch.md](api_sketch.md) |
 
-All four are published with every release under one version. Install the version of your floor.
+All five are published with every release under one version. Install the version of your floor.
 
 ## Authenticate
 

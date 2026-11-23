@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BlobsStore } from "./blobs.js";
-import { FAN_STATIONS, fanLine } from "./fanout.fixtures.js";
+import { FAN_STATIONS, fanLine } from "@re-cinq/floor-assembly-lines";
 import { setupStoreFixture } from "./assembly-run-store.fixtures.js";
 
 const { store, events, definitions, pool } = setupStoreFixture();

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateLine } from "./line-validation.js";
 import type { KnownDefinitions } from "./line-validation.js";
-import type { LineBody, StationBody } from "./types.js";
+import type { LineBody, StationBody } from "@re-cinq/floor-contracts";
 
 function known(outcomes: string[]): KnownDefinitions {
   return { stations: new Set(["reviewer"]), bodies: new Map([["reviewer", reviewer(outcomes)]]) };

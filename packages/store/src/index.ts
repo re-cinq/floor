@@ -12,13 +12,11 @@ export { EVENT_RETENTION_MS, reapSettledRunEvents } from "./events-retention.js"
 export { DatabaseProbe, PROBE_TIMEOUT_MS } from "./database-probe.js";
 export { acquireLease, type Lease } from "./lease.js";
 export { openTestPool, testDatabaseUrl } from "./test-database.js";
-export { FAN_STATIONS, fanLine } from "./fanout.fixtures.js";
-export { Refusal, enforce } from "./refusal.js";
+export { FAN_STATIONS, Refusal, enforce, fanLine, validateLine, type KnownDefinitions } from "@re-cinq/floor-assembly-lines";
 export { InvalidStart } from "./start-args.js";
 export { canonicalRepo } from "./repo-name.js";
 export { RunJournal, type JournalEntry, type JournalPage, type RunJournalDeps } from "./run-journal.js";
 export { LISTENER_NAME, PgRunNotifier, type FloorListener, type FloorNotice, type PgRunNotifierDeps, type RunListener, type RunNotifier } from "./run-notifier.js";
-export { validateLine, type KnownDefinitions } from "./line-validation.js";
 export { CostsStore, type CostsFilter, type CostsGroupBy, type CostsRow, type CostsStoreDeps } from "./costs.js";
 export {
   DispatchBriefs,

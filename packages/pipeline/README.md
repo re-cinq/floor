@@ -111,7 +111,15 @@ code-review/
 floor-pipeline lint collection/ --host-key execution_mode
 ```
 
-A refused file prints one line and the exit code is 1.
+`lint` asks the same questions the floor asks of a line, through [`@re-cinq/floor-assembly-lines`](../assembly-lines/README.md). `unseeded-need` is a need that is neither a line argument or file nor produced on every path into its node, and its message gives one path that arrives without it. `unsupplied-input` is a `{name}` in an agent's prompt that the station does not give: a value need is read as `{name}`, a file or git need and a produce with a path as `{name_path}`, and the floor gives `{run_id}`, `{line_id}`, `{node_id}`, and for a retry or a fan-out branch `{previous_error}`, `{previous_failures}` and `{item}`. A station with a git need is also given `{git_credential}` and `{git_credential_url}`. A prompt's `{name}` is made of letters, digits, `_`, `.` and `-`, and starts with a letter or `_`, so a JSON object in a prompt is never read as one.
+
+A collection may extend an agent the host ships with an `.extra.md` file, or name a shipped agent without defining it. Without the host's catalog `lint` refuses both. `--shipped <dir>` names a directory in the same layout, whose lines and agents are the shipped ones.
+
+```
+floor-pipeline lint collection/ --shipped shipped/ --host-key execution_mode
+```
+
+A refused file prints one line and the exit code is 1. A call with no directory prints the usage and the exit code is 2.
 
 ```
 code-review/assembly-line.yml: a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md

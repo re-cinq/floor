@@ -11,7 +11,7 @@ replaces with one table and a tag filter.
 
 The only package that speaks to Postgres, and [`apps/api`](../../apps/api/README.md) is its only
 caller — no worker links it, so the queue is the only way into a floor's state. It calls
-[`@floor/assembly-lines`](../assembly-lines/README.md) for the walk decision and owns everything
+[`@re-cinq/floor-assembly-lines`](../assembly-lines/README.md) for the walk decision and owns everything
 around it: the tables, the definitions, the queue, and the transaction that makes a report and what
 follows from it one write.
 

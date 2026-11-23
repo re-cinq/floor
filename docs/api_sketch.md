@@ -350,7 +350,7 @@ services without changing this API.
 
 | concern | contract kept | standalone | inside lore |
 |---|---|---|---|
-| transition replay | lore's `getNextTransition`, ported into `@floor/assembly-lines` | the port | the port |
+| transition replay | lore's `getNextTransition`, ported into `@re-cinq/floor-assembly-lines` | the port | the port |
 | line definitions | **converted**, see below | this floor's schema | converter output, checked in |
 | station contract | outcome vocabulary, `(run, node, iteration)`, `LORE_NODE_RESULT:` / `REVIEW_RESULT:` in agent output | same | same |
 | agent pods | the ai-agent-subsystem: an `Agent` resource per visit | one cluster agent on minikube | cluster agents per cluster, claiming by tag |

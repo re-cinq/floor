@@ -4,7 +4,7 @@ import type { AssemblyRunStore } from "./assembly-run-store.js";
 import type { StartResult } from "./run-shapes.js";
 import type { DefinitionRow, DefinitionsStore } from "./definitions.js";
 import { answersOf, repoFrom, startItemsFrom, startsOn, type Payload } from "./event-match.js";
-import { Refusal, enforce } from "./refusal.js";
+import { Refusal, enforce } from "@re-cinq/floor-assembly-lines";
 import { getWith } from "./rows.js";
 import { nodeVisitCount, openRunBySubject } from "./sql.js";
 import type { LineBody, Run, Visit } from "./types.js";

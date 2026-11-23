@@ -13,7 +13,7 @@ import type {
 import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, PodResources, ProduceSpec, VisitBrief } from "@re-cinq/floor-contracts";
 import { environmentOf } from "./pod-environment.js";
 import { identityFor } from "./git-identity.js";
-import { promptParameters, runParameters } from "./prompt-parameters.js";
+import { GIT_CREDENTIAL_PARAMETER, GIT_CREDENTIAL_URL_PARAMETER, promptParameters, runParameters } from "@re-cinq/floor-assembly-lines";
 
 export type DispatchNeed = BriefNeed;
 export type DispatchProduce = ProduceSpec;
@@ -180,7 +180,7 @@ function buildAgent(recipe: string, input: DispatchBrief): Agent {
 function brokerParameters(input: DispatchBrief, gitNeed: GitNeed | undefined): Record<string, string> {
   if (!gitNeed) return {};
 
-  return { git_credential: input.visitToken, git_credential_url: `${input.floorBaseUrl}/station-runs/${input.visitId}/git-credential` };
+  return { [GIT_CREDENTIAL_PARAMETER]: input.visitToken, [GIT_CREDENTIAL_URL_PARAMETER]: `${input.floorBaseUrl}/station-runs/${input.visitId}/git-credential` };
 }
 
 // `AgentSpec.targetRepo` wants `owner/name`; a git need's url is a full clone url. Best effort, informational only: the actual clone uses the full `repoUrl`.

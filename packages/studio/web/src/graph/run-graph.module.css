@@ -1,0 +1,333 @@
+.panel {
+  margin-bottom: var(--space-6);
+}
+.heading {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-3);
+}
+/* Drawn at its natural size and wrapped to the panel's width (run-viz FR4.1a); a single column wider than the panel scrolls rather than shrinks. */
+.scroll {
+  overflow-x: auto;
+}
+.svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Step type (run-viz FR4.1h): a colour per family from the categorical palette, never a status colour. */
+.familyAgent {
+  --family: var(--chart-spec);
+}
+.familyService {
+  --family: var(--chart-section);
+}
+.familyPerson {
+  --family: var(--chart-feature);
+}
+.familyMarker {
+  --family: var(--chart-neutral);
+}
+.legendBox {
+  fill: color-mix(in srgb, var(--family) 12%, var(--bg-surface));
+  stroke: var(--family);
+  stroke-width: 1.5;
+}
+.typeGlyph {
+  fill: var(--family);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.legendSwatch {
+  flex: none;
+}
+.empty {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-6);
+}
+
+.edge {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    stroke-width var(--transition),
+    opacity var(--transition);
+}
+.back,
+.self {
+  stroke-dasharray: 5 4;
+}
+.arrowHead {
+  fill: context-stroke;
+}
+
+/* Edge condition as color: the branch's meaning is legible without reading a
+   label. */
+.toneOk {
+  stroke: var(--success);
+}
+.toneWarn {
+  stroke: var(--warning);
+}
+.toneErr {
+  stroke: var(--danger);
+}
+.toneNeutral {
+  stroke: var(--border);
+}
+
+/* Hover an edge to bring it forward: thicken it  and lift any dimming. */
+.edge:hover {
+  stroke-width: 3;
+}
+.edge.dim:hover {
+  opacity: 1;
+}
+
+/* The selected node's outgoing hops are bold and solid, the other hops fade back, so where the node leads reads at a glance. Nothing selected → neither. */
+.outgoing {
+  stroke-width: 3.5;
+  stroke-dasharray: none;
+}
+.dim {
+  opacity: 0.4;
+}
+
+.node {
+  cursor: default;
+}
+.node[tabindex] {
+  cursor: pointer;
+}
+.node:focus-visible {
+  outline: none;
+}
+/* Keyboard focus thickens the border and darkens the box like selection does: the lightest family colour (marker grey) only clears 3:1 against the surface once darkened (WCAG 1.4.11). */
+.node:focus-visible .box {
+  stroke-width: 3;
+  filter: brightness(0.8);
+}
+/* A box wears its step type's colour (run-viz FR4.1h): the border in the family colour, the fill a light wash of it. Status is the glyph and the verdict text inside. */
+.box {
+  fill: color-mix(in srgb, var(--family, var(--border)) 12%, var(--bg-surface));
+  stroke: var(--family, var(--border));
+  stroke-width: 1.5;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+  transition:
+    stroke var(--transition),
+    fill var(--transition);
+}
+.node[tabindex]:hover .box {
+  stroke-width: 2.5;
+}
+/* The node the inspector shows: its own colours, darker, and a border 2.5px heavier, so the graph and the panel beside it agree at a glance without the box changing what it says about its type. Brightness darkens the agent gradient as well as a flat colour. */
+.selected .box {
+  stroke-width: 4;
+  filter: brightness(0.8) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+}
+.nodeId {
+  fill: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+}
+.nodeStatus {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+/* The outcomes a source node can produce, listed inside it. */
+.possibleLabel {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs);
+}
+.outcomeRow {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+.outOk {
+  fill: var(--success);
+}
+.outWarn {
+  fill: var(--warning);
+}
+.outErr {
+  fill: var(--danger);
+}
+.outNeutral {
+  fill: var(--text-muted);
+}
+
+/* Outcome glyphs — a colored disc with a white check / dash / cross, so an
+   outcome's tone never rests on color alone. */
+.iconOk {
+  fill: var(--success);
+}
+.iconWarn {
+  fill: var(--warning);
+}
+.iconErr {
+  fill: var(--danger);
+}
+.iconIdle {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+.iconGlyph {
+  fill: none;
+  stroke: var(--bg-surface);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.iconInner {
+  fill: var(--bg-surface);
+}
+
+/* An AI step's border is a gradient through the palette (run-viz FR4.1h); the gradient lives in the graph's <defs>, ArrowMarkerDefs.tsx. */
+.agentStopStart {
+  stop-color: var(--chart-spec);
+}
+.agentStopMiddle {
+  stop-color: var(--chart-feature);
+}
+.agentStopEnd {
+  stop-color: var(--chart-section);
+}
+.familyAgent .box {
+  stroke: url(#rgv-agent-border);
+  stroke-width: 2;
+}
+
+/* A node's tooltip (run-viz FR4.1h): fixed to the viewport, centred on the node, above it unless the node sits near the top. */
+.tooltip {
+  position: fixed;
+  z-index: var(--z-popover);
+  max-width: 320px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--family, var(--border));
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.tooltip[data-placement="above"] {
+  transform: translate(-50%, -100%);
+}
+.tooltipTitle {
+  display: inline;
+  font-size: var(--fs-sm);
+}
+.tooltipKind {
+  margin-left: var(--space-2);
+  color: var(--family, var(--text-muted));
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.tooltipText {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+}
+
+/* Lore: the stations as rounded cards on the surface, the heading in the display weight. */
+:global([data-theme-family="lore"]) .heading {
+  color: var(--heading-color);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+}
+:global([data-theme-family="lore"]) .box {
+  rx: var(--radius);
+  fill: color-mix(in srgb, var(--family, var(--border)) 6%, var(--bg-surface));
+  filter: none;
+}
+:global([data-theme-family="lore"]) .selected .box {
+  filter: drop-shadow(0 0 var(--space-3) var(--focus-ring));
+}
+
+/* The outcome beside a hop that branches or loops; the halo keeps it legible over the lines it crosses. */
+.edgeLabel {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+/* A tag on a node's top edge: a word in a pill, its colour a second signal. */
+.badge rect {
+  fill: var(--bg-surface);
+  stroke: var(--border-hover);
+  stroke-width: 1;
+}
+.badge text {
+  fill: var(--text);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.03em;
+}
+.badge-entry rect,
+.badge-exit rect {
+  fill: var(--pill-bg);
+  stroke: var(--pill-fg);
+}
+.badge-entry text,
+.badge-exit text {
+  fill: var(--pill-fg);
+}
+.badge-fail rect {
+  fill: var(--danger-bg);
+  stroke: var(--danger);
+}
+.badge-fail text {
+  fill: var(--danger);
+}
+.badge-fanout rect {
+  fill: var(--info-bg);
+  stroke: var(--info);
+}
+.badge-fanout text {
+  fill: var(--info);
+}
+.badge-event rect {
+  fill: var(--wait-bg);
+  stroke: var(--wait);
+}
+.badge-event text {
+  fill: var(--wait);
+}
+.badge-problem rect {
+  fill: var(--danger);
+  stroke: var(--danger);
+}
+.badge-problem text {
+  fill: var(--text-on-accent);
+}

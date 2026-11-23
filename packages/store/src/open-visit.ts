@@ -5,9 +5,8 @@ import { collectNeeds, itemNeed, type CollectReaders } from "./fan-needs.js";
 import { forRepo } from "./repo-name.js";
 import type { Pool } from "pg";
 import { DefinitionsStore } from "./definitions.js";
-import { Refusal, enforce } from "./refusal.js";
+import { Refusal, enforce, requireNode } from "@re-cinq/floor-assembly-lines";
 import { visitsWith, type Queryable } from "./rows.js";
-import { requireNode } from "./start-events.js";
 import { mergeAgentSettings, previousErrorNeed, previousFailuresNeed, resolveNeeds } from "./resolve.js";
 import type {
   AgentDefinitionBody,

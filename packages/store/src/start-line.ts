@@ -2,7 +2,7 @@
 import type { Pool } from "pg";
 import type { LineBody } from "./types.js";
 import type { DefinitionRow, DefinitionsStore } from "./definitions.js";
-import { enforce } from "./refusal.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 import { blobHashesExist } from "./sql.js";
 
 export interface LineWanted {

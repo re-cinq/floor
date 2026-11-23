@@ -3,7 +3,7 @@ import { gitRefOf } from "./repo-name.js";
 import type { Pool } from "pg";
 import type { AssemblyRunStore } from "./assembly-run-store.js";
 import type { DefinitionsStore } from "./definitions.js";
-import { enforce } from "./refusal.js";
+import { enforce, needPathOf } from "@re-cinq/floor-assembly-lines";
 import type { BriefNeed } from "@re-cinq/floor-contracts";
 import type { AgentSettings, Item, LineBody, NeedSpec, ProduceSpec, Run, StationBody, Visit } from "./types.js";
 
@@ -47,7 +47,7 @@ export function dispatchNeeds(sources: NeedSources): DispatchNeed[] {
 function placedNeed(spec: NeedSpec, sources: NeedSources): DispatchNeed[] {
   const held = heldFor(spec, sources);
 
-  return held ? [placedAt(spec.path ?? spec.name, spec, { held, baseUrl: sources.baseUrl })] : [];
+  return held ? [placedAt(needPathOf(spec), spec, { held, baseUrl: sources.baseUrl })] : [];
 }
 
 function heldFor(spec: NeedSpec, sources: NeedSources): Item | undefined {

@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
-import { enforce } from "./refusal.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 
 const BYTES_PER_KIB = 1024;
 const KIB_PER_MIB = 1024;

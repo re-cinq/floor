@@ -1,5 +1,5 @@
 // The stations of a small fan-out line — one that lists, one that works per entry, one that joins — shared by the tests that check a fan-out line and run one.
-import type { LineBody, StationBody } from "./types.js";
+import type { LineBody, StationBody } from "@re-cinq/floor-contracts";
 
 export const FAN_STATIONS: Record<string, StationBody> = {
   splitter: { kind: "service", outcomes: ["success"], needs: [], produces: [{ name: "items", kind: "value" }] },

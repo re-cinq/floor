@@ -1,7 +1,7 @@
 // A visit's own log/turn/llm_call trail (docs/api_sketch.md, "Records"): one append-only, per-kind sequence over station_run_records.
 
 import type { Pool, PoolClient } from "pg";
-import { enforce } from "./refusal.js";
+import { enforce } from "@re-cinq/floor-assembly-lines";
 import { withTransaction } from "./rows.js";
 
 /** `produced` and `session` are the sink's own notes on a visit still running: what it has uploaded so far, and where its conversation was saved. */

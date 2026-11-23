@@ -121,7 +121,7 @@ it `needs` and what it `produces`; floor moves the bytes and nothing else crosse
 | [`apps/api`](apps/api/README.md) | The HTTP API and the single-leased loop. The only process that touches Postgres. |
 | [`apps/cluster-agent`](apps/cluster-agent/README.md) | The only process that talks to one cluster's Kubernetes API. Turns a dispatch into an agent pod. |
 | [`packages/store`](packages/store/README.md) | Six tables, the definitions store, the events queue, and the run store. |
-| [`packages/assembly-lines`](packages/assembly-lines/README.md) | The walk kernel: which edge is taken next, given the visits so far. Pure, no I/O. |
+| [`packages/assembly-lines`](packages/assembly-lines/README.md) | The line rules: which edge is taken next, whether a line is valid, what a prompt is given. Pure, no I/O. Published as `@re-cinq/floor-assembly-lines`. |
 | [`packages/contracts`](packages/contracts/README.md) | The floor's wire, as types. No runtime, no dependencies: the server, its store and every client share one declaration. |
 | [`packages/client`](packages/client/README.md) | The floor over HTTP and its live socket, typed. What anything outside a floor reaches it through. |
 | [`packages/station`](packages/station/README.md) | The SDK a service station is written with: one function, and the claim loop around it. |
@@ -145,7 +145,7 @@ To see a run on your machine, follow [Run floor and walk your first line](https:
 
 Every [release](https://github.com/re-cinq/floor/releases) publishes the chart at
 `oci://ghcr.io/re-cinq/charts/floor`, the image at `ghcr.io/re-cinq/floor` for `linux/amd64` and
-`linux/arm64`, and four npm packages, all under one version.
+`linux/arm64`, and five npm packages, all under one version.
 
 To work on floor itself:
 
