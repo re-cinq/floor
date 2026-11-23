@@ -1,4 +1,5 @@
 // The page's one link to the backend: a WebSocket opened with the launch token, every frame checked against the protocol's schema, requests matched to their answers by id, and a reconnect with backoff that reads the collection again. Pushes are not replayed, so a connection that drops and returns asks again.
+import type { ZodError } from "zod";
 import { collectionFrame, PROTOCOL_VERSION, serverFrameSchema, type CollectionView, type Request, type ServerFrame } from "@protocol";
 
 export type ConnectionState =
@@ -24,6 +25,16 @@ export interface ConnectionOptions {
 
 const FIRST_RETRY_MS = 500;
 const LONGEST_RETRY_MS = 10_000;
+const PROBE_TIMEOUT_MS = 2000;
+const UNREACHABLE = "cannot reach the studio";
+const DROPPED = "the connection to the studio dropped";
+const collectionSchema = collectionFrame.shape.collection;
+
+/** What one socket has been through, so its end can be told apart from a refused handshake. */
+interface Attempt {
+  opened: boolean;
+  ended: boolean;
+}
 
 const backoff = (attempt: number): number => Math.min(FIRST_RETRY_MS * 2 ** attempt, LONGEST_RETRY_MS);
 
@@ -89,18 +100,19 @@ export class StudioConnection {
     if (!address) {
       return this.change({ connection: { status: "closed", reason: `the socket address ${this.options.socket} is not a valid address`, retrying: false } });
     }
+
     this.change({ connection: { status: "connecting" } });
     const socket = new WebSocket(address);
-    let opened = false;
-    let ended = false;
+    const attempt: Attempt = { opened: false, ended: false };
+
     // A failed handshake ends in `error` and `close` in a browser, and in `error` alone in Node.
     const end = () => {
-      if (!ended) void this.dropped(socket, opened);
-      ended = true;
+      if (!attempt.ended) void this.dropped(socket, attempt);
+      attempt.ended = true;
     };
 
     this.socket = socket;
-    socket.onopen = () => (opened = true);
+    socket.onopen = () => (attempt.opened = true);
     socket.onmessage = (event) => this.receive(socket, event.data);
     socket.onerror = end;
     socket.onclose = end;
@@ -131,6 +143,7 @@ export class StudioConnection {
     if (version !== PROTOCOL_VERSION) {
       return this.stop(socket, { status: "refused", reason: `the studio speaks protocol ${version} and this page speaks ${PROTOCOL_VERSION}` });
     }
+
     this.attempt = 0;
     this.change({ connection: { status: "open" } });
     void this.readCollection();
@@ -146,7 +159,7 @@ export class StudioConnection {
 
   private async readCollection(): Promise<void> {
     const result = await this.request("collection.read").then(
-      (held) => collectionFrame.shape.collection.safeParse(held),
+      (held) => collectionSchema.safeParse(held),
       (reason: Error) => ({ success: false as const, error: reason }),
     );
 
@@ -162,15 +175,24 @@ export class StudioConnection {
     this.change({ connection: state });
   }
 
-  private async dropped(socket: WebSocket, opened: boolean): Promise<void> {
+  private async dropped(socket: WebSocket, attempt: Attempt): Promise<void> {
     this.waiting.forEach(({ reject }) => reject(new Error("the connection closed")));
     this.waiting.clear();
     if (this.stopped || socket !== this.socket) return;
-    const refused = !opened && (await this.answersPlainHttp());
+    if (!attempt.opened && (await this.answersPlainHttp())) return this.refuse(socket);
+    this.retryLater(attempt.opened ? DROPPED : UNREACHABLE);
+  }
 
+  private refuse(socket: WebSocket): void {
+    this.stop(socket, {
+      status: "refused",
+      reason: "the studio is running but refused the connection: the token in this address is not the one it was started with, or this page's origin is not allowed. Open the address `floor-studio` printed.",
+    });
+  }
+
+  private retryLater(reason: string): void {
     if (this.stopped) return;
-    if (refused) return this.stop(socket, { status: "refused", reason: "the studio is running but refused the connection: the token in this address is not the one it was started with, or this page's origin is not allowed. Open the address `floor-studio` printed." });
-    this.change({ connection: { status: "closed", reason: opened ? "the connection to the studio dropped" : "cannot reach the studio", retrying: true } });
+    this.change({ connection: { status: "closed", reason, retrying: true } });
     this.retryTimer = setTimeout(() => this.open(), (this.options.retryDelay ?? backoff)(this.attempt++));
   }
 
@@ -178,7 +200,7 @@ export class StudioConnection {
   private async answersPlainHttp(): Promise<boolean> {
     const address = new URL(this.options.socket.replace(/^ws/, "http"));
 
-    return fetch(address, { mode: "no-cors" }).then(
+    return fetch(address, { mode: "no-cors", signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }).then(
       () => true,
       () => false,
     );
@@ -188,7 +210,7 @@ export class StudioConnection {
 function readFrame(text: string): ServerFrame | { problem: string } {
   const parsed = serverFrameSchema.safeParse(parseJson(text));
 
-  return parsed.success ? parsed.data : { problem: parsed.error.issues[0]?.message ?? "unknown frame" };
+  return parsed.success ? parsed.data : { problem: firstIssue(parsed.error) };
 }
 
 function parseJson(text: string): unknown {
@@ -197,4 +219,11 @@ function parseJson(text: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+/** A failed parse always names at least one issue. */
+function firstIssue({ issues }: ZodError): string {
+  const [issue] = issues;
+
+  return issue.message;
 }

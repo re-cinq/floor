@@ -1,5 +1,5 @@
 // What the studio knows of a collection, as plain JSON: no Map, no class, no undefined that JSON would lose. Types only, so a browser bundle takes this file for nothing.
-import type { NodeEvents, PromptPlaceholders } from "@re-cinq/floor-assembly-lines";
+import type { NeedCoverage, NodeEvents, PromptPlaceholders } from "@re-cinq/floor-assembly-lines";
 import type { LineArgSpec, LineEdge, LineStart, NeedSpec, ProduceSpec, StationKind } from "@re-cinq/floor-contracts";
 
 export interface ViewProblem {
@@ -14,6 +14,10 @@ export interface NodeAgent {
   file: string;
 }
 
+export interface NodeNeed extends NeedSpec {
+  coverage: NeedCoverage;
+}
+
 export interface NodeView {
   id: string;
   /** The station the node names. Absent for a marker node. */
@@ -24,7 +28,7 @@ export interface NodeView {
   kind?: StationKind;
   description?: string;
   outcomes: string[];
-  needs: NeedSpec[];
+  needs: NodeNeed[];
   produces: ProduceSpec[];
   agentDefinition?: string;
   events: NodeEvents;

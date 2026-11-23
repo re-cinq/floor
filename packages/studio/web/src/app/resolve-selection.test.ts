@@ -13,7 +13,10 @@ const collection: CollectionView = {
 
 describe("resolveSelection", () => {
   it("finds the line and the node the selection names", () => {
-    expect(resolveSelection(collection, { line: "flow", node: "work" })).toEqual({ line: collection.lines[0], node: collection.lines[0].nodes[0] });
+    const [flow] = collection.lines;
+    const [work] = flow.nodes;
+
+    expect(resolveSelection(collection, { line: "flow", node: "work" })).toEqual({ line: flow, node: work });
   });
 
   it("finds the line alone when no node is named", () => {

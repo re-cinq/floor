@@ -4,7 +4,7 @@ import type {
   AssemblyLineDefinition,
   DefinitionEdge,
 } from "./assembly-line-definition";
-import { contentBoxOf, labelPointOf, pathFor } from "./dag-layout-paths";
+import { contentBoxOf, labelPointOf, pathFor, type LabelPoint } from "./dag-layout-paths";
 import { wrapLayer } from "./dag-wrap";
 
 export type EdgeKind = "forward" | "back" | "self";
@@ -24,7 +24,7 @@ export interface LayoutNode {
 export interface LayoutEdge extends ClassifiedEdge {
   d: string;
   /** Where a label sits on the drawn path. */
-  mid: { x: number; y: number };
+  mid: LabelPoint;
 }
 
 export interface Box {
@@ -123,12 +123,14 @@ function forwardGraph(def: AssemblyLineDefinition) {
     layers[node.id] = 0;
     indegree[node.id] = 0;
   }
+
   const acyclicOut = new Map<string, DefinitionEdge[]>();
 
   for (const edge of def.edges) {
     if (!isForwardEdge(edge, cyclic, declared)) {
       continue;
     }
+
     indegree[edge.to] += 1;
     acyclicOut.set(edge.from, [...(acyclicOut.get(edge.from) ?? []), edge]);
   }
@@ -143,6 +145,7 @@ function cyclicEdges(def: AssemblyLineDefinition): Set<DefinitionEdge> {
   for (const edge of def.edges) {
     outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge]);
   }
+
   const walk: CycleWalk = {
     outgoing,
     cyclic: new Set<DefinitionEdge>(),
@@ -252,7 +255,7 @@ function slotNodes(
 /** The centre y of each band's first row: a band starts below the previous band's lowest node, its arc floor, and the same air again for the arrows that wrap down to it. */
 function bandTops(slots: NodeSlot[], opts: ResolvedOptions): number[] {
   const bandCount = Math.max(...slots.map((slot) => slot.band)) + 1;
-  const rowsPerBand = Array.from({ length: bandCount }, (_unused, band) =>
+  const rowsPerBand = Array.from(Array(bandCount).keys(), (band) =>
     Math.max(1, ...slots.filter((s) => s.band === band).map((s) => s.row + 1)),
   );
   const pitch = opts.nodeHeight + opts.arcDrop * 2;
@@ -273,7 +276,7 @@ function bandTops(slots: NodeSlot[], opts: ResolvedOptions): number[] {
 function bandFloors(nodes: LayoutNode[], opts: ResolvedOptions): number[] {
   const bandCount = Math.max(...nodes.map((node) => node.band)) + 1;
 
-  return Array.from({ length: bandCount }, (_unused, band) => {
+  return Array.from(Array(bandCount).keys(), (band) => {
     const ys = nodes.filter((node) => node.band === band).map((n) => n.y);
 
     return Math.max(...ys) + opts.nodeHeight / 2 + opts.arcDrop;

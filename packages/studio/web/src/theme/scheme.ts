@@ -10,8 +10,6 @@ export function parseSchemePref(raw: string | null): SchemePref {
   return SCHEME_PREFS.find((pref) => pref === raw) ?? "auto";
 }
 
-export function resolveColorScheme(pref: SchemePref, systemIsDark: boolean): ResolvedScheme {
-  if (pref === "auto") return systemIsDark ? "dark" : "light";
-
-  return pref;
+export function resolveColorScheme(pref: SchemePref, system: ResolvedScheme): ResolvedScheme {
+  return pref === "auto" ? system : pref;
 }

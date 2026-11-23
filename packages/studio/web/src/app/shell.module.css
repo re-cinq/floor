@@ -1,0 +1,230 @@
+.shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: var(--size-256);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  padding: var(--space-5) 0 var(--space-4);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6) var(--space-4);
+  line-height: var(--lh-1);
+}
+
+.brandName {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-tight);
+  color: var(--heading-color);
+}
+
+.brandKind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+.folder {
+  padding: 0 var(--space-6) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.section {
+  padding: var(--space-3) var(--space-4);
+}
+
+.sectionTitle {
+  padding: 0 var(--space-4) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+}
+
+.lineLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+.lineLink:hover {
+  background: var(--bg-hover);
+  color: var(--heading-color);
+  text-decoration: none;
+}
+
+.lineLink[aria-current="page"] {
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font-weight: var(--fw-medium);
+}
+
+.lineName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeCount {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.problemCount {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.refused {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.refusedPath {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.refusedReason {
+  color: var(--danger);
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: auto;
+  padding: var(--space-4) var(--space-6) 0;
+}
+
+.scheme {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+
+.scheme legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.scheme label {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  text-align: center;
+  cursor: pointer;
+}
+
+.scheme input {
+  position: absolute;
+  opacity: 0;
+}
+
+.scheme label:has(input:checked) {
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font-weight: var(--fw-medium);
+}
+
+.scheme label:has(input:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
+.connection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.dot {
+  flex: none;
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--text-muted);
+}
+
+.dotOpen {
+  background: var(--success);
+}
+
+.dotClosed,
+.dotRefused {
+  background: var(--danger);
+}
+
+.dotConnecting {
+  background: var(--warning);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: var(--space-7) var(--space-6);
+}
+
+@media (max-width: 900px) {
+  .shell {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar {
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .main {
+    padding: var(--space-6) var(--space-5);
+  }
+}

@@ -3,7 +3,13 @@ import type { VisibleNode } from "./graph-view-model";
 import { badgesOf } from "./node-badges";
 import { FAMILY_LABEL, typeFamilyOf } from "./node-type-family";
 
-export function nodeAriaLabel(node: VisibleNode, isTerminal: boolean): string {
+export interface LabelledNode {
+  node: VisibleNode;
+  /** Nothing leaves it. */
+  isTerminal: boolean;
+}
+
+export function nodeAriaLabel({ node, isTerminal }: LabelledNode): string {
   const family = FAMILY_LABEL[typeFamilyOf(node.type)].toLowerCase();
   const badges = badgesOf(node).map(({ description }) => description);
   const outcomes = node.outcomes.length > 0 ? [`outcomes: ${node.outcomes.join(", ")}`] : [];

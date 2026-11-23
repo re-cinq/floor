@@ -98,8 +98,8 @@ function connectorsFor(
   });
 }
 
-function hopLabel({ on, iteration_max }: DefinitionEdge): string {
-  return iteration_max === undefined ? on : `${on} (max ${iteration_max})`;
+function hopLabel({ on, iterationMax }: DefinitionEdge): string {
+  return iterationMax === undefined ? on : `${on} (max ${iterationMax})`;
 }
 
 /** Outcome (or edge condition) to a connector/badge tone. */

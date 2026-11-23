@@ -21,12 +21,12 @@ describe("deriveVisibleGraph", () => {
 
   it("renders one connector and lists the outcomes in the source node when all lead to one step", () => {
     const graph = deriveVisibleGraph(codeReviewDefinition);
-    const reviewToDone = graph.edges.filter((edge) => edge.from === "review" && edge.to === "done");
+    const [review] = graph.nodes;
 
-    expect(reviewToDone).toEqual([
-      { from: "review", to: "done", tone: "neutral", label: "success, changes_requested, failed", branching: false },
-    ]);
-    expect(graph.nodes.find((node) => node.id === "review")?.outcomes).toEqual(["success", "changes_requested", "failed"]);
+    expect({ connectors: graph.edges, outcomes: review.outcomes }).toEqual({
+      connectors: [{ from: "review", to: "done", tone: "neutral", label: "success, changes_requested, failed", branching: false }],
+      outcomes: ["success", "changes_requested", "failed"],
+    });
   });
 
   it("renders separate branches when outcomes lead to different steps", () => {

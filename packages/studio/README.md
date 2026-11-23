@@ -2,7 +2,7 @@
 
 A local studio for a collection of assembly lines: the folder with one folder a line, each holding `assembly-line.yaml` and `agents/<agent>.md`. It reads the folder, draws nothing itself, and tells every client what the collection holds: each assembly line with its nodes, edges and problems, each agent with its settings and prompt, and each file it refused and why. A change to a file on disk reaches every client at once.
 
-This package is the backend, the protocol and the command that starts them. The page that draws the lines is built separately and is not part of this version. It is not published to npm yet: run it from a checkout.
+This package is the backend, the protocol, the command that starts them, and the page that draws the lines (`web/`). It is not published to npm yet: run it from a checkout.
 
 ## The three parts
 
@@ -11,6 +11,7 @@ This package is the backend, the protocol and the command that starts them. The 
 | Backend | `src/backend`, exported as `@re-cinq/floor-studio/backend` | headless. `startStudio({ dir, port, hostKeys, origins })` listens on `127.0.0.1` and speaks WebSocket only. It serves no page and knows nothing about a browser |
 | Protocol | `src/protocol.ts`, exported as `@re-cinq/floor-studio/protocol` | every frame as a zod schema and its type. It imports nothing from Node, so a browser bundle can take it |
 | Shell | `src/cli.ts`, the command `floor-studio` | parses the arguments, starts the backend, serves the built page from `dist/web` over plain HTTP on `127.0.0.1`, and opens the browser. A desktop app would replace only this part |
+| Page | `web/`, built into `dist/web` | a Vite and React app, one client of the backend. It takes the socket and the token from its address and draws the collection |
 
 ## Run it from the checkout
 
@@ -40,6 +41,28 @@ http://127.0.0.1:<page port>/#socket=ws%3A%2F%2F127.0.0.1%3A<socket port>&token=
 
 When `dist/web` does not exist the page server answers a plain page saying the page is not built. It serves only files under `dist/web`, with `Cache-Control: no-store`, and refuses a path that leaves the folder, by `..`, by a percent-encoded `..` or by a symlink.
 
+## The page
+
+`web/` holds the page: Vite, React and TypeScript, styled with plain CSS custom properties and CSS Modules in lore's look (tokens in `web/src/theme/theme.css`, IBM Plex Sans and JetBrains Mono as local files, light, dark or auto). It draws the assembly lines with lore's graph code (`web/src/graph`, where its README says what was copied and stripped), and loads nothing from another host. Everything it needs is bundled, so React, Vite and the test tools are devDependencies and the published package needs none of them at run time.
+
+| where | what |
+|---|---|
+| `npm run build -w @re-cinq/floor-studio` | `tsc` writes `dist` except `dist/web`, then `vite build` writes only `dist/web` (it empties that folder and nothing else), so the two steps do not depend on their order |
+| `dist/web/index.html` | the built page, the one the command serves |
+| `npm run dev:web -w @re-cinq/floor-studio` | the Vite dev server with hot reload |
+| `npm run typecheck -w @re-cinq/floor-studio` | checks `src` and `web` |
+
+To work on the page, start a backend and give the dev server its address:
+
+```
+node packages/studio/dist/cli.js path/to/collection --no-open     # prints floor-studio: http://127.0.0.1:<page port>/#socket=...&token=...
+npm run dev:web -w @re-cinq/floor-studio                           # serves http://localhost:5173/
+```
+
+Open `http://localhost:5173/` with the fragment the command printed (`#socket=...&token=...`). The backend refuses a browser page whose origin it was not told, so start it with the dev server's origin allowed by calling `startStudio({ ..., origins: ["http://localhost:5173"] })` from a script; the command itself allows only its own page.
+
+The page keeps the selected line and node in the same fragment (`&line=<id>&node=<id>`), so a reload keeps the place. A `collection` push redraws it in place and keeps the selection while the line and node still exist. Its screens: no address, connecting, cannot connect (it retries with backoff and reads the collection again once it is back), refused (a wrong token, or another protocol version, is not retried), an empty folder, and the line view. The right-hand inspector shows the selected node's id and station; its tabs are not built yet.
+
 ## Use the backend on its own
 
 ```ts
@@ -68,12 +91,12 @@ A new request type is one schema in `src/protocol.ts` and one handler in the tab
 
 ### The collection view
 
-`collectionView(files, hostKeys)` is pure and takes `{ path, text }` values. It answers plain JSON: `lines`, `agents`, `refused` and `counts`. Its types are in `src/view.ts` and exported from the protocol.
+`collectionView(files, hostKeys)` is pure and takes `{ path, text }` values. It answers plain JSON: `lines`, `agents`, `refused` and `counts`. The backend adds `folder`, the name of the collection's folder, to what it sends. A node that names a `fanout` carries it as `fanout: { over, to }`. Its types are in `src/view.ts` and exported from the protocol.
 
 - A line with problems is still a line. It is read on its own, so a line the collection's overlay would refuse for its problems appears with `problems` listing each one: `rule`, the `node` when there is one, and the `message`. The rules of the lint and the floor's own check of a line body are both there, and a fault they both name is listed once, as the lint's rule.
 - A file that cannot be read at all, such as YAML that does not parse, an agent file with no frontmatter, or a `pipeline.yaml` beside an `assembly-line.yaml`, is in `refused` with its path and the reason. The other files still draw.
 - Settings are shown as the file writes them: `${NAME}` is not filled from the environment.
-- Each node holds its station's `kind`, `description`, `outcomes`, `needs` and `produces`, its `events` from `nodeEvents`, and, for an agent station whose agent a file defines, `agent` and the `placeholders` of that agent's prompt from `promptPlaceholders`.
+- Each node holds its station's `kind`, `description`, `outcomes`, `needs` and `produces`, each need with its `coverage` from `needCoverage`, its `events` from `nodeEvents`, and, for an agent station whose agent a file defines, `agent` and the `placeholders` of that agent's prompt from `promptPlaceholders`.
 
 ## Security
 

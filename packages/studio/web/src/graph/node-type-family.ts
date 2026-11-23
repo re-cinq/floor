@@ -1,5 +1,5 @@
 // The family a node's kind belongs to, which the graph shows as a glyph and a stripe (run-viz FR4.1h). Outcome keeps the edge colour, so kind needs a channel of its own.
-import type { DefinitionNodeType } from "./assembly-line-definition";
+import type { DefinitionNodeKind } from "./assembly-line-definition";
 
 export type NodeTypeFamily = "agent" | "service" | "person" | "marker";
 
@@ -11,7 +11,7 @@ export const FAMILY_LABEL: Record<NodeTypeFamily, string> = {
   marker: "Marker",
 };
 
-const FAMILY_OF_TYPE: Record<DefinitionNodeType, NodeTypeFamily> = {
+const FAMILY_OF_TYPE: Record<DefinitionNodeKind, NodeTypeFamily> = {
   agent: "agent",
   service: "service",
   human: "person",
@@ -19,6 +19,6 @@ const FAMILY_OF_TYPE: Record<DefinitionNodeType, NodeTypeFamily> = {
 };
 
 /** agent: an AI pod runs it. person: it waits on someone. marker: a point in the line with no work of its own. service: run by a machine. */
-export function typeFamilyOf(nodeType: DefinitionNodeType | undefined): NodeTypeFamily {
+export function typeFamilyOf(nodeType: DefinitionNodeKind | undefined): NodeTypeFamily {
   return nodeType === undefined ? "marker" : FAMILY_OF_TYPE[nodeType];
 }

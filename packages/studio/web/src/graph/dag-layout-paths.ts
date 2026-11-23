@@ -144,12 +144,19 @@ function pointsOf(d: string): { x: number; y: number }[] {
   return points;
 }
 
+export interface LabelPoint {
+  x: number;
+  y: number;
+  /** The label sits on a vertical run, so it is turned to read along it instead of spilling sideways. */
+  vertical: boolean;
+}
+
 /** The middle of a drawn path: a single curve at its half-way point, a path of several parts between the two points that straddle its middle. */
-export function labelPointOf(d: string): { x: number; y: number } {
+export function labelPointOf(d: string): LabelPoint {
   const points = pointsOf(d);
 
   if (points.length === 0) {
-    return { x: 0, y: 0 };
+    return { x: 0, y: 0, vertical: false };
   }
 
   if (points.length === 4) {
@@ -158,14 +165,17 @@ export function labelPointOf(d: string): { x: number; y: number } {
     return {
       x: (start.x + 3 * near.x + 3 * far.x + end.x) / 8,
       y: (start.y + 3 * near.y + 3 * far.y + end.y) / 8,
+      vertical: false,
     };
   }
+
   const after = Math.ceil(points.length / 2);
   const before = Math.max(0, after - 1);
 
   return {
     x: (points[before].x + points[after].x) / 2,
     y: (points[before].y + points[after].y) / 2,
+    vertical: points[before].x === points[after].x,
   };
 }
 

@@ -23,17 +23,22 @@ describe("collectionView", () => {
     });
   });
 
-  it("shows a station's kind, description, outcomes and needs on its node", () => {
+  it("shows a station's kind, description, outcomes and produces on its node", () => {
     expect(onlyLine(WORKER_COLLECTION).nodes[0]).toMatchObject({
       id: "work",
       station: "work",
       kind: "agent",
       description: "Works the ticket.",
       outcomes: ["success"],
-      needs: [{ name: "ticket", kind: "value" }],
       produces: [],
       agentDefinition: "worker",
     });
+  });
+
+  it("marks the need ticket of node work seeded when ticket is a line argument", () => {
+    const [work] = onlyLine(WORKER_COLLECTION).nodes;
+
+    expect(work.needs).toEqual([{ name: "ticket", kind: "value", coverage: { kind: "seeded" } }]);
   });
 
   it("gives an agent node its agent and the state of each placeholder of its prompt", () => {

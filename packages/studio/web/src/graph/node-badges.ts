@@ -10,14 +10,25 @@ export interface NodeBadge {
 }
 
 export function badgesOf(node: VisibleNode): NodeBadge[] {
-  const badges: (NodeBadge | false | undefined)[] = [
-    node.isEntry && { kind: "entry", label: "entry", description: "the line starts here" },
-    node.isExit && { kind: "exit", label: "exit", description: "the line ends here" },
-    node.isFail && { kind: "fail", label: "fail", description: "the line ends here as failed" },
-    node.fanout && { kind: "fanout", label: "fan-out", description: `fans out over ${node.fanout.over} to ${node.fanout.to}` },
-    node.outsideStart && { kind: "event", label: "event", description: `started by the outside event ${node.outsideStart}` },
-    node.hasProblem && { kind: "problem", label: "problem", description: "has a problem" },
+  return [...rolesOf(node), ...factsOf(node)];
+}
+
+function rolesOf(node: VisibleNode): NodeBadge[] {
+  const roles: (NodeBadge | undefined)[] = [
+    node.isEntry ? { kind: "entry", label: "entry", description: "the line starts here" } : undefined,
+    node.isExit ? { kind: "exit", label: "exit", description: "the line ends here" } : undefined,
+    node.isFail ? { kind: "fail", label: "fail", description: "the line ends here as failed" } : undefined,
   ];
 
-  return badges.filter((badge) => badge !== false && badge !== undefined);
+  return roles.filter((badge) => badge !== undefined);
+}
+
+function factsOf(node: VisibleNode): NodeBadge[] {
+  const facts: (NodeBadge | undefined)[] = [
+    node.fanout ? { kind: "fanout", label: "fan-out", description: `fans out over ${node.fanout.over} to ${node.fanout.to}` } : undefined,
+    node.outsideStart ? { kind: "event", label: "event", description: `started by the outside event ${node.outsideStart}` } : undefined,
+    node.hasProblem ? { kind: "problem", label: "problem", description: "has a problem" } : undefined,
+  ];
+
+  return facts.filter((badge) => badge !== undefined);
 }

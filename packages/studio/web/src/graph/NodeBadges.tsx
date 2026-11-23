@@ -17,32 +17,32 @@ export interface NodeBadgesProps {
 
 interface PlacedBadge {
   badge: NodeBadge;
-  x: number;
+  left: number;
   width: number;
-}
-
-/** Each pill's left edge, laid from the right inset leftwards in the order given. */
-function placeBadges(badges: readonly NodeBadge[], rightEdge: number): PlacedBadge[] {
-  return badges.reduce<PlacedBadge[]>((placed, badge) => {
-    const width = badge.label.length * CHAR_WIDTH + PILL_PADDING;
-    const right = placed.length === 0 ? rightEdge - RIGHT_INSET : placed[placed.length - 1].x - PILL_GAP;
-
-    return [...placed, { badge, x: right - width, width }];
-  }, []);
 }
 
 export default function NodeBadges({ badges, rightEdge, top }: NodeBadgesProps) {
   return (
     <>
-      {placeBadges(badges, rightEdge).map(({ badge, x, width }) => (
+      {placeBadges(badges, rightEdge).map(({ badge, left, width }) => (
         <g key={badge.kind} data-badge={badge.kind} className={`${styles.badge} ${styles[`badge-${badge.kind}`]}`}>
           <title>{badge.description}</title>
-          <rect x={x} y={top - PILL_HEIGHT / 2} width={width} height={PILL_HEIGHT} rx={PILL_HEIGHT / 2} />
-          <text x={x + width / 2} y={top + 3.5} textAnchor="middle">
+          <rect x={left} y={top - PILL_HEIGHT / 2} width={width} height={PILL_HEIGHT} rx={PILL_HEIGHT / 2} />
+          <text x={left + width / 2} y={top + 3.5} textAnchor="middle">
             {badge.label}
           </text>
         </g>
       ))}
     </>
   );
+}
+
+/** Each pill's left edge, laid from the right inset leftwards in the order given. */
+function placeBadges(badges: readonly NodeBadge[], rightEdge: number): PlacedBadge[] {
+  return badges.reduce<PlacedBadge[]>((placed, badge) => {
+    const width = badge.label.length * CHAR_WIDTH + PILL_PADDING;
+    const right = placed.length === 0 ? rightEdge - RIGHT_INSET : placed[placed.length - 1].left - PILL_GAP;
+
+    return [...placed, { badge, left: right - width, width }];
+  }, []);
 }

@@ -1,4 +1,4 @@
-// One connector between two steps; its tone carries the branch's meaning, and a hop that branches or loops says its outcome in a label beside it, so colour is never the only signal. The selected node's outgoing hops draw bold and the others step back.
+// One connector between two steps; its tone carries the branch's meaning, and a hop that branches or loops says its outcome in a label beside it (EdgeLabel), so colour is never the only signal. The selected node's outgoing hops draw bold and the others step back.
 import type { LayoutEdge } from "./dag-layout";
 import type { VisibleEdge } from "./graph-view-model";
 import { ARROW_MARKER_URL } from "./ArrowMarkerDefs";
@@ -13,11 +13,6 @@ export interface GraphEdgeProps {
   model: VisibleEdge | undefined;
   /** Outgoing: leaves the selected node. Other: something is selected and this hop is not from it. Undefined when nothing is selected. */
   emphasis: EdgeEmphasis;
-}
-
-/** A loop or a branch needs its outcome beside it; a lone forward hop already has its outcomes listed in the node it leaves. */
-function isLabelled(edge: LayoutEdge, model: VisibleEdge | undefined): model is VisibleEdge {
-  return model !== undefined && (model.branching || edge.kind !== "forward");
 }
 
 export default function GraphEdge({ edge, model, emphasis }: GraphEdgeProps) {
@@ -36,20 +31,29 @@ export default function GraphEdge({ edge, model, emphasis }: GraphEdgeProps) {
         d={edge.d}
         markerEnd={ARROW_MARKER_URL}
       />
-      {isLabelled(edge, model) ? <EdgeLabel edge={edge} model={model} emphasis={emphasis} /> : null}
     </g>
   );
 }
 
-function EdgeLabel({ edge, model, emphasis }: { edge: LayoutEdge; model: VisibleEdge; emphasis: EdgeEmphasis }) {
+/** Drawn after the nodes, so a label in the narrow air between two columns is not hidden behind them. */
+export function EdgeLabel({ edge, model, emphasis }: GraphEdgeProps) {
+  if (!isLabelled(edge, model)) return null;
+
   return (
     <text
+      data-edge-label={edgeMapKey(edge.from, edge.to)}
       className={classes(styles.edgeLabel, textFillClass(model.tone), emphasis === "other" ? styles.dim : undefined)}
       x={edge.mid.x}
       y={edge.mid.y}
       textAnchor="middle"
+      transform={edge.mid.vertical ? `rotate(-90 ${edge.mid.x} ${edge.mid.y})` : undefined}
     >
       {model.label}
     </text>
   );
+}
+
+/** A loop or a branch needs its outcome beside it; a lone forward hop already has its outcomes listed in the node it leaves. */
+function isLabelled(edge: LayoutEdge, model: VisibleEdge | undefined): model is VisibleEdge {
+  return model !== undefined && (model.branching || edge.kind !== "forward");
 }

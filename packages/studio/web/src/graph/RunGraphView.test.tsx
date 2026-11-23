@@ -18,8 +18,9 @@ function Selectable({ definition }: { definition: AssemblyLineDefinition }) {
   );
 }
 
-const nodeEl = (container: HTMLElement, id: string) => container.querySelector(`[data-node="${id}"]`) as SVGGElement;
-const edgeEl = (container: HTMLElement, key: string) => container.querySelector(`[data-edge="${key}"]`) as SVGGElement;
+const nodeEl = (container: HTMLElement, id: string) => container.querySelector(`[data-node="${id}"]`) as HTMLElement;
+const edgeEl = (container: HTMLElement, key: string) => container.querySelector(`[data-edge="${key}"]`) as HTMLElement;
+const labelOf = (container: HTMLElement, key: string) => container.querySelector(`[data-edge-label="${key}"]`)?.textContent ?? "";
 
 describe("RunGraphView", () => {
   it("draws every node and one connector for outcomes that lead to the same node", () => {
@@ -49,9 +50,9 @@ describe("RunGraphView", () => {
     const { container } = render(<RunGraphView definition={implementationDefinition} />);
 
     expect([
-      edgeEl(container, "implement->implement").textContent,
-      edgeEl(container, "address->validate").textContent,
-      edgeEl(container, "push->review").textContent,
+      labelOf(container, "implement->implement"),
+      labelOf(container, "address->validate"),
+      labelOf(container, "push->review"),
     ]).toEqual(["failed (max 1)", "always (max 2)", ""]);
   });
 

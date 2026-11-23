@@ -10,7 +10,7 @@ import { PROTOCOL_VERSION } from "../../../src/protocol";
 import { StudioConnection, type StudioSnapshot } from "./studio-connection";
 
 const SOON = () => 20;
-const stoppers: (() => Promise<void> | void)[] = [];
+const stoppers: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(stoppers.splice(0).map((stop) => stop()));
@@ -28,22 +28,23 @@ async function studioOnDisk(): Promise<{ studio: Studio; dir: string }> {
 function connected(options: { socket: string; token: string }): StudioConnection {
   const connection = new StudioConnection({ ...options, retryDelay: SOON });
 
-  stoppers.push(() => connection.close());
+  stoppers.push(async () => connection.close());
   connection.start();
 
   return connection;
 }
 
-/** Resolves with the first snapshot the connection reaches that the test accepts. */
 function reaches(connection: StudioConnection, accepts: (snapshot: StudioSnapshot) => boolean): Promise<StudioSnapshot> {
   return new Promise((resolve, reject) => {
     const giveUp = setTimeout(() => reject(new Error(`never reached: ${JSON.stringify(connection.snapshot().connection)}`)), 5000);
+
     const check = () => {
       if (!accepts(connection.snapshot())) return;
       clearTimeout(giveUp);
       unsubscribe();
       resolve(connection.snapshot());
     };
+
     const unsubscribe = connection.subscribe(check);
 
     check();
@@ -56,7 +57,6 @@ interface ServedProtocol {
   reads: () => number;
 }
 
-/** A real WebSocket server that speaks the protocol by hand, so a test can drop its sockets or send what the backend never would. */
 async function protocolServer(onConnection: (socket: ServerSocket, served: ServedProtocol) => void): Promise<ServedProtocol> {
   const server = new WebSocketServer({ host: "127.0.0.1", port: 0 });
   const served: ServedProtocol = { address: "", sockets: new Set(), reads: () => 0 };
@@ -75,6 +75,12 @@ async function protocolServer(onConnection: (socket: ServerSocket, served: Serve
   return served;
 }
 
+function lineIdsOf({ collection }: StudioSnapshot): string[] | undefined {
+  const lines = collection?.lines;
+
+  return lines?.map(({ id }) => id);
+}
+
 const hello = JSON.stringify({ type: "hello", version: PROTOCOL_VERSION });
 
 describe("StudioConnection against the real backend", () => {
@@ -84,7 +90,7 @@ describe("StudioConnection against the real backend", () => {
 
     const snapshot = await reaches(connection, ({ collection }) => collection !== null);
 
-    expect({ status: snapshot.connection.status, lines: snapshot.collection?.lines.map(({ id }) => id), counts: snapshot.collection?.counts }).toEqual({
+    expect({ status: snapshot.connection.status, lines: lineIdsOf(snapshot), counts: snapshot.collection?.counts }).toEqual({
       status: "open",
       lines: ["flow"],
       counts: { lines: 1, agents: 1, refused: 0, problems: 0 },
@@ -107,7 +113,7 @@ describe("StudioConnection against the real backend", () => {
     writeFileSync(join(dir, "second", "assembly-line.yaml"), lineYaml("second", "worker"));
     const snapshot = await reaches(connection, ({ collection }) => collection?.lines.length === 2);
 
-    expect(snapshot.collection?.lines.map(({ id }) => id)).toEqual(["flow", "second"]);
+    expect(lineIdsOf(snapshot)).toEqual(["flow", "second"]);
   });
 
   it("reports a refused upgrade as refused, with the reason, and stops trying", async () => {
@@ -173,7 +179,6 @@ describe("StudioConnection against a server that speaks the protocol by hand", (
 
   it("gives each answer to the request that has its id, whatever the order they come back in", async () => {
     const served = await protocolServer((socket) => {
-      // The first request is the page's own read of the collection; the two the test makes come after it.
       const asked: string[] = [];
 
       socket.send(hello);

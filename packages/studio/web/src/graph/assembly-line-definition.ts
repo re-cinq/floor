@@ -2,11 +2,11 @@
 import type { StationKind } from "@re-cinq/floor-contracts";
 
 /** A node whose line names no station is a marker. */
-export type DefinitionNodeType = StationKind | "marker";
+export type DefinitionNodeKind = StationKind | "marker";
 
 export interface DefinitionNode {
   id: string;
-  type: DefinitionNodeType;
+  type: DefinitionNodeKind;
   station?: string;
   description?: string;
   /** This node reports a list and `to` then runs once per item. */
@@ -21,7 +21,7 @@ export interface DefinitionEdge {
   to: string;
   /** The outcome that takes this edge. */
   on: string;
-  iteration_max?: number;
+  iterationMax?: number;
 }
 
 export interface AssemblyLineDefinition {

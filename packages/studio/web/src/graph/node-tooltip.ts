@@ -25,6 +25,7 @@ export function nodeTooltipOf(
   if (!node) {
     return null;
   }
+
   const family = typeFamilyOf(node.type);
 
   return {

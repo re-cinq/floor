@@ -6,7 +6,7 @@ import { columnsFor } from "./dag-wrap";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
-import GraphEdge, { type EdgeEmphasis } from "./GraphEdge";
+import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
 import GraphNode from "./GraphNode";
 import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
@@ -79,11 +79,11 @@ function GraphCanvas({ view, graph, panelWidth }: GraphCanvasProps) {
   );
 }
 
-/** Unmeasured (before the first resize report), the line stays on one row. */
+/** Unmeasured (before the first resize report), the line stays on one row. The retry arrows of a wrapped line run up a gutter left of the first column, which the panel must hold too. */
 function columnsOf(panelWidth: number | null): number {
   return panelWidth === null
     ? Number.POSITIVE_INFINITY
-    : columnsFor(panelWidth, {
+    : columnsFor(panelWidth - LAYER_GAP / 3, {
         layerGap: LAYER_GAP,
         nodeWidth: NODE_WIDTH,
         padding: VIEW_PADDING,
@@ -155,8 +155,37 @@ function GraphSvg(props: GraphSvgProps) {
       <GraphEdges {...props} edges={layout.edges} />
 
       <GraphNodes {...props} />
+
+      <GraphEdgeLabels {...props} edges={layout.edges} />
     </svg>
   );
+}
+
+/** A laid-out edge carries only its geometry, so its tone and label are looked up from the model by endpoint pair. An edge with no model draws neutral rather than disappearing. */
+function GraphEdges({ edges, laid, selectedNodeId }: EdgesProps) {
+  return (
+    <>
+      {edges.map((edge) => (
+        <GraphEdge key={edgeMapKey(edge.from, edge.to)} {...edgeProps(edge, laid, selectedNodeId)} />
+      ))}
+    </>
+  );
+}
+
+function GraphEdgeLabels({ edges, laid, selectedNodeId }: EdgesProps) {
+  return (
+    <>
+      {edges.map((edge) => (
+        <EdgeLabel key={edgeMapKey(edge.from, edge.to)} {...edgeProps(edge, laid, selectedNodeId)} />
+      ))}
+    </>
+  );
+}
+
+type EdgesProps = GraphSvgProps & { edges: GraphEdgesInput };
+
+function edgeProps(edge: GraphEdgesInput[number], laid: GraphSvgProps["laid"], selectedNodeId: GraphSvgProps["selectedNodeId"]) {
+  return { edge, model: laid.edgeByPair.get(edgeMapKey(edge.from, edge.to)), emphasis: emphasisOf(edge.from, selectedNodeId) };
 }
 
 function emphasisOf(from: string, selectedNodeId: string | null | undefined): EdgeEmphasis {
@@ -167,27 +196,13 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
   return from === selectedNodeId ? "outgoing" : "other";
 }
 
-/** A laid-out edge carries only its geometry, so its tone and label are looked up from the model by endpoint pair. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ edges, laid, selectedNodeId }: GraphSvgProps & { edges: GraphEdgesInput }) {
-  return (
-    <>
-      {edges.map((edge) => (
-        <GraphEdge
-          key={edgeMapKey(edge.from, edge.to)}
-          edge={edge}
-          model={laid.edgeByPair.get(edgeMapKey(edge.from, edge.to))}
-          emphasis={emphasisOf(edge.from, selectedNodeId)}
-        />
-      ))}
-    </>
-  );
-}
-
 type GraphEdgesInput = ReturnType<typeof layoutAssemblyLine>["edges"];
 
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
 function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode }: GraphSvgProps) {
-  return laid.layout.nodes.map((node) => {
+  const { nodes } = laid.layout;
+
+  return nodes.map((node) => {
     const model = laid.nodeById.get(node.id);
 
     return model ? (

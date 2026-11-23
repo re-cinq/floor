@@ -39,7 +39,9 @@ describe("graphOf", () => {
   it("carries the fanout of a node", () => {
     const fanning = line({ nodes: [nodeOf("work", { fanout: { over: "items", to: "done" } }), nodeOf("done")] });
 
-    expect(graphOf(fanning).nodes[0].fanout).toEqual({ over: "items", to: "done" });
+    const [work] = graphOf(fanning).nodes;
+
+    expect(work.fanout).toEqual({ over: "items", to: "done" });
   });
 
   it("names the outside event that starts a node, and none for a node the walk or the line's start raises", () => {
@@ -59,12 +61,12 @@ describe("graphOf", () => {
     expect(graphOf(problematic).nodes.map(({ hasProblem }) => hasProblem)).toEqual([false, true]);
   });
 
-  it("carries each edge with its outcome and the iteration cap as iteration_max", () => {
+  it("carries each edge with its outcome and its iteration cap", () => {
     const looping = line({ edges: [{ from: "work", to: "done", on: "success" }, { from: "work", to: "work", on: "failed", iterationMax: 3 }] });
 
     expect(graphOf(looping).edges).toEqual([
       { from: "work", to: "done", on: "success" },
-      { from: "work", to: "work", on: "failed", iteration_max: 3 },
+      { from: "work", to: "work", on: "failed", iterationMax: 3 },
     ]);
   });
 

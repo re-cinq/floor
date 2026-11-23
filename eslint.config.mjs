@@ -21,7 +21,7 @@ export default tseslint.config(
 
   // Type-aware TypeScript across every workspace package.
   {
-    files: ["**/*.ts"],
+    files: ["**/*.{ts,tsx}"],
     extends: [eslintJs.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       parserOptions: {
@@ -69,7 +69,7 @@ export default tseslint.config(
 
   // Two overrides on top of the preset, both matching lore's own eslint.config.mjs.
   {
-    files: ["**/*.ts"],
+    files: ["**/*.{ts,tsx}"],
     rules: {
       // The pure replay in transition.ts needs a state and an accounting object alongside its visit and graph.
       "max-params": ["error", { max: 4 }],
@@ -82,7 +82,7 @@ export default tseslint.config(
 
   // The template engine is a security boundary: only event-match.ts (plus the engine's own file and tests) may reach it; everyone else goes through event-match.
   {
-    files: ["**/*.ts"],
+    files: ["**/*.{ts,tsx}"],
     ignores: TEMPLATE_ENGINE_ALLOWED,
     rules: {
       "no-restricted-imports": [
@@ -97,6 +97,36 @@ export default tseslint.config(
         },
       ],
     },
+  },
+
+  // The studio's page runs in a browser, not in Node.
+  {
+    files: ["packages/studio/web/**/*.{ts,tsx}"],
+    languageOptions: { globals: { ...globals.browser } },
+  },
+
+  // A React component is a PascalCase function: the preset's naming rule, restated with that one exception.
+  {
+    files: ["packages/studio/web/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/naming-convention": [
+        "error",
+        { selector: "default", format: ["camelCase"], leadingUnderscore: "forbid" },
+        { selector: "variable", format: ["camelCase", "UPPER_CASE"] },
+        { selector: "function", format: ["camelCase", "PascalCase"] },
+        { selector: "typeLike", format: ["PascalCase"] },
+        { selector: "interface", format: ["PascalCase"], custom: { regex: "^I[A-Z]", match: false } },
+        { selector: "typeAlias", format: ["PascalCase"], custom: { regex: "Type$", match: false } },
+        { selector: "import", format: null },
+        { selector: "objectLiteralProperty", format: null },
+      ],
+    },
+  },
+
+  // The graph drawing is SVG geometry copied from lore: pixel offsets and the x, y, cx, cy of SVG itself are its vocabulary, and its files stay close to lore's so a later sync is a diff.
+  {
+    files: ["packages/studio/web/src/graph/**/*.{ts,tsx}"],
+    rules: { "@typescript-eslint/no-magic-numbers": "off", "id-length": "off" },
   },
 
   // A config file has no tsconfig of its own, so no strict-mode info reaches this type-aware rule.

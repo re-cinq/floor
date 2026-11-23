@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" data-theme-family="lore" data-color-scheme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>floor studio</title>
+    <link rel="icon" href="data:," />
+    <script>
+      // Before first paint, so the page never flashes the wrong scheme. The same key and rule as src/theme/scheme.ts.
+      (function () {
+        try {
+          var pref = localStorage.getItem("floor-studio-color-scheme");
+          var dark = pref === "dark" || (pref !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-color-scheme", dark ? "dark" : "light");
+        } catch (blocked) {
+          document.documentElement.setAttribute("data-color-scheme", "light");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

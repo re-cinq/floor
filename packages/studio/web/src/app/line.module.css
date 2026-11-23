@@ -1,0 +1,126 @@
+.screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--size-220);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.primary {
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.file {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-5);
+  font-size: var(--fs-sm);
+}
+
+.facts dt {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.args {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.arg {
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+}
+
+.subject {
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font-weight: var(--fw-medium);
+}
+
+.problems {
+  margin-top: var(--space-6);
+}
+
+.problems h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.problemNode {
+  padding: var(--space-1) var(--space-4);
+  min-height: 0;
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.problemNode:hover {
+  background: var(--pill-bg-hover);
+}
+
+.rule {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.inspector {
+  position: sticky;
+  top: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow);
+}
+
+.inspector h2 {
+  margin-bottom: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+.inspectorNode {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1200px) {
+  .screen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspector {
+    position: static;
+  }
+}

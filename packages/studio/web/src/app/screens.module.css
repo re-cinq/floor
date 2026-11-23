@@ -1,0 +1,17 @@
+.screen {
+  max-width: var(--measure);
+  margin: var(--space-8) auto 0;
+}
+
+.screen code {
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin-top: var(--space-5);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}

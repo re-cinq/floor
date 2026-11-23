@@ -6,16 +6,16 @@ const plainNode: VisibleNode = { id: "work", type: "agent", outcomes: [], isEntr
 
 describe("nodeAriaLabel", () => {
   it("reads the id, the family, what it wears and its outcomes", () => {
-    expect(nodeAriaLabel({ ...plainNode, isEntry: true, outcomes: ["success", "failed"] }, false)).toBe(
+    expect(nodeAriaLabel({ node: { ...plainNode, isEntry: true, outcomes: ["success", "failed"] }, isTerminal: false })).toBe(
       "work, agent, the line starts here, outcomes: success, failed",
     );
   });
 
   it("says terminal for a node nothing leaves", () => {
-    expect(nodeAriaLabel({ ...plainNode, type: "marker", isExit: true }, true)).toBe("work, marker, the line ends here, terminal");
+    expect(nodeAriaLabel({ node: { ...plainNode, type: "marker", isExit: true }, isTerminal: true })).toBe("work, marker, the line ends here, terminal");
   });
 
   it("names a human node human, whatever the family is drawn as", () => {
-    expect(nodeAriaLabel({ ...plainNode, type: "human" }, false)).toBe("work, human");
+    expect(nodeAriaLabel({ node: { ...plainNode, type: "human" }, isTerminal: false })).toBe("work, human");
   });
 });

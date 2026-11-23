@@ -13,10 +13,10 @@ describe("parseSchemePref", () => {
 
 describe("resolveColorScheme", () => {
   it("follows the operating system when the choice is auto", () => {
-    expect([resolveColorScheme("auto", true), resolveColorScheme("auto", false)]).toEqual(["dark", "light"]);
+    expect([resolveColorScheme("auto", "dark"), resolveColorScheme("auto", "light")]).toEqual(["dark", "light"]);
   });
 
   it("ignores the operating system when the choice is light or dark", () => {
-    expect([resolveColorScheme("light", true), resolveColorScheme("dark", false)]).toEqual(["light", "dark"]);
+    expect([resolveColorScheme("light", "dark"), resolveColorScheme("dark", "light")]).toEqual(["light", "dark"]);
   });
 });

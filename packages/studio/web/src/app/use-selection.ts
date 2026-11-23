@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseFragment, withSelection, type Selection } from "@/socket/fragment";
 
-function selectionInAddress(): Selection {
-  const { line, node } = parseFragment(window.location.hash);
-
-  return { line, node };
-}
-
 /** The selected line and node live in the fragment, so a reload keeps the place; writing one replaces the history entry and never touches `socket` or `token`. */
 export function useSelection(): [Selection, (next: Selection) => void] {
   const [selection, setSelection] = useState<Selection>(selectionInAddress);
@@ -25,4 +19,10 @@ export function useSelection(): [Selection, (next: Selection) => void] {
   }, []);
 
   return [selection, select];
+}
+
+function selectionInAddress(): Selection {
+  const { line, node } = parseFragment(window.location.hash);
+
+  return { line, node };
 }

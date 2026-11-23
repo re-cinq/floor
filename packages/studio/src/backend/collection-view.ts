@@ -1,5 +1,5 @@
 // The studio's picture of a collection: every line with its nodes, every agent, and what was refused. Pure and tolerant: a collection with problems still has a view, and nothing a person wrote makes it throw.
-import { nodeEvents, promptPlaceholders, type CollectionLine } from "@re-cinq/floor-assembly-lines";
+import { coverageContextOf, needCoverage, nodeEvents, promptPlaceholders, type CollectionLine, type NeedContext } from "@re-cinq/floor-assembly-lines";
 import type { LineNode, StationBody } from "@re-cinq/floor-contracts";
 import { attempt, collectionOverlay, pipelineFolderOf, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type ShippedCatalog } from "@re-cinq/floor-pipeline";
 import type { CollectionView, LineView, NodeView, RefusedFile } from "../view.js";
@@ -54,6 +54,7 @@ function promptsOf(agents: ReadonlyMap<string, OverlayAgent>): AgentPrompts {
 
 function lineViewOf(line: ReadLine, surroundings: Surroundings): LineView {
   const { body } = line;
+  const needContext = coverageContextOf(body, line.bodies);
 
   return {
     id: line.id,
@@ -62,28 +63,33 @@ function lineViewOf(line: ReadLine, surroundings: Surroundings): LineView {
     exit: body.exit,
     ...present({ fail: body.fail, start: body.start }),
     args: body.args,
-    nodes: body.nodes.map((node) => nodeViewOf(node, line, surroundings)),
+    nodes: body.nodes.map((node) => nodeViewOf(node, line, surroundings, needContext)),
     edges: body.edges,
     problems: line.problems,
   };
 }
 
-function nodeViewOf(node: LineNode, line: ReadLine, surroundings: Surroundings): NodeView {
+function nodeViewOf(node: LineNode, line: ReadLine, surroundings: Surroundings, needContext: NeedContext): NodeView {
   const station = node.station ? line.bodies.get(node.station) : undefined;
 
   return {
     id: node.id,
     ...present({ station: node.station, fanout: node.fanout }),
-    ...stationFacts(station),
+    ...stationFacts(station, node, needContext),
     events: nodeEvents(line.body, node, surroundings.lines, line.bodies),
     ...agentOf(node, { line, station }, surroundings),
   };
 }
 
-function stationFacts(station: StationBody | undefined): Pick<NodeView, "kind" | "description" | "outcomes" | "needs" | "produces" | "agentDefinition"> {
+function stationFacts(station: StationBody | undefined, node: LineNode, needContext: NeedContext): Pick<NodeView, "kind" | "description" | "outcomes" | "needs" | "produces" | "agentDefinition"> {
   const { kind, description, agentDefinition, outcomes = [], needs = [], produces = [] } = station ?? {};
 
-  return { ...present({ kind, description, agentDefinition }), outcomes, needs, produces };
+  return {
+    ...present({ kind, description, agentDefinition }),
+    outcomes,
+    needs: needs.map((need) => ({ ...need, coverage: needCoverage(node, need, needContext) })),
+    produces,
+  };
 }
 
 function agentOf(node: LineNode, { line, station }: { line: ReadLine; station: StationBody | undefined }, surroundings: Surroundings): Pick<NodeView, "agent" | "placeholders"> {

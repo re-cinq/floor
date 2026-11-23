@@ -35,10 +35,24 @@ function kindOf(
     ?.kind;
 }
 
+function spansBoth(min: number, max: number, centre: number, half: number): boolean {
+  return min <= centre - half && max >= centre + half;
+}
+
+function pathOfEdge(edges: readonly { from: string; to: string; d: string }[], edgeEnd: "to" | "from", id: string): string | undefined {
+  const found = edges.find((e) => e[edgeEnd] === id);
+
+  return found?.d;
+}
+
+function idsOf(nodes: readonly { id: string }[]): string[] {
+  return nodes.map((n) => n.id).sort();
+}
+
 function yValuesOf(d: string): number[] {
   const numbers = d.match(/-?\d+(\.\d+)?/g) ?? [];
 
-  return numbers.map(Number).filter((_, i) => i % 2 === 1);
+  return numbers.flatMap((value, position) => (position % 2 === 1 ? [Number(value)] : []));
 }
 
 describe("layerByLongestPath", () => {
@@ -100,7 +114,7 @@ describe("classifyEdges", () => {
     );
   });
 
-  it("preserves the edge condition and iteration_max on the classified edge", () => {
+  it("preserves the edge condition and iterationMax on the classified edge", () => {
     const layers = layerByLongestPath(implementationDefinition);
     const edge = classifyEdges(implementationDefinition, layers).find(
       (e) => e.from === "review" && e.to === "address",
@@ -108,7 +122,7 @@ describe("classifyEdges", () => {
 
     expect(edge).toMatchObject({
       on: "changes_requested",
-      iteration_max: 2,
+      iterationMax: 2,
       kind: "forward",
     });
   });
@@ -182,6 +196,10 @@ describe("layoutAssemblyLine wrapped into bands", () => {
     });
   });
 
+  it("turns the label of a retry that climbs the left gutter to read along it", () => {
+    expect(edge("c", "a").mid.vertical).toBe(true);
+  });
+
   it("keeps the d → c retry inside band 1, below its nodes", () => {
     const ys = pointsOf(edge("d", "c").d).map((p) => p.y);
 
@@ -217,8 +235,7 @@ describe("layoutAssemblyLine", () => {
     );
     const points = loop?.d.match(/-?\d+(\.\d+)?/g) ?? [];
 
-    expect(loop?.d).toContain("C");
-    expect(new Set(points).size).toBeGreaterThan(2);
+    expect([loop?.d.includes("C"), new Set(points).size > 2]).toEqual([true, true]);
   });
 
   it("routes the validate-to-implement back-edge below the node row", () => {
@@ -259,16 +276,15 @@ describe("layoutAssemblyLine", () => {
     const [detect, done] = layout.nodes;
     const edge = layout.edges[0];
 
-    expect(edge.mid).toEqual({ x: (detect.x + 50 + done.x - 50) / 2, y: detect.y });
+    expect(edge.mid).toEqual({ x: (detect.x + 50 + done.x - 50) / 2, y: detect.y, vertical: false });
   });
 
   it("puts the label of a self-loop above its node and of a back-edge below it", () => {
     const layout = layoutAssemblyLine(implementationDefinition);
-    const implement = layout.nodes.find((n) => n.id === "implement");
-    const self = layout.edges.find((e) => e.kind === "self");
-    const back = layout.edges.find((e) => e.from === "validate" && e.to === "implement");
+    const nodeY = Object.fromEntries(layout.nodes.map((n) => [n.id, n.y]));
+    const labelY = Object.fromEntries(layout.edges.map((e) => [`${e.from}->${e.to}`, e.mid.y]));
 
-    expect([(self?.mid.y ?? 0) < (implement?.y ?? 0), (back?.mid.y ?? 0) > (implement?.y ?? 0)]).toEqual([true, true]);
+    expect({ selfAbove: labelY["implement->implement"] < nodeY.implement, backBelow: labelY["validate->implement"] > nodeY.implement }).toEqual({ selfAbove: true, backBelow: true });
   });
 
   it("places a node at x proportional to its layer", () => {
@@ -279,26 +295,23 @@ describe("layoutAssemblyLine", () => {
   });
 
   it("assigns every node of every builtin definition a distinct position", () => {
-    for (const def of builtinDefinitions) {
+    const placed = builtinDefinitions.map((def) => {
       const layout = layoutAssemblyLine(def);
-      const seen = new Set(layout.nodes.map((n) => `${n.x},${n.y}`));
 
-      expect(seen.size).toBe(def.nodes.length);
-      expect(layout.nodes.map((n) => n.id).sort()).toEqual(
-        def.nodes.map((n) => n.id).sort(),
-      );
-    }
+      return {
+        distinct: new Set(layout.nodes.map((n) => `${n.x},${n.y}`)).size === def.nodes.length,
+        ids: idsOf(layout.nodes),
+        expected: idsOf(def.nodes),
+      };
+    });
+
+    expect(placed.map(({ distinct, ids, expected }) => distinct && ids.join() === expected.join())).toEqual(builtinDefinitions.map(() => true));
   });
 
   it("returns a canvas large enough to contain every node and back-edge arc", () => {
     const layout = layoutAssemblyLine(implementationDefinition);
 
-    expect(layout.width).toBeGreaterThan(
-      Math.max(...layout.nodes.map((n) => n.x)),
-    );
-    expect(layout.height).toBeGreaterThan(
-      Math.max(...layout.nodes.map((n) => n.y)),
-    );
+    expect([layout.width > Math.max(...layout.nodes.map((n) => n.x)), layout.height > Math.max(...layout.nodes.map((n) => n.y))]).toEqual([true, true]);
   });
 
   it("lays out an unreachable node and empties the path of a dangling edge", () => {
@@ -313,16 +326,18 @@ describe("layoutAssemblyLine", () => {
     };
     const layout = layoutAssemblyLine(malformed);
 
-    expect(layout.nodes.map((n) => n.id)).toContain("orphan");
-    expect(layout.edges.find((e) => e.to === "ghost")?.d).toBe("");
-    expect(layout.edges.find((e) => e.from === "phantom")?.d).toBe("");
-    expect(layerByLongestPath(malformed).get("done")).toBe(1);
+    const pathOf = (edgeEnd: "to" | "from", id: string) => pathOfEdge(layout.edges, edgeEnd, id);
+
+    expect({
+      orphanLaidOut: idsOf(layout.nodes).includes("orphan"),
+      toGhost: pathOf("to", "ghost"),
+      fromPhantom: pathOf("from", "phantom"),
+      doneLayer: layerByLongestPath(malformed).get("done"),
+    }).toEqual({ orphanLaidOut: true, toGhost: "", fromPhantom: "", doneLayer: 1 });
   });
 
   it("emits one layout edge per definition edge", () => {
-    for (const def of builtinDefinitions) {
-      expect(layoutAssemblyLine(def).edges).toHaveLength(def.edges.length);
-    }
+    expect(builtinDefinitions.map((def) => layoutAssemblyLine(def).edges.length)).toEqual(builtinDefinitions.map((def) => def.edges.length));
   });
 
   it("returns a content box that contains every node box", () => {
@@ -330,19 +345,16 @@ describe("layoutAssemblyLine", () => {
     const halfW = 132 / 2;
     const halfH = 48 / 2;
 
-    for (const node of layout.nodes) {
-      expect(layout.contentBox.minX).toBeLessThanOrEqual(node.x - halfW);
-      expect(layout.contentBox.maxX).toBeGreaterThanOrEqual(node.x + halfW);
-      expect(layout.contentBox.minY).toBeLessThanOrEqual(node.y - halfH);
-      expect(layout.contentBox.maxY).toBeGreaterThanOrEqual(node.y + halfH);
-    }
+    const { contentBox } = layout;
+    const contained = layout.nodes.map((node) => spansBoth(contentBox.minX, contentBox.maxX, node.x, halfW) && spansBoth(contentBox.minY, contentBox.maxY, node.y, halfH));
+
+    expect(contained).toEqual(layout.nodes.map(() => true));
   });
 
   it("returns a content box tight to a single node rather than the layer grid", () => {
     const { contentBox } = layoutAssemblyLine(twoNodeLine);
     const spanX = contentBox.maxX - contentBox.minX;
 
-    expect(spanX).toBeLessThan(layoutAssemblyLine(twoNodeLine).width);
-    expect(spanX).toBeGreaterThan(0);
+    expect([spanX < layoutAssemblyLine(twoNodeLine).width, spanX > 0]).toEqual([true, true]);
   });
 });

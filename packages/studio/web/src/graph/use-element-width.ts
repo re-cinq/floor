@@ -14,6 +14,7 @@ export function useElementWidth<T extends Element>(): [
     if (!element || typeof ResizeObserver === "undefined") {
       return;
     }
+
     const observer = new ResizeObserver(([entry]) =>
       setWidth(entry.contentRect.width),
     );

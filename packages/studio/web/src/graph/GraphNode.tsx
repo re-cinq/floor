@@ -41,7 +41,7 @@ export default function GraphNode(props: GraphNodeProps) {
       data-node={node.id}
       data-family={family}
       data-selected={selected || undefined}
-      aria-label={nodeAriaLabel(model, isTerminal)}
+      aria-label={nodeAriaLabel({ node: model, isTerminal })}
       aria-describedby={props.describedBy}
       {...interactionAttrs({ nodeId: node.id, onSelect, selected })}
     >

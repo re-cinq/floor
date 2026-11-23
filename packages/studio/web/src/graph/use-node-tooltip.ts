@@ -95,6 +95,7 @@ function showAfterDelay(
   if (!hovered) {
     return undefined;
   }
+
   const timer = setTimeout(() => setAnchor(hovered), HOVER_DELAY_MS);
 
   return () => clearTimeout(timer);
@@ -107,6 +108,7 @@ function closeOnScroll(
   if (!anchor) {
     return undefined;
   }
+
   const options = { capture: true };
 
   window.addEventListener("scroll", hide, options);
@@ -126,6 +128,7 @@ function anchorOf(target: EventTarget | null): TooltipAnchor | null {
   if (!node || !nodeId) {
     return null;
   }
+
   const box = node.getBoundingClientRect();
 
   return {

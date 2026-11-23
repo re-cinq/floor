@@ -13,8 +13,10 @@ APPS=(apps/api apps/cluster-agent)
 say() { printf '\n== %s\n' "$*"; }
 fail() { printf 'FAILED: %s\n' "$*" >&2; exit 1; }
 
-# lore-converter is a developer's tool and deliberately not shipped; the rest must all be there.
-names="$(npm pkg get name --workspaces | jq -r 'to_entries[] | select(.key | test("lore-converter") | not) | .value' | grep -v '^@floor/api$' | grep -v '^@floor/cluster-agent$')"
+# lore-converter is a developer's tool and deliberately not shipped. The studio is one too, run on a
+# laptop with npx: no app imports it, and it has no root entry to resolve, only ./backend and ./protocol.
+# The rest must all be there.
+names="$(npm pkg get name --workspaces | jq -r 'to_entries[] | select(.key | test("lore-converter|floor-studio") | not) | .value' | grep -v '^@floor/api$' | grep -v '^@floor/cluster-agent$')"
 [ -n "${names}" ] || fail "no workspace packages found to check"
 
 for app in "${APPS[@]}"; do

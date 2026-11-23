@@ -19,8 +19,7 @@ describe("fitNodeLabel", () => {
   it("clips a label longer than the box to an ellipsis at the budget", () => {
     const clipped = fitNodeLabel("x".repeat(NODE_LABEL_CHARS + 10));
 
-    expect(clipped).toEqual(`${"x".repeat(NODE_LABEL_CHARS - 1)}…`);
-    expect(clipped.length).toEqual(NODE_LABEL_CHARS);
+    expect({ clipped, length: clipped.length }).toEqual({ clipped: `${"x".repeat(NODE_LABEL_CHARS - 1)}…`, length: NODE_LABEL_CHARS });
   });
 
   it("drops the space before an ellipsis that lands on a word break", () => {

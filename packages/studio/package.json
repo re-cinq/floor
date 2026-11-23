@@ -44,11 +44,12 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && vite build --config web/vite.config.ts",
     "dev": "tsc --watch -p tsconfig.build.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web/tsconfig.json",
+    "dev:web": "vite --config web/vite.config.ts"
   },
   "dependencies": {
     "@re-cinq/floor-assembly-lines": "*",
