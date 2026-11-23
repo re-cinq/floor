@@ -1,0 +1,70 @@
+{
+  "name": "@re-cinq/floor-graph",
+  "version": "0.1.0",
+  "description": "A React view of an assembly line as a graph: the layout of its nodes and edges, the viewport that fits and pans it, and the node and edge drawing, with the stylesheets it needs.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/re-cinq/floor.git",
+    "directory": "packages/graph"
+  },
+  "homepage": "https://github.com/re-cinq/floor/tree/main/packages/graph#readme",
+  "bugs": {
+    "url": "https://github.com/re-cinq/floor/issues"
+  },
+  "keywords": [
+    "floor",
+    "assembly-line",
+    "graph",
+    "react"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-css.mjs",
+    "dev": "tsc --watch -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@re-cinq/floor-contracts": "*"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@types/node": "^22.20.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "@vitest/coverage-v8": "^5.0.0",
+    "jsdom": "^31.0.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.0.0"
+  }
+}

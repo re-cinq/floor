@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { graphOf } from "./graph-of";
-import { deriveVisibleGraph } from "./graph-view-model";
+import { deriveVisibleGraph } from "@re-cinq/floor-graph";
 import type { LineView, NodeView } from "@protocol";
 
 const noEvents = { startedBy: [], answeredBy: [], raises: [] };

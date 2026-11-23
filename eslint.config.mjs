@@ -101,13 +101,13 @@ export default tseslint.config(
 
   // The studio's page runs in a browser, not in Node.
   {
-    files: ["packages/studio/web/**/*.{ts,tsx}"],
+    files: ["packages/studio/web/**/*.{ts,tsx}", "packages/graph/**/*.{ts,tsx}"],
     languageOptions: { globals: { ...globals.browser } },
   },
 
   // A React component is a PascalCase function: the preset's naming rule, restated with that one exception.
   {
-    files: ["packages/studio/web/**/*.tsx"],
+    files: ["packages/studio/web/**/*.tsx", "packages/graph/**/*.tsx"],
     rules: {
       "@typescript-eslint/naming-convention": [
         "error",
@@ -125,7 +125,7 @@ export default tseslint.config(
 
   // The graph drawing is SVG geometry copied from lore: pixel offsets and the x, y, cx, cy of SVG itself are its vocabulary, and its files stay close to lore's so a later sync is a diff.
   {
-    files: ["packages/studio/web/src/graph/**/*.{ts,tsx}"],
+    files: ["packages/graph/src/**/*.{ts,tsx}"],
     rules: { "@typescript-eslint/no-magic-numbers": "off", "id-length": "off" },
   },
 

@@ -54,6 +54,7 @@
   "dependencies": {
     "@re-cinq/floor-assembly-lines": "*",
     "@re-cinq/floor-contracts": "*",
+    "@re-cinq/floor-graph": "*",
     "@re-cinq/floor-pipeline": "*",
     "ws": "^8.22.0",
     "yaml": "^2.7.0",
