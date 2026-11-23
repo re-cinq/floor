@@ -120,6 +120,12 @@ A clean collection prints a summary and the exit code is 0.
 collection ok: 1 agents, 1 pipelines, 0 extensions
 ```
 
+`apply` puts a collection to a floor: its agents, then each line with its stations. `${NAME}` in its files is filled from the environment. When a file is refused, nothing is put.
+
+```
+FLOOR_SERVICE_TOKEN=... floor-pipeline apply collection/ --floor http://localhost:8180
+```
+
 ## Migrations
 
 `migrate` is for seeding a floor at deploy, and for changing it after. It runs a folder's files in the order of their names, each once.

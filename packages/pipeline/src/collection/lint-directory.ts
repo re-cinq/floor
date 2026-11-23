@@ -2,6 +2,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { collectionOverlay, type CollectionOverlay } from "./collection.js";
+import type { Environment } from "./environment.js";
 import { isCollectionFile, type CollectionFile } from "./paths.js";
 
 /** Stands in for the install's environment: whether a variable is set there is not the collection's to know. */
@@ -11,7 +12,12 @@ const ANY_ENVIRONMENT_VARIABLE = new Proxy<Record<string, string | undefined>>({
 const NOTHING_SHIPPED = { pipelines: [], agents: new Map() };
 
 export async function lintCollectionDirectory(root: string, hostKeys: readonly string[] = []): Promise<CollectionOverlay> {
-  return collectionOverlay({ files: await collectionFilesIn(root), shipped: NOTHING_SHIPPED, env: ANY_ENVIRONMENT_VARIABLE, hostKeys });
+  return readCollectionDirectory(root, { hostKeys, env: ANY_ENVIRONMENT_VARIABLE });
+}
+
+/** The collection in a directory, with `${NAME}` filled from the environment given. */
+export async function readCollectionDirectory(root: string, given: { hostKeys: readonly string[]; env: Environment }): Promise<CollectionOverlay> {
+  return collectionOverlay({ files: await collectionFilesIn(root), shipped: NOTHING_SHIPPED, ...given });
 }
 
 /** Prints the refused files and answers the exit code: 0 clean, 1 refused. */

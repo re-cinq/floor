@@ -3,21 +3,25 @@
 import { parse } from "yaml";
 import { z } from "zod";
 
-export type PipelineRule =
-  | "agent-settings-in-pipeline"
-  | "ambiguous-edge"
-  | "dangling-edge"
-  | "dead-end"
-  | "undeclared-agent"
-  | "undeclared-bag"
-  | "outcome-without-edge"
-  | "undeclared-outcome"
-  | "unbounded-retry"
-  | "unkeyed-line"
-  | "unreachable"
-  | "unseeded-need"
-  | "unsupplied-input"
-  | "unresolvable-conversation-key";
+/** Every rule a collection's lint has, by the id its specification lists it under. */
+export const PIPELINE_RULES = [
+  "agent-settings-in-pipeline",
+  "ambiguous-edge",
+  "dangling-edge",
+  "dead-end",
+  "undeclared-agent",
+  "undeclared-bag",
+  "outcome-without-edge",
+  "undeclared-outcome",
+  "unbounded-retry",
+  "unkeyed-line",
+  "unreachable",
+  "unseeded-need",
+  "unsupplied-input",
+  "unresolvable-conversation-key",
+] as const;
+
+export type PipelineRule = (typeof PIPELINE_RULES)[number];
 
 export interface PipelineProblem {
   line: string;

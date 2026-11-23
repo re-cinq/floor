@@ -122,6 +122,9 @@ jobs:
       # The website's field tables and JSON Schema files are made from the code. A change to a schema that leaves them behind fails here.
       - name: Check the generated docs
         run: npm run docs:check
+      # Every example the website shows is a file, and a file that would be refused fails here.
+      - name: Lint the example collections
+        run: for collection in examples/*/; do node packages/pipeline/dist/cli.js lint "$collection"; done
 
   chart:
     name: helm chart

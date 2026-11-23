@@ -8,7 +8,8 @@ import { readPipelineFile, writePipelineFile } from "./file.js";
 import type { Floor } from "./floor.js";
 import { importPipeline, type Put } from "./import.js";
 import { migrate } from "./migrate.js";
-import { printCollectionLint } from "./collection/lint-directory.js";
+import { applyCollection } from "./collection/apply.js";
+import { printCollectionLint, readCollectionDirectory } from "./collection/lint-directory.js";
 import { waitUntilReady } from "./ready.js";
 import { fileOf, pipelineOf } from "./shape.js";
 
@@ -19,6 +20,9 @@ const USAGE = `floor-pipeline <what to do> --floor <url>      with FLOOR_SERVICE
   import <file>...           puts each file to the floor. The same file twice changes nothing
   migrate <dir>              the folder's files in the order of their names, each once.
                              The floor remembers which ran
+  apply <dir>                puts a collection to the floor: its agents, then each line with its stations.
+                             \${NAME} in its files is filled from this environment. Nothing is put
+                             when a file is refused
   lint <dir>                 checks a collection: one folder a line, with its pipeline.yaml and agents/.
                              Needs no floor and no token. A key the host owns is named with --host-key <name>,
                              as often as needed
@@ -39,7 +43,7 @@ async function main(): Promise<void> {
   const [command = ""] = told.positionals;
 
   if (command === "lint") return linted(told);
-  const commands: Partial<Record<string, (floor: Floor, told: Given) => Promise<void>>> = { export: exported, import: imported, migrate: migrated };
+  const commands: Partial<Record<string, (floor: Floor, told: Given) => Promise<void>>> = { export: exported, import: imported, migrate: migrated, apply: applied };
   const run = commands[command];
 
   if (!run) throw new Error(USAGE);
@@ -102,6 +106,18 @@ async function migrated(floor: Floor, told: Given): Promise<void> {
   const all = await migrate(floor, files);
 
   all.forEach((each) => (each.ran ? said(each.name, each.put) : console.log(`${each.name}: ran before`)));
+}
+
+async function applied(floor: Floor, told: Given): Promise<void> {
+  const [, dir] = told.positionals;
+
+  if (!dir) throw new Error(USAGE);
+  const overlay = await readCollectionDirectory(dir, { hostKeys: told.values["host-key"] ?? [], env: process.env });
+
+  const refusals = overlay.refused.map(({ path, reason }) => `${path}: ${reason}`);
+
+  if (refusals.length > 0) throw new Error(refusals.join("\n"));
+  said(dir, await applyCollection(floor, overlay));
 }
 
 async function linted(told: Given): Promise<void> {
