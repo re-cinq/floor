@@ -8,9 +8,9 @@ sidebar:
 
 Use this when a failed run needs follow-up, such as an alert.
 
-<!-- generated:example:cookbook/on-run-settled/pipeline.yaml -->
+<!-- generated:example:cookbook/on-run-settled/assembly-line.yaml -->
 
-````yaml title="on-run-settled/pipeline.yaml"
+````yaml title="on-run-settled/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: on-run-settled

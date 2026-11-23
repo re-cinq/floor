@@ -14,7 +14,7 @@ At the end, an empty folder is a [collection](/floor/concepts/collection/) with 
    mkdir -p my-collection/summarize-issue/agents
    ```
 
-2. Write `my-collection/summarize-issue/pipeline.yaml`. It has one `agent` station. The argument leaves out `subject: true`, which a first-timer forgets.
+2. Write `my-collection/summarize-issue/assembly-line.yaml`. It has one `agent` station. The argument leaves out `subject: true`, which a first-timer forgets.
 
    ```yaml
    line:
@@ -64,10 +64,10 @@ At the end, an empty folder is a [collection](/floor/concepts/collection/) with 
    ```
 
    ```text
-   summarize-issue/pipeline.yaml: no arg carries subject: true, so the floor cannot refuse a second run for the same subject
+   summarize-issue/assembly-line.yaml: no arg carries subject: true, so the floor cannot refuse a second run for the same subject
    ```
 
-5. Fix it. Change the argument to `issue_url: { kind: value, subject: true }` and lint again. A file named `pipeline.yml` is refused too, and the [rules](/floor/specs/collection/#2-rules) list the rest.
+5. Fix it. Change the argument to `issue_url: { kind: value, subject: true }` and lint again. A file named `assembly-line.yml` is refused too, and the [rules](/floor/specs/collection/#2-rules) list the rest.
 
    ```text
    collection ok: 1 agents, 1 pipelines, 0 extensions

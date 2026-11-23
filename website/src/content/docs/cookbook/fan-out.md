@@ -8,9 +8,9 @@ sidebar:
 
 Use this when a station produces a list and each entry needs the same work.
 
-<!-- generated:example:cookbook/fan-out/pipeline.yaml -->
+<!-- generated:example:cookbook/fan-out/assembly-line.yaml -->
 
-````yaml title="fan-out/pipeline.yaml"
+````yaml title="fan-out/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: fan-out

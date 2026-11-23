@@ -31,9 +31,9 @@ floor() { curl -s -H "authorization: Bearer $FLOOR_SERVICE_TOKEN" -H 'content-ty
 
 The collection `examples/first-run` holds one line. It starts on the event `greeting.requested`, takes the `name` from the payload, and has one `service` station that produces a `greeting`.
 
-<!-- generated:example:first-run/first-run/pipeline.yaml -->
+<!-- generated:example:first-run/first-run/assembly-line.yaml -->
 
-````yaml title="first-run/pipeline.yaml"
+````yaml title="first-run/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: first-run

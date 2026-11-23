@@ -7,7 +7,7 @@ sidebar:
 
 The checkout pilot now includes an email to customers. Product decides whether the feature is ready. Communications decides whether the announcement is ready. Either team can put the launch on hold.
 
-Start with the `launch-approval/pipeline.yaml` you wrote in [Define your first assembly line](/floor/tutorials/define-a-launch-approval/). You'll change the route an approval takes and check that both teams get their say.
+Start with the `launch-approval/assembly-line.yaml` you wrote in [Define your first assembly line](/floor/tutorials/define-a-launch-approval/). You'll change the route an approval takes and check that both teams get their say.
 
 ## 1. Locate the rule you're changing
 

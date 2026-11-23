@@ -271,9 +271,9 @@ schedules:
 
 ## 9. Example
 
-<!-- generated:example:starter/write-note/pipeline.yaml -->
+<!-- generated:example:starter/write-note/assembly-line.yaml -->
 
-````yaml title="write-note/pipeline.yaml"
+````yaml title="write-note/assembly-line.yaml"
 # yaml-language-server: $schema=https://re-cinq.github.io/floor/schemas/pipeline.schema.json
 line:
   id: write-note

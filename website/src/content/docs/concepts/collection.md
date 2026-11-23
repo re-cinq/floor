@@ -11,7 +11,7 @@ A **collection** is a folder that holds [assembly lines](/floor/concepts/assembl
 ```text
 my-collection/
   write-note/
-    pipeline.yaml
+    assembly-line.yaml
     agents/
       note-writer.md
 ```

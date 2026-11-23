@@ -11,7 +11,7 @@ A collection has three kinds of placeholder. They look alike and are filled at d
 | --- | --- | --- | --- | --- |
 | [Start template](#1-start-templates) | `{name}` | `line.start.args` | When an event starts a run | The event's payload |
 | [Prompt placeholder](#2-prompt-placeholders) | `{name}` | The body of an agent file | When a visit opens | The visit's needs |
-| [Environment variable](#3-environment-variables) | `${NAME}` | `pipeline.yaml` and agent frontmatter | When the collection is applied | The environment |
+| [Environment variable](#3-environment-variables) | `${NAME}` | `assembly-line.yaml` and agent frontmatter | When the collection is applied | The environment |
 
 None of them has conditions, loops or defaults.
 
@@ -95,7 +95,7 @@ image: ${AGENT_IMAGE}
 ```
 
 1. A name is an uppercase letter, then uppercase letters, digits and `_`.
-2. It is filled anywhere in `pipeline.yaml`, comments included, and in every text value of an agent file's frontmatter.
+2. It is filled anywhere in `assembly-line.yaml`, comments included, and in every text value of an agent file's frontmatter.
 3. It is never filled in a prompt. `${HOME}` in a prompt reaches the agent as written.
 4. A variable that is not set refuses the file with `NAME is not set, and a pipeline names it`.
 5. `floor-pipeline lint` does not need the variables. It checks the collection as if each were set.
