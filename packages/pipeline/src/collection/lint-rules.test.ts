@@ -46,13 +46,21 @@ describe("pipelineProblems — the inputs an agent's recipe reads", () => {
       {
         node: "decompose",
         rule: "unsupplied-input",
-        detail: "the spec-tickets-decompose recipe reads context, description, prompt, which neither this line's args nor the node's needs supply",
+        detail: "the spec-tickets-decompose prompt reads context, description, prompt, which the station lists in neither its needs nor its produces",
       },
     ]);
   });
 
   it("reports nothing when a need supplies the placeholder, counting a _path suffix as the bag item's name", () => {
     expect(rules(DECOMPOSE_INPUTS_DECLARED)).toEqual([]);
+  });
+
+  it("reports unsupplied-input naming issue_url, an argument of the line the station does not list as a need", () => {
+    const readsAnArgument = new Map([["spec-tickets-decompose", "Read the issue at {issue_url}."]]);
+
+    expect(pipelineProblems(SPEC_TICKETS_DECOMPOSE_REUSED, readsAnArgument)).toMatchObject([
+      { node: "decompose", rule: "unsupplied-input", detail: "the spec-tickets-decompose prompt reads issue_url, which the station lists in neither its needs nor its produces" },
+    ]);
   });
 
   it("reports unsupplied-input naming args.issue_url when a recipe reads the arg under a dotted name the floor never fills", () => {

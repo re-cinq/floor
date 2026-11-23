@@ -60,7 +60,7 @@ When a rule fails, the run does not start and the event keeps the reason.
 5. A need is named by the station, not by the bag. With `bind: { target: repo }`, the prompt says `{target_path}`.
 6. `git_credential` and `git_credential_url` are the floor's own. Do not use them as names.
 
-`floor-pipeline lint` refuses a prompt that names something the line cannot fill, under the rule `unsupplied-input`. It accepts a name that is an argument of the line, a need or a produce of the station, one of those with `_path` added, or a name from the table above. Lint reads names made of lowercase letters, digits, `_` and `.`.
+`floor-pipeline lint` refuses a prompt that names something the line cannot fill, under the rule `unsupplied-input`. It accepts a name that is a need or a produce of the station, one of those with `_path` added, or a name from the table above. An argument of the line is filled only when the station lists it as a need. Lint reads names made of lowercase letters, digits, `_` and `.`.
 
 ### Example
 

@@ -242,7 +242,7 @@ function unsuppliedInputs(
   prompts: AgentPrompts,
 ): PipelineProblem[] {
   const definition = station.agent_definition ?? node.station ?? "";
-  const missing = missingInputsOf(checked, station, prompts.get(definition));
+  const missing = missingInputsOf(station, prompts.get(definition));
 
   return missing.length === 0
     ? []
@@ -257,17 +257,16 @@ function unsuppliedInputs(
 }
 
 function missingInputsOf(
-  checked: Checked,
   station: Station,
   prompt: string | null | undefined,
 ): string[] {
   return station.kind === "agent" && prompt
-    ? unsuppliedPlaceholders(prompt, suppliedNames(checked, station))
+    ? unsuppliedPlaceholders(prompt, suppliedNames(station))
     : [];
 }
 
 function unsuppliedDetail(definition: string, missing: string[]): string {
-  return `the ${definition} recipe reads ${missing.join(", ")}, which neither this line's args nor the node's needs supply`;
+  return `the ${definition} prompt reads ${missing.join(", ")}, which the station lists in neither its needs nor its produces`;
 }
 
 function unsuppliedPlaceholders(
@@ -288,12 +287,8 @@ function unsuppliedPlaceholders(
   );
 }
 
-function suppliedNames(checked: Checked, station: Station): Set<string> {
-  return new Set([
-    ...Object.keys(checked.line.args),
-    ...namesOf(station.needs ?? []),
-    ...namesOf(station.produces ?? []),
-  ]);
+function suppliedNames(station: Station): Set<string> {
+return new Set([...namesOf(station.needs ?? []), ...namesOf(station.produces ?? [])]);
 }
 
 function namesOf(bagItems: { name?: string }[]): string[] {

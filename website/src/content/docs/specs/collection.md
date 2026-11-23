@@ -51,7 +51,7 @@ A collection is stricter than a pipeline file on its own. `floor-pipeline lint` 
 | `undeclared-bag` | A station MUST have both `needs` and `produces`. Either MAY be an empty list. |
 | `unkeyed-line` | Exactly one argument MUST set `subject: true`. |
 | `unseeded-need` | A required need MUST be an argument, a line file, or something a station in the file produces. A `git` need MUST be a `git` argument. |
-| `unsupplied-input` | Every `{name}` in an agent's prompt MUST be filled. See [Placeholders](/floor/specs/placeholders/#2-prompt-placeholders). |
+| `unsupplied-input` | Every `{name}` in an agent's prompt MUST be a need or a produce of the station, or a name the floor fills. See [Placeholders](/floor/specs/placeholders/#2-prompt-placeholders). |
 | `outcome-without-edge` | Every outcome a station lists MUST have an edge from the node, or the node an `always` edge. |
 | `undeclared-outcome` | An edge's `on` MUST be an outcome the node's station lists, or `always`. |
 | `ambiguous-edge` | Two edges MUST NOT leave one node on the same `on`. |
