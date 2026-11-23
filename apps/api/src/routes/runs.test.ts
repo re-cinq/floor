@@ -269,6 +269,16 @@ describe("GET /assembly-runs/:id", () => {
     expect(bag.pr_url).toEqual({ kind: "value", ref: "https://pr/1", by: "start" });
   });
 
+  it.each([
+    ["/assembly-runs/nope", "nothing is at /assembly-runs/nope"],
+    ["/events/nope", "nothing is at /events/nope"],
+    ["/station-runs/nope", 'no station run "nope"'],
+  ])("returns 404 for %s, whose id cannot be one", async (url, detail) => {
+    const response = await injectJson(server(), { method: "GET", url, headers: authHeaders() });
+
+    expect(response).toMatchObject({ statusCode: 404, result: { title: "Not Found", detail } });
+  });
+
   it("returns 404 for an id never started", async () => {
     const response = await injectJson(server(), { method: "GET", url: "/assembly-runs/00000000-0000-0000-0000-000000000000", headers: authHeaders() });
 
