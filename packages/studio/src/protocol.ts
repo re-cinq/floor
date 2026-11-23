@@ -2,7 +2,7 @@
 import { z } from "zod";
 import type { CollectionView } from "./view.js";
 
-export type { AgentUse, AgentView, CollectionView, LineView, NodeAgent, NodeView, RefusedFile, ViewProblem } from "./view.js";
+export type { AgentUse, AgentView, CollectionView, LineView, NodeAgent, NodeNeed, NodeView, RefusedFile, ViewProblem } from "./view.js";
 
 /** Sent in the first frame of a socket, so a client built for another protocol can say so. */
 export const PROTOCOL_VERSION = 1;
