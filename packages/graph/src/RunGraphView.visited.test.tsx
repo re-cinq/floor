@@ -174,4 +174,23 @@ describe("RunGraphView visited-only drawing", () => {
 
     expect(within(container).queryByRole("button", { name: "Whole line" })).toBeNull();
   });
+
+  it("draws the whole line and no Whole line button when show is visited but no run is passed", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} show="visited" />);
+
+    expect({
+      nodes: drawnIds(container, "data-node"),
+      button: within(container).queryByRole("button", { name: "Whole line" }),
+    }).toEqual({ nodes: ["a", "done", "fix"], button: null });
+  });
 });
