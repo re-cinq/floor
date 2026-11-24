@@ -1,4 +1,4 @@
-// The schema of an agent definition's `config`, under the names docs/entities/agent-definition.md gives them, which are lore's own. Pure zod, so the browser can import it.
+// The schema of an agent definition's `config`, under the names the agent file specification gives them (website/src/content/docs/specs/agent-file.md, "2.2 Config"), which are lore's own. Pure zod, so the browser can import it.
 import { z } from "zod";
 
 // A header or env var the server needs, valued from the key `ref` of the cluster's agent-secrets.

@@ -1,6 +1,6 @@
 # Floor API sketch
 
-Vocabulary from lore ADR-024: Factory ⊃ Floor ⊃ AssemblyLine ⊃ Station ⊃ Agent. The model behind these endpoints is in [assembly_run_storage.md](assembly_run_storage.md). Each entity has its own page under [entities/](entities/).
+Vocabulary from lore ADR-024: Factory ⊃ Floor ⊃ AssemblyLine ⊃ Station ⊃ Agent. The model behind these endpoints is in [assembly_run_storage.md](assembly_run_storage.md). What each entity is, is on the website under [concepts](https://re-cinq.github.io/floor/concepts/assembly-line/).
 
 ## Conventions
 

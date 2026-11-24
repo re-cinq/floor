@@ -1,4 +1,4 @@
-// What a machine needs to run one visit (docs/entities/station.md, "agent"): the frozen brief again, but structured, since a Kubernetes manifest wants each need's kind, path and access, not its text.
+// What a machine needs to run one visit (docs/assembly_run_storage.md, "The agent kind runs on the ai-agent-subsystem, with no code of ours in the pod"): the frozen brief again, but structured, since a Kubernetes manifest wants each need's kind, path and access, not its text.
 import { gitRefOf } from "./repo-name.js";
 import type { Pool } from "pg";
 import type { AssemblyRunStore } from "./assembly-run-store.js";

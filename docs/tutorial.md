@@ -84,7 +84,7 @@ settings:
   tags: [cluster:acme]     # only a cluster agent offering this may run it
 ```
 
-A claimer must offer every tag on the dispatch. An agent definition with no tags is claimable by any cluster, and one tagged `cluster:acme` is claimable only by the agent above. That is the whole routing model for visits. Agent definitions are the one thing a floor sends to every registered cluster, see [agent definitions](entities/agent-definition.md), "Distribution and presence".
+A claimer must offer every tag on the dispatch. An agent definition with no tags is claimable by any cluster, and one tagged `cluster:acme` is claimable only by the agent above. That is the whole routing model for visits. Agent definitions are the one thing a floor sends to every registered cluster, see [assembly_run_storage.md](assembly_run_storage.md#distribution-and-presence), "Distribution and presence".
 
 Check it: the cluster agent logs that it is claiming. Nothing is dispatched yet, so an idle agent is the correct state.
 
@@ -198,5 +198,5 @@ Nothing in a run is stored as state. Its status, its bag, its current node and i
 - [Install on a cluster](https://re-cinq.github.io/floor/reference/install/): upgrading, a second cluster, uninstalling
 - [assembly_run_storage.md](assembly_run_storage.md): the model underneath all of the above
 - [api_sketch.md](api_sketch.md): every endpoint
-- [entities/assembly-line.md](entities/assembly-line.md): how to write an assembly line of your own
+- [The pipeline file](https://re-cinq.github.io/floor/specs/pipeline-file/): how to write an assembly line of your own
 - [dev_loop.md](dev_loop.md): the same things, on minikube, with hot reload

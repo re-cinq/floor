@@ -21,7 +21,7 @@ TOKEN="walk-agent-service-token"
 NAME="walk-agent-$(date +%s)"
 MODEL="${FLOOR_WALK_MODEL:-claude-sonnet-4-6}"
 WAIT_SECONDS="${FLOOR_WALK_WAIT_SECONDS:-600}"
-# More for the definition's config, as JSON: a skill registry, MCP servers. See docs/entities/agent-definition.md.
+# More for the definition's config, as JSON: a skill registry, MCP servers. See https://re-cinq.github.io/floor/specs/agent-file/, "2.2 Config".
 CONFIG="$(jq -c '{max_turns: 10} + .' <<<"${FLOOR_WALK_CONFIG:-{\}}")"
 # What the models cost, as JSON, for an agent that counts tokens and names no cost: {"<model>": {"inputPerMillion": 2, "outputPerMillion": 12}}.
 PRICES="$(jq -c . <<<"${FLOOR_WALK_PRICES:-{\}}")"

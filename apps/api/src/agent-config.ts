@@ -1,4 +1,4 @@
-// What an agent definition's `config` may say to the subsystem, under the names docs/entities/agent-definition.md gives them, which are lore's own. Anything else in `config` is kept and passed to nobody.
+// What an agent definition's `config` may say to the subsystem, under the names the agent file specification gives them (website/src/content/docs/specs/agent-file.md, "2.2 Config"), which are lore's own. Anything else in `config` is kept and passed to nobody.
 import { Refusal, type AgentSettings } from "@floor/store";
 import type { BriefSettings, ExecutorSettings } from "@re-cinq/floor-contracts";
 import { agentConfigSchema, type AgentConfig } from "@re-cinq/floor-pipeline/agent-config";

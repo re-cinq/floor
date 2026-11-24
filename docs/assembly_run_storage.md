@@ -14,7 +14,7 @@ The assembly line reference and the start items are written once, at start. Ever
 
 **Visits are the truth, events are how they change.** Every change arrives as an event, the loop applies it through the store, and the store writes a visit. If the two disagree the visits win.
 
-Each visit records the station hash and agent definition hash it resolved to at open, so "what did this run execute" is answered by the visits. Stations and agent definitions evolve independently of assembly lines.
+Each visit records the station hash and agent definition hash it resolved to at open, so "what did this run execute" is answered by the visits. Stations and agent definitions evolve independently of assembly lines. A station says what work is done, and an agent definition says how the model is configured to do it. They are separate so that one prompt fix does not make a new version of every station and assembly line that uses it. Lore's per-repo overrides (project row, then org default, per field) are a variant.
 
 ## The station contract
 
@@ -109,6 +109,16 @@ interface Visit {
 
 Derived at read, never stored: whether a run or a visit is open, the bag, the current node, the next transition, every cost.
 
+A run is an audit trail. It has no PUT and no DELETE. It references its assembly line as `(line id, hash)`, and a version is immutable, so the reference is enough. The run list is ordered by `createdAt`, newest first.
+
+A visit's id is what its logs, telemetry, blobs and token key on. Its deadline is also the token's expiry.
+
+The bag is seeded from `startItems`. Every done visit's `produced` is then merged in visit order, and later wins.
+
+```
+bag(run) = fold(startItems, visits.filter(done).map(v => v.report.produced))
+```
+
 ## Starting a run
 
 Two doors, one `start`.
@@ -156,7 +166,7 @@ Lore's `getNextTransition` stays the sole routing definition and enforces `itera
 | a finished run, reopened by a start by hand | `internal.run.reopened` |
 | a cancel, or a fail | `station_run.abort` for each open visit, and `internal.run.settled` |
 
-`station_run.abort` means "let go of this visit". A worker deletes what it holds for it, a pod and its secret keys. It is posted when a visit ends for any reason, not only when it is cut short, because nothing else tells a cluster agent that a pod's visit is over. A dispatch nobody claimed gets none, since nothing exists to let go of.
+`station_run.abort` means "let go of this visit". A worker deletes what it holds for it, a pod and its secret keys. It is posted when a visit ends for any reason, not only when it is cut short, because nothing else tells a cluster agent that a pod's visit is over. A dispatch nobody claimed gets none, since nothing exists to let go of. A cancel also drops the run's queued events that no worker has claimed.
 
 `internal.run.settled` is what everything after a run hangs on, such as a failure notice, a check run, or settling a task in lore. Each is an assembly line that declares it as its start event. The floor has no hooks.
 
@@ -173,6 +183,57 @@ The internal run events say whose run it was with `runId`, `lineId`, `repo`, `su
 **An event may answer for a person.** A human node may declare `reports`, which is an event name, an optional `when`, and an outcome. When that event arrives for the run, the store writes the report on the node's open visit. That is how a merged PR or a green CI moves a waiting run on.
 
 **Finding the run.** An event acting on a run carries `runId`, or a `subjectKey` and its `repo`, resolved to the open run holding that subject. A `subjectKey` with no `repo`, or with `repo: null`, names the open run holding that subject among the runs that have no repo. A floor answers `repo: null` for such a run, and takes it back either way. A subject that finds no open run is acked, since the run is not open. A run id that finds no run is a mistake, and the event is dead-lettered.
+
+## Two runs, traced
+
+### A `code-review` run, end to end
+
+A PR is opened on `github.com/re-cinq/lore`. The assembly line is in the [lore-converter README](../packages/lore-converter/README.md#four-of-lores-assembly-lines-converted).
+
+1. Start. GitHub's webhook arrives as `github.pull_request.opened`. The assembly line declares it as a start event, so the handler maps the payload to arguments and starts a run. No open run holds subject `pr_url:…/pull/412`, so the store writes the run row, `internal.run.started` and `node.review.start` in one transaction. A second webhook for the same PR would join this run.
+
+   ```json
+   { "repo":   { "kind": "git",   "ref": "github.com/re-cinq/lore@fix/typo", "sha": "9e1f" },
+     "pr_url": { "kind": "value", "ref": "https://github.com/re-cinq/lore/pull/412" } }
+   ```
+
+2. Open. The loop claims `node.review.start`. The handler resolves the `review` station's latest version, its `reviewer` agent definition with this repo's variant (sonnet instead of gemini), the needs `workspace` and `pr_url` from the bag, and a deadline of queue wait plus 20 minutes. Visit 1 opens with a token.
+3. Dispatch. Opening the visit enqueued `station_run.dispatch` tagged `kind:agent`. A cluster agent claims it and creates one `Agent` resource. It carries the repo to clone at `9e1f`, `pr_url` as a parameter, `out/findings.json` as a watched file, and the visit's sink as the output. The ai-agent-subsystem starts the pod.
+4. Work. The agent reviews. It writes `out/findings.json` and prints a `REVIEW_RESULT: changes_requested` line. Each model call reaches the sink as it happens and becomes an `llm_call` record.
+5. Report. The supervisor uploads the findings file to the blob store and sends the file event, with sha256 F, then the terminal event. The sink parses the verdict and enqueues `station_run.reported`.
+
+   ```json
+   { "outcome": "changes_requested",
+     "produced": { "review_findings": "F", "review_verdict": "changes_requested" } }
+   ```
+
+6. Advance. The handler writes the report on visit 1, then asks the kernel. `review` finished with `changes_requested`, and the edge leads to `post-review`. Visit 2 opens, and a service claims it and posts the review to GitHub. Its edge leads to `done`.
+7. Settle. `done` names no station, so it is a marker. Visit 3 opens and reports success in one transaction. The kernel says `finish`. The run is settled with outcome `success`, and `internal.run.settled` is written with it. An assembly line that publishes the GitHub check has its runs start on that event.
+
+Rows at the end:
+
+```
+assembly_runs   id=R  line=code-review@L  repo=github.com/re-cinq/lore  subject=pr_url:…/412  outcome=success
+station_runs    1  R  review       iter 1  station=S1  agent=A1  report={changes_requested, produced:{review_findings:F, …}}
+                2  R  post-review  iter 1  station=S2            report={changes_requested}
+                3  R  done         iter 1  (marker)              report={success}
+events          github.pull_request.opened · internal.run.started · node.review.start · station_run.dispatch ·
+                station_run.reported · node.post-review.start · station_run.dispatch · station_run.reported ·
+                node.done.start · internal.run.settled
+```
+
+If the agent had crashed, the sink's terminal event is `failed`, the edge `review → review, on failed, iteration_max 1` opens visit `(R, review, 2)`, and a second crash fails the run with outcome `iteration_max`.
+
+### A `feature-planning` run, which waits for people
+
+1. Start with `plan_id` as subject. `node.analyze.start` opens visit 1 of `analyze`. The agent drafts `plan.md` and produces `plan`.
+2. Edge to `author`. Visit 1 of `author` opens. It is human kind, so nothing is dispatched. Its `route` names the plan page, which the station's maintainer serves. The run now sits here.
+3. A person opens the page, which shows the plan from the bag. They click Validate, and the page posts `manual.plan.validate` with the run id. Because that start comes from outside, the store first closes `author` visit 1 as `cancelled`. Visit 1 of `validate` opens, and an agent checks the plan and reports success with `findings`. Its `always` edge opens `author` visit 2, and the page shows the findings.
+4. They click Refine on a section. The page uploads the edited plan and posts `station_run.reported` on `author` visit 2 with `changes_requested`. Edge to `analyze`. Visit 2 of `analyze` opens. Its station has `conversation: continue` keyed on `plan_id`, so the brief carries visit 1's session ref and the agent continues where it left off.
+5. Back to `author`, visit 3. They click Approve, which is `success`. Edge to `analyse-specs`, and the run goes on through `write`, `push`, `open-pr` and `mark-ready`, and stops again at `merged`, a human node whose route is the GitHub PR page.
+6. Days later the PR merges. GitHub's webhook arrives as `github.pull_request.closed`. The `merged` node declares that event in its `reports`, with `merged: true` meaning `success`. The run is found by its subject, the report is written on the open visit, and the run continues to `decompose`, `issues`, `done`.
+
+Every one of those pauses is a visit with status `open` on a human station. Nothing is parked, resumed or cloned. The run has an open visit until a person or a webhook reports on it.
 
 ## Resolution at open
 
@@ -194,6 +255,8 @@ Opening a visit for an agent or service station enqueues `station_run.dispatch` 
 | marker | not dispatched | | the store reports `success` at open |
 
 A dispatch nobody claims within `queue_wait` (30 minutes by default) makes the floor report the visit `failed`, `error: unclaimed`, naming the tags no worker offers. A launch that fails is failed back to the queue and retried with backoff.
+
+A page built for a human station shows the needs and offers actions, each posting a report. Refine is `changes_requested` with the edited file produced, and Approve is `success`. A webhook can answer instead, for a page the station's maintainer does not own, like a GitHub PR.
 
 **Provider out of credit.** When an agent visit reports an error that says the model provider is out of credit, the floor sets `not_before` to five minutes from now on every pending agent dispatch (`station_run.dispatch` tagged `kind:agent`), in the same transaction as the report. A dispatch a worker has already claimed is left alone. So is a service station's, and a `not_before` already later than that (a retry's backoff) stays where it is. A burst of such failures therefore holds the queue for five minutes past the last one, not for five minutes each. The gate is the rows' own `not_before`, so a restart does not forget it.
 
@@ -217,6 +280,7 @@ The cluster agent turns a claimed brief into one `Agent` resource:
 | a `value` need | `parameters`, which fill the prompt's `{placeholders}` |
 | a `file` produce | `output.watch`: path, upload to `/blobs`, a header secret |
 | anything with a path | `parameters`: `<name>_path`, its full path under `/workspace` |
+| a `git` need, again | `parameters`: `git_credential` and `git_credential_url`, for the clone's credential helper |
 | the conversation it continues | `resources.conversation`: the earlier visit's id to restore from, this visit's id to save under |
 | the model | `resources.secrets`: the key for that model family |
 | turns, cost, the result | `output.sinks`: `POST /station-runs/:id/sink` |
@@ -233,6 +297,11 @@ The floor names a model, and the cluster agent owns the secret for it, in its ow
 - The conversation is saved under an id the agent takes as its session id, which must be a uuid. So it is the visit's id, and `sessionRef` on the report stays what it was, the hash of the archive.
 - A pod has nobody to answer a permission prompt, so without `bypass` every tool is refused.
 - A station's run history is never 0. At 0 the controller deletes a finished `Agent`, reconciles the copy still in its cache, and runs the job again.
+- The `skills_source` an agent definition's `config` names serves each named skill and the agent's `settings.json`, hooks included.
+- An MCP server's `headers_secret` names a key that must exist in `agent-secrets`. If it is missing, the pod never starts. `headers` and `env` replace `headers_secret`, which keeps working.
+- A url in `config` is a fact about one environment. A gateway at a cluster address is at `host.minikube.internal` on a laptop. A variant is keyed by repo, not by environment, so a definition naming a url works in one place.
+
+> **Not built yet.** `command` and `workdir` in an agent definition's `config`.
 
 **The sink takes one event per request**, each in the subsystem's envelope, `{source, event}`.
 
@@ -241,9 +310,21 @@ The floor names a model, and the cluster agent owns the secret for it, in its ow
 - A file event for an uploaded file becomes a produced item, if the station declares it and the blob is really in the store.
 - The lifecycle event that ends the visit becomes `station_run.reported`, once however often it is posted. That event is the agent phase ending either way, or the init phase failing.
 
-The outcome is parsed from the result's text. `LORE_NODE_RESULT:` is read first, then `REVIEW_RESULT:`, then the outcome is `success`. A marker that is there and cannot be read is `failed`. A station with `result_required: true` takes no `success` from silence, so an agent that printed neither marker nor `REVIEW_RESULT:` verdict is `failed`. Only outcomes and produces the station declares are taken.
+The outcome is parsed from the result's text. `LORE_NODE_RESULT:` is read first, then `REVIEW_RESULT:`, then the outcome is `success`. A marker that is there and cannot be read is `failed`. The marker starts its line of output, and one wrapped in backticks, as an agent copies it from a prompt, is read the same. A station with `result_required: true` takes no `success` from silence, so an agent that printed neither marker nor `REVIEW_RESULT:` verdict is `failed`, with the error `the agent ended without a LORE_NODE_RESULT or REVIEW_RESULT line, and its station requires one`. Only outcomes and produces the station declares are taken.
 
 A pod killed from outside posts nothing. Its visit fails at its deadline.
+
+## Distribution and presence
+
+A new version of an agent definition does not wait for a visit to reach the clusters.
+
+1. A cluster agent registers under its cluster id (`PUT /clusters/{id}`) on start and every minute after, with `{tags, build, subsystem}`. These are the tags it claims by, its own build sha, and the agent subsystem its cluster runs. `subsystem` is `{version, clis: {claude, codex, gemini, opencode}}`, read from the subsystem's `agent-subsystem-versions` ConfigMap, or null when it cannot be read. `build` and `subsystem` are optional, so an older agent registers with its tags alone. `GET /version` lists them per live cluster.
+2. A put that makes a new latest version writes one `agent_definition.changed` event per registered cluster, tagged `cluster:<id>`, in the put's own transaction. A cluster registering later gets one for every agent definition whose latest version it does not hold.
+3. The cluster agent claims its own events like a dispatch, and applies the recipe of each variant. `GET /agent-definitions/{id}/recipes` returns the settings a visit of that variant is briefed with, so the pushed recipe is the one a visit names. The cluster agent reads the latest version when it handles the event, never the one the event named, so a late or repeated event cannot set a cluster back.
+4. It acks only once kube reads that version back. Anything else fails the event, which the queue tries again with backoff.
+5. It watches its recipes and reports what kube holds as `agent_definition.reported`. A recipe edited in kube by hand (prompt, model, image, timeout) is adopted by the floor as the newest version, `created_by: cluster:<id>`, and goes to the other clusters by step 2. A cluster reporting an older version the floor has stored is only behind, and nothing is adopted.
+
+`GET /agent-definitions/presence` answers per agent definition. It says `all` when every cluster seen in the last five minutes holds the latest version, `some` when one holds a version but not every one the latest, and `none` when none holds any. `GET /agent-definitions/{id}/clusters` answers what each cluster read back out of its kube.
 
 ## Templates
 
@@ -293,7 +374,7 @@ interface AssemblyRunStore {
 | a node's start event the store refuses | `fail` on the run, and the event is dead |
 | an event a human node's `reports` names | `report` on that node's open visit |
 | `station_run.reported` | `report`, then `next`; the store wrote the follow-up |
-| a dispatch past `queue_wait`, a visit past its deadline | `report` with `failed`, by the sweeper |
+| a dispatch past `queue_wait`, a visit past its deadline | `report` with `failed`, by the sweeper: `error: unclaimed` for the dispatch, `error: timeout` for the visit |
 | any other event | `report` on the waiting nodes it answers for, then `start` for each line declaring it |
 
 ## Events: the queue and the loop
@@ -359,6 +440,10 @@ The floor collects every cost itself.
 - **Missing cost is an anomaly.** An agent visit that ends with no `llm_call` record stating a `costUsd` raises `internal.cost.missing`, naming the visit and its node. It never fails the visit, and a replayed report raises it once. It is the same reading as the missing-cost count in `GET /costs`, so the two never disagree.
 - **Crashes still cost.** Records are written during the visit.
 - **Rollups are queries.** Visit, run and aggregate cost are sums over records, in SQL. That is `CostsStore.summary`, grouped by day, line, station or model, over `GET /costs`.
+- **An agent that says what it cost is believed.** Claude ends with a price. Gemini and Codex end with tokens and no price, and are priced from the agent definition's `prices`. Codex counts what it read from the cache inside its `input_tokens`, so the floor takes that part out and prices it as `cache_read_input_tokens`. The cache is priced as any other reading unless a cache price is stated.
+- **Each model wants its own price.** An agent calls more than the model it was given, such as a cheaper one to classify or to compress what it has read. Each is priced at its own rate, so each wants its own entry in `prices`.
+- **A cost that is short says so.** A model with no price is named as `unpriced` on the visit and in every sum of `GET /costs` it is part of, and its part is left out of the cost.
+- **A visit is priced when it ends**, at what its definition stated then. A price that changes later changes no visit already run.
 - **A filtered summary reads only what it filters to.** The filter (run, repository, line, station, dates) picks the visits first, and only those visits' records are summed, so the cost of one run does not read every record the floor holds ([`sums only run r1's model calls when two runs hold calls`](../packages/store/src/costs.test.ts)).
 
 ## Concurrency
@@ -394,7 +479,7 @@ A record's `seq` counts within one visit and one kind. A run had no single order
 
 ## Tables
 
-Postgres. Seven tables.
+Postgres. Nine tables. Seven are below. `clusters` and `cluster_agent_definitions` are in migration `0007_clusters.sql`, see "Distribution and presence".
 
 ```sql
 -- every definition. Content-hashed; a row never changes.

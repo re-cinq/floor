@@ -27,7 +27,7 @@ A human acts through the service token too. Human sessions are not built yet.
 
 ## Import an assembly line
 
-An assembly line, its stations, its agent definitions and their prompts travel as one YAML file. How to write one is in [entities/assembly-line.md](entities/assembly-line.md). Put it in with the CLI:
+An assembly line, its stations, its agent definitions and their prompts travel as one YAML file. How to write one is in [the pipeline file specification](https://re-cinq.github.io/floor/specs/pipeline-file/). Put it in with the CLI:
 
 ```bash
 npm install -g @re-cinq/floor-pipeline
