@@ -40,4 +40,24 @@ describe("ViewportControls", () => {
 
     expect(within(container).queryByRole("button", { name: "Main path" })).toBeNull();
   });
+
+  it("draws Compact stops pressed when onToggleCompactStops is given with compactStopsOn", () => {
+    const { container } = render(<ViewportControls dispatch={() => undefined} compactStopsOn onToggleCompactStops={() => undefined} />);
+
+    expect(within(container).getByRole("button", { name: "Compact stops" }).getAttribute("aria-pressed")).toEqual("true");
+  });
+
+  it("calls onToggleCompactStops once on a press of Compact stops", () => {
+    const calls: string[] = [];
+    const { container } = render(<ViewportControls dispatch={() => undefined} compactStopsOn onToggleCompactStops={() => calls.push("toggle")} />);
+    fireEvent.click(within(container).getByRole("button", { name: "Compact stops" }));
+
+    expect(calls).toEqual(["toggle"]);
+  });
+
+  it("draws no Compact stops button when onToggleCompactStops is missing", () => {
+    const { container } = render(<ViewportControls dispatch={() => undefined} compactStopsOn />);
+
+    expect(within(container).queryByRole("button", { name: "Compact stops" })).toBeNull();
+  });
 });
