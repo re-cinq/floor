@@ -12,6 +12,7 @@ import { nodeAriaLabel } from "./node-aria-label";
 import { typeFamilyOf } from "./node-type-family";
 import { nodeTitle } from "./node-tooltip";
 import type { StationVisits } from "./metro/station-visits";
+import type { NodeOffset } from "./metro/layout-diff";
 import { subtitleOf } from "./station-subtitle";
 import { classes, portFillClass } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
@@ -37,6 +38,7 @@ export interface GraphNodeProps {
   /** Newly drawn by the latest layout. */
   added?: boolean;
   moved?: boolean;
+  offset?: NodeOffset;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
   /** Whether the run came here (undefined without a run). */
@@ -104,6 +106,7 @@ function stationAttrsOf(
     "data-off-path": props.offPath || undefined,
     ...runAttrsOf(props),
     ...changeAttrOf(props),
+    style: props.offset && { transform: `translate(${props.offset.dx}px, ${props.offset.dy}px)` },
     ...neighbourhoodAttrs(node.id, props),
     "aria-label": nodeAriaLabel({ node: model, isTerminal, isUnreachable }),
     "aria-describedby": props.describedBy,
