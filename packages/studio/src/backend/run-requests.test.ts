@@ -119,7 +119,7 @@ describe("startStudio run requests", () => {
   it("ends the run with outcome success, the work to done edge and no produces when claude's result ends with LORE_NODE_RESULT: success", async () => {
     const resultLine = JSON.stringify({ type: "result", result: "Done.\nLORE_NODE_RESULT: success" });
 
-    await withFakeClaude(`#!/bin/sh\necho '${resultLine}'\n`, async (client, folder) => {
+    await withFakeClaude(`#!/bin/sh\nprintf '%s\\n' '${resultLine}'\n`, async (client, folder) => {
       client.send({ id: "s1", type: "run.start", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder, permission: "acceptEdits" });
       const frames = await framesUntilRunEnded(client);
 
