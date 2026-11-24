@@ -129,7 +129,7 @@
 [data-chosen="true"] .edge {
   stroke-width: 3.5;
 }
-text[data-selected="true"] {
+.svg text[data-selected="true"] {
   font-weight: var(--fw-bold, 700);
 }
 
@@ -388,12 +388,12 @@ text[data-selected="true"] {
   fill: var(--text-muted);
 }
 
-[data-dim="true"] {
+.svg [data-dim="true"] {
   opacity: 0.15;
   transition: opacity 150ms;
 }
 
-[data-off-path="true"] {
+.svg [data-off-path="true"] {
   opacity: 0.25;
   transition: opacity 150ms;
 }
@@ -422,14 +422,14 @@ text[data-selected="true"] {
     opacity: 0;
   }
 }
-[data-change="added"] {
+.svg [data-change="added"] {
   animation: changeFlash 1.2s ease-out;
 }
-[data-change="moved"] {
+.svg [data-change="moved"] {
   transition: transform 400ms ease;
 }
 
-[data-change="removed"] {
+.svg [data-change="removed"] {
   animation: changeFade 300ms ease-out forwards;
   pointer-events: none;
 }
@@ -437,11 +437,11 @@ text[data-selected="true"] {
   transition: d 400ms;
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-change="added"],
-  [data-change="removed"] {
+  .svg [data-change="added"],
+  .svg [data-change="removed"] {
     animation: none;
   }
-  [data-change="moved"] {
+  .svg [data-change="moved"] {
     transition: none;
   }
   .edge {
@@ -449,12 +449,12 @@ text[data-selected="true"] {
   }
 }
 
-[data-taken="false"] {
+.svg [data-taken="false"] {
   opacity: 0.3;
   transition: opacity 150ms;
 }
 
-[data-visited="false"] {
+.svg [data-visited="false"] {
   opacity: 0.4;
   transition: opacity 150ms;
 }
