@@ -18,4 +18,17 @@ describe("GraphNode", () => {
       [...container.querySelectorAll("[data-port]")].map((port) => ({ port: port.getAttribute("data-port"), tone: port.getAttribute("data-tone") })),
     ).toEqual([{ port: "a|b|success:out", tone: "neutral" }]);
   });
+
+  it("marks a node that is both added and moved as added", () => {
+    const node = { id: "a", x: 100, y: 30, width: 140, height: 60, ports: [] };
+    const model = { id: "a", type: "agent" as const, outcomes: ["success"], isEntry: true, isExit: false, isFail: false, hasProblem: false };
+
+    const { container } = render(
+      <svg>
+        <GraphNode node={node} model={model} height={60} isTerminal={false} toneByEdge={new Map()} added moved />
+      </svg>,
+    );
+
+    expect(container.querySelector("[data-change]")?.getAttribute("data-change")).toBe("added");
+  });
 });
