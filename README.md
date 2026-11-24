@@ -126,6 +126,7 @@ it `needs` and what it `produces`; floor moves the bytes and nothing else crosse
 | [`packages/client`](packages/client/README.md) | The floor over HTTP and its live socket, typed. What anything outside a floor reaches it through. |
 | [`packages/station`](packages/station/README.md) | The SDK a service station is written with: one function, and the claim loop around it. |
 | [`packages/pipeline`](packages/pipeline/README.md) | A whole pipeline as one file, exported from or imported into a floor over HTTP. |
+| [`packages/studio`](packages/studio/README.md) | A local page for a collection folder: draws each line, explains each station, edits prompts and settings, runs one agent station with your own `claude` or `codex`. To be published as `@re-cinq/floor-studio`. |
 | [`packages/lore-converter`](packages/lore-converter/README.md) | Reads a lore checkout and writes the definitions this floor runs in its place. |
 | [`deploy/chart`](deploy/chart/README.md) | One Helm chart, one image, both apps, toggled. |
 | [`.github/workflows`](.github/workflows) | CI on every pull request; build and push the image on `main`; a release on a `v*` tag. Argo CD deploys `main` to re:cinq's cluster, see [`deploy/chart`](deploy/chart/README.md#how-recinq-deploys-it). |
