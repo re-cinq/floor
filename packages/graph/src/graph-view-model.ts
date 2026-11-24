@@ -11,7 +11,7 @@ export type ConnectorTone = "ok" | "warn" | "err" | "neutral";
 export interface VisibleNode {
   id: string;
   type: DefinitionNode["type"];
-  /** Outcomes leaving this node, listed if they all lead to same next step. */
+  /** Outcomes leaving this node, in definition order. */
   outcomes: readonly string[];
   isEntry: boolean;
   isExit: boolean;
@@ -24,8 +24,10 @@ export interface VisibleNode {
 export interface VisibleEdge {
   from: string;
   to: string;
+  /** The outcome that takes this hop. */
+  on: string;
   tone: ConnectorTone;
-  /** The outcomes that take this hop, each with its iteration cap when it has one. */
+  /** The outcome that takes this hop, with its iteration cap when it has one. */
   label: string;
   /** The node has other targets, so the outcome is what tells this hop from its siblings. */
   branching: boolean;
@@ -36,7 +38,7 @@ export interface VisibleGraph {
   edges: readonly VisibleEdge[];
 }
 
-/** The nodes and connectors to draw: collapse same-target outcomes, branch different-target ones. */
+/** The nodes and connectors to draw: one connector per outcome. */
 export function deriveVisibleGraph(
   definition: AssemblyLineDefinition | null,
 ): VisibleGraph {
@@ -78,24 +80,21 @@ function visibleNode(
   };
 }
 
-/** One connector per distinct TARGET. Outcomes that lead to the same node collapse into a single neutral edge — drawing one arrow per verdict would suggest branching where the line does not actually fork; a target reached by exactly one outcome keeps that outcome's tone. */
+/** One connector per definition edge, in definition order. The outcome sets the tone; a source with several distinct targets is branching. */
 function connectorsFor(
   from: string,
   outgoing: readonly DefinitionEdge[],
 ): VisibleEdge[] {
-  const targets = [...new Set(outgoing.map((edge) => edge.to))];
+  const branching = new Set(outgoing.map((edge) => edge.to)).size > 1;
 
-  return targets.map((to) => {
-    const hops = outgoing.filter((edge) => edge.to === to);
-
-    return {
-      from,
-      to,
-      tone: targets.length > 1 && hops.length === 1 ? outcomeTone(hops[0].on) : "neutral",
-      label: hops.map(hopLabel).join(", "),
-      branching: targets.length > 1,
-    };
-  });
+  return outgoing.map((edge) => ({
+    from,
+    to: edge.to,
+    on: edge.on,
+    tone: outcomeTone(edge.on),
+    label: hopLabel(edge),
+    branching,
+  }));
 }
 
 function hopLabel({ on, iterationMax }: DefinitionEdge): string {

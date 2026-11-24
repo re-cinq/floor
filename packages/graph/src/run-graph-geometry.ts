@@ -74,8 +74,3 @@ export function nodeHeightFor(graph: VisibleGraph): number {
     ? BASE_NODE_HEIGHT + OUTCOME_TOP + rows * OUTCOME_ROW
     : BASE_NODE_HEIGHT;
 }
-
-// The one key shape for an edge, shared by the model lookup and the `data-edge` attribute tests query, so the two can never drift apart.
-export function edgeMapKey(from: string, to: string): string {
-  return `${from}->${to}`;
-}
