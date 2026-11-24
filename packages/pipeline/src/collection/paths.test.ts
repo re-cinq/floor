@@ -30,6 +30,8 @@ describe("pipelineFolderOf", () => {
     ["stock/agents/assembly-line.yaml", undefined],
     ["stock/.hidden/assembly-line.yaml", undefined],
     [".github/code-review/assembly-line.yaml", undefined],
+    ["docs/code-review/assembly-line.yaml", undefined],
+    ["docs/assembly-line.yaml", "docs"],
   ])("returns %s for the path %s", (path, folder) => {
     expect(pipelineFolderOf(path)).toEqual(folder);
   });
@@ -74,6 +76,7 @@ describe("agentFileOf", () => {
     ["stock/../agents/reviewer.md", undefined],
     ["agent-skills/code-review/agents/reviewer.md", undefined],
     ["stock/.hidden/agents/reviewer.md", undefined],
+    ["docs/code-review/agents/reviewer.md", undefined],
   ])("reads the path %s as %j", (path, read) => {
     expect(agentFileOf(path)).toEqual(read);
   });

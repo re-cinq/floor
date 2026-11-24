@@ -102,4 +102,13 @@ describe("collectionOverlay with group folders", () => {
       { path: "stock/README.md", reason },
     ]);
   });
+
+  it("refuses stock/code-review/pipeline.yaml as held twice when stock/code-review/assembly-line.yaml sits beside it", () => {
+    const reviewYaml = pipelineYaml("code-review", "reviewer");
+
+    expect(linesAndRefusalsOf({ "stock/code-review/assembly-line.yaml": reviewYaml, "stock/code-review/pipeline.yaml": reviewYaml })).toEqual({
+      lines: ["code-review"],
+      refused: [{ path: "stock/code-review/pipeline.yaml", reason: "the folder code-review holds its line twice: assembly-line.yaml is read, so remove pipeline.yaml" }],
+    });
+  });
 });
