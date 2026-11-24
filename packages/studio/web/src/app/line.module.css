@@ -310,6 +310,7 @@
 
 /* Settings: the key as a small caption over its field, fields in the theme's own surface and border. */
 .inspector [role="tabpanel"] label {
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -350,6 +351,36 @@
   border-color: var(--text-muted);
 }
 
+/* A list of objects (mcp_servers): the list and each item as a card, the item's fields stacked inside it. */
+.inspector [role="tabpanel"] fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: var(--size-480);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.inspector [role="tabpanel"] fieldset fieldset {
+  max-width: none;
+  background: var(--bg);
+}
+
+.inspector [role="tabpanel"] legend {
+  padding: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-muted);
+}
+
+.inspector [role="tabpanel"] fieldset > span {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
 /* A list entry and its Remove button share one row. */
 .inspector [role="tabpanel"] label div {
   display: flex;
@@ -358,7 +389,8 @@
 }
 
 /* Buttons inside a field (Override, Use env, Add, Remove) are quiet: the field, not the button, is the point. */
-.inspector [role="tabpanel"] label button {
+.inspector [role="tabpanel"] label button,
+.inspector [role="tabpanel"] fieldset button {
   flex: none;
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--border);
@@ -367,7 +399,8 @@
   font-size: var(--fs-xs);
 }
 
-.inspector [role="tabpanel"] label button:hover {
+.inspector [role="tabpanel"] label button:hover,
+.inspector [role="tabpanel"] fieldset button:hover {
   border-color: var(--text-muted);
   background: var(--bg);
   color: var(--text);

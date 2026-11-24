@@ -51,6 +51,47 @@ describe("Inspector Settings panel config form", () => {
     await waitFor(() => expect(saved()?.config).toEqual({ max_turns: 100, model_secret_key: "anthropic-key" }));
   });
 
+  it("saves config pod_resources limits memory 2Gi beside requests cpu 500m when 2Gi is typed into the empty limits memory cell", async () => {
+    const saved = await openReviewerSettings({ image: "acme/agent:2", config: { pod_resources: { requests: { cpu: "500m" } } } });
+    await userEvent.type(screen.getByRole("textbox", { name: "pod_resources limits memory" }), "2Gi");
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() => expect(saved()?.config).toEqual({ pod_resources: { requests: { cpu: "500m" }, limits: { memory: "2Gi" } } }));
+  });
+
+  it("saves config mcp_servers lore http beside files stdio npx when a files stdio npx card is added to the lore http card", async () => {
+    const saved = await openReviewerSettings({
+      image: "acme/agent:2",
+      config: { mcp_servers: [{ name: "lore", transport: "http", url: "https://lore.example/mcp" }] },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Add to mcp_servers" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "mcp_servers 2 name" }), "files");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "mcp_servers 2 transport" }), "stdio");
+    await userEvent.type(screen.getByRole("textbox", { name: "mcp_servers 2 command" }), "npx");
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() =>
+      expect(saved()?.config).toEqual({
+        mcp_servers: [
+          { name: "lore", transport: "http", url: "https://lore.example/mcp" },
+          { name: "files", transport: "stdio", command: "npx" },
+        ],
+      }),
+    );
+  });
+
+  it("shows url but not command for an http mcp_servers card", async () => {
+    await openReviewerSettings({
+      image: "acme/agent:2",
+      config: { mcp_servers: [{ name: "lore", transport: "http", url: "https://lore.example/mcp" }] },
+    });
+
+    expect({
+      url: screen.queryByRole("textbox", { name: "mcp_servers 1 url" }) !== null,
+      command: screen.queryByRole("textbox", { name: "mcp_servers 1 command" }) !== null,
+    }).toEqual({ url: true, command: false });
+  });
+
   it("saves config skills review and lint when lint is added to the review skills list", async () => {
     const saved = await openReviewerSettings({ image: "acme/agent:2", config: { skills: ["review"] } });
     await userEvent.click(screen.getByRole("button", { name: "Add to skills" }));
@@ -66,6 +107,24 @@ describe("Inspector Settings panel config form", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
 
     await waitFor(() => expect(saved()?.config).toEqual({ skills: ["lint"] }));
+  });
+
+  it("saves config env LOG debug and MODE fast when MODE fast is added to the env LOG debug rows", async () => {
+    const saved = await openReviewerSettings({ image: "acme/agent:2", config: { env: { LOG: "debug" } } });
+    await userEvent.click(screen.getByRole("button", { name: "Add to env" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "env name 2" }), "MODE");
+    await userEvent.type(screen.getByRole("textbox", { name: "env value 2" }), "fast");
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() => expect(saved()?.config).toEqual({ env: { LOG: "debug", MODE: "fast" } }));
+  });
+
+  it("saves config with only max_turns 100 when the only env row LOG debug is removed", async () => {
+    const saved = await openReviewerSettings({ image: "acme/agent:2", config: { max_turns: 100, env: { LOG: "debug" } } });
+    await userEvent.click(screen.getByRole("button", { name: "Remove env 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() => expect(saved()?.config).toEqual({ max_turns: 100 }));
   });
 
   it("offers api-design, tdd-start and Custom… with tdd-start chosen for config skills tdd-start", async () => {

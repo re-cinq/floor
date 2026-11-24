@@ -6,9 +6,10 @@ interface VendorRule {
 }
 
 const vendorRules: VendorRule[] = [
+  { vendor: "exec", matches: (lowercased) => lowercased === "exec" },
   { vendor: "gemini", matches: (lowercased) => lowercased.includes("gemini") },
   { vendor: "opencode", matches: (lowercased) => lowercased.includes("opencode") },
-  { vendor: "codex", matches: (lowercased) => lowercased.startsWith("gpt") },
+  { vendor: "codex", matches: (lowercased) => lowercased.includes("codex") || ["gpt", "o1", "o3", "o4"].some((prefix) => lowercased.startsWith(prefix)) },
 ];
 
 export function vendorOf(model: string): Vendor {
