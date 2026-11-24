@@ -15,9 +15,9 @@ import NodeTooltip from "./NodeTooltip";
 import { nodeTooltipOf } from "./node-tooltip";
 import RunGraphLegend from "./RunGraphLegend";
 import {
+  NODE_HEIGHT,
   NODE_WIDTH,
   fitView,
-  nodeHeightFor,
   revealBoxOf,
 } from "./run-graph-geometry";
 import styles from "./run-graph.module.css";
@@ -47,6 +47,8 @@ export default function RunGraphView(props: RunGraphViewProps) {
   );
 }
 
+const NODE_SIZE = { width: NODE_WIDTH, height: NODE_HEIGHT };
+
 interface GraphCanvasProps {
   view: RunGraphViewProps;
   graph: VisibleGraph;
@@ -55,12 +57,10 @@ interface GraphCanvasProps {
 /** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
 function GraphCanvas({ view, graph }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
-  const nodeHeight = nodeHeightFor(graph);
-  const nodeSize = useMemo(() => ({ width: NODE_WIDTH, height: nodeHeight }), [nodeHeight]);
-  const elkLayout = useElkLayout(view.definition, nodeSize);
+  const elkLayout = useElkLayout(view.definition, NODE_SIZE);
   const laid = useMemo(
-    () => elkLayout && drawingOf(elkLayout, graph, view.definition.name, nodeHeight),
-    [elkLayout, graph, view.definition.name, nodeHeight],
+    () => elkLayout && drawingOf(elkLayout, graph, view.definition.name),
+    [elkLayout, graph, view.definition.name],
   );
 
   return (
@@ -88,7 +88,7 @@ function revealOf(laid: Drawing, selectedNodeId: string | null | undefined) {
   const { nodes } = laid.layout;
   const selected = nodes.find((node) => node.id === selectedNodeId);
 
-  return selected && revealBoxOf(selected, laid.view, laid.nodeHeight);
+  return selected && revealBoxOf(selected, laid.view, NODE_HEIGHT);
 }
 
 function familiesOf(graph: VisibleGraph) {
@@ -203,7 +203,7 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode }: Graph
         key={node.id}
         node={node}
         model={model}
-        height={laid.nodeHeight}
+        height={NODE_HEIGHT}
         isTerminal={!laid.nodesWithOutgoing.has(node.id)}
         selected={node.id === selectedNodeId}
         onSelect={onSelectNode}
@@ -216,11 +216,10 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode }: Graph
 type Drawing = ReturnType<typeof drawingOf>;
 
 /** Everything the drawing needs: ELK's layout, the viewport it fits, and the model lookups. */
-function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string, nodeHeight: number) {
+function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string) {
   return {
     layout,
     view: fitView(layout.contentBox),
-    nodeHeight,
     titleId: `graph-title-${name}`,
     ...graphLookups(graph),
   };

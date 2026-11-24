@@ -1,10 +1,9 @@
-// One step in the graph: the box, its type mark, its badges, selection, and one of two exclusive bodies (outcome list or plain name) — the aria-label says the same in words.
+// One step in the graph: the box, its type mark, its badges, selection, and its title over its kind — the aria-label says the same in words.
 import type { KeyboardEvent } from "react";
 import type { LaidOutNode } from "./elk-layout";
 import type { VisibleNode } from "./graph-view-model";
 import NodeBadges from "./NodeBadges";
-import NodeOutcomeList from "./NodeOutcomeList";
-import NodePlainLabel from "./NodePlainLabel";
+import NodeTitle from "./NodeTitle";
 import TypeGlyph, { FAMILY_CLASS } from "./TypeGlyph";
 import { badgesOf } from "./node-badges";
 import { nodeAriaLabel } from "./node-aria-label";
@@ -47,7 +46,7 @@ export default function GraphNode(props: GraphNodeProps) {
     >
       <NodeBox leftEdge={leftEdge} top={top} height={height} />
       <TypeGlyph family={family} cx={leftEdge + GLYPH_INSET} cy={top + GLYPH_INSET} />
-      <NodeBody {...{ model, title, node, isTerminal, top, leftEdge }} />
+      <NodeTitle title={title} kind={family} centerX={node.x} centerY={node.y} />
       <NodeBadges badges={badgesOf(model)} rightEdge={leftEdge + NODE_WIDTH} top={top} />
     </g>
   );
@@ -111,22 +110,4 @@ function NodeBox({ leftEdge, top, height }: NodeBoxProps) {
       rx={10}
     />
   );
-}
-
-interface NodeBodyProps {
-  model: VisibleNode;
-  title: string;
-  node: GraphNodeProps["node"];
-  top: number;
-  leftEdge: number;
-  isTerminal: boolean;
-}
-
-/** What the box says: the outcomes the definition declares, else the plain name. */
-function NodeBody({ model, title, node, top, leftEdge, isTerminal }: NodeBodyProps) {
-  if (model.outcomes.length > 0) {
-    return <NodeOutcomeList title={title} outcomes={model.outcomes} leftEdge={leftEdge} top={top} />;
-  }
-
-  return <NodePlainLabel title={title} centerX={node.x} centerY={node.y} isTerminal={isTerminal} />;
 }

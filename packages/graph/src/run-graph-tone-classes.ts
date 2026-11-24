@@ -16,13 +16,6 @@ const TEXT_FILL: Record<ConnectorTone, string> = {
   neutral: styles.outNeutral,
 };
 
-const ICON_FILL: Record<ConnectorTone, string> = {
-  ok: styles.iconOk,
-  warn: styles.iconWarn,
-  err: styles.iconErr,
-  neutral: styles.iconIdle,
-};
-
 // Join class names, dropping ones a CSS module does not define (e.g. `styles.forward` when `.forward` has no rule).
 export function classes(...names: (string | undefined)[]): string {
   return names.filter(Boolean).join(" ");
@@ -34,8 +27,4 @@ export function edgeStrokeClass(tone: ConnectorTone): string {
 
 export function textFillClass(tone: ConnectorTone): string {
   return TEXT_FILL[tone];
-}
-
-export function iconFillClass(tone: ConnectorTone): string {
-  return ICON_FILL[tone];
 }

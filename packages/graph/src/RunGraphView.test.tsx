@@ -34,7 +34,7 @@ function roundedTransformOf(container: HTMLElement) {
   return roundedToHundredths(transform);
 }
 
-const waitForFittedView = (container: HTMLElement) => waitFor(() => expect(roundedTransformOf(container)).toBe("translate(0 71.66) scale(0.52)"));
+const waitForFittedView = (container: HTMLElement) => waitFor(() => expect(roundedTransformOf(container)).toBe("translate(0 83.85) scale(0.52)"));
 
 const nodeEl = (container: HTMLElement, id: string) => container.querySelector(`[data-node="${id}"]`) as HTMLElement;
 const edgeEl = (container: HTMLElement, key: string) => container.querySelector(`[data-edge="${key}"]`) as HTMLElement;
@@ -45,6 +45,13 @@ describe("RunGraphView", () => {
     const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
 
     expect([container.querySelectorAll("[data-node]").length, container.querySelectorAll("[data-edge]").length]).toEqual([2, 3]);
+  });
+
+  it("draws every station card 60 tall, even review with three outcomes", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    const boxHeights = [...container.querySelectorAll("[data-node]")].map((card) => card.querySelector("rect")?.getAttribute("height"));
+
+    expect(boxHeights).toEqual(["60", "60"]);
   });
 
   it("draws review to done as three connectors keyed, toned and labelled by their outcome", async () => {
@@ -62,14 +69,11 @@ describe("RunGraphView", () => {
     ]);
   });
 
-  it("lists the outcomes inside the node they leave, under their own names", async () => {
+  it("shows the review card as its title Review over its kind agent, with no outcome list", async () => {
     const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    const cardTexts = [...nodeEl(container, "review").querySelectorAll("text")].filter((text) => !text.closest("[data-badge]")).map((text) => text.textContent);
 
-    expect(within(nodeEl(container, "review")).getAllByText(/^(success|changes_requested|failed)$/).map((row) => row.textContent)).toEqual([
-      "success",
-      "changes_requested",
-      "failed",
-    ]);
+    expect(cardTexts).toEqual(["Review", "agent"]);
   });
 
   it("draws a connector from review for each outcome, to different nodes or the same one", async () => {
@@ -208,14 +212,14 @@ describe("RunGraphView selection", () => {
 describe("RunGraphView bringing a selected node into view", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("pans to translate(-549.9 -26.66) scale(1.27) when done, below the zoomed view, is selected", async () => {
+  it("pans to translate(-549.9 -11.49) scale(1.27) when done, below the zoomed view, is selected", async () => {
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 300));
     const { container, rerender } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
     await waitForFittedView(container);
     for (let press = 0; press < 4; press++) fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     rerender(<RunGraphView definition={codeReviewDefinition} selectedNodeId="done" />);
 
-    await waitFor(() => expect(roundedTransformOf(container)).toBe("translate(-549.9 -26.66) scale(1.27)"));
+    await waitFor(() => expect(roundedTransformOf(container)).toBe("translate(-549.9 -11.49) scale(1.27)"));
   });
 });
 

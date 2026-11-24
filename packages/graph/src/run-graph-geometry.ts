@@ -1,13 +1,11 @@
 // Pure geometry for the graph (box height, viewBox, layout-shaped definition) — no React, no styles, only WHERE things sit.
 import type { Box } from "./elk-layout";
-import type { VisibleGraph } from "./graph-view-model";
 
-// Box width, sized for a node's id and its outcome rows; ELK is given the same width.
+// Station card size, the same for every card; ELK is given the same size.
 export const NODE_WIDTH = 216;
+export const NODE_HEIGHT = 60;
 // Clear space kept around the drawing.
 export const VIEW_PADDING = 28;
-// Vertical pitch of one outcome row inside a node.
-export const OUTCOME_ROW = 15;
 
 // Where a node's text starts (right of the glyph) and the gap it leaves at the far edge.
 const LABEL_LEFT_OFFSET = 40;
@@ -25,11 +23,6 @@ export function fitNodeLabel(text: string, max = NODE_LABEL_CHARS): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
-// An outcome row starts right of its glyph and keeps the same right padding as the title.
-export const OUTCOME_LABEL_CHARS = Math.floor((NODE_WIDTH - 34 - LABEL_RIGHT_PADDING) / LABEL_CHAR_WIDTH);
-
-const BASE_NODE_HEIGHT = 48;
-const OUTCOME_TOP = 14;
 const PADDING = VIEW_PADDING;
 const MIN_VIEW_WIDTH = 480;
 const MIN_VIEW_HEIGHT = 200;
@@ -64,13 +57,4 @@ export function revealBoxOf(node: { x: number; y: number }, view: FittedView, no
   const minY = node.y - nodeHeight / 2 - view.originY;
 
   return { minX, minY, maxX: minX + NODE_WIDTH, maxY: minY + nodeHeight };
-}
-
-// Uniform node height: tall enough for the longest outcome list a source node shows; bare nodes stay the base height.
-export function nodeHeightFor(graph: VisibleGraph): number {
-  const rows = Math.max(0, ...graph.nodes.map((node) => node.outcomes.length));
-
-  return rows > 0
-    ? BASE_NODE_HEIGHT + OUTCOME_TOP + rows * OUTCOME_ROW
-    : BASE_NODE_HEIGHT;
 }
