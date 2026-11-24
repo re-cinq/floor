@@ -90,4 +90,17 @@ describe("RunGraphView with compactStops", () => {
 
     expect(states).toEqual(["false", "true", "false"]);
   });
+
+  it("starts the Compact stops button pressed on a stop when compactStops is set, and one press unpresses it and draws a card", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} compactStops />);
+    const button = within(container).getByRole("button", { name: "Compact stops" });
+    const read = () => ({ pressed: button.getAttribute("aria-pressed"), shape: nodeEl(container, "push").getAttribute("data-shape") });
+    const before = read();
+    fireEvent.click(button);
+
+    expect({ before, after: read() }).toEqual({
+      before: { pressed: "true", shape: "stop" },
+      after: { pressed: "false", shape: "card" },
+    });
+  });
 });

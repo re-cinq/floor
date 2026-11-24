@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import ViewportControls from "./ViewportControls";
 
 describe("ViewportControls", () => {
@@ -19,5 +19,25 @@ describe("ViewportControls", () => {
       { name: "Zoom out", title: "Zoom out", text: "", icons: 1 },
       { name: "Fit", title: "Fit", text: "", icons: 1 },
     ]);
+  });
+
+  it("draws Main path pressed when onToggleMainPath is given with mainPathOn", () => {
+    const { container } = render(<ViewportControls dispatch={() => undefined} mainPathOn onToggleMainPath={() => undefined} />);
+
+    expect(within(container).getByRole("button", { name: "Main path" }).getAttribute("aria-pressed")).toEqual("true");
+  });
+
+  it("calls onToggleMainPath once on a press of Main path", () => {
+    const calls: string[] = [];
+    const { container } = render(<ViewportControls dispatch={() => undefined} mainPathOn onToggleMainPath={() => calls.push("toggle")} />);
+    fireEvent.click(within(container).getByRole("button", { name: "Main path" }));
+
+    expect(calls).toEqual(["toggle"]);
+  });
+
+  it("draws no Main path button when onToggleMainPath is missing", () => {
+    const { container } = render(<ViewportControls dispatch={() => undefined} mainPathOn />);
+
+    expect(within(container).queryByRole("button", { name: "Main path" })).toBeNull();
   });
 });
