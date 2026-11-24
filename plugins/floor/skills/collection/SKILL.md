@@ -19,7 +19,7 @@ If a page cannot be fetched, say so, and work only from the collection's files a
 ## Jobs
 
 - **Start.** Make `<line>/agents/` (or `<group>/<line>/agents/`), then write the first line with the `floor:assembly-line` skill and its agents with the `floor:prompt` skill.
-- **Group.** To keep lines apart, for example the host's from your own, move a line folder into a group folder such as `stock/` or `ours/`. The group is in no name, a line's id stays unique in the whole collection, and the order of lines does not change.
+- **Group.** To keep lines apart, for example the host's from your own, move a line folder into a group folder such as `stock/` or `ours/`. The group is in no name, a line's id stays unique in the whole collection, and the order of lines does not change. When two groups hold the same line or agent, list the groups in `floor-collection.yaml` as `groups: [stock, ours]`, and the one listed last is read. Without the list, the second folder is refused with `<name> is already set by <path>`.
 - **Lint.** Run `npx @re-cinq/floor-pipeline lint <root>`, which needs no floor and no token. For each refused file, name the rule, say plainly what it means here, and offer the fix.
 - **Apply.** Only when asked. Lint first and stop on a refusal. Say which floor `FLOOR_API_URL` names and which environment variables the files use, and get a yes before you run it. Report what changed.
 - **Export.** Write a floor's lines to files with `export`. An exported pipeline file is not yet a collection: a collection refuses its `agent_definitions` block and defines each agent in its own file, as the pipeline-file page says.

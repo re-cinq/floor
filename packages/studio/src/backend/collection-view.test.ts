@@ -184,6 +184,12 @@ describe("collectionView", () => {
     expect(collectionView(files, [])).toMatchObject({ lines: [{ id: "stock" }], refused: [{ path: "stock/flow/assembly-line.yaml", reason: "the folder stock holds a line, so it is not a group: move flow out of it" }] });
   });
 
+  it("gives the agent worker the file ours/flow/agents/worker.md when ours is listed after stock", () => {
+    const files = [{ ...FLOW_LINE, path: "ours/flow/assembly-line.yaml" }, { ...WORKER_AGENT, path: "ours/flow/agents/worker.md" }, { ...WORKER_AGENT, path: "stock/flow/agents/worker.md" }];
+
+    expect(collectionView(files, [], ["stock", "ours"])).toMatchObject({ agents: [{ name: "worker", file: "ours/flow/agents/worker.md" }], refused: [] });
+  });
+
   it("keeps a line whose id is not its folder's name, with a folder-name problem", () => {
     const files = [{ path: "other/assembly-line.yaml", text: lineYaml("flow", "worker") }, { path: "other/agents/worker.md", text: agentMarkdown("Work {ticket}.") }];
 

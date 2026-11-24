@@ -154,7 +154,7 @@ A file named `<agent>.extra.md` adds to an agent the host ships.
 1. It has no frontmatter. The whole file is text.
 2. Its text is added to the end of the shipped agent's prompt, after an empty line.
 3. The host MUST ship an agent of that name. If not, the file is refused with `an extension needs a shipped agent, and nothing ships <agent>`.
-4. An agent MUST NOT have both `<agent>.md` and `<agent>.extra.md` in one collection. The extension is refused with `<agent> is already set by <path>`.
+4. An agent MUST NOT have both `<agent>.md` and `<agent>.extra.md` in one collection. The extension is refused with `<agent> is already set by <path>`. A file in an earlier listed group is left out when a later listed group holds a file for the same agent. See [Layout](/floor/specs/collection/#1-layout).
 
 ## 5. Example
 

@@ -33,7 +33,7 @@ floor-studio [dir] [--port <n>] [--host-key <name>]... [--no-open]
 |---|---|
 | `dir` | The collection. Default: the current directory. A directory that does not exist is an error, exit 1 |
 | `--port <n>` | The port of the backend's socket on `127.0.0.1`. Default: a free one. The page's own port is always a free one |
-| `--host-key <name>` | A frontmatter key the host owns, accepted in an agent file and left out of its settings. Repeat it as often as needed. The `host_keys` of the collection's `floor-collection.yaml` count too, and are read again when that file changes |
+| `--host-key <name>` | A frontmatter key the host owns, accepted in an agent file and left out of its settings. Repeat it as often as needed. The `host_keys` of the collection's `floor-collection.yaml` count too, and are read again when that file changes. Studio reads its `groups` as well |
 | `--no-open` | Print the url and do not open a browser. Without it the studio waits 3 seconds and opens the default browser with `xdg-open`, `open` or `start`. It skips that when a page has connected by then, such as a tab left open from before a restart. Failing to open a browser is not an error |
 | `--help` | Print the usage and exit 0. A bad argument prints the usage to standard error and exits 2 |
 

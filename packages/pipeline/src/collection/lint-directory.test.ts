@@ -33,6 +33,17 @@ describe("lintCollectionDirectory", () => {
     expect(await lintCollectionDirectory(root)).toMatchObject({ refused: [], counts: { agents: 1, pipelines: 1, extensions: 0 } });
   });
 
+  it("refuses nothing when floor-collection.yaml lists groups stock then ours and both hold acme-flow", async () => {
+    const root = collectionOnDisk({
+      "floor-collection.yaml": "groups:\n  - stock\n  - ours\n",
+      "stock/acme-flow/assembly-line.yaml": PIPELINE_YAML,
+      "ours/acme-flow/assembly-line.yaml": PIPELINE_YAML,
+      "stock/acme-flow/agents/acme-worker.md": NEW_AGENT,
+    });
+
+    expect(await lintCollectionDirectory(root)).toMatchObject({ refused: [], counts: { agents: 1, pipelines: 1, extensions: 0 } });
+  });
+
   it("reads a collection named as the directory it is run in, with a path of . and of ./", async () => {
     const root = collectionOnDisk({ "acme-flow/pipeline.yaml": PIPELINE_YAML, "acme-flow/agents/acme-worker.md": NEW_AGENT });
     const startedIn = process.cwd();

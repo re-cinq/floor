@@ -18,6 +18,8 @@ export interface CollectionOverlayInput {
   env: Environment;
   /** Frontmatter keys that are the host's own: accepted in an agent file, and never in its settings. */
   hostKeys?: readonly string[];
+  /** Group folder names, in order: a name held in several of them is read from the one listed last. */
+  groups?: readonly string[];
 }
 
 export type AgentSource = "collection-new" | "replaced" | "extended";

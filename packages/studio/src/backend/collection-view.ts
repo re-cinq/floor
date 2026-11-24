@@ -1,7 +1,7 @@
 // The studio's picture of a collection: every line with its nodes, every agent, and what was refused. Pure and tolerant: a collection with problems still has a view, and nothing a person wrote makes it throw.
 import { coverageContextOf, downstreamOf, needCoverage, nodeEvents, promptPlaceholders, type CollectionLine, type NeedContext } from "@re-cinq/floor-assembly-lines";
 import type { LineNode, StationBody } from "@re-cinq/floor-contracts";
-import { attempt, collectionOverlay, lineFolderPathOf, lineLayoutOf, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type LineFile, type ShippedCatalog } from "@re-cinq/floor-pipeline";
+import { attempt, collectionOverlay, lineFolderPathOf, lineLayoutOf, withoutReplacedFiles, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type LineFile, type ShippedCatalog } from "@re-cinq/floor-pipeline";
 import type { CollectionView, LineView, NodeView, RefusedFile } from "../view.js";
 import { textVersion } from "./agent-file-text.js";
 import { agentFilesByName, agentViews, type AgentFiles } from "./agent-views.js";
@@ -21,12 +21,13 @@ interface Surroundings {
   files: readonly CollectionFile[];
 }
 
-export function collectionView(files: readonly CollectionFile[], hostKeys: readonly string[]): CollectionView {
-  const overlay = collectionOverlay({ files, shipped: NOTHING_SHIPPED, env: AS_WRITTEN, hostKeys });
-  const lineFiles = lineLayoutOf(files).read;
+export function collectionView(files: readonly CollectionFile[], hostKeys: readonly string[], groups: readonly string[] = []): CollectionView {
+  const readFiles = withoutReplacedFiles(files, groups);
+  const overlay = collectionOverlay({ files: readFiles, shipped: NOTHING_SHIPPED, env: AS_WRITTEN, hostKeys, groups });
+  const lineFiles = lineLayoutOf(readFiles).read;
   const reads = lineFiles.map((file) => attempt(file.path, () => readLine(file, file.folder, promptsOf(overlay.agents))));
   const read = reads.flatMap((result) => ("made" in result ? [result.made] : []));
-  const surroundings: Surroundings = { lines: read.map(({ id, body }) => ({ id, body })), agents: overlay.agents, agentFiles: agentFilesByName(files), files };
+  const surroundings: Surroundings = { lines: read.map(({ id, body }) => ({ id, body })), agents: overlay.agents, agentFiles: agentFilesByName(readFiles), files: readFiles };
   const views = read.map((line) => attempt(line.file, () => lineViewOf(line, surroundings)));
   const lines = views.flatMap((result) => ("made" in result ? [result.made] : []));
   const refused = refusedOf(overlay, { lineFiles, failures: [...reads, ...views] });

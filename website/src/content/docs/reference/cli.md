@@ -30,6 +30,8 @@ sidebar:
 | `--wait-ready <seconds>` | Every command but `lint` | First waits for `/readyz` to answer 200, and fails if it does not in time |
 | `--host-key <name>` | `lint`, `apply` | Names a settings key the host owns, beside the `host_keys` of the collection's `floor-collection.yaml`. Repeat it |
 
+`lint` and `apply` also read `groups` from `floor-collection.yaml`. There is no flag for it.
+
 ## Environment variables
 
 | Variable | What it holds |

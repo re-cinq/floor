@@ -45,21 +45,32 @@ my-collection/
 | `<line>/agents/<agent>.md` | An agent file |
 | `<line>/agents/<agent>.extra.md` | An extension of an agent the host ships |
 | `<group>/<line>/assembly-line.yaml`, `<group>/<line>/agents/<agent>.md`, `<group>/<line>/agents/<agent>.extra.md` | The same three files, for a line folder in a group folder |
-| `floor-collection.yaml` at the top level | The collection's settings: `host_keys`, the frontmatter keys its host owns |
+| `floor-collection.yaml` at the top level | The collection's settings: `host_keys`, the frontmatter keys its host owns, and `groups`, the order of its group folders |
 | Any other file at the top level, anything under `docs/`, `skills/` or `agent-skills/` (the host's skills), anything under a folder whose name starts with `.` | Ignored |
 | Any other `.md`, `.yml` or `.yaml` file in a line folder or a group folder | Refused |
 | Any other file in a line folder or a group folder | Ignored |
 
 1. `line.id` in `assembly-line.yaml` MUST equal the name of its own folder, the last one. A group folder is in no name. If not, the file is refused with `the folder F must hold the pipeline of that name, and its line is X`.
 2. A refused path says `a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md`. A file named `assembly-line.yml` is refused this way.
-3. An agent's id is its file name. It MUST be unique in the whole collection, not only in its folder. A second file for the same agent is refused with `<agent> is already set by <path>`.
+3. An agent's id is its file name. It MUST be unique in the whole collection, not only in its folder. A second file for the same agent is refused with `<agent> is already set by <path>`. Rule 11 settles a second file that sits in another listed group.
 4. A station MAY name an agent that another line's folder defines.
 5. A collection has no manifest and no version file.
 6. A group folder MUST NOT sit in another group folder. A line file two folders down is refused as in rule 2.
 7. The name of a line folder or a group folder MUST NOT start with `.`, and MUST NOT be `skills` or `agent-skills`. A group folder MUST NOT be named `docs`. A line folder in a group MUST NOT be named `agents`. Such a path is ignored or refused as in rule 2.
 8. A folder that holds a line file is a line folder, not a group. A line file below it is refused with `the folder G holds a line, so it is not a group: move L out of it`.
-9. A line's id MUST be unique in the whole collection. Of two line folders with the same name, the first by path owns the name and the second is refused with `<line> is already set by <path>`. The first owns the name whether or not its file can be read, so a broken file never lets another folder's copy through. Path order is the only order: `ours/triage/` comes before a top-level `triage/`, and wins over it.
+9. A line's id MUST be unique in the whole collection. Of two line folders with the same name that rule 11 does not settle, the first by path owns the name and the second is refused with `<line> is already set by <path>`. The first owns the name whether or not its file can be read, so a broken file never lets another folder's copy through. Path order is the only order here: `ours/triage/` comes before a top-level `triage/`, and wins over it.
 10. Lines are read, and applied, in the order of their names, then of their paths. Moving a line folder into a group folder does not change that order.
+11. `floor-collection.yaml` MAY hold `groups`, a list of group folder names in order. A line, or an agent, held in several listed groups is read from the group listed last. The files in the earlier groups are left out and are not refused.
+
+    ```yaml
+    groups:
+      - stock
+      - ours
+    ```
+
+    With this list, `ours/write-note/` is read and `stock/write-note/` is left out. One name is one line on the host: the two never run side by side.
+12. A group need not be listed to be read. A folder that holds a line file is not a group, listed or not, so rule 8 still refuses a line file below it. A duplicate that the list does not settle is refused as in rule 9, or as in rule 3 for an agent: two folders of which one is in an unlisted group, or a top-level line folder and a grouped one.
+13. `groups` MUST be a list of distinct folder names, each one folder and not a path. If not, the collection is refused with `floor-collection.yaml: groups is a list of distinct folder names`. A listed name with no folder is accepted.
 
 ## 2. Rules
 

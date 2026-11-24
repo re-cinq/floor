@@ -1,5 +1,6 @@
 // A collection: one folder a line, holding `assembly-line.yaml` and `agents/<agent>.md`. What the host ships and what the collection supplies, combined in memory with no floor in reach.
 import type { Pipeline } from "../shape.js";
+import { withoutReplacedFiles } from "./group-precedence.js";
 import { agentsOverlay, type CollectionOverlayInput, type OverlayAgent } from "./agents.js";
 import { pipelinesOverlay } from "./pipelines.js";
 import { isReadPath } from "./paths.js";
@@ -16,7 +17,8 @@ export interface CollectionOverlay {
   refused: Refusal[];
 }
 
-export function collectionOverlay(input: CollectionOverlayInput): CollectionOverlay {
+export function collectionOverlay(whole: CollectionOverlayInput): CollectionOverlay {
+  const input = { ...whole, files: withoutReplacedFiles(whole.files, whole.groups ?? []) };
   const agentsSet = agentsOverlay(input);
   const pipelinesSet = pipelinesOverlay(input, agentsSet.agents);
   const { agents } = agentsSet;
