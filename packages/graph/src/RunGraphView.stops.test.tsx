@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-  });
-
 import { fireEvent, screen } from "@testing-library/react";
 import RunGraphView from "./RunGraphView";
 import { implementationDefinition } from "./definition.fixtures";
