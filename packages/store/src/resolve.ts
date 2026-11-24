@@ -1,6 +1,7 @@
 // Pure resolution helpers: no query, no clock, no randomness — everything here is a function of its arguments alone.
 
-import type { AgentSettings, Item, LineBody, NeedSpec } from "./types.js";
+import { personLastActedAt, type WalkGraph } from "@re-cinq/floor-assembly-lines";
+import type { AgentSettings, Item, LineBody, NeedSpec, Visit } from "./types.js";
 
 const MAX_ERROR_CHARS = 2500;
 const MAX_PRIOR_FAILURES = 3;
@@ -31,37 +32,56 @@ export interface ResolvedNeeds {
   missing: string[];
 }
 
-/** Resolves each declared need from the bag, via `bind` when the names differ; a missing required need is named in `missing` rather than thrown, so the caller decides how strict to be. */
+interface NeedScope {
+  bind: Record<string, string> | undefined;
+  bag: Record<string, Item>;
+  producedSincePerson: ReadonlySet<string> | undefined;
+}
+
+/** Resolves each declared need from the bag, via `bind` when the names differ; a missing required need is named in `missing` rather than thrown, so the caller decides how strict to be. `producedSincePerson` holds the visit ids from the one a person last acted at; absent, every item is fresh. */
 export function resolveNeeds(
   specs: NeedSpec[],
   bind: Record<string, string> | undefined,
   bag: Record<string, Item>,
+  producedSincePerson?: ReadonlySet<string>,
 ): ResolvedNeeds {
   const result: ResolvedNeeds = { needs: {}, missing: [] };
+  const scope: NeedScope = { bind, bag, producedSincePerson };
 
   for (const spec of specs) {
-    resolveOneNeed(spec, bind, bag, result);
+    resolveOneNeed(spec, scope, result);
   }
 
   return result;
 }
 
-function resolveOneNeed(
-  spec: NeedSpec,
-  bind: Record<string, string> | undefined,
-  bag: Record<string, Item>,
-  result: ResolvedNeeds,
-): void {
-  const boundName = bind?.[spec.name] ?? spec.name;
-  const boundItem = bagGet(bag, boundName);
+function resolveOneNeed(spec: NeedSpec, scope: NeedScope, result: ResolvedNeeds): void {
+  const boundItem = bagGet(scope.bag, scope.bind?.[spec.name] ?? spec.name);
+  const isStale = isStaleFor(spec, boundItem, scope.producedSincePerson);
 
-  if (boundItem) {
+  if (boundItem && !isStale) {
     result.needs[spec.name] = flattenItem(boundItem);
 
     return;
   }
 
-  if (!spec.optional) result.missing.push(spec.name);
+  if (!spec.optional) result.missing.push(missingLabel(spec.name, boundItem));
+}
+
+/** The ids of the visits from the one a person last acted at on; undefined when nobody has acted, as everything is then fresh. */
+export function visitIdsSincePersonActed(graph: WalkGraph, visits: readonly Visit[]): ReadonlySet<string> | undefined {
+  const index = personLastActedAt(graph, visits);
+  if (index < 0) return undefined;
+
+  return new Set(visits.slice(index).map((visit) => visit.id));
+}
+
+function missingLabel(name: string, staleItem: Item | undefined): string {
+  return staleItem ? `${name} (not produced since a person last acted)` : name;
+}
+
+function isStaleFor(spec: NeedSpec, candidate: Item | undefined, producedSincePerson: ReadonlySet<string> | undefined): boolean {
+  return Boolean(spec.fresh && candidate && producedSincePerson && !producedSincePerson.has(candidate.by));
 }
 
 // A cast to Partial here, not the bag's own declared type: without noUncheckedIndexedAccess, `bag[key]` on a plain Record types as always-defined, which is not true of a bag a key may simply not be in.

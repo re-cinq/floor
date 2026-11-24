@@ -119,6 +119,8 @@ The bag is seeded from `startItems`. Every done visit's `produced` is then merge
 bag(run) = fold(startItems, visits.filter(done).map(v => v.report.produced))
 ```
 
+**A need may ask for a fresh item.** The fold never drops an item, so a need is filled by whatever was last produced under its name, however long ago. A need with `fresh: true` is filled only when the item's `by` is one of the visits from the one at which a person last acted on, that visit included: a human station's visit, or one started by hand. The kernel's `personLastActedAt` gives that visit, the same boundary an edge's `unattended_max` and the node ceiling use. Nothing is stored for it, and the bag itself is unchanged: the rule lives where a visit's needs are resolved.
+
 ## Starting a run
 
 Two doors, one `start`.

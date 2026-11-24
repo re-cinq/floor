@@ -39,6 +39,8 @@ A station lists what it takes in `needs`. A need is filled from the item of the 
 
 A later item of the same name replaces the earlier one. Nothing is removed. A need keeps the item it was given when its visit opened, even if a later visit replaces that item.
 
+So a need can be filled by an item from long ago. A need with `fresh: true` takes an item only if it was produced since a person last acted: since a `human` station reported, or a node was started by hand. An older item counts as not there.
+
 ## One run, step by step
 
 The line `write-note` starts on the event `note.requested`. Its station `write-note` needs `topic` and produces the file `note`. Its station `publish-note` needs `note` and produces `note_url`.

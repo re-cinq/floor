@@ -348,6 +348,10 @@
                   "type": "boolean",
                   "description": "The visit opens without the item when the bag does not hold it."
                 },
+                "fresh": {
+                  "type": "boolean",
+                  "description": "The need is filled only by an item produced since a person last acted: since a human station reported, or a node was started by hand. An older item counts as not there, so an optional need is left out and a required one refuses the visit."
+                },
                 "collect": {
                   "type": "string",
                   "description": "`value` needs only. The name of an item the body of a fan-out produces. The need is filled with a JSON array of what each branch produced, in branch order."

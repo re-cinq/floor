@@ -36,6 +36,7 @@ const bagItemSchema = z
     name: z.string().optional(),
     kind: z.string().optional(),
     optional: z.boolean().optional(),
+    fresh: z.boolean().optional(),
     collect: z.unknown().optional(),
   })
   .loose();

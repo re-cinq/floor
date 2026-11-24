@@ -159,13 +159,17 @@ function unattendedVisits(
   assemblyLine: WalkGraph,
   visits: readonly NodeVisit[],
 ): number {
+  return visits.length - 1 - personLastActedAt(assemblyLine, visits);
+}
+
+/** The index of the last visit at which a person acted, a human node's visit or one started by hand; -1 when nobody has. */
+export function personLastActedAt(
+  assemblyLine: WalkGraph,
+  visits: readonly Pick<NodeVisit, "nodeId" | "requestedBy">[],
+): number {
   const human = humanNodeIds(assemblyLine);
 
-  return (
-    visits.length -
-    1 -
-    visits.findLastIndex((visit) => human.has(visit.nodeId) || Boolean(visit.requestedBy))
-  );
+  return visits.findLastIndex((visit) => human.has(visit.nodeId) || Boolean(visit.requestedBy));
 }
 
 function humanNodeIds(assemblyLine: WalkGraph): Set<string> {
