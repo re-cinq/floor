@@ -53,5 +53,20 @@ describe("transcriptEntries", () => {
       { kind: "result", text: "2 turns, 1.0 s, $0.0100" },
     ]);
   });
+
+  it("keeps an earlier message with the same words as said, and points only the last copy of the final answer at the Answer", () => {
+    expect(transcriptEntries([said("Done."), said("Done."), out({ type: "result", result: "Done.", num_turns: 2, duration_ms: 1000, total_cost_usd: 0.01 })])).toEqual([
+      { kind: "said", text: "Done." },
+      { kind: "tool", text: "Final answer, shown under Answer" },
+      { kind: "result", text: "2 turns, 1.0 s, $0.0100" },
+    ]);
+  });
+
+  it("keeps the last message as said when the result event answers other words", () => {
+    expect(transcriptEntries([said("Final words."), out({ type: "result", result: "Other.", num_turns: 1, duration_ms: 1000, total_cost_usd: 0.01 })])).toEqual([
+      { kind: "said", text: "Final words." },
+      { kind: "result", text: "1 turns, 1.0 s, $0.0100" },
+    ]);
+  });
 });
 

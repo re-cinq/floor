@@ -14,11 +14,13 @@ const SUMMARY_KEYS = ["file_path", "command", "pattern", "path", "url"];
 
 const FINAL_ANSWER_POINTER: TranscriptEntry = { kind: "tool", text: "Final answer, shown under Answer" };
 
-/** The final answer the result event repeats is shown once, under Answer: its spoken copy here becomes a pointer to it. */
+/** The final answer the result event repeats is shown once, under Answer: its last spoken copy here becomes a pointer to it. */
 export function transcriptEntries(lines: readonly RunOutput[]): TranscriptEntry[] {
   const finals = new Set(lines.flatMap((line) => finalTextOf(line.text)));
+  const entries = lines.flatMap(entriesOfLine);
+  const lastCopy = entries.findLastIndex((entry) => entry.kind === "said" && finals.has(entry.text));
 
-  return lines.flatMap(entriesOfLine).map((entry) => (entry.kind === "said" && finals.has(entry.text) ? FINAL_ANSWER_POINTER : entry));
+  return entries.map((entry, index) => (index === lastCopy ? FINAL_ANSWER_POINTER : entry));
 }
 
 function finalTextOf(text: string): string[] {
