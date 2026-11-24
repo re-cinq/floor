@@ -71,6 +71,7 @@ A collection is stricter than a pipeline file on its own. `floor-pipeline lint` 
 | `undeclared-agent` | A station's `agent_definition` MUST be an agent the collection defines or the host ships. |
 | `undeclared-bag` | A station MUST have both `needs` and `produces`. Either MAY be an empty list. |
 | `unkeyed-line` | Exactly one argument MUST set `subject: true`. |
+| `unknown-key` | The line, a station and a schedule MUST NOT carry a key the floor does not know. The message names the key and where it is, such as `stations.review.produces[0]: unknown key "optional"`. A key of an agent's `config` is not checked. |
 | `unseeded-need` | A required need MUST be an argument, a line file, or something a station in the file produces. A `git` need MUST be a `git` argument. |
 | `unsupplied-input` | Every `{name}` in an agent's prompt MUST be a need or a produce of the station, or a name the floor fills. See [Placeholders](/floor/specs/placeholders/#2-prompt-placeholders). |
 | `outcome-without-edge` | Every outcome a station lists MUST have an edge from the node, or the node an `always` edge. |

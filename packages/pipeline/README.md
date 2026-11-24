@@ -117,6 +117,7 @@ A key that belongs to the host is named in the collection's `floor-collection.ya
 
 - `unseeded-need` is a need that is neither a line argument or file nor produced on every path into its node. Its message gives one path that arrives without it.
 - `unsupplied-input` is a `{name}` in an agent's prompt that the station does not give.
+- `unknown-key` is a key the floor does not know and would drop without a word, such as `optional` on a produce or a misspelt `iteration-max`. Its message names the key and where it is.
 
 What a station gives a prompt:
 

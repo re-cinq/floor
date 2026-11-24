@@ -3,9 +3,10 @@ import type { AgentPrompts } from "./agent-file.js";
 import type { CollectionOverlayInput, OverlayAgent } from "./agents.js";
 import { withEnvironment } from "./environment.js";
 import { enforce } from "./enforce.js";
-import { pipelineProblems } from "./lint-rules.js";
+import { pipelineProblems, type PipelineProblem } from "./lint-rules.js";
 import { lineLayoutOf, type LineFile } from "./line-layout.js";
 import { attempt } from "./refusal.js";
+import { unknownKeys } from "./unknown-keys.js";
 import { readPipelineFile } from "../file.js";
 import { pipelineOf, type Pipeline } from "../shape.js";
 
@@ -22,17 +23,17 @@ export function pipelinesOverlay(input: CollectionOverlayInput, collectionAgents
 function pipelineOfFile(file: LineFile, { shipped, env }: CollectionOverlayInput, collectionAgents: ReadonlyMap<string, OverlayAgent>): Pipeline {
   const filled = withEnvironment(file.text, env);
 
-  enforceNoProblems(filled, promptsOf(shipped.agents, collectionAgents));
+  enforceNoProblems(pipelineProblems(filled, promptsOf(shipped.agents, collectionAgents)));
   const pipeline = pipelineOf(readPipelineFile(filled));
+
+  enforceNoProblems(unknownKeys(pipeline));
 
   enforce(pipeline.line?.id === file.folder, `the folder ${file.folder} must hold the pipeline of that name, and its line is ${pipeline.line?.id}`);
 
   return pipeline;
 }
 
-function enforceNoProblems(yamlText: string, prompts: AgentPrompts): void {
-  const problems = pipelineProblems(yamlText, prompts);
-
+function enforceNoProblems(problems: PipelineProblem[]): void {
   enforce(problems.length === 0, problems.map((problem) => problem.detail).join("; "));
 }
 

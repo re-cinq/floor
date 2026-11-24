@@ -190,6 +190,15 @@ describe("collectionOverlay", () => {
     })).toEqual({ lines: ["code-review"], refused: [] });
   });
 
+  it("refuses code-review/assembly-line.yaml for optional on a produce, and imports no line", () => {
+    const withOptional = pipelineYaml("code-review", "reviewer").replace("    produces: []\n", "    produces:\n      - name: report\n        kind: file\n        path: report.md\n        optional: true\n");
+
+    expect(linesAndRefusalsOf({ "code-review/assembly-line.yaml": withOptional })).toEqual({
+      lines: [],
+      refused: [{ path: "code-review/assembly-line.yaml", reason: 'stations.work.produces[0]: unknown key "optional"' }],
+    });
+  });
+
   it("refuses code-review/pipeline.yml and code-review/agent/reviewer.md, naming the paths a collection reads", () => {
     const overlay = overlayOf({
       "code-review/pipeline.yml": pipelineYaml("code-review", "reviewer"),

@@ -15,6 +15,7 @@ export const PIPELINE_RULES = [
   "undeclared-outcome",
   "unbounded-retry",
   "unkeyed-line",
+  "unknown-key",
   "unreachable",
   "unseeded-need",
   "unsupplied-input",
