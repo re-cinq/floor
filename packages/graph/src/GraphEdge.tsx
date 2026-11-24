@@ -15,21 +15,20 @@ export interface GraphEdgeProps {
   emphasis: EdgeEmphasis;
   /** Outside the hovered node's neighbourhood. */
   dimmed?: boolean;
+  /** The line the inspector shows. */
+  selected?: boolean;
+  onSelectLine?: (key: string) => void;
 }
 
-export default function GraphEdge({ edge, model, emphasis, dimmed }: GraphEdgeProps) {
+export default function GraphEdge(props: GraphEdgeProps) {
+  const { edge, model, emphasis, dimmed, selected, onSelectLine } = props;
   const tone = model?.tone ?? "neutral";
 
   return (
-    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} data-dim={dimmed || undefined}>
+    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} data-dim={dimmed || undefined} data-selected={selected || undefined} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
+      <path data-hit className={styles.edgeHit} d={edge.d} />
       <path
-        className={classes(
-          styles.edge,
-          styles[edge.kind],
-          edgeStrokeClass(tone),
-          emphasis === "outgoing" ? styles.outgoing : undefined,
-          emphasis === "other" ? styles.dim : undefined,
-        )}
+        className={pathClassOf(edge, tone, emphasis)}
         d={edge.d}
         markerEnd={ARROW_MARKER_URL}
       />
@@ -37,14 +36,26 @@ export default function GraphEdge({ edge, model, emphasis, dimmed }: GraphEdgePr
   );
 }
 
+function pathClassOf(edge: LaidOutEdge, tone: VisibleEdge["tone"], emphasis: EdgeEmphasis) {
+  return classes(
+    styles.edge,
+    styles[edge.kind],
+    edgeStrokeClass(tone),
+    emphasis === "outgoing" ? styles.outgoing : undefined,
+    emphasis === "other" ? styles.dim : undefined,
+  );
+}
+
 /** Drawn after the nodes, so a label in the narrow air between two columns is not hidden behind them. */
-export function EdgeLabel({ edge, model, emphasis, dimmed }: GraphEdgeProps) {
+export function EdgeLabel({ edge, model, emphasis, dimmed, selected, onSelectLine }: GraphEdgeProps) {
   if (!model) return null;
 
   return (
     <text
       data-edge-label={edgeKeyOf(edge)}
       data-dim={dimmed || undefined}
+      data-selected={selected || undefined}
+      onClick={() => onSelectLine?.(edgeKeyOf(edge))}
       className={classes(styles.edgeLabel, textFillClass(model.tone), emphasis === "other" ? styles.dim : undefined)}
       x={edge.mid.x}
       y={edge.mid.y}
