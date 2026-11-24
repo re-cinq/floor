@@ -1,6 +1,6 @@
 import type { AgentFileSettings } from "./agent-file.js";
 import type { OverlayAgent, ShippedCatalog } from "./agents.js";
-import type { CollectionOverlay } from "./collection.js";
+import { collectionOverlay, type CollectionOverlay } from "./collection.js";
 
 export const SHIPPED_REVIEWER: AgentFileSettings = { image: "agent:1", timeout_minutes: 30, prompt: "Review the diff." };
 
@@ -61,4 +61,20 @@ function stationYaml(agent: string): string {
 
 export function agentNamed(overlay: CollectionOverlay, name: string): OverlayAgent | undefined {
   return overlay.agents.get(name);
+}
+
+const ENV = { ACME_IMAGE: "acme/agent:7" };
+
+export function overlayOf(files: Record<string, string>): CollectionOverlay {
+  return collectionOverlay({
+    files: Object.entries(files).map(([path, text]) => ({ path, text })),
+    shipped: SHIPPED,
+    env: ENV,
+  });
+}
+
+export function linesAndRefusalsOf(files: Record<string, string>) {
+  const overlay = overlayOf(files);
+
+  return { lines: overlay.pipelines.map((pipeline) => pipeline.line?.id), refused: overlay.refused };
 }

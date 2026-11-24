@@ -1,16 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectionOverlay } from "./collection.js";
-import { SHIPPED, SHIPPED_REVIEWER, TRIAGE_AGENT, agentNamed, pipelineYaml } from "./collection.fixtures.js";
-
-const ENV = { ACME_IMAGE: "acme/agent:7" };
-
-function overlayOf(files: Record<string, string>) {
-  return collectionOverlay({
-    files: Object.entries(files).map(([path, text]) => ({ path, text })),
-    shipped: SHIPPED,
-    env: ENV,
-  });
-}
+import { SHIPPED_REVIEWER, TRIAGE_AGENT, agentNamed, linesAndRefusalsOf, overlayOf, pipelineYaml } from "./collection.fixtures.js";
 
 describe("collectionOverlay", () => {
   it("appends an extension file to the shipped prompt of its agent", () => {
@@ -196,14 +185,9 @@ describe("collectionOverlay", () => {
   });
 
   it("imports code-review/pipeline.yaml as the collection's version of the shipped line code-review", () => {
-    const overlay = overlayOf({
+    expect(linesAndRefusalsOf({
       "code-review/pipeline.yaml": pipelineYaml("code-review", "reviewer"),
-    });
-
-    expect({
-      lines: overlay.pipelines.map((pipeline) => pipeline.line?.id),
-      refused: overlay.refused,
-    }).toEqual({ lines: ["code-review"], refused: [] });
+    })).toEqual({ lines: ["code-review"], refused: [] });
   });
 
   it("refuses code-review/pipeline.yml and code-review/agent/reviewer.md, naming the paths a collection reads", () => {

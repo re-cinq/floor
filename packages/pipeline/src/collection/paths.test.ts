@@ -3,6 +3,7 @@ import {
   agentFileOf,
   isCollectionFile,
   isReadPath,
+  lineFilePlaceOf,
   lineFolderPathOf,
   pipelineFolderOf,
 } from "./paths.js";
@@ -43,6 +44,18 @@ describe("lineFolderPathOf", () => {
     ["stock/ours/code-review/assembly-line.yaml", undefined],
   ])("reads the folder of %s as %s", (path, folderPath) => {
     expect(lineFolderPathOf(path)).toEqual(folderPath);
+  });
+});
+
+describe("lineFilePlaceOf", () => {
+  it.each([
+    ["stock/code-review/assembly-line.yaml", { folder: "code-review", folderPath: "stock/code-review", group: "stock" }],
+    ["code-review/assembly-line.yaml", { folder: "code-review", folderPath: "code-review", group: undefined }],
+    ["ours/code-review/pipeline.yaml", { folder: "code-review", folderPath: "ours/code-review", group: "ours" }],
+    ["stock/code-review/agents/reviewer.md", undefined],
+    ["stock/ours/code-review/assembly-line.yaml", undefined],
+  ])("reads %s as %o", (path, place) => {
+    expect(lineFilePlaceOf(path)).toEqual(place);
   });
 });
 
