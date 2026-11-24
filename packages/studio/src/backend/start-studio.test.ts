@@ -48,6 +48,15 @@ describe("startStudio", () => {
     expect(await client.nextOfType("result")).toMatchObject({ result: { environment: [{ name: "LORE_AGENT_IMAGE", files: ["flow/agents/worker.md"] }] } });
   });
 
+  it("answers collection.read with 1 agent and 0 refused when floor-collection.yaml names review_required, which worker.md writes, a host key", async () => {
+    const workerText = "---\nreview_required: false\nimage: acme/agent:2\ntimeout_minutes: 10\n---\nWork {ticket}.\n";
+    const { client } = await connectedTo([WORKER_COLLECTION[0], { path: "flow/agents/worker.md", text: workerText }, { path: "floor-collection.yaml", text: "host_keys: [review_required]\n" }]);
+
+    client.send({ id: "r1", type: "collection.read" });
+
+    expect(await client.nextOfType("result")).toMatchObject({ result: { counts: { agents: 1, refused: 0 } } });
+  });
+
   it("names the collection's folder in the view it answers with", async () => {
     const { dir, client } = await connectedToWorkerCollection();
 

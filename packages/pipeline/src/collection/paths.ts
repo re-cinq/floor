@@ -1,5 +1,8 @@
 // The layout of a collection: `<line>/assembly-line.yaml`, `<line>/agents/<agent>.md` and `<line>/agents/<agent>.extra.md`. A line folder written before the file was renamed holds `pipeline.yaml`, which is read as the same thing.
-const FOLDER = String.raw`(?!\.\.?\/)[^/]+`;
+/** The host's own top folders: the skills it serves its agents, not lines. */
+const HOST_FOLDERS = ["skills", "agent-skills"];
+
+const FOLDER = String.raw`(?!\.\.?\/)(?!(?:${HOST_FOLDERS.join("|")})\/)[^/]+`;
 const PIPELINE_FILE = new RegExp(String.raw`^(${FOLDER})\/(assembly-line|pipeline)\.yaml$`);
 
 /** The name a line's file has. */
@@ -26,8 +29,8 @@ export function agentFileOf(path: string): { agent: string; isExtension: boolean
   return match ? { agent: match[1], isExtension: Boolean(match[2]) } : undefined;
 }
 
-/** A markdown or YAML file inside a line folder: read, or refused as a path a collection does not read. A file at the top, under `docs/` or under a dot folder is not the collection's. */
-const LINE_FOLDER_FILE = /^(?!docs\/)[^./][^/]*\/.+\.(md|ya?ml)$/;
+/** A markdown or YAML file inside a line folder: read, or refused as a path a collection does not read. A file at the top, under `docs/`, under a host folder or under a dot folder is not the collection's. */
+const LINE_FOLDER_FILE = new RegExp(String.raw`^(?!(?:docs|${HOST_FOLDERS.join("|")})\/)[^./][^/]*\/.+\.(md|ya?ml)$`);
 
 export function isCollectionFile(path: string): boolean {
   return LINE_FOLDER_FILE.test(path);

@@ -21,7 +21,7 @@ node packages/studio/dist/cli.js path/to/collection
 |---|---|
 | `dir` | the collection. Default: the current directory |
 | `--port <n>` | the backend's socket port on `127.0.0.1`. Default: a free one |
-| `--host-key <name>` | a frontmatter key the host owns. Repeatable |
+| `--host-key <name>` | a frontmatter key the host owns. Repeatable. The collection's `floor-collection.yaml` can name them instead |
 | `--no-open` | print the url only. Otherwise the browser opens after 3 seconds, unless a page has already connected |
 
 Exit codes: 0 on `--help`, 1 for a directory that does not exist, 2 for a bad argument.

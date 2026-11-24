@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { basename, join, resolve } from "node:path";
 import type { Duplex } from "node:stream";
 import { enforce } from "@re-cinq/floor-assembly-lines";
-import { collectionFilesIn, readAgentFile } from "@re-cinq/floor-pipeline";
+import { collectionFilesIn, hostKeysIn, readAgentFile } from "@re-cinq/floor-pipeline";
 import { WebSocket, WebSocketServer } from "ws";
 import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
@@ -53,14 +53,15 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   enforce((await stat(dir).catch(() => undefined))?.isDirectory(), `${dir} is not a directory`);
   const token = randomBytes(TOKEN_BYTES).toString("hex");
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
-  const readCollection = () => collectionRead(dir, hostKeys);
+  const allHostKeys = async () => [...hostKeys, ...(await hostKeysIn(dir))];
+  const readCollection = async () => collectionRead(dir, await allHostKeys());
 
   const writeAgent = async (file: string, edit: AgentEdit) => {
     const path = join(dir, file);
 
     const text = editedAgentText(file, await readFile(path, "utf8"), edit);
 
-    readAgentFile(basename(file, ".md"), text, hostKeys);
+    readAgentFile(basename(file, ".md"), text, await allHostKeys());
     await writeFile(path, text);
   };
 

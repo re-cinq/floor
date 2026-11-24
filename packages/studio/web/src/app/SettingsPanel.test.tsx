@@ -85,6 +85,14 @@ describe("Inspector Settings panel", () => {
     await waitFor(() => expect(saved()?.image).toBe("acme/agent:3"));
   });
 
+  it("saves image '${LORE_AGENT_IMAGE}' when Override on '${LORE_AGENT_IMAGE}' is saved with nothing typed", async () => {
+    const saved = await openReviewerSettings("Pod", { image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
+    await userEvent.click(screen.getByRole("button", { name: "Override" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() => expect(saved()?.image).toBe("${LORE_AGENT_IMAGE}"));
+  });
+
   it("restores the chip env: LORE_AGENT_IMAGE when Use env: LORE_AGENT_IMAGE is pressed after Override on '${LORE_AGENT_IMAGE}'", async () => {
     await openReviewerSettings("Pod", { image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
     await userEvent.click(screen.getByRole("button", { name: "Override" }));

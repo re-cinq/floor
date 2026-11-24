@@ -197,4 +197,12 @@ describe("Inspector Settings panel config form", () => {
       chosen: "tdd-start",
     });
   });
+
+  it("saves config skills_source '${LORE_SKILLS_URL}' when Override on it is saved with nothing typed", async () => {
+    const saved = await openReviewerSettings("Tools", { image: "acme/agent:2", config: { skills_source: "${LORE_SKILLS_URL}" } });
+    await userEvent.click(screen.getByRole("button", { name: "Override" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() => expect(saved()?.config).toEqual({ skills_source: "${LORE_SKILLS_URL}" }));
+  });
 });

@@ -8,6 +8,8 @@ describe("pipelineFolderOf", () => {
     ["code-review/pipeline.yml", undefined],
     ["pipeline.yaml", undefined],
     ["code-review/agents/pipeline.yaml", undefined],
+    ["skills/assembly-line.yaml", undefined],
+    ["agent-skills/assembly-line.yaml", undefined],
   ])("returns %s for the path %s", (path, folder) => {
     expect(pipelineFolderOf(path)).toEqual(folder);
   });
@@ -35,6 +37,8 @@ describe("isCollectionFile", () => {
     ["docs/guide.md", false],
     [".github/workflows/lint.yml", false],
     ["code-review/image.png", false],
+    ["skills/tdd-start.md", false],
+    ["agent-skills/skills/tdd-loop/SKILL.md", false],
   ])("answers %s for the path %s", (path, expected) => {
     expect(isCollectionFile(path)).toEqual(expected);
   });

@@ -1,5 +1,6 @@
 import { parse, stringify } from "yaml";
 import { draftRules, type Draft } from "./draft-rules";
+import { envPlaceholder } from "./env-placeholder";
 
 export type Settings = Record<string, unknown>;
 
@@ -40,9 +41,23 @@ export function typedSettings(original: Settings, edited: Settings): Settings {
 }
 
 function typedSetting(original: unknown, text: unknown): unknown {
+  if (isEmptyOverride(original, text)) return original;
   if (typeof original === "number") return Number(text);
 
-  return isNested(original) && typeof text === "string" ? parseNested(text) : text;
+  return isNested(original) && typeof text === "string" ? withEnvKept(original, parseNested(text)) : text;
+}
+
+/** The `${NAME}` keys of the original config that the edit left empty, put back. */
+function withEnvKept(original: unknown, parsed: unknown): unknown {
+  if (!isNested(parsed)) return parsed;
+  const kept = Object.entries(original as Settings).filter(([key, value]) => !(key in (parsed as Settings)) && envPlaceholder(String(value)) !== undefined);
+
+  return { ...Object.fromEntries(kept), ...(parsed as Settings) };
+}
+
+/** An override left empty is no override: the setting keeps the `${NAME}` it had. */
+function isEmptyOverride(original: unknown, text: unknown): boolean {
+  return text === "" && envPlaceholder(String(original)) !== undefined;
 }
 
 export function parseNested(text: string): unknown {

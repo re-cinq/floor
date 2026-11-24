@@ -29,7 +29,7 @@ floor-studio [dir] [--port <n>] [--host-key <name>]... [--no-open]
 |---|---|
 | `dir` | the collection. Default: the current directory. A directory that does not exist is an error, exit 1 |
 | `--port <n>` | the port of the backend's socket on `127.0.0.1`. Default: a free one. The page's own port is always a free one |
-| `--host-key <name>` | a frontmatter key the host owns, accepted in an agent file and left out of its settings. As often as needed |
+| `--host-key <name>` | a frontmatter key the host owns, accepted in an agent file and left out of its settings. As often as needed. The `host_keys` of the collection's `floor-collection.yaml` count too, read again when that file changes |
 | `--no-open` | print the url and do not open a browser. Without it the studio waits 3 seconds and opens the default browser with `xdg-open`, `open` or `start`, unless a page has connected by then, such as a tab left open from before a restart; failing to open one is not an error |
 | `--help` | print the usage and exit 0. A bad argument prints the usage to standard error and exits 2 |
 
@@ -92,7 +92,7 @@ The need values are saved in `.floor-studio/fixtures/<line>/<node>.json` and eac
 
 ### The environment
 
-The sidebar lists the variables the settings name as `${NAME}`, with the files using each. A setting written that way shows as a chip, `env: NAME`; the studio does not fill it. The install that applies the collection fills it in once, and applying fails when it is not set. In Lore it is set on lore-api by its Helm chart, or in `.env.local` when Lore runs locally.
+The sidebar lists the variables the settings name as `${NAME}`, with the files using each. A setting written that way shows as a chip, `env: NAME`; the studio does not fill it. Override opens the field to type a value in its place; saved with nothing typed, the setting keeps its `${NAME}`. The install that applies the collection fills it in once, and applying fails when it is not set. In Lore it is set on lore-api by its Helm chart, or in `.env.local` when Lore runs locally.
 
 ## Use the backend on its own
 

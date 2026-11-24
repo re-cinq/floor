@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { pipelineYaml } from "./collection.fixtures.js";
-import { lintCollectionDirectory, lintCommand, printCollectionLint, shippedCatalogIn } from "./lint-directory.js";
+import { hostKeysIn, lintCollectionDirectory, lintCommand, printCollectionLint, readCollectionDirectory, shippedCatalogIn } from "./lint-directory.js";
 
 const PIPELINE_YAML = pipelineYaml("acme-flow", "acme-worker");
 
@@ -225,5 +225,36 @@ describe("lintCommand", () => {
     const code = await lintCommand({ directory, hostKeys: ["execution_mode"], shippedDirectory }, USAGE, writers);
 
     expect({ code, out }).toEqual({ code: 0, out: ["collection ok: 1 agents, 0 pipelines, 1 extensions"] });
+  });
+});
+
+describe("hostKeysIn", () => {
+  it.each<{ files: Record<string, string>; hostKeys: string[] }>([
+    { files: { "floor-collection.yaml": "host_keys: [execution_mode, review_required]\n" }, hostKeys: ["execution_mode", "review_required"] },
+    { files: {}, hostKeys: [] },
+    { files: { "floor-collection.yaml": "# nothing set\n" }, hostKeys: [] },
+  ])("answers $hostKeys for a collection holding $files", async ({ files, hostKeys }) => {
+    expect(await hostKeysIn(collectionOnDisk(files))).toEqual(hostKeys);
+  });
+
+  it("refuses floor-collection.yaml whose host_keys is the text execution_mode", async () => {
+    await expect(hostKeysIn(collectionOnDisk({ "floor-collection.yaml": "host_keys: execution_mode\n" }))).rejects.toThrow(new Error("floor-collection.yaml: host_keys is a list of names"));
+  });
+});
+
+describe("lintCommand with floor-collection.yaml", () => {
+  it("prints collection ok for an agent writing review_required when floor-collection.yaml names it a host key", async () => {
+    const root = collectionOnDisk({ "floor-collection.yaml": "host_keys: [review_required]\n", "acme-flow/pipeline.yaml": PIPELINE_YAML, "acme-flow/agents/acme-worker.md": NEW_AGENT.replace("---\nimage", "---\nreview_required: false\nimage") });
+    const output = collected();
+
+    expect(await lintCommand({ directory: root, hostKeys: [] }, "usage", { out: output.out, err: output.out })).toEqual(0);
+  });
+});
+
+describe("readCollectionDirectory with floor-collection.yaml", () => {
+  it("refuses nothing for an agent writing execution_mode when floor-collection.yaml names it a host key and none is given", async () => {
+    const root = collectionOnDisk({ "floor-collection.yaml": "host_keys: [execution_mode]\n", "acme-flow/pipeline.yaml": PIPELINE_YAML, "acme-flow/agents/acme-worker.md": NEW_AGENT.replace("---\nimage", "---\nexecution_mode: pod\nimage") });
+
+    expect(await readCollectionDirectory(root, { hostKeys: [], env: {} })).toMatchObject({ refused: [] });
   });
 });

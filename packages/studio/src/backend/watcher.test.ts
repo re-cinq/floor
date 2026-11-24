@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 describe("isWatchedPath", () => {
-  it.each(["flow/assembly-line.yaml", "flow/pipeline.yaml", "flow/agents/worker.md", "flow/agents/worker.extra.md"])("watches %s, a path the collection reads", (path) => {
+  it.each(["flow/assembly-line.yaml", "flow/pipeline.yaml", "flow/agents/worker.md", "flow/agents/worker.extra.md", "floor-collection.yaml"])("watches %s, a path the collection reads", (path) => {
     expect(isWatchedPath(path)).toBe(true);
   });
 

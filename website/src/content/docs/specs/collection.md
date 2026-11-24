@@ -30,7 +30,8 @@ my-collection/
 | `<line>/assembly-line.yaml` | The line's pipeline file |
 | `<line>/agents/<agent>.md` | An agent file |
 | `<line>/agents/<agent>.extra.md` | An extension of an agent the host ships |
-| A file at the top level, anything under `docs/`, anything under a folder whose name starts with `.` | Ignored |
+| `floor-collection.yaml` at the top level | The collection's settings: `host_keys`, the frontmatter keys its host owns |
+| Any other file at the top level, anything under `docs/`, `skills/` or `agent-skills/` (the host's skills), anything under a folder whose name starts with `.` | Ignored |
 | Any other `.md`, `.yml` or `.yaml` file in a line folder | Refused |
 | Any other file in a line folder | Ignored |
 
