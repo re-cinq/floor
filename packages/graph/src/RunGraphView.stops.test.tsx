@@ -23,4 +23,21 @@ describe("RunGraphView with compactStops", () => {
       review: { shape: "card" },
     });
   });
+
+  it("keeps push a card when compactStops is not set", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} />);
+
+    expect(nodeEl(container, "push").getAttribute("data-shape")).toEqual("card");
+  });
+
+  it("keeps the aria-label, ports and selection on a stop", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} compactStops selectedNodeId="push" />);
+    const push = nodeEl(container, "push");
+
+    expect({
+      label: Boolean(push.getAttribute("aria-label")),
+      selected: push.getAttribute("data-selected"),
+      ports: push.querySelectorAll("[data-port]").length > 0,
+    }).toEqual({ label: true, selected: "true", ports: true });
+  });
 });
