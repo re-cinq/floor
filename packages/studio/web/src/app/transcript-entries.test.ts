@@ -68,5 +68,13 @@ describe("transcriptEntries", () => {
       { kind: "result", text: "1 turns, 1.0 s, $0.0100" },
     ]);
   });
+
+  it("replaces nothing when the last message, More., is not the final answer Done.", () => {
+    expect(transcriptEntries([said("Done."), said("More."), out({ type: "result", result: "Done.", num_turns: 2, duration_ms: 1000, total_cost_usd: 0.01 })])).toEqual([
+      { kind: "said", text: "Done." },
+      { kind: "said", text: "More." },
+      { kind: "result", text: "2 turns, 1.0 s, $0.0100" },
+    ]);
+  });
 });
 
