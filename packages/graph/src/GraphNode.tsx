@@ -35,6 +35,10 @@ export interface GraphNodeProps {
   added?: boolean;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
+  /** Whether the run came here (undefined without a run). */
+  visited?: boolean;
+  /** How the run's last closed visit here ended. */
+  outcome?: string;
   /** The keyboard cursor: told when this node takes focus, and given its keys. */
   keyboard?: Pick<KeyboardCursor, "onFocusNode" | "onKeyDown">;
   /** The tone of each out-port's line, by edge key; a port with no line draws neutral. */
@@ -47,38 +51,82 @@ const GLYPH_INSET = 11;
 const NO_TONES: ReadonlyMap<string, ConnectorTone> = new Map();
 
 export default function GraphNode(props: GraphNodeProps) {
-  const { node, model, height, isTerminal, selected = false, isUnreachable, onSelect } = props;
+  const { node, model, height, selected = false, isUnreachable } = props;
   const family = typeFamilyOf(model.type);
   const shape = shapeOf(family, props);
   const BODY = BODY_BY_SHAPE[shape];
 
   return (
     <g
-      className={classes(styles.node, FAMILY_CLASS[family], selected ? styles.selected : undefined)}
-      data-node={node.id}
-      data-family={family}
-      data-shape={shape}
-      data-selected={selected || undefined}
-      data-unreachable={isUnreachable || undefined}
-      data-off-path={props.offPath || undefined}
-      {...changeAttrOf(props)}
-      {...neighbourhoodAttrs(node.id, props)}
-      aria-label={nodeAriaLabel({ node: model, isTerminal, isUnreachable })}
-      aria-describedby={props.describedBy}
-      {...interactionAttrs({ nodeId: node.id, onSelect, selected, keyboard: props.keyboard })}
+      className={classes(
+        styles.node,
+        FAMILY_CLASS[family],
+        selected ? styles.selected : undefined,
+      )}
+      {...stationAttrsOf(props, family, shape)}
     >
-      <BODY node={node} family={family} height={height} isUnreachable={isUnreachable} />
-      <NodeBadges badges={badgesOf(model)} rightEdge={node.x + node.width / 2} top={node.y - height / 2} />
+      <BODY
+        node={node}
+        family={family}
+        height={height}
+        isUnreachable={isUnreachable}
+      />
+      <NodeBadges
+        badges={badgesOf(model)}
+        rightEdge={node.x + node.width / 2}
+        top={node.y - height / 2}
+      />
       <NodePorts ports={node.ports} toneByEdge={props.toneByEdge} />
     </g>
   );
+}
+
+function stationAttrsOf(
+  props: GraphNodeProps,
+  family: ReturnType<typeof typeFamilyOf>,
+  shape: ReturnType<typeof shapeOf>,
+) {
+  const { node, model, isTerminal, selected = false, isUnreachable } = props;
+
+  return {
+    "data-node": node.id,
+    "data-family": family,
+    "data-shape": shape,
+    "data-selected": selected || undefined,
+    "data-unreachable": isUnreachable || undefined,
+    "data-off-path": props.offPath || undefined,
+    ...runAttrsOf(props),
+    ...changeAttrOf(props),
+    ...neighbourhoodAttrs(node.id, props),
+    "aria-label": nodeAriaLabel({ node: model, isTerminal, isUnreachable }),
+    "aria-describedby": props.describedBy,
+    ...interactionAttrs({
+      nodeId: node.id,
+      onSelect: props.onSelect,
+      selected,
+      keyboard: props.keyboard,
+    }),
+  };
+}
+
+function runAttrsOf({
+  visited,
+  outcome,
+}: Pick<GraphNodeProps, "visited" | "outcome">) {
+  return {
+    "data-visited": visited === false ? "false" : undefined,
+    "data-outcome": outcome,
+  };
 }
 
 function changeAttrOf({ added }: Pick<GraphNodeProps, "added">) {
   return { "data-change": added ? "added" : undefined };
 }
 
-function shapeOf(family: ReturnType<typeof typeFamilyOf>, { isStop }: GraphNodeProps) {
+function shapeOf(
+  family: ReturnType<typeof typeFamilyOf>,
+  { isStop }: GraphNodeProps,
+) {
   if (family === "marker") {
     return "terminal";
   }
@@ -98,9 +146,25 @@ function CardBody({ node, family, height, isUnreachable }: NodeBodyProps) {
 
   return (
     <>
-      <NodeBox leftEdge={leftEdge} top={top} width={width} height={height} isUnreachable={isUnreachable} />
-      <TypeGlyph family={family} cx={leftEdge + GLYPH_INSET} cy={top + GLYPH_INSET} />
-      <NodeTitle title={nodeTitle(node.id)} kind={family} isUnreachable={isUnreachable} centerX={node.x} centerY={node.y} />
+      <NodeBox
+        leftEdge={leftEdge}
+        top={top}
+        width={width}
+        height={height}
+        isUnreachable={isUnreachable}
+      />
+      <TypeGlyph
+        family={family}
+        cx={leftEdge + GLYPH_INSET}
+        cy={top + GLYPH_INSET}
+      />
+      <NodeTitle
+        title={nodeTitle(node.id)}
+        kind={family}
+        isUnreachable={isUnreachable}
+        centerX={node.x}
+        centerY={node.y}
+      />
     </>
   );
 }
@@ -110,7 +174,12 @@ function TerminalBody({ node }: NodeBodyProps) {
     <>
       <circle className={styles.terminalRing} cx={node.x} cy={node.y} r={11} />
       <circle className={styles.terminalCore} cx={node.x} cy={node.y} r={5} />
-      <text className={styles.nodeId} x={node.x} y={node.y + 24} textAnchor="middle">
+      <text
+        className={styles.nodeId}
+        x={node.x}
+        y={node.y + 24}
+        textAnchor="middle"
+      >
         {nodeTitle(node.id)}
       </text>
     </>
@@ -127,20 +196,41 @@ function StopBody({ node, family, height }: NodeBodyProps) {
 
   return (
     <>
-      <circle className={styles.stopCircle} cx={node.x} cy={cy} r={STOP_RADIUS} />
+      <circle
+        className={styles.stopCircle}
+        cx={node.x}
+        cy={cy}
+        r={STOP_RADIUS}
+      />
       <TypeGlyph family={family} cx={node.x} cy={cy} />
-      <text className={styles.stopTitle} x={node.x} y={cy + STOP_TITLE_DROP} textAnchor="middle">
+      <text
+        className={styles.stopTitle}
+        x={node.x}
+        y={cy + STOP_TITLE_DROP}
+        textAnchor="middle"
+      >
         {nodeTitle(node.id)}
       </text>
     </>
   );
 }
 
-const BODY_BY_SHAPE = { card: CardBody, terminal: TerminalBody, stop: StopBody };
+const BODY_BY_SHAPE = {
+  card: CardBody,
+  terminal: TerminalBody,
+  stop: StopBody,
+};
 
-function NodePorts({ ports, toneByEdge = NO_TONES }: { ports: LaidOutNode["ports"]; toneByEdge?: ReadonlyMap<string, ConnectorTone> }) {
+function NodePorts({
+  ports,
+  toneByEdge = NO_TONES,
+}: {
+  ports: LaidOutNode["ports"];
+  toneByEdge?: ReadonlyMap<string, ConnectorTone>;
+}) {
   return ports.map((port) => {
-    const tone = port.side === "in" ? "in" : (toneByEdge.get(port.edge) ?? "neutral");
+    const tone =
+      port.side === "in" ? "in" : (toneByEdge.get(port.edge) ?? "neutral");
 
     return (
       <circle
@@ -158,11 +248,18 @@ function NodePorts({ ports, toneByEdge = NO_TONES }: { ports: LaidOutNode["ports
 
 /** The box's top-left, from the layout's CENTRE point. The layout places node centres so edges can aim at them; SVG rects are drawn from a corner. */
 function boxOf(node: GraphNodeProps["node"], height: number) {
-  return { top: node.y - height / 2, leftEdge: node.x - node.width / 2, width: node.width };
+  return {
+    top: node.y - height / 2,
+    leftEdge: node.x - node.width / 2,
+    width: node.width,
+  };
 }
 
 /** Marks the node dimmed, and reports pointer and focus entering and leaving it so the graph can light its neighbourhood. */
-function neighbourhoodAttrs(nodeId: string, { dimmed, onHover, keyboard }: GraphNodeProps) {
+function neighbourhoodAttrs(
+  nodeId: string,
+  { dimmed, onHover, keyboard }: GraphNodeProps,
+) {
   return {
     "data-dim": dimmed || undefined,
     onPointerEnter: () => onHover?.(nodeId),
@@ -183,7 +280,12 @@ interface InteractionInput {
 }
 
 /** How the group answers a click or a key, and whether it is the pressed one; a node with no handler claims neither. */
-function interactionAttrs({ nodeId, onSelect, selected, keyboard }: InteractionInput) {
+function interactionAttrs({
+  nodeId,
+  onSelect,
+  selected,
+  keyboard,
+}: InteractionInput) {
   if (!onSelect) {
     return { role: "group" as const };
   }
@@ -223,10 +325,19 @@ interface NodeBoxProps {
   isUnreachable?: boolean;
 }
 
-function NodeBox({ leftEdge, top, width, height, isUnreachable }: NodeBoxProps) {
+function NodeBox({
+  leftEdge,
+  top,
+  width,
+  height,
+  isUnreachable,
+}: NodeBoxProps) {
   return (
     <rect
-      className={classes(styles.box, isUnreachable ? styles.boxUnreachable : undefined)}
+      className={classes(
+        styles.box,
+        isUnreachable ? styles.boxUnreachable : undefined,
+      )}
       x={leftEdge}
       y={top}
       width={width}

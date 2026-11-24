@@ -412,3 +412,18 @@ text[data-selected="true"] {
   opacity: 0.3;
   transition: opacity 150ms;
 }
+
+[data-visited="false"] {
+  opacity: 0.4;
+  transition: opacity 150ms;
+}
+
+[data-outcome="success"] .box {
+  stroke: var(--success);
+  stroke-width: 2.5;
+}
+
+[data-outcome="failed"] .box {
+  stroke: var(--danger);
+  stroke-width: 2.5;
+}

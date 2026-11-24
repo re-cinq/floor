@@ -2,6 +2,7 @@ import type { LaidOutEdge, LaidOutNode } from "./elk-layout";
 import type { Drawing } from "./run-graph-drawing";
 import type { MainPath } from "./metro/main-path";
 import { edgeKeyOf } from "./metro/edge-key";
+import type { StationVisits } from "./metro/station-visits";
 import type { Neighbourhood } from "./metro/neighbourhood";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
 import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
@@ -31,6 +32,8 @@ export interface LineMarks {
   taken: ReadonlyMap<string, number> | undefined;
   /** The one connector a station run took, marked when there is no run overlay. */
   takenEdgeKey: string | undefined;
+  /** What the run did at each station (undefined without a run). */
+  visits: ReadonlyMap<string, StationVisits> | undefined;
 }
 
 export interface GraphSvgProps {
@@ -185,14 +188,26 @@ function GraphStation({
         dimmed={!!lit && !lit.nodes.has(node.id)}
         offPath={isOffPath(mainPath, "nodes", node.id)}
         added={added.has(node.id)}
-        describedBy={describedByOf(describedNode, node.id)}
+        {...annotationsOf(describedNode, marks.visits, node.id)}
       />
     ))
   );
 }
 
-function describedByOf(describedNode: DescribedNode | null, nodeId: string) {
-  return describedNode?.nodeId === nodeId ? describedNode.tooltipId : undefined;
+/** What a station says beyond its shape: the tooltip it is described by, and whether and how the run was there. */
+function annotationsOf(
+  describedNode: DescribedNode | null,
+  visits: LineMarks["visits"],
+  nodeId: string,
+) {
+  const stationVisits = visits?.get(nodeId);
+
+  return {
+    describedBy:
+      describedNode?.nodeId === nodeId ? describedNode.tooltipId : undefined,
+    visited: visits && !!stationVisits,
+    outcome: stationVisits?.outcome,
+  };
 }
 
 function isOffPath(
