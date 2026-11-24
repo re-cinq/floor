@@ -69,4 +69,24 @@ describe("RunGraphView with mainPathOnly", () => {
     );
     expect(offPath.sort()).toEqual(["a|fix|failed", "fix", "fix|a|always"]);
   });
+
+  it("marks nothing off the path after pressing Main path twice on a main line a to done", async () => {
+    const definition = markerLine({
+      entry: "a",
+      exit: "done",
+      nodeIds: ["a", "b", "done", "fix"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} />);
+    fireEvent.click(screen.getByRole("button", { name: "Main path" }));
+    fireEvent.click(screen.getByRole("button", { name: "Main path" }));
+
+    expect([...container.querySelectorAll("[data-off-path]")]).toEqual([]);
+  });
 });
