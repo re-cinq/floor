@@ -126,4 +126,22 @@ describe("RunGraphView keyboard path", () => {
 
     expect({ handled, chosen: chosenKeys(container) }).toEqual({ handled: true, chosen: ["a|b|success"] });
   });
+
+  it("ArrowLeft takes the first in-line when a station has several", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["b", "done", "success"],
+        ["a", "b", "failed"],
+      ],
+    });
+    const { container } = await renderGraph(<RunGraphView definition={definition} onSelectNode={() => undefined} />);
+
+    fireEvent.focus(nodeEl(container, "done"));
+    fireEvent.keyDown(nodeEl(container, "done"), { key: "ArrowLeft" });
+
+    expect({ focused: document.activeElement?.getAttribute("data-node"), chosen: chosenKeys(container) }).toEqual({ focused: "a", chosen: ["a|done|success"] });
+  });
 });
