@@ -119,4 +119,10 @@ describe("stepAlong", () => {
 
     expect(cursor).toEqual({ nodeId: "review", lineIndex: -1 });
   });
+
+  it("moves right from review line 1 along its changes_requested edge to address", () => {
+    const cursor = stepAlong(implementationDefinition, { nodeId: "review", lineIndex: 1 }, "right");
+
+    expect(cursor).toEqual({ nodeId: "address", lineIndex: 0 });
+  });
 });
