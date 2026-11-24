@@ -92,4 +92,26 @@ describe("RunGraphView run overlay", () => {
 
     expect(cardTexts).toEqual(["A", "agent · 2 visits · open"]);
   });
+
+  it("marks only the station with an open visit as open", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "failed", open: false },
+        { nodeId: "fix", iteration: 1, open: true },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} />);
+
+    expect([...container.querySelectorAll("[data-open]")].map((element) => element.getAttribute("data-node"))).toEqual(["fix"]);
+  });
 });
