@@ -97,6 +97,7 @@ function GraphEdges({
       offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))}
       added={added.has(edgeKeyOf(edge))}
       taken={takenOf(marks, edgeKeyOf(edge))}
+      takenCount={marks.taken?.get(edgeKeyOf(edge))}
       onSelectLine={onSelectLine}
     />
   ));

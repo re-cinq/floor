@@ -163,4 +163,30 @@ describe("RunGraphView run overlay", () => {
 
     expect(container.querySelectorAll("[data-taken], [data-visited], [data-open], [data-outcome]").length).toBe(0);
   });
+
+  it("shows ×2 on a|fix|failed and no count on a|done|success when the run took failed twice and success once", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+        ["a", "done", "success"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "failed", open: false },
+        { nodeId: "fix", iteration: 1, outcome: "always", open: false },
+        { nodeId: "a", iteration: 2, outcome: "failed", open: false },
+        { nodeId: "fix", iteration: 2, outcome: "always", open: false },
+        { nodeId: "a", iteration: 3, outcome: "success", open: false },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} show="all" />);
+    const countOf = (key: string) => container.querySelector(`[data-edge="${key}"] [data-taken-count]`)?.textContent ?? null;
+
+    expect([countOf("a|fix|failed"), countOf("a|done|success")]).toEqual(["×2", null]);
+  });
 });

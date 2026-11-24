@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { elkGraphOf } from "./elk-graph";
+import { elkGraphOf, type ElkGraphOptions } from "./elk-graph";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { codeReviewDefinition, implementationDefinition } from "./definition.fixtures";
 import { nodeTitle } from "./node-tooltip";
@@ -206,5 +206,19 @@ describe("elkGraphOf", () => {
         { id: "push|review|always:out", x: stopWidth, y: 14, width: 0, height: 0 },
       ],
     });
+  });
+
+  it("widens the a|fix|failed label box when the run took it twice", () => {
+    const loopLine = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix"],
+      edges: [
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const labelWidthOf = (options: ElkGraphOptions) => elkGraphOf(loopLine, undefined, options).edges?.[0].labels?.[0].width ?? 0;
+
+    expect(labelWidthOf({ takenCounts: new Map([["a|fix|failed", 2]]) })).toBeGreaterThan(labelWidthOf({}));
   });
 });

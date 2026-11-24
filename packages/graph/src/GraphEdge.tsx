@@ -6,6 +6,9 @@ import { edgeKeyOf } from "./metro/edge-key";
 import { classes, edgeStrokeClass, textFillClass } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
 
+const COUNT_LABEL_CHAR_WIDTH = 6;
+const COUNT_GAP = 3;
+
 export type EdgeEmphasis = "outgoing" | "other" | undefined;
 
 export interface GraphEdgeProps {
@@ -21,6 +24,8 @@ export interface GraphEdgeProps {
   added?: boolean;
   /** Whether the run took this line (or it is the `takenEdge`); undefined without either. */
   taken?: boolean;
+  /** How many times the run took this line; shown from two. */
+  takenCount?: number;
   /** The line the inspector shows. */
   selected?: boolean;
   /** The line the keyboard cursor is on. */
@@ -29,7 +34,7 @@ export interface GraphEdgeProps {
 }
 
 export default function GraphEdge(props: GraphEdgeProps) {
-  const { edge, model, emphasis, dimmed, offPath, selected, chosen, added, taken, onSelectLine } = props;
+  const { edge, model, emphasis, dimmed, offPath, selected, chosen, added, taken, takenCount = 0, onSelectLine } = props;
   const tone = model?.tone ?? "neutral";
 
   return (
@@ -40,7 +45,26 @@ export default function GraphEdge(props: GraphEdgeProps) {
         d={edge.d}
         markerEnd={ARROW_MARKER_URL}
       />
+      {takenCount > 1 && <TakenCount edge={edge} model={model} count={takenCount} />}
     </g>
+  );
+}
+
+/** Sits right after the label, inside its air, so it never lands under the line. */
+function TakenCount({ edge, model, count }: { edge: LaidOutEdge; model: VisibleEdge | undefined; count: number }) {
+  const { x: midX, y: midY, vertical } = edge.mid;
+  const labelHalfWidth = ((model?.label.length ?? 0) * COUNT_LABEL_CHAR_WIDTH) / 2;
+
+  return (
+    <text
+      data-taken-count
+      className={classes(styles.takenCount, textFillClass(model?.tone ?? "neutral"))}
+      x={midX + labelHalfWidth + COUNT_GAP}
+      y={midY}
+      transform={vertical ? `rotate(-90 ${midX} ${midY})` : undefined}
+    >
+      ×{count}
+    </text>
   );
 }
 
