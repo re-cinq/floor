@@ -8,6 +8,8 @@ sidebar:
 
 `floor-studio` opens a page for a collection folder. It draws every assembly line, explains each station (its events, needs and prompt placeholders), lets you edit prompts and agent settings, and runs one agent station with your own `claude` or `codex`. No floor or cluster is involved.
 
+A line folder may sit in a [group folder](/floor/specs/collection/#1-layout). The page draws the lines the collection reads and lists every refused file with its reason, a second folder for the same line name included.
+
 It is not on npm yet. Run it from a floor checkout:
 
 ```
