@@ -105,4 +105,22 @@ At the end, an empty folder is a [collection](/floor/concepts/collection/) with 
      - run: npx @re-cinq/floor-pipeline lint .
    ```
 
+9. Keep a host's lines apart from yours. Move `summarize-issue` into `my-collection/stock/` and copy it to `my-collection/ours/`. Name the order in `my-collection/floor-collection.yaml`.
+
+   ```yaml
+   groups:
+     - stock
+     - ours
+   ```
+
+   ```sh
+   npx @re-cinq/floor-pipeline lint my-collection
+   ```
+
+   ```text
+   collection ok: 1 agents, 1 pipelines, 0 extensions
+   ```
+
+   `ours/` is read and `stock/` is left out. Without the list, the files in `stock/` are refused as already set by those in `ours/`.
+
 With Claude Code, [the floor skills](/floor/reference/skills/) do these steps for you.

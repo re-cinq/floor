@@ -18,7 +18,7 @@ my-collection/
 
 Each line has a folder named by its `line.id`. The folder holds the line's pipeline file and one markdown file for each agent. The full layout is in [Collection](/floor/specs/collection/#1-layout).
 
-A line folder may sit one level down, in a group folder such as `stock/` or `ours/`. The group is only a place on disk and is in no name. A line's id is still the name of its own folder, and it is unique in the whole collection.
+A line folder may sit one level down, in a group folder such as `stock/` or `ours/`. The group is only a place on disk and is in no name. A line's id is still the name of its own folder, and it is unique in the whole collection. A `groups` list in `floor-collection.yaml` says which group wins when two hold the same line: the one listed last.
 
 ## When to make one
 

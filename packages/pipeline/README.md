@@ -113,6 +113,8 @@ floor-pipeline lint collection/ --host-key execution_mode
 
 A key that belongs to the host is named in the collection's `floor-collection.yaml` (`host_keys: [execution_mode]`), or with `--host-key`, as often as needed. `lint` and `apply` use both.
 
+The same file may hold `groups`, a list of group folder names. A line or an agent held in several listed groups is read from the group listed last, and the earlier files are left out. A duplicate the list does not settle is refused with `<name> is already set by <path>`. `collectionSettingsOf(text)` reads `{ hostKeys, groups }` from the file's text, and `collectionSettingsIn(directory)` from a directory.
+
 `lint` asks the same questions the floor asks of an assembly line, through [`@re-cinq/floor-assembly-lines`](../assembly-lines/README.md). Two of its rules:
 
 - `unseeded-need` is a need that is neither a line argument or file nor produced on every path into its node. Its message gives one path that arrives without it.

@@ -49,14 +49,20 @@ export function lineFolderPathOf(path: string): string | undefined {
 }
 
 export function agentFileOf(path: string): { agent: string; isExtension: boolean } | undefined {
-  const match = AGENT_FILE.exec(path);
+  const place = agentFilePlaceOf(path);
 
-  return match ? { agent: match[2], isExtension: Boolean(match[3]) } : undefined;
+  return place && { agent: place.agent, isExtension: place.isExtension };
 }
 
 /** The group folder an agent file sits in, undefined for a top-level line folder or a path that is no agent file. */
 export function agentFileGroupOf(path: string): string | undefined {
-  return AGENT_FILE.exec(path)?.[1];
+  return agentFilePlaceOf(path)?.group;
+}
+
+function agentFilePlaceOf(path: string): { agent: string; isExtension: boolean; group: string | undefined } | undefined {
+  const match = AGENT_FILE.exec(path);
+
+  return match ? { agent: match[2], isExtension: Boolean(match[3]), group: match[1] } : undefined;
 }
 
 /** A markdown or YAML file inside a line folder: read, or refused as a path a collection does not read. A file at the top, under `docs/`, under a host folder or under a dot folder is not the collection's. */
