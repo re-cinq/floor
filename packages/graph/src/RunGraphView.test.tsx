@@ -242,6 +242,8 @@ describe("RunGraphView station tooltip", () => {
     const { container } = await renderGraph(<RunGraphView definition={featurePlanningDefinition} />);
     const drawn = [...container.querySelectorAll("[data-node]")].map((node) => node.getAttribute("data-node"));
 
-    expect(drawn.sort()).toEqual(featurePlanningDefinition.nodes.map((node) => node.id).sort());
+    const defined = featurePlanningDefinition.nodes.map((node) => node.id);
+
+    expect(drawn.sort()).toEqual(defined.sort());
   });
 });
