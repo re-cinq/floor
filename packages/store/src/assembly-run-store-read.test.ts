@@ -200,8 +200,8 @@ describe("AssemblyRunStore.currentNode", () => {
   it("is the most recently opened of two open visits", async () => {
     const { runId } = await openEntryVisit();
 
-    await store().openVisit(runId, "review", 2);
-    await pool().query("update station_runs set node_id = 'again' where assembly_run_id = $1 and iteration = 2", [runId]);
+    await store().openVisit(runId, "review", 1, 1);
+    await pool().query("update station_runs set node_id = 'again' where assembly_run_id = $1 and branch = 1", [runId]);
 
     expect(await store().currentNode(runId)).toBe("again");
   });

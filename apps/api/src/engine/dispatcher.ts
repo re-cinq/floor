@@ -1,6 +1,7 @@
 // The floor's own loop body (docs/assembly_run_storage.md, "Events: the queue and the loop"): claim every event that is not a worker's, turn it into store calls, ack it.
 import {
   Refusal,
+  VisitAlreadyOpen,
   type AssemblyRunStore,
   type ClusterStore,
   type EventStore,
@@ -139,9 +140,9 @@ export class Dispatcher {
     if (opened.created) console.log(`floor dispatcher: run ${start.runId} opened node ${start.nodeId}`);
   }
 
-  // A node the store refuses to open would leave its run with nothing open and nothing queued, waiting forever.
+  // A node the store refuses to open would leave its run with nothing open and nothing queued, waiting forever, unless the refusal is a visit already open.
   private async failRunThatCannotGoOn(runId: string, error: unknown): Promise<void> {
-    if (!(error instanceof Refusal)) return;
+    if (!(error instanceof Refusal) || error instanceof VisitAlreadyOpen) return;
     const run = await this.deps.runs.get(runId);
 
     if (run && !run.finishedAt) await this.deps.runs.fail(runId, error.message);

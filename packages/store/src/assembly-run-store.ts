@@ -9,7 +9,7 @@ import { enforceStartArgs } from "./start-args.js";
 import { aboutRun } from "./run-args.js";
 import { clearTheWayByHand, refuseBesideOpenRun } from "./reopen-run.js";
 import { deriveSubjectKey, foldLineFiles } from "./resolve.js";
-import { Refusal, endsRun, enforce, getNextTransition, isTerminalNode, nodeStartedBy, requireNode, startEventName, type Transition } from "@re-cinq/floor-assembly-lines";
+import { Refusal, VisitAlreadyOpen, endsRun, enforce, getNextTransition, isTerminalNode, nodeStartedBy, requireNode, startEventName, type Transition } from "@re-cinq/floor-assembly-lines";
 import { CREDIT_PAUSE_MS, isProviderOutOfCredit } from "./provider-credit.js";
 import { OpenVisitResolver, type OpenContext, type OpenRequest } from "./open-visit.js";
 import { enforceFilesExist, lineToStart } from "./start-line.js";
@@ -209,9 +209,10 @@ export class AssemblyRunStore {
   }
 
   async openVisit(runId: string, nodeId: string, iteration: number, branch?: number): Promise<OpenVisitResult> {
-    const { run, line } = await this.lineOf(this.deps.pool, runId);
+    const [{ run, line }, { openVisit }] = await Promise.all([this.lineOf(this.deps.pool, runId), nodeVisitCount(this.deps.pool, runId, nodeId)]);
 
     enforce(!run.finishedAt, `run "${runId}" is already finished`);
+    if (openVisit && openVisit.iteration !== iteration) throw new VisitAlreadyOpen(`node "${nodeId}" already has an open visit, iteration ${openVisit.iteration}`);
 
     return this.openNode({ run, line, nodeId, iteration, branch });
   }
