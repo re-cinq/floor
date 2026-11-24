@@ -3,22 +3,19 @@ import { useMemo, useState } from "react";
 import { useToggle } from "./use-toggle";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { useElkLayout } from "./use-elk-layout";
-import type { LaidOutEdge } from "./elk-layout";
 import { drawingOf, type Drawing } from "./run-graph-drawing";
-import { mainPathOf, type MainPath } from "./metro/main-path";
+import { mainPathOf } from "./metro/main-path";
 import { reachabilityOf } from "./metro/reachability";
-import { edgeKeyOf } from "./metro/edge-key";
 import { isPassThrough } from "./metro/pass-through";
-import { neighbourhoodOf, type Neighbourhood } from "./metro/neighbourhood";
+import { neighbourhoodOf } from "./metro/neighbourhood";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
-import ArrowMarkerDefs from "./ArrowMarkerDefs";
-import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
-import { markerOf } from "./graph-markers";
-import { useKeyboardCursor, type KeyboardCursor } from "./use-keyboard-cursor";
-import GraphNode from "./GraphNode";
+import GraphSvg, { type DescribedNode } from "./GraphSvg";
+import { useKeyboardCursor } from "./use-keyboard-cursor";
 import GraphViewport from "./GraphViewport";
 import { useLayoutChanges } from "./use-layout-changes";
+import { useTakenLines, type RunOverlay } from "./use-run-overlay";
+import { edgeKeyOf } from "./metro/edge-key";
 import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
 import { nodeTitle, nodeTooltipOf } from "./node-tooltip";
@@ -47,25 +44,36 @@ export interface RunGraphViewProps {
   mainPathOnly?: boolean;
   /** The connector to draw as the one that was taken. */
   takenEdge?: { from: string; to: string; on: string };
+  run?: RunOverlay;
 }
 
 // The graph: laid out by ELK, then fitted to the panel by the viewport. Until ELK resolves, the panel and legend show with an empty canvas.
 export default function RunGraphView(props: RunGraphViewProps) {
-  const graph = useMemo(() => deriveVisibleGraph(props.definition), [props.definition]);
+  const graph = useMemo(
+    () => deriveVisibleGraph(props.definition),
+    [props.definition],
+  );
 
   if (graph.nodes.length === 0) {
     return <EmptyGraph />;
   }
 
   return (
-    <section className={styles.panel} aria-label={`Graph of ${props.definition.name}`}>
+    <section
+      className={styles.panel}
+      aria-label={`Graph of ${props.definition.name}`}
+    >
       <GraphCanvas view={props} graph={graph} />
       <RunGraphLegend families={familiesOf(graph)} />
     </section>
   );
 }
 
-const NODE_SIZE = { width: NODE_WIDTH, height: NODE_HEIGHT, widthOf: (nodeId: string) => cardWidthOf(nodeTitle(nodeId)) };
+const NODE_SIZE = {
+  width: NODE_WIDTH,
+  height: NODE_HEIGHT,
+  widthOf: (nodeId: string) => cardWidthOf(nodeTitle(nodeId)),
+};
 
 interface GraphCanvasProps {
   view: RunGraphViewProps;
@@ -74,28 +82,27 @@ interface GraphCanvasProps {
 
 /** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
 function GraphCanvas({ view, graph }: GraphCanvasProps) {
-  const { unreachable, mainPath, mainPathOnly, toggleMainPath } = useLineMarkings(view);
-  const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
-  const keyboard = useKeyboardCursor(view.definition);
-  const { elkLayout, added, stops, compactStops, toggleCompactStops } = useStopsLayout(view, graph);
-  const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops), [elkLayout, graph, view.definition.name, stops]);
-  const tooltip = useNodeTooltip();
+  const { laid, tooltip, marks, toggles, setHoveredId } = useGraphCanvasState(
+    view,
+    graph,
+  );
 
   return (
     <>
       <div className={styles.canvas} {...tooltip.handlers}>
         {laid && (
-          <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)} coveredBelow={view.coveredBelow} mainPathOn={mainPathOnly} onToggleMainPath={toggleMainPath} compactStopsOn={compactStops} onToggleCompactStops={toggleCompactStops}>
+          <GraphViewport
+            drawing={laid.view}
+            reveal={revealOf(laid, view.selectedNodeId)}
+            coveredBelow={view.coveredBelow}
+            {...toggles}
+          >
             <GraphSvg
               laid={laid}
-              graph={graph}
-              name={view.definition.name}
-              exit={view.definition.exit}
-              onSelectNode={view.onSelectNode} onSelectLine={view.onSelectLine} selectedLineKey={view.selectedLineKey}
-              selectedNodeId={view.selectedNodeId} takenEdge={view.takenEdge}
+              {...drawnFrom(view)}
               describedNode={describedNodeOf(tooltip)}
-              lit={lit} onHover={setHoveredId} keyboard={keyboard}
-              unreachable={unreachable} mainPath={mainPath} added={added}
+              onHover={setHoveredId}
+              marks={marks}
             />
           </GraphViewport>
         )}
@@ -105,36 +112,129 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
   );
 }
 
-/** The stations no start leads to, and the main line of the definition while `mainPathOnly` is set (else null). */
-function useLineMarkings({ definition, mainPathOnly: initialMainPathOnly }: RunGraphViewProps) {
-  const [mainPathOnly, toggleMainPath] = useToggle({ initiallyOn: initialMainPathOnly });
-  const unreachable = useMemo(() => reachabilityOf(definition).unreachable, [definition]);
-  const mainPath = useMemo(() => (mainPathOnly ? mainPathOf(definition) : null), [definition, mainPathOnly]);
+/** What the drawing needs from the view: the line's name and exit, and what is selected and how to select. */
+function drawnFrom(view: RunGraphViewProps) {
+  const { name, exit } = view.definition;
+  const { onSelectNode, onSelectLine, selectedLineKey, selectedNodeId } = view;
 
-  return { unreachable, mainPath, mainPathOnly, toggleMainPath };
+  return {
+    name,
+    exit,
+    onSelectNode,
+    onSelectLine,
+    selectedLineKey,
+    selectedNodeId,
+  };
+}
+
+/** Everything the canvas draws from: the laid-out drawing, the tooltip, the marks on its elements and the viewport's two toggles. */
+function useGraphCanvasState(view: RunGraphViewProps, graph: VisibleGraph) {
+  const { unreachable, mainPath, mainPathOnly, toggleMainPath, taken } =
+    useLineMarkings(view);
+  const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
+  const keyboard = useKeyboardCursor(view.definition);
+  const { elkLayout, added, stops, compactStops, toggleCompactStops } =
+    useStopsLayout(view, graph);
+  const laid = useMemo(
+    () => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops),
+    [elkLayout, graph, view.definition.name, stops],
+  );
+  const toggles = {
+    mainPathOn: mainPathOnly,
+    onToggleMainPath: toggleMainPath,
+    compactStopsOn: compactStops,
+    onToggleCompactStops: toggleCompactStops,
+  };
+
+  return {
+    laid,
+    tooltip: useNodeTooltip(),
+    marks: { lit, mainPath, unreachable, keyboard, added, taken, takenEdgeKey: view.takenEdge && edgeKeyOf(view.takenEdge) },
+    toggles,
+    setHoveredId,
+  };
+}
+
+/** The stations no start leads to, the lines a run took, and the main line of the definition while `mainPathOnly` is set (else null). */
+function useLineMarkings({
+  definition,
+  run,
+  mainPathOnly: initialMainPathOnly,
+}: RunGraphViewProps) {
+  const [mainPathOnly, toggleMainPath] = useToggle({
+    initiallyOn: initialMainPathOnly,
+  });
+  const unreachable = useMemo(
+    () => reachabilityOf(definition).unreachable,
+    [definition],
+  );
+  const mainPath = useMemo(
+    () => (mainPathOnly ? mainPathOf(definition) : null),
+    [definition, mainPathOnly],
+  );
+
+  return {
+    unreachable,
+    mainPath,
+    mainPathOnly,
+    toggleMainPath,
+    taken: useTakenLines(definition, run),
+  };
 }
 
 /** The layout, asked to compact its stops when `compactStops` is set, and the stations drawn as stops: the pass-through ones. */
-function useStopsLayout({ definition, compactStops: initialCompactStops }: RunGraphViewProps, graph: VisibleGraph) {
-  const [compactStops, toggleCompactStops] = useToggle({ initiallyOn: initialCompactStops });
-  const layoutOptions = useMemo(() => (compactStops ? { compactStops: true } : undefined), [compactStops]);
-  const stops = useMemo(() => stopsOf({ definition, compactStops }, graph), [definition, compactStops, graph]);
+function useStopsLayout(
+  { definition, compactStops: initialCompactStops }: RunGraphViewProps,
+  graph: VisibleGraph,
+) {
+  const [compactStops, toggleCompactStops] = useToggle({
+    initiallyOn: initialCompactStops,
+  });
+  const layoutOptions = useMemo(
+    () => (compactStops ? { compactStops: true } : undefined),
+    [compactStops],
+  );
+  const stops = useMemo(
+    () => stopsOf({ definition, compactStops }, graph),
+    [definition, compactStops, graph],
+  );
 
-  const elkLayout = useElkLayout(definition, NODE_SIZE, undefined, layoutOptions);
+  const elkLayout = useElkLayout(
+    definition,
+    NODE_SIZE,
+    undefined,
+    layoutOptions,
+  );
 
-  return { elkLayout, added: useLayoutChanges(elkLayout), stops, compactStops, toggleCompactStops };
+  return {
+    elkLayout,
+    added: useLayoutChanges(elkLayout),
+    stops,
+    compactStops,
+    toggleCompactStops,
+  };
 }
 
-function stopsOf({ definition, compactStops }: RunGraphViewProps, { nodes }: VisibleGraph): ReadonlySet<string> {
+function stopsOf(
+  { definition, compactStops }: RunGraphViewProps,
+  { nodes }: VisibleGraph,
+): ReadonlySet<string> {
   const nodeIds = nodes.map((node) => node.id);
 
-  return new Set(nodeIds.filter((nodeId) => compactStops && isPassThrough(definition, nodeId)));
+  return new Set(
+    nodeIds.filter(
+      (nodeId) => compactStops && isPassThrough(definition, nodeId),
+    ),
+  );
 }
 
 /** The neighbourhood of the node under the pointer or the focus, or null while there is none. */
 function useHoverNeighbourhood(definition: RunGraphViewProps["definition"]) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const lit = useMemo(() => (hoveredId ? neighbourhoodOf(definition, hoveredId) : null), [hoveredId, definition]);
+  const lit = useMemo(
+    () => (hoveredId ? neighbourhoodOf(definition, hoveredId) : null),
+    [hoveredId, definition],
+  );
 
   return { lit, setHoveredId };
 }
@@ -173,133 +273,7 @@ function GraphTooltip({
 }
 
 function EmptyGraph() {
-  return <p className={styles.empty}>This assembly line has no nodes to draw.</p>;
-}
-
-interface DescribedNode {
-  nodeId: string;
-  tooltipId: string;
-}
-
-interface GraphSvgProps {
-  laid: Drawing;
-  graph: VisibleGraph;
-  name: string;
-  exit: string;
-  /** The node whose tooltip is up, which points at it through aria-describedby. */
-  describedNode: DescribedNode | null;
-  onSelectNode: RunGraphViewProps["onSelectNode"];
-  onSelectLine: RunGraphViewProps["onSelectLine"];
-  selectedLineKey: RunGraphViewProps["selectedLineKey"];
-  selectedNodeId: RunGraphViewProps["selectedNodeId"];
-  /** What the hovered node touches; everything else dims. Null while nothing is hovered. */
-  lit: Neighbourhood | null;
-  /** The main line, when only it is drawn in full. */
-  mainPath: MainPath | null;
-  /** Stations no start leads to. */
-  unreachable: ReadonlySet<string>;
-  onHover: (nodeId: string | null) => void;
-  takenEdge: RunGraphViewProps["takenEdge"];
-  keyboard: KeyboardCursor;
-  /** Keys the latest layout added. */
-  added: ReadonlySet<string>;
-}
-
-/** The graph itself. A node nothing leaves is terminal, which the plain label renders differently. `role="img"` with a `<title>`: the drawing is one picture to a screen reader, the nodes inside it focusable buttons. */
-function GraphSvg(props: GraphSvgProps) {
-  const { laid, name } = props;
-  const { view, titleId } = laid;
-
   return (
-    <svg
-      className={styles.svg}
-      width={view.width}
-      height={view.height}
-      role="img"
-      aria-labelledby={titleId}
-      viewBox={view.viewBox}
-    >
-      <title id={titleId}>{`Assembly line graph: ${name}`}</title>
-      <ArrowMarkerDefs />
-
-      <GraphEdges {...props} />
-
-      <GraphNodes {...props} />
-
-      <GraphEdgeLabels {...props} />
-    </svg>
+    <p className={styles.empty}>This assembly line has no nodes to draw.</p>
   );
-}
-
-/** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine, keyboard, added, takenEdge }: GraphSvgProps) {
-  const { edges } = laid.layout;
-
-  return edges.map((edge) => (
-    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} chosen={edgeKeyOf(edge) === keyboard.chosenKey} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} added={added.has(edgeKeyOf(edge))} onSelectLine={onSelectLine} taken={isTaken(edge, takenEdge)} />
-  ));
-}
-
-function GraphEdgeLabels({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine }: GraphSvgProps) {
-  const { edges } = laid.layout;
-
-  return edges.map((edge) => (
-    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} />
-  ));
-}
-
-function isTaken(edge: LaidOutEdge, takenEdge: RunGraphViewProps["takenEdge"]): boolean {
-  return takenEdge !== undefined && edgeKeyOf(edge) === edgeKeyOf(takenEdge);
-}
-
-function edgeProps(edge: LaidOutEdge, laid: Drawing, selectedNodeId: GraphSvgProps["selectedNodeId"]) {
-  return { edge, model: laid.edgeByKey.get(edgeKeyOf(edge)), emphasis: emphasisOf(edge.from, selectedNodeId) };
-}
-
-function emphasisOf(from: string, selectedNodeId: string | null | undefined): EdgeEmphasis {
-  if (!selectedNodeId) {
-    return undefined;
-  }
-
-  return from === selectedNodeId ? "outgoing" : "other";
-}
-
-/** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
-function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, mainPath, unreachable, onHover, keyboard, added }: GraphSvgProps) {
-  const { nodes } = laid.layout;
-
-  return nodes.map((node) => {
-    const model = laid.nodeById.get(node.id);
-
-    const marker = markerOf(node, exit);
-
-    if (marker) {
-      return marker;
-    }
-
-    return model ? (
-      <GraphNode
-        key={node.id}
-        node={node}
-        model={model}
-        height={NODE_HEIGHT}
-        isTerminal={!laid.nodesWithOutgoing.has(node.id)}
-        selected={node.id === selectedNodeId}
-        isUnreachable={unreachable.has(node.id)}
-        isStop={laid.stops.has(node.id)}
-        toneByEdge={laid.toneByEdge}
-        onSelect={onSelectNode}
-        onHover={onHover}
-        keyboard={keyboard}
-        dimmed={!!lit && !lit.nodes.has(node.id)}
-        offPath={isOffPath(mainPath, "nodes", node.id)}
-        added={added.has(node.id)}
-        describedBy={describedNode?.nodeId === node.id ? describedNode.tooltipId : undefined}
-      />
-    ) : null;
-  });
-}
-
-function isOffPath(mainPath: MainPath | null, part: keyof MainPath, key: string) {
-  return !!mainPath && !mainPath[part].has(key);
 }
