@@ -182,6 +182,10 @@
   stroke-dasharray: 6 4;
   animation: openMarch 0.8s linear infinite;
 }
+/* A station waiting on someone: a solid border, no march. */
+.node[data-waiting="true"] .box {
+  stroke: var(--wait);
+}
 @keyframes openMarch {
   to {
     stroke-dashoffset: -10;

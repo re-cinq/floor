@@ -46,6 +46,8 @@ export interface RunGraphViewProps {
   /** The connector to draw as the one that was taken. */
   takenEdge?: { from: string; to: string; on: string };
   run?: RunOverlay;
+  /** Stations that wait on someone, by id, and what they wait on: an open visit there reads as waiting, not working. */
+  waiting?: Readonly<Record<string, string>>;
   /** Draws the whole line or only the part the run walked; defaults to the walked part when a run is given. */
   show?: "all" | "visited";
 }
@@ -189,6 +191,7 @@ function useGraphCanvasState(view: ShownView, graph: VisibleGraph) {
 function useLineMarkings({
   definition,
   run,
+  waiting,
   mainPathOnly: initialMainPathOnly,
 }: RunGraphViewProps) {
   const [mainPathOnly, toggleMainPath] = useToggle({
@@ -209,7 +212,7 @@ function useLineMarkings({
     mainPathOnly,
     toggleMainPath,
     taken: useTakenLines(definition, run),
-    visits: useStationVisits(run),
+    visits: useStationVisits(run, waiting),
   };
 }
 

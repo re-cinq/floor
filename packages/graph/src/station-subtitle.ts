@@ -4,7 +4,7 @@ import type { StationVisits } from "./metro/station-visits";
 export function subtitleOf(kind: string, status?: StationVisits): string {
   const visitCount =
     status && status.count > 1 ? ` · ${status.count} visits` : "";
-  const openMark = status?.open ? " · open" : "";
+  const openMark = status?.open ? ` · ${status.waiting ?? "open"}` : "";
 
   return `${kind}${visitCount}${openMark}`;
 }
