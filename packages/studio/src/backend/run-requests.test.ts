@@ -92,6 +92,18 @@ describe("startStudio run requests", () => {
     });
   });
 
+  it.each([
+    { type: "run.cancel", request: { run: "nope" }, reason: "no running run nope" },
+    { type: "run.read", request: { run: "nope", after: 0 }, reason: "no run nope" },
+  ])("refuses $type of run nope with $reason", async ({ type, request, reason }) => {
+    const { client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({ id: "u1", type, ...request });
+
+    expect(await client.next()).toEqual({ id: "u1", type: "refused", reason });
+  });
+
   it("ends the run with exit code null when run.cancel stops a claude sleeping 30 seconds", async () => {
     await withFakeClaude(`#!/bin/sh\necho started\nsleep 30\n`, async (client, folder) => {
       client.send({ id: "s1", type: "run.start", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder, permission: "acceptEdits" });

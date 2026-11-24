@@ -23,19 +23,27 @@ export function useRun(runs: RunControls | undefined) {
   const lines = own.flatMap((frame) => (frame.type === "run.output" ? [frame.line] : []));
 
   useReportedEdge(ended, runs?.onEnded);
+  const [refusal, setRefusal] = useState<string>();
 
   return {
     lines,
     ended,
     isRunning: run !== undefined && !ended,
+    refusal,
     start: (fields: RunFields) => {
       setFrames([]);
-      void runs?.start(fields).then((started) => {
-        setRun(started.run);
-        runs.keep?.(started.run);
-      });
+      setRefusal(undefined);
+      void runs?.start(fields).then(keepRun(runs, setRun), (error: Error) => setRefusal(error.message));
     },
     cancel: () => void (run && runs?.cancel(run)),
+  };
+}
+
+/** Holds the started run as the current one, and has the address keep it. */
+function keepRun(runs: RunControls, setRun: (run: string) => void) {
+  return (started: { run: string }) => {
+    setRun(started.run);
+    runs.keep?.(started.run);
   };
 }
 

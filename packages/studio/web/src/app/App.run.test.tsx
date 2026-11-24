@@ -80,6 +80,16 @@ describe("App run tab", () => {
     });
   });
 
+  it("shows the refusal \"ticket\" has no value in an alert when run.start is refused for a ticket left empty", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Run" });
+    const panel = await screen.findByRole("tabpanel", { name: "Run" });
+
+    await userEvent.type(await within(panel).findByRole("textbox", { name: "Folder" }), "/tmp/run-1");
+    await userEvent.click(within(panel).getByRole("button", { name: "Run" }));
+
+    expect((await within(panel).findByRole("alert")).textContent).toBe('"ticket" has no value');
+  });
+
   it("shows the rendered prompt and no blockers when file need plan (file to copy to plan.md) is typed an existing file's path", async () => {
     const scratch = mkdtempSync(join(tmpdir(), "floor-run-panel-"));
     const planFile = join(scratch, "plan.md");
