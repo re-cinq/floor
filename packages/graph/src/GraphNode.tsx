@@ -1,6 +1,6 @@
 // One step in the graph: the box, its type mark, its badges, selection, and one of two exclusive bodies (outcome list or plain name) — the aria-label says the same in words.
 import type { KeyboardEvent } from "react";
-import type { LayoutNode } from "./dag-layout";
+import type { LaidOutNode } from "./elk-layout";
 import type { VisibleNode } from "./graph-view-model";
 import NodeBadges from "./NodeBadges";
 import NodeOutcomeList from "./NodeOutcomeList";
@@ -15,7 +15,7 @@ import { classes } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
 
 export interface GraphNodeProps {
-  node: LayoutNode;
+  node: LaidOutNode;
   model: VisibleNode;
   height: number;
   isTerminal: boolean;

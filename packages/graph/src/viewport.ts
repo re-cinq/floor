@@ -1,5 +1,5 @@
 // The transform that places the drawing in its on-screen box: fit, zoom at a point, pan, keep a strip of the drawing in view, and bring an area of it into view.
-import type { Box } from "./dag-layout";
+import type { Box } from "./elk-layout";
 
 export interface Size {
   width: number;

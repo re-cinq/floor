@@ -1,6 +1,6 @@
 // Shows the drawing inside an <svg ref={svgRef}> box through the viewport transform: fit on screen, zoom and pan.
 import { useReducer, type ReactNode } from "react";
-import type { Box } from "./dag-layout";
+import type { Box } from "./elk-layout";
 import { svgTransformOf, type Size } from "./viewport";
 import { useMeasuredBox } from "./use-measured-box";
 import { usePointerDrag } from "./use-pointer-drag";

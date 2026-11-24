@@ -1,7 +1,8 @@
 // Renders an assembly line — lays out the nodes/connectors from graph-view-model and hands drawing to its sibling files; every node also says its outcomes and badges as text, so meaning never rests on color alone.
 import { useMemo } from "react";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import { layerByLongestPath, layoutAssemblyLine } from "./dag-layout";
+import { useElkLayout } from "./use-elk-layout";
+import type { ElkLayout, LaidOutEdge } from "./elk-layout";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
@@ -12,17 +13,12 @@ import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
 import { nodeTooltipOf } from "./node-tooltip";
 import RunGraphLegend from "./RunGraphLegend";
-import { useElementSize } from "./use-element-size";
-import { columnsToFit } from "./wrap-to-fit";
-import type { Size } from "./viewport";
 import {
-  LAYER_GAP,
   NODE_WIDTH,
   edgeMapKey,
   fitView,
   nodeHeightFor,
   revealBoxOf,
-  toLayoutDefinition,
 } from "./run-graph-geometry";
 import styles from "./run-graph.module.css";
 
@@ -35,9 +31,8 @@ export interface RunGraphViewProps {
   coveredBelow?: number;
 }
 
-// The graph: wrapped onto the column count that shows it largest in the panel, then fitted to it by the viewport.
+// The graph: laid out by ELK, then fitted to the panel by the viewport. Until ELK resolves, the panel and legend show with an empty canvas.
 export default function RunGraphView(props: RunGraphViewProps) {
-  const [panelRef, panelBox] = useElementSize<HTMLElement>();
   const graph = useMemo(() => deriveVisibleGraph(props.definition), [props.definition]);
 
   if (graph.nodes.length === 0) {
@@ -45,8 +40,8 @@ export default function RunGraphView(props: RunGraphViewProps) {
   }
 
   return (
-    <section ref={panelRef} className={styles.panel} aria-label={`Graph of ${props.definition.name}`}>
-      <GraphCanvas view={props} graph={graph} panelBox={panelBox} />
+    <section className={styles.panel} aria-label={`Graph of ${props.definition.name}`}>
+      <GraphCanvas view={props} graph={graph} />
       <RunGraphLegend families={familiesOf(graph)} />
     </section>
   );
@@ -55,49 +50,41 @@ export default function RunGraphView(props: RunGraphViewProps) {
 interface GraphCanvasProps {
   view: RunGraphViewProps;
   graph: VisibleGraph;
-  panelBox: Size | null;
 }
 
 /** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
-function GraphCanvas({ view, graph, panelBox }: GraphCanvasProps) {
+function GraphCanvas({ view, graph }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
+  const nodeHeight = nodeHeightFor(graph);
+  const nodeSize = useMemo(() => ({ width: NODE_WIDTH, height: nodeHeight }), [nodeHeight]);
+  const elkLayout = useElkLayout(view.definition, nodeSize);
   const laid = useMemo(
-    () => layoutGraph(graph, view.definition, columnsInBox(graph, view.definition, panelBox)),
-    [graph, view.definition, panelBox],
+    () => elkLayout && drawingOf(elkLayout, graph, view.definition.name, nodeHeight),
+    [elkLayout, graph, view.definition.name, nodeHeight],
   );
 
   return (
     <>
       <div className={styles.canvas} {...tooltip.handlers}>
-        <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)} coveredBelow={view.coveredBelow}>
-          <GraphSvg
-            laid={laid}
-            graph={graph}
-            name={view.definition.name}
-            onSelectNode={view.onSelectNode}
-            selectedNodeId={view.selectedNodeId}
-            describedNode={describedNodeOf(tooltip)}
-          />
-        </GraphViewport>
+        {laid && (
+          <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)} coveredBelow={view.coveredBelow}>
+            <GraphSvg
+              laid={laid}
+              graph={graph}
+              name={view.definition.name}
+              onSelectNode={view.onSelectNode}
+              selectedNodeId={view.selectedNodeId}
+              describedNode={describedNodeOf(tooltip)}
+            />
+          </GraphViewport>
+        )}
       </div>
       <GraphTooltip {...tooltip} definition={view.definition} />
     </>
   );
 }
 
-/** The column count whose wrapped drawing shows largest in the box; unmeasured, one row. */
-function columnsInBox(graph: VisibleGraph, definition: AssemblyLineDefinition, box: Size | null): number {
-  if (box === null) {
-    return Number.POSITIVE_INFINITY;
-  }
-
-  const layers = layerByLongestPath(toLayoutDefinition(graph, definition)).values();
-  const layerCount = Math.max(...layers) + 1;
-
-  return columnsToFit(layerCount, box, (columns) => layoutGraph(graph, definition, columns).view);
-}
-
-function revealOf(laid: ReturnType<typeof layoutGraph>, selectedNodeId: string | null | undefined) {
+function revealOf(laid: Drawing, selectedNodeId: string | null | undefined) {
   const { nodes } = laid.layout;
   const selected = nodes.find((node) => node.id === selectedNodeId);
 
@@ -140,7 +127,7 @@ interface DescribedNode {
 }
 
 interface GraphSvgProps {
-  laid: ReturnType<typeof layoutGraph>;
+  laid: Drawing;
   graph: VisibleGraph;
   name: string;
   /** The node whose tooltip is up, which points at it through aria-describedby. */
@@ -152,7 +139,7 @@ interface GraphSvgProps {
 /** The graph itself. A node nothing leaves is terminal, which the plain label renders differently. `role="img"` with a `<title>`: the drawing is one picture to a screen reader, the nodes inside it focusable buttons. */
 function GraphSvg(props: GraphSvgProps) {
   const { laid, name } = props;
-  const { layout, view, titleId } = laid;
+  const { view, titleId } = laid;
 
   return (
     <svg
@@ -166,40 +153,40 @@ function GraphSvg(props: GraphSvgProps) {
       <title id={titleId}>{`Assembly line graph: ${name}`}</title>
       <ArrowMarkerDefs />
 
-      <GraphEdges {...props} edges={layout.edges} />
+      <GraphEdges {...props} />
 
       <GraphNodes {...props} />
 
-      <GraphEdgeLabels {...props} edges={layout.edges} />
+      <GraphEdgeLabels {...props} />
     </svg>
   );
 }
 
-/** A laid-out edge carries only its geometry, so its tone and label are looked up from the model by endpoint pair. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ edges, laid, selectedNodeId }: EdgesProps) {
+/** ELK lays out one path per outcome, while the model has one edge per endpoint pair: each pair draws all its paths and one label, with the tone and label looked up from the model. A pair with no model draws neutral rather than disappearing. */
+function GraphEdges({ laid, selectedNodeId }: GraphSvgProps) {
   return (
     <>
-      {edges.map((edge) => (
-        <GraphEdge key={edgeMapKey(edge.from, edge.to)} {...edgeProps(edge, laid, selectedNodeId)} />
+      {[...laid.pathsByPair].map(([pair, edges]) => (
+        <GraphEdge key={pair} {...edgeProps(edges, laid, selectedNodeId)} />
       ))}
     </>
   );
 }
 
-function GraphEdgeLabels({ edges, laid, selectedNodeId }: EdgesProps) {
+function GraphEdgeLabels({ laid, selectedNodeId }: GraphSvgProps) {
   return (
     <>
-      {edges.map((edge) => (
-        <EdgeLabel key={edgeMapKey(edge.from, edge.to)} {...edgeProps(edge, laid, selectedNodeId)} />
+      {[...laid.pathsByPair].map(([pair, edges]) => (
+        <EdgeLabel key={pair} {...edgeProps(edges, laid, selectedNodeId)} />
       ))}
     </>
   );
 }
 
-type EdgesProps = GraphSvgProps & { edges: GraphEdgesInput };
+function edgeProps(edges: LaidOutEdge[], laid: Drawing, selectedNodeId: GraphSvgProps["selectedNodeId"]) {
+  const [{ from, to }] = edges;
 
-function edgeProps(edge: GraphEdgesInput[number], laid: GraphSvgProps["laid"], selectedNodeId: GraphSvgProps["selectedNodeId"]) {
-  return { edge, model: laid.edgeByPair.get(edgeMapKey(edge.from, edge.to)), emphasis: emphasisOf(edge.from, selectedNodeId) };
+  return { edges, model: laid.edgeByPair.get(edgeMapKey(from, to)), emphasis: emphasisOf(from, selectedNodeId) };
 }
 
 function emphasisOf(from: string, selectedNodeId: string | null | undefined): EdgeEmphasis {
@@ -210,14 +197,12 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
   return from === selectedNodeId ? "outgoing" : "other";
 }
 
-type GraphEdgesInput = ReturnType<typeof layoutAssemblyLine>["edges"];
-
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
 function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode }: GraphSvgProps) {
   const { nodes } = laid.layout;
 
   return nodes.map((node) => {
-    const model = laid.nodeById.get(node.id);
+    const model = laid.nodeById.get(node.id); // an exit dot (`:exit`) has no model, so it draws nothing until its own slice
 
     return model ? (
       <GraphNode
@@ -234,36 +219,28 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode }: Graph
   });
 }
 
-/** Everything geometric: where each node sits, how big the canvas has to be, plus the model lookups the drawing needs. */
-function layoutGraph(
-  graph: VisibleGraph,
-  definition: AssemblyLineDefinition,
-  columnsPerBand: number,
-) {
-  const nodeHeight = nodeHeightFor(graph);
-  const layout = layoutAssemblyLine(
-    toLayoutDefinition(graph, definition),
-    layoutOptions(nodeHeight, columnsPerBand),
-  );
+type Drawing = ReturnType<typeof drawingOf>;
 
+/** Everything the drawing needs: ELK's layout, the viewport it fits, and the model lookups. */
+function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string, nodeHeight: number) {
   return {
     layout,
+    pathsByPair: pathsByPairOf(layout.edges),
     view: fitView(layout.contentBox),
     nodeHeight,
-    titleId: `graph-title-${definition.name}`,
+    titleId: `graph-title-${name}`,
     ...graphLookups(graph),
   };
 }
 
-/** The graph's pitch: full-size nodes, the rows of a layer a node apart, and the columns per band the panel's box picks. */
-function layoutOptions(nodeHeight: number, columnsPerBand: number) {
-  return {
-    layerGap: LAYER_GAP,
-    nodeWidth: NODE_WIDTH,
-    nodeHeight,
-    rowGap: nodeHeight + 48,
-    columnsPerBand,
-  };
+function pathsByPairOf(edges: LaidOutEdge[]): Map<string, LaidOutEdge[]> {
+  const pairs = new Map<string, LaidOutEdge[]>();
+  edges.forEach((edge) => {
+    const pair = edgeMapKey(edge.from, edge.to);
+    pairs.set(pair, [...(pairs.get(pair) ?? []), edge]);
+  });
+
+  return pairs;
 }
 
 /** The lookups that let the drawing match a laid-out node or edge back to its model. A node with no outgoing edge is terminal, which is read from the EDGES rather than from the node, because a definition does not mark its own ends. */

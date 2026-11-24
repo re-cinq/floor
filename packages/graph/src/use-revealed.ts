@@ -1,6 +1,6 @@
 // Tells the viewport each new area to bring into view, keyed by value so an equal fresh object is ignored.
 import { useEffect, type Dispatch } from "react";
-import type { Box } from "./dag-layout";
+import type { Box } from "./elk-layout";
 import type { ViewportAction } from "./viewport-state";
 
 export function useRevealed(area: Box | undefined, coveredBelow: number | undefined, dispatch: Dispatch<ViewportAction>): void {
