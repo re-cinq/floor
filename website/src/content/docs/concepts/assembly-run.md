@@ -33,7 +33,7 @@ One open run exists for a repository and a subject key. A start that would make 
 | --- | --- |
 | `success` | The run reaches the `exit` node |
 | `failed` | The run reaches the `fail` node |
-| `iteration_max` | An edge needs one more pass than its `iteration_max` allows |
+| `iteration_max` | An edge needs one more pass than its `iteration_max` or its `unattended_max` allows |
 | `error` | A visit has no edge for its outcome, or the run makes 200 visits |
 
 Floor then sends `internal.run.settled`. The reasons are in [How a run ends](/floor/specs/run-semantics/#5-how-a-run-ends).

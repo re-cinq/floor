@@ -94,6 +94,7 @@ const pipelineSchema = z
                 to: z.string().default(""),
                 on: z.string().optional(),
                 iteration_max: z.number().optional(),
+                unattended_max: z.number().optional(),
               })
               .loose(),
           )

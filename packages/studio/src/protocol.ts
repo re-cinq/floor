@@ -108,7 +108,7 @@ export const runEndedFrame = z.strictObject({ type: z.literal("run.ended"), run:
   exitCode: z.number().nullable(),
   outcome: z.string().optional(),
   produced: z.array(z.strictObject({ name: z.string(), found: z.boolean() })).optional(),
-  edge: z.strictObject({ from: z.string(), to: z.string(), on: z.string(), iterationMax: z.number().optional() }).optional(),
+  edge: z.strictObject({ from: z.string(), to: z.string(), on: z.string(), iterationMax: z.number().optional(), unattendedMax: z.number().optional() }).optional(),
 });
 
 export const serverFrameSchema = z.discriminatedUnion("type", [helloFrame, resultFrame, refusedFrame, collectionFrame, runOutputFrame, runEndedFrame]);

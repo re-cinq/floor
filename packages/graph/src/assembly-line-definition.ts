@@ -22,6 +22,7 @@ export interface DefinitionEdge {
   /** The outcome that takes this edge. */
   on: string;
   iterationMax?: number;
+  unattendedMax?: number;
 }
 
 export interface AssemblyLineDefinition {

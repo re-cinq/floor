@@ -35,7 +35,7 @@ interface Spellings {
 }
 
 const AS_THE_FLOOR_SPELLS: Spellings = {
-  edge: { iteration_max: "iterationMax" },
+  edge: { iteration_max: "iterationMax", unattended_max: "unattendedMax" },
   station: { agent_definition: "agentDefinition", conversation_key: "conversationKey", must_change: "mustChange", result_required: "resultRequired" },
   settings: { timeout_minutes: "timeoutMinutes" },
   price: { input_per_million: "inputPerMillion", output_per_million: "outputPerMillion", cache_read_per_million: "cacheReadPerMillion", cache_write_per_million: "cacheWritePerMillion" },

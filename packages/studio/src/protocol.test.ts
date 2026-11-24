@@ -36,6 +36,12 @@ describe("serverFrameSchema", () => {
     expect(serverFrameSchema.parse(frame)).toEqual(frame);
   });
 
+  it("reads a run.ended frame whose edge has unattendedMax 1", () => {
+    const frame = { type: "run.ended", run: "r1", exitCode: 0, edge: { from: "work", to: "work", on: "failed", unattendedMax: 1 } };
+
+    expect(serverFrameSchema.parse(frame)).toEqual(frame);
+  });
+
   it("refuses a collection push that holds no collection", () => {
     expect(serverFrameSchema.safeParse({ type: "collection", collection: 7 }).success).toBe(false);
   });

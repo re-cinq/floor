@@ -119,16 +119,24 @@ describe("pipelineProblems — where an agent is declared", () => {
 describe("pipelineProblems — how a retry and a conversation are bounded", () => {
   const SELF_EDGE = "    - from: work\n      to: done\n      on: failed";
 
-  it("reports unbounded-retry for an edge from work back to work without iteration_max", () => {
+  it("reports unbounded-retry, naming iteration_max and unattended_max, for an edge from work back to work with neither", () => {
     const retrying = SOUND.replace(SELF_EDGE, "    - from: work\n      to: work\n      on: failed");
 
-    expect(problems(retrying)).toMatchObject([{ line: "sound", node: "work", rule: "unbounded-retry", detail: expect.stringContaining("iteration_max") }]);
+    expect(problems(retrying)).toMatchObject([
+      { line: "sound", node: "work", rule: "unbounded-retry", detail: 'node "work" has a back-edge to itself with no iteration_max and no unattended_max; the walk would retry without bound' },
+    ]);
   });
 
   it("reports nothing for an edge from work back to work carrying iteration_max", () => {
     const bounded = SOUND.replace(SELF_EDGE, "    - from: work\n      to: work\n      on: failed\n      iteration_max: 3");
 
     expect(rules(bounded)).toEqual([]);
+  });
+
+  it("reports nothing for an edge from work back to work carrying unattended_max", () => {
+    const unattended = SOUND.replace(SELF_EDGE, "    - from: work\n      to: work\n      on: failed\n      unattended_max: 2");
+
+    expect(rules(unattended)).toEqual([]);
   });
 
   it("reports unresolvable-conversation-key naming unknown_arg for a station whose conversation_key is not a declared arg", () => {

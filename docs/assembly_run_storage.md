@@ -150,7 +150,7 @@ A start is checked against the assembly line's `args` before anything is written
 
 ## Routing: the kernel decides, events carry
 
-Lore's `getNextTransition` stays the sole routing definition and enforces `iteration_max`.
+Lore's `getNextTransition` stays the sole routing definition and enforces `iteration_max`. It also enforces `unattended_max`, an edge's second count, which starts again when the replay passes a human node's visit. Neither count is stored: both come from replaying the visit rows.
 
 **The walk never opens a visit directly.** On `launch(B, n)` it posts B's start event, and the handler opens the visit. Every node has a start event. It is `node.<id>.start` by default, or any other name for a node a person or an outside system starts.
 

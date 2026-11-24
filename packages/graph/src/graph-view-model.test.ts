@@ -43,6 +43,25 @@ describe("deriveVisibleGraph", () => {
     ]);
   });
 
+  it.each([
+    { label: "changes_requested (max 1 unattended)", limitNames: "only unattendedMax 1", limits: { iterationMax: undefined, unattendedMax: 1 } },
+    { label: "changes_requested (max 2, max 1 unattended)", limitNames: "iterationMax 2 and unattendedMax 1", limits: { unattendedMax: 1 } },
+  ])("labels the hop $label when its edge has $limitNames", ({ label, limits }) => {
+    const line = {
+      ...implementationDefinition,
+      edges: implementationDefinition.edges.map((edge) =>
+        edge.from === "review" && edge.on === "changes_requested" ? { ...edge, ...limits } : edge,
+      ),
+    };
+    const fromReview = deriveVisibleGraph(line).edges.filter((edge) => edge.from === "review");
+
+    expect(fromReview).toEqual([
+      { from: "review", to: "retrospective", on: "success", tone: "ok", label: "success", branching: true },
+      { from: "review", to: "address", on: "changes_requested", tone: "warn", label, branching: true },
+      { from: "review", to: "retrospective", on: "failed", tone: "err", label: "failed", branching: true },
+    ]);
+  });
+
   it("marks the entry, the exit and the fail node of the line", () => {
     const line = { ...codeReviewDefinition, fail: "done" };
 

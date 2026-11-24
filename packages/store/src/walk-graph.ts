@@ -1,6 +1,6 @@
 // Builds the kernel's WalkGraph from a line body: each node's kind comes from the station it points at, resolved once per next() call.
 
-import type { WalkGraph, WalkEdge } from "@re-cinq/floor-assembly-lines";
+import type { WalkGraph } from "@re-cinq/floor-assembly-lines";
 import type { DefinitionsStore } from "./definitions.js";
 import type { LineBody, StationBody } from "./types.js";
 
@@ -11,15 +11,11 @@ export async function buildWalkGraph(
 ): Promise<WalkGraph> {
   const nodes = await Promise.all(line.nodes.map((node) => walkNodeOf(definitions, node)));
 
-  return { name: lineName, entry: line.entry, exit: line.exit, fail: line.fail, edges: edgesOf(line), fans: fansOf(line), nodes };
+  return { name: lineName, entry: line.entry, exit: line.exit, fail: line.fail, edges: line.edges, fans: fansOf(line), nodes };
 }
 
 function fansOf(line: LineBody): { source: string; body: string }[] {
   return line.nodes.flatMap((node) => (node.fanout ? [{ source: node.id, body: node.fanout.to }] : []));
-}
-
-function edgesOf(line: LineBody): WalkEdge[] {
-  return line.edges.map((edge) => ({ from: edge.from, to: edge.to, on: edge.on, iterationMax: edge.iterationMax }));
 }
 
 async function walkNodeOf(

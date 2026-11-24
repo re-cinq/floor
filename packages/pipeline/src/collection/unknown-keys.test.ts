@@ -28,6 +28,12 @@ describe("unknownKeys", () => {
     expect(unknownKeysOf(withIterationMax)).toEqual([unknownKeyOnSound('line.edges[1]: unknown key "iteration-max"')]);
   });
 
+  it("reports nothing for unattended_max on an edge", () => {
+    const withUnattendedMax = SOUND.replace("      on: failed\n", "      on: failed\n      unattended_max: 1\n");
+
+    expect(unknownKeysOf(withUnattendedMax)).toEqual([]);
+  });
+
   it("reports unknown-key for temperature in agent settings", () => {
     const withTemperature = `${SOUND}agent_definitions:
   reviewer:

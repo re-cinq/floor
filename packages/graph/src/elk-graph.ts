@@ -1,6 +1,7 @@
 // The input graph ELK lays out for a line.
 import type { ElkLabel, ElkNode, ElkPort } from "elkjs/lib/elk-api";
 import type { AssemblyLineDefinition, DefinitionEdge } from "./assembly-line-definition";
+import { limitTextsOf } from "./edge-limit-texts";
 import { declaredIdsOf } from "./metro/declared-ids";
 import { edgeKeyOf } from "./metro/edge-key";
 import { mainPathOf } from "./metro/main-path";
@@ -159,8 +160,8 @@ function portOf(edge: DefinitionEdge, direction: "in" | "out", side: "WEST" | "E
   };
 }
 
-function edgeLabelOf({ on, iterationMax }: DefinitionEdge, takenCount = 0): ElkLabel {
-  const text = iterationMax === undefined ? on : `${on} · max ${iterationMax}`;
+function edgeLabelOf(edge: DefinitionEdge, takenCount = 0): ElkLabel {
+  const text = [edge.on, ...limitTextsOf(edge)].join(" · ");
 
   return {
     text,
