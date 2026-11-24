@@ -106,7 +106,7 @@ function stationAttrsOf(
     "data-off-path": props.offPath || undefined,
     ...runAttrsOf(props),
     ...changeAttrOf(props),
-    style: props.offset && { transform: `translate(${props.offset.dx}px, ${props.offset.dy}px)` },
+    style: props.offset && { transform: `translate(${props.offset.dx}px, ${props.offset.dy}px)`, transition: "none" },
     ...neighbourhoodAttrs(node.id, props),
     "aria-label": nodeAriaLabel({ node: model, isTerminal, isUnreachable }),
     "aria-describedby": props.describedBy,
