@@ -22,9 +22,9 @@ describe("Inspector Settings panel", () => {
     });
 
     render(<Inspector node={reviewerNode} />);
-    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Model" }));
 
-    const settingsList = within(screen.getByRole("tabpanel", { name: "Settings" })).getByRole("list", {
+    const settingsList = within(screen.getByRole("tabpanel", { name: "Model" })).getByRole("list", {
       name: "Settings",
     });
 
@@ -48,9 +48,9 @@ describe("Inspector Settings panel", () => {
     });
 
     render(<Inspector node={reviewerNode} />);
-    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Pod" }));
 
-    const settingsList = within(screen.getByRole("tabpanel", { name: "Settings" })).getByRole("list", {
+    const settingsList = within(screen.getByRole("tabpanel", { name: "Pod" })).getByRole("list", {
       name: "Settings",
     });
 
@@ -60,7 +60,7 @@ describe("Inspector Settings panel", () => {
   });
 
   it("labels the image field with a visible 'image' label", async () => {
-    await openReviewerSettings({ image: "acme/agent:2", timeout_minutes: 10 });
+    await openReviewerSettings("Pod", { image: "acme/agent:2", timeout_minutes: 10 });
 
     const field = screen.getByRole("textbox", { name: "image" });
 
@@ -68,7 +68,7 @@ describe("Inspector Settings panel", () => {
   });
 
   it("shows an 'env: LORE_AGENT_IMAGE' chip instead of the field for image '${LORE_AGENT_IMAGE}'", async () => {
-    await openReviewerSettings({ image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
+    await openReviewerSettings("Pod", { image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
 
     expect({
       chip: screen.queryByText("env: LORE_AGENT_IMAGE")?.textContent,
@@ -77,7 +77,7 @@ describe("Inspector Settings panel", () => {
   });
 
   it("saves image acme/agent:3 when it is typed into the empty field opened by Override on '${LORE_AGENT_IMAGE}'", async () => {
-    const saved = await openReviewerSettings({ image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
+    const saved = await openReviewerSettings("Pod", { image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
     await userEvent.click(screen.getByRole("button", { name: "Override" }));
     await userEvent.type(screen.getByRole("textbox", { name: "image" }), "acme/agent:3");
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
@@ -86,7 +86,7 @@ describe("Inspector Settings panel", () => {
   });
 
   it("restores the chip env: LORE_AGENT_IMAGE when Use env: LORE_AGENT_IMAGE is pressed after Override on '${LORE_AGENT_IMAGE}'", async () => {
-    await openReviewerSettings({ image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
+    await openReviewerSettings("Pod", { image: "${LORE_AGENT_IMAGE}", timeout_minutes: 10 });
     await userEvent.click(screen.getByRole("button", { name: "Override" }));
     await userEvent.type(screen.getByRole("textbox", { name: "image" }), "acme/agent:3");
     await userEvent.click(screen.getByRole("button", { name: "Use env: LORE_AGENT_IMAGE" }));
@@ -98,7 +98,7 @@ describe("Inspector Settings panel", () => {
   });
 
   it("offers the model claude-sonnet-5-5 in a dropdown grouped Claude, Codex, Gemini, Exec", async () => {
-    await openReviewerSettings({ model: "claude-sonnet-5-5", image: "acme/agent:2" });
+    await openReviewerSettings("Model", { model: "claude-sonnet-5-5", image: "acme/agent:2" });
 
     const select = screen.getByRole("combobox", { name: "model" });
 
@@ -111,7 +111,7 @@ describe("Inspector Settings panel", () => {
   });
 
   it("opens Custom… with the model opencode/anthropic/claude-sonnet-5-5 in a text field", async () => {
-    await openReviewerSettings({ model: "opencode/anthropic/claude-sonnet-5-5", image: "acme/agent:2" });
+    await openReviewerSettings("Model", { model: "opencode/anthropic/claude-sonnet-5-5", image: "acme/agent:2" });
 
     const select = screen.getByRole("combobox", { name: "model" });
     const customField = screen.queryByRole("textbox", { name: "Custom model" });
@@ -123,11 +123,29 @@ describe("Inspector Settings panel", () => {
   });
 
   it("saves model my-model when it is typed into the empty Custom model field chosen from claude-sonnet-5-5", async () => {
-    const saved = await openReviewerSettings({ model: "claude-sonnet-5-5", image: "acme/agent:2" });
+    const saved = await openReviewerSettings("Model", { model: "claude-sonnet-5-5", image: "acme/agent:2" });
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "model" }), "Custom…");
     await userEvent.type(screen.getByRole("textbox", { name: "Custom model" }), "my-model");
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
 
     await waitFor(() => expect(saved()?.model).toBe("my-model"));
+  });
+
+  it("shows image acme/agent:2 on the second agent node when the first node's image was edited and unsaved", async () => {
+    const agentNode = (id: string, image: string) =>
+      nodeView({
+        id,
+        station: id,
+        kind: "agent",
+        agent: { name: id, file: `agents/${id}.md`, version: null, prompt: "Go.", settings: { image } },
+      });
+    const actions = { saveSettings: () => Promise.resolve() };
+    const { rerender } = render(<Inspector node={agentNode("first", "acme/agent:1")} actions={actions} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Pod" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "image" }), " edited");
+
+    rerender(<Inspector node={agentNode("second", "acme/agent:2")} actions={actions} />);
+
+    expect((screen.getByRole("textbox", { name: "image" }) as HTMLInputElement).value).toBe("acme/agent:2");
   });
 });

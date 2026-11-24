@@ -33,15 +33,16 @@ function renderField(props: FieldProps): React.JSX.Element | null {
 
 interface ConfigFormProps {
   configText: string;
+  keys: string[];
   skillNames?: string[];
   onChange: (config: Record<string, unknown>) => void;
 }
 
 /** The known keys of an agent's config, edited as YAML text, as a form generated from the floor's schema. */
-export default function ConfigForm({ configText, skillNames, onChange }: ConfigFormProps) {
+export default function ConfigForm({ configText, keys, skillNames, onChange }: ConfigFormProps) {
   const parsed = parseNested(configText);
   const config = isNested(parsed) ? (parsed as Record<string, unknown>) : {};
-  const known = Object.keys(properties).filter((key) => kindOf(properties[key]) in fieldsByKind);
+  const known = keys.filter((key) => kindOf(properties[key]) in fieldsByKind);
 
   return known.map((key) => (
     <div key={key}>

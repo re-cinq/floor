@@ -288,6 +288,18 @@ describe("startStudio", () => {
     });
   });
 
+  it("answers fixture.read with the needs ticket ENG-1 that fixture.write saved for flow/work", async () => {
+    const { client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({ id: "f1", type: "fixture.write", line: "flow", node: "work", needs: { ticket: "ENG-1" } });
+    await client.next();
+    client.send({ id: "f2", type: "fixture.read", line: "flow", node: "work" });
+    const answer = await client.next();
+
+    expect(answer).toMatchObject({ type: "result", result: { needs: { ticket: "ENG-1" } } });
+  });
+
   it("refuses to start on a directory that does not exist", async () => {
     await expect(startStudio({ dir: "/no/such/collection", port: 0, hostKeys: [] })).rejects.toThrow(new Error("/no/such/collection is not a directory"));
   });

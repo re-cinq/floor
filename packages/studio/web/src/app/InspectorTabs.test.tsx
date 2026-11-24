@@ -15,9 +15,9 @@ const workNode = nodeView({
 describe("Inspector tabs keyboard", () => {
   it.each([
     { start: "Station", key: "ArrowRight", expected: "Events" },
-    { start: "Settings", key: "ArrowRight", expected: "Station" },
-    { start: "Station", key: "ArrowLeft", expected: "Settings" },
-    { start: "Events", key: "End", expected: "Settings" },
+    { start: "Other", key: "ArrowRight", expected: "Station" },
+    { start: "Station", key: "ArrowLeft", expected: "Other" },
+    { start: "Events", key: "End", expected: "Other" },
     { start: "Prompt", key: "Home", expected: "Station" },
   ])("selects and focuses $expected when $key is pressed on $start", async ({ start, key, expected }) => {
     render(<Inspector node={workNode} />);

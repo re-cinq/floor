@@ -314,7 +314,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  max-width: var(--size-480);
   width: 100%;
 }
 
@@ -356,7 +355,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  max-width: var(--size-480);
   margin: 0;
   padding: var(--space-4);
   border: 1px solid var(--border);
@@ -409,7 +407,6 @@
 /* A config field's help line, under its control. */
 .inspector [role="tabpanel"] label + span[id] {
   margin-top: calc(-1 * var(--space-2));
-  max-width: var(--size-480);
   color: var(--text-muted);
   font-size: var(--fs-xs);
 }

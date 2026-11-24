@@ -5,8 +5,8 @@ import { nodeView } from "./inspector.fixtures";
 
 type Settings = Record<string, unknown>;
 
-/** Renders the reviewer agent with these settings, opens its Settings tab, and returns a reader of the last save. */
-export async function openReviewerSettings(settings: Settings, skillNames: string[] = []): Promise<() => Settings | undefined> {
+/** Renders the reviewer agent with these settings, opens the given settings tab, and returns a reader of the last save. */
+export async function openReviewerSettings(tab: string, settings: Settings, skillNames: string[] = []): Promise<() => Settings | undefined> {
   let saved: Settings | undefined;
   const reviewerNode = nodeView({
     id: "review",
@@ -28,7 +28,7 @@ export async function openReviewerSettings(settings: Settings, skillNames: strin
       }}
     />,
   );
-  await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+  await userEvent.click(screen.getByRole("tab", { name: tab }));
 
   return () => saved;
 }

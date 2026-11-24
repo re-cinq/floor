@@ -21,10 +21,10 @@ const workNode = nodeView({
 });
 
 describe("Inspector", () => {
-  it("offers Station, Events, Prompt and Settings for the agent node work", () => {
+  it("offers Station, Events, Prompt, Model, Tools, MCP, Pod and Other for the agent node work", () => {
     render(<Inspector node={workNode} />);
 
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Station", "Events", "Prompt", "Settings"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Station", "Events", "Prompt", "Model", "Tools", "MCP", "Pod", "Other"]);
   });
 
   it("selects Station first and shows its panel for the agent node work", () => {

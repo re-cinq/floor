@@ -1,42 +1,64 @@
 import { useState, type ChangeEvent } from "react";
 import type React from "react";
-import type { NodeView } from "@protocol";
 import ConfigForm from "./ConfigForm";
 import DiskVersionChoice from "./DiskVersionChoice";
 import EnvChip from "./EnvChip";
 import { envPlaceholder } from "./env-placeholder";
 import SaveButton from "./SaveButton";
 import { CUSTOM, MODEL_GROUPS, isKnownModel } from "./model-choices";
-import { isNested, settingText, settingsDraft, typedSettings, type Settings } from "./settings-draft";
+import { unknownConfigOf, withUnknownConfig } from "./config-split";
+import { isNested, parseNested, settingText, typedSettings, type Settings } from "./settings-draft";
+import { SETTINGS_SECTIONS, type SettingsSection } from "./settings-sections";
+import type { SettingsDraftState } from "./use-settings-draft";
 
 export type SaveSettings = (settings: Settings, version: string) => Promise<unknown>;
 
-/** The agent's settings as a form, one field per setting, saved through the page's connection when asked. */
-export default function SettingsEditor({ agent, onSave, skillNames }: { agent: NonNullable<NodeView["agent"]>; onSave: SaveSettings; skillNames?: string[] }) {
-  const incoming = { settings: agent.settings, version: agent.version ?? "" };
-  const [draft, setDraft] = useState(() => settingsDraft.startDraft(incoming));
-  const received = settingsDraft.receive(draft, incoming);
+/** One settings tab's share of the agent's settings as a form, saved through the page's connection when asked. */
+export default function SettingsEditor({ section, draft, onSave, skillNames }: { section: SettingsSection; draft: SettingsDraftState; onSave: SaveSettings; skillNames?: string[] }) {
+  const { edited, seed, editField } = draft;
+  const [typedYaml, setTypedYaml] = useState("");
 
-  if (received !== draft) setDraft(received);
+  const editConfigYaml = (field: string, text: string) => {
+    setTypedYaml(text);
+    editField(field, mergedConfigText(edited.config, text));
+  };
 
-  const { text: edited, seed } = received;
-  const choose = (chosen: Settings) => setDraft(settingsDraft.resolve(chosen, incoming));
-  const editField = (key: string, text: string) => setDraft(settingsDraft.edit(received, { ...edited, [key]: text }));
+  const { settings: keys, config: configKeys } = SETTINGS_SECTIONS[section];
 
   return (
     <>
-      {Object.entries(edited).map(([key, value]) => (
-        <SettingField key={key} settingKey={key} value={value} isNested={isNested(seed.settings[key])} seedEnvName={envPlaceholder(settingText(seed.settings[key]))} onEdit={editField} />
+      {Object.entries(edited).filter(([key]) => keys.includes(key)).map(([key, value]) => (
+        <SettingField key={key} settingKey={key} value={key === "config" ? shownConfigText(value, typedYaml) : value} isNested={isNested(seed.settings[key])} seedEnvName={envPlaceholder(settingText(seed.settings[key]))} onEdit={key === "config" ? editConfigYaml : editField} />
       ))}
-      <ConfigForm skillNames={skillNames} configText={settingText(edited.config)} onChange={(config) => editField("config", settingText(config))} />
+      <ConfigForm keys={configKeys} skillNames={skillNames} configText={settingText(edited.config)} onChange={(config) => editField("config", settingText(config))} />
       <SaveButton label="Save settings" onSave={() => onSave(typedSettings(seed.settings, edited), seed.version)} />
-      <DiskVersionChoice
-        isPending={settingsDraft.hasDiskVersion(received)}
-        onTake={() => settingsDraft.hasDiskVersion(received) && choose(received.onDisk)}
-        onKeep={() => choose(edited)}
-      />
+      <DiskVersionChoice isPending={draft.isDiskPending} onTake={draft.takeDisk} onKeep={draft.keepEdits} />
     </>
   );
+}
+
+function shownConfigText(config: unknown, typedYaml: string): unknown {
+  const derived = unknownConfigText(config);
+
+  return derived === unknownConfigText(mergedConfigText(config, typedYaml)) ? typedYaml : derived;
+}
+
+function unknownConfigText(config: unknown): unknown {
+  const parsed = configOf(config);
+
+  return parsed ? settingText(unknownConfigOf(parsed)) : config;
+}
+
+function mergedConfigText(config: unknown, yamlText: string): string {
+  const unknown = configOf(yamlText) ?? (parseNested(yamlText) === null ? {} : undefined);
+
+  return unknown ? settingText(withUnknownConfig(configOf(config) ?? {}, unknown)) : yamlText;
+}
+
+function configOf(text: unknown): Settings | undefined {
+  const parsed = typeof text === "string" ? parseNested(text) : text;
+
+  return isNested(parsed) ? (parsed as Settings) : undefined;
 }
 
 interface SettingFieldProps {
