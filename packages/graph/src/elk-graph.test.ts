@@ -27,6 +27,14 @@ describe("elkGraphOf", () => {
     });
   });
 
+  it("returns a 160x92 child for a single-station line given a 160x92 size", () => {
+    const singleStationLine = markerLine({ entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
+
+    const { children } = elkGraphOf(singleStationLine, { width: 160, height: 92 });
+
+    expect(children?.[0]).toMatchObject({ id: "review", width: 160, height: 92 });
+  });
+
   it("returns one edge with a 58x16 success label for write -> done on success", () => {
     const twoStationLine: AssemblyLineDefinition = {
       name: "pair",

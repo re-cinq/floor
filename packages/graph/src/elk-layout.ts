@@ -23,8 +23,8 @@ type LaidOutNode = ElkLayout["nodes"][number];
 type LaidOutEdge = ElkLayout["edges"][number];
 
 /** Lays out a line with ELK: node centres, one SVG path and label centre per edge, and the canvas box. */
-export async function layoutWithElk(definition: AssemblyLineDefinition): Promise<ElkLayout> {
-  const laidOut = await new ELK().layout(elkGraphOf(definition));
+export async function layoutWithElk(definition: AssemblyLineDefinition, size?: { width: number; height: number }): Promise<ElkLayout> {
+  const laidOut = await new ELK().layout(elkGraphOf(definition, size));
   const nodes = nodesOf(laidOut);
 
   return {

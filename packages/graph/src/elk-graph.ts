@@ -29,8 +29,8 @@ const LAYOUT_OPTIONS = {
   "elk.edgeLabels.placement": "CENTER",
 };
 
-/** Builds the ELK input graph for a line: one 140x60 child per node. */
-export function elkGraphOf(definition: AssemblyLineDefinition): ElkNode {
+/** Builds the ELK input graph for a line: one child per node, 140x60 unless sized. */
+export function elkGraphOf(definition: AssemblyLineDefinition, size = NODE_SIZE): ElkNode {
   const exitDotEdges = exitDotEdgesOf(definition);
 
   return {
@@ -39,7 +39,7 @@ export function elkGraphOf(definition: AssemblyLineDefinition): ElkNode {
     children: [
       ...definition.nodes.map((node) => ({
         id: node.id,
-        ...NODE_SIZE,
+        ...size,
         layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
         ports: [
           ...incomingEdgesOf(definition, node.id)
