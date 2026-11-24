@@ -7,13 +7,17 @@ export interface LabelledNode {
   node: VisibleNode;
   /** Nothing leaves it. */
   isTerminal: boolean;
+  /** No start leads to it. */
+  isUnreachable?: boolean;
 }
 
-export function nodeAriaLabel({ node, isTerminal }: LabelledNode): string {
+export function nodeAriaLabel({ node, isTerminal, isUnreachable }: LabelledNode): string {
   const family = FAMILY_LABEL[typeFamilyOf(node.type)].toLowerCase();
   const badges = badgesOf(node).map(({ description }) => description);
   const outcomes = node.outcomes.length > 0 ? [`outcomes: ${node.outcomes.join(", ")}`] : [];
   const terminal = isTerminal ? ["terminal"] : [];
 
-  return [node.id, family, ...badges, ...outcomes, ...terminal].join(", ");
+  const unreachable = isUnreachable ? ["unreachable"] : [];
+
+  return [node.id, family, ...badges, ...outcomes, ...terminal, ...unreachable].join(", ");
 }

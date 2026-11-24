@@ -17,6 +17,8 @@ export interface GraphNodeProps {
   model: VisibleNode;
   height: number;
   isTerminal: boolean;
+  /** No start leads to it. */
+  isUnreachable?: boolean;
   /** The node the inspector shows; drawn with a ring so the graph says which one. */
   selected?: boolean;
   onSelect?: (nodeId: string) => void;
@@ -36,7 +38,7 @@ const GLYPH_INSET = 11;
 const NO_TONES: ReadonlyMap<string, ConnectorTone> = new Map();
 
 export default function GraphNode(props: GraphNodeProps) {
-  const { node, model, height, isTerminal, selected = false, onSelect } = props;
+  const { node, model, height, isTerminal, selected = false, isUnreachable, onSelect } = props;
   const family = typeFamilyOf(model.type);
   const shape = family === "marker" ? "terminal" : "card";
   const BODY = BODY_BY_SHAPE[shape];
@@ -48,14 +50,15 @@ export default function GraphNode(props: GraphNodeProps) {
       data-family={family}
       data-shape={shape}
       data-selected={selected || undefined}
+      data-unreachable={isUnreachable || undefined}
       {...neighbourhoodAttrs(node.id, props)}
-      aria-label={nodeAriaLabel({ node: model, isTerminal })}
+      aria-label={nodeAriaLabel({ node: model, isTerminal, isUnreachable })}
       aria-describedby={props.describedBy}
       {...interactionAttrs({ nodeId: node.id, onSelect, selected })}
     >
-      <BODY node={node} family={family} height={height} />
+      <BODY node={node} family={family} height={height} isUnreachable={isUnreachable} />
       <NodeBadges badges={badgesOf(model)} rightEdge={node.x + node.width / 2} top={node.y - height / 2} />
-      <NodePorts ports={node.ports} toneByEdge={props.toneByEdge ?? NO_TONES} />
+      <NodePorts ports={node.ports} toneByEdge={props.toneByEdge} />
     </g>
   );
 }
@@ -64,16 +67,17 @@ interface NodeBodyProps {
   node: LaidOutNode;
   family: ReturnType<typeof typeFamilyOf>;
   height: number;
+  isUnreachable?: boolean;
 }
 
-function CardBody({ node, family, height }: NodeBodyProps) {
+function CardBody({ node, family, height, isUnreachable }: NodeBodyProps) {
   const { top, leftEdge, width } = boxOf(node, height);
 
   return (
     <>
-      <NodeBox leftEdge={leftEdge} top={top} width={width} height={height} />
+      <NodeBox leftEdge={leftEdge} top={top} width={width} height={height} isUnreachable={isUnreachable} />
       <TypeGlyph family={family} cx={leftEdge + GLYPH_INSET} cy={top + GLYPH_INSET} />
-      <NodeTitle title={nodeTitle(node.id)} kind={family} centerX={node.x} centerY={node.y} />
+      <NodeTitle title={nodeTitle(node.id)} kind={family} isUnreachable={isUnreachable} centerX={node.x} centerY={node.y} />
     </>
   );
 }
@@ -92,7 +96,7 @@ function TerminalBody({ node }: NodeBodyProps) {
 
 const BODY_BY_SHAPE = { card: CardBody, terminal: TerminalBody };
 
-function NodePorts({ ports, toneByEdge }: { ports: LaidOutNode["ports"]; toneByEdge: ReadonlyMap<string, ConnectorTone> }) {
+function NodePorts({ ports, toneByEdge = NO_TONES }: { ports: LaidOutNode["ports"]; toneByEdge?: ReadonlyMap<string, ConnectorTone> }) {
   return ports.map((port) => {
     const tone = port.side === "in" ? "in" : (toneByEdge.get(port.edge) ?? "neutral");
 
@@ -167,12 +171,13 @@ interface NodeBoxProps {
   top: number;
   width: number;
   height: number;
+  isUnreachable?: boolean;
 }
 
-function NodeBox({ leftEdge, top, width, height }: NodeBoxProps) {
+function NodeBox({ leftEdge, top, width, height, isUnreachable }: NodeBoxProps) {
   return (
     <rect
-      className={styles.box}
+      className={classes(styles.box, isUnreachable ? styles.boxUnreachable : undefined)}
       x={leftEdge}
       y={top}
       width={width}
