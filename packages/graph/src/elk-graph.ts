@@ -4,8 +4,11 @@ import type { AssemblyLineDefinition, DefinitionEdge } from "./assembly-line-def
 import { edgeKeyOf } from "./metro/edge-key";
 import { mainPathOf } from "./metro/main-path";
 import { incomingEdgesOf, outgoingEdgesOf } from "./metro/node-edges";
+import { typeFamilyOf } from "./node-type-family";
 
 const NODE_SIZE = { width: 140, height: 60 };
+// Card height keeps ELK from centring stations on a shorter marker, which made sub-16px turns.
+const MARKER_SIZE = { width: 22, height: NODE_SIZE.height };
 const PORT_SIZE = 8;
 const EXIT_DOT_SIZE = 14;
 const LABEL_HEIGHT = 16;
@@ -29,7 +32,7 @@ const LAYOUT_OPTIONS = {
   "elk.edgeLabels.placement": "CENTER",
 };
 
-/** Builds the ELK input graph for a line: one child per node, 140x60 unless sized. */
+/** Builds the ELK input graph for a line: one child per node, markers 22x22, others 140x60 unless sized. */
 export function elkGraphOf(definition: AssemblyLineDefinition, size = NODE_SIZE): ElkNode {
   const exitDotEdges = exitDotEdgesOf(definition);
 
@@ -39,7 +42,7 @@ export function elkGraphOf(definition: AssemblyLineDefinition, size = NODE_SIZE)
     children: [
       ...definition.nodes.map((node) => ({
         id: node.id,
-        ...size,
+        ...(typeFamilyOf(node.type) === "marker" ? MARKER_SIZE : size),
         layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
         ports: [
           ...incomingEdgesOf(definition, node.id)

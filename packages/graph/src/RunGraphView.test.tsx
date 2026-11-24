@@ -34,7 +34,7 @@ function roundedTransformOf(container: HTMLElement) {
   return roundedToHundredths(transform);
 }
 
-const waitForFittedView = (container: HTMLElement) => waitFor(() => expect(roundedTransformOf(container)).toBe("translate(0 83.85) scale(0.52)"));
+const waitForFittedView = (container: HTMLElement) => waitFor(() => expect(roundedTransformOf(container)).toBe("translate(0 61.61) scale(0.69)"));
 
 const nodeEl = (container: HTMLElement, id: string) => container.querySelector(`[data-node="${id}"]`) as HTMLElement;
 const edgeEl = (container: HTMLElement, key: string) => container.querySelector(`[data-edge="${key}"]`) as HTMLElement;
@@ -242,14 +242,14 @@ describe("RunGraphView selection", () => {
 describe("RunGraphView bringing a selected node into view", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("pans to translate(-549.9 -11.49) scale(1.27) when done, below the zoomed view, is selected", async () => {
+  it("pans to translate(-683.46 -43.7) scale(1.69) when done, below the zoomed view, is selected", async () => {
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 300));
     const { container, rerender } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
     await waitForFittedView(container);
     for (let press = 0; press < 4; press++) fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     rerender(<RunGraphView definition={codeReviewDefinition} selectedNodeId="done" />);
 
-    await waitFor(() => expect(roundedTransformOf(container)).toBe("translate(-549.9 -11.49) scale(1.27)"));
+    await waitFor(() => expect(roundedTransformOf(container)).toBe("translate(-683.46 -43.7) scale(1.69)"));
   });
 });
 

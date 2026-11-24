@@ -9,10 +9,10 @@ function straightSegmentOf(path: string): number[] {
 }
 
 describe("layoutWithElk", () => {
-  const twoStationLine = markerLine({ entry: "write", nodeIds: ["write", "done"], edges: [["write", "done", "success"]] });
+  const twoStationLine = markerLine({ kind: "agent", entry: "write", nodeIds: ["write", "done"], edges: [["write", "done", "success"]] });
 
   it("returns one 140x60 node centred at 82,42 and no edges for a single-station line", async () => {
-    const singleStationLine = markerLine({ entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
+    const singleStationLine = markerLine({ kind: "agent", entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
 
     const { nodes, edges } = await layoutWithElk(singleStationLine);
 
@@ -23,7 +23,7 @@ describe("layoutWithElk", () => {
   });
 
   it("returns the 164x84 root as the content box for a single-station line", async () => {
-    const singleStationLine = markerLine({ entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
+    const singleStationLine = markerLine({ kind: "agent", entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
 
     const { contentBox } = await layoutWithElk(singleStationLine);
 
@@ -83,6 +83,7 @@ describe("layoutWithElk", () => {
 
   it("returns kind self for the review -> review failed edge", async () => {
     const retryLine = markerLine({
+      kind: "agent",
       entry: "review",
       nodeIds: ["review", "done"],
       edges: [
@@ -98,6 +99,7 @@ describe("layoutWithElk", () => {
 
   it("returns kind back for the review -> write changes_requested edge", async () => {
     const revisionLine = markerLine({
+      kind: "agent",
       entry: "write",
       nodeIds: ["write", "review", "done"],
       edges: [
