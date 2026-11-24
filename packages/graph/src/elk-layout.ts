@@ -3,6 +3,8 @@ import ELK, { type ElkEdgeSection, type ElkLabel, type ElkNode } from "elkjs/lib
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { elkGraphOf } from "./elk-graph";
 
+type Box = { minX: number; minY: number; maxX: number; maxY: number };
+
 export interface ElkLayout {
   nodes: { id: string; x: number; y: number; width: number; height: number }[];
   edges: {
@@ -12,6 +14,7 @@ export interface ElkLayout {
     kind: "forward" | "back" | "self";
     d: string;
     mid: { x: number; y: number; vertical: boolean };
+    labelBox: Box;
   }[];
   contentBox: { minX: number; minY: number; maxX: number; maxY: number };
 }
@@ -46,6 +49,7 @@ function edgesOf(laidOut: ElkNode, definition: AssemblyLineDefinition, nodes: La
 
   return (laidOut.edges ?? []).map((laidOutEdge, index) => {
     const { from, to, on } = definition.edges[index];
+    const labelBox = labelBoxOf(laidOutEdge.labels?.[0]);
 
     return {
       from,
@@ -53,7 +57,8 @@ function edgesOf(laidOut: ElkNode, definition: AssemblyLineDefinition, nodes: La
       on,
       kind: edgeKindOf(from, to, centreX),
       d: pathOf(laidOutEdge.sections?.[0]),
-      mid: labelCentreOf(laidOutEdge.labels?.[0]),
+      mid: centreOf(labelBox),
+      labelBox,
     };
   });
 }
@@ -65,10 +70,14 @@ function pathOf(section?: ElkEdgeSection): string {
   return [startPoint, ...bendPoints, endPoint].map(({ x: pointX, y: pointY }, index) => `${index === 0 ? "M" : "L"} ${pointX} ${pointY}`).join(" ");
 }
 
-function labelCentreOf(label?: ElkLabel): LaidOutEdge["mid"] {
+function labelBoxOf(label?: ElkLabel): Box {
   const { x: left = 0, y: top = 0, width = 0, height = 0 } = label ?? {};
 
-  return { x: left + width / 2, y: top + height / 2, vertical: false };
+  return { minX: left, minY: top, maxX: left + width, maxY: top + height };
+}
+
+function centreOf({ minX, minY, maxX, maxY }: Box): LaidOutEdge["mid"] {
+  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, vertical: false };
 }
 
 function edgeKindOf(from: string, to: string, centreX: Map<string, number>): LaidOutEdge["kind"] {
