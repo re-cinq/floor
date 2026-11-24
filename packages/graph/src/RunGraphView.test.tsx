@@ -5,7 +5,7 @@ import { render, screen, fireEvent, act, within, waitFor } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import RunGraphView from "./RunGraphView";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import { codeReviewDefinition, implementationDefinition } from "./definition.fixtures";
+import { codeReviewDefinition, featurePlanningDefinition, implementationDefinition } from "./definition.fixtures";
 
 function Selectable({ definition }: { definition: AssemblyLineDefinition }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -227,5 +227,21 @@ describe("RunGraphView station tooltip", () => {
     fireEvent.keyDown(nodeEl(container, "review"), { key: "Escape" });
 
     expect([shown, screen.queryByRole("tooltip")]).toEqual(["ReviewAgentAn AI agent reviews the pull request.", null]);
+  });
+
+  it("draws one path per outcome and no label when outcomes lead to the same node", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={featurePlanningDefinition} />);
+
+    expect([
+      edgeEl(container, "analyze->author").querySelectorAll("path").length,
+      container.querySelectorAll('[data-edge-label="analyze->author"]').length,
+    ]).toEqual([3, 0]);
+  });
+
+  it("draws the definition's own nodes and no exit dot as a station", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={featurePlanningDefinition} />);
+    const drawn = [...container.querySelectorAll("[data-node]")].map((node) => node.getAttribute("data-node"));
+
+    expect(drawn.sort()).toEqual(featurePlanningDefinition.nodes.map((node) => node.id).sort());
   });
 });
