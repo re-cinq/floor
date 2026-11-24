@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import RunGraphView from "./RunGraphView";
 import { markerLine } from "./metro/line.fixtures";
 import { renderGraph } from "./run-graph.test-helpers";
+import styles from "./run-graph.module.css";
 
 function takenByEdge(container: HTMLElement) {
   return [...container.querySelectorAll("[data-edge]")]
@@ -188,5 +189,23 @@ describe("RunGraphView run overlay", () => {
     const countOf = (key: string) => container.querySelector(`[data-edge="${key}"] [data-taken-count]`)?.textContent ?? null;
 
     expect([countOf("a|fix|failed"), countOf("a|done|success")]).toEqual(["×2", null]);
+  });
+
+  it("draws every taken, visited and outcome mark inside the graph's .svg root, where its styles are scoped", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = { visits: [{ nodeId: "a", iteration: 1, outcome: "success", open: false }] };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} show="all" />);
+    const marked = [...container.querySelectorAll("[data-taken], [data-visited], [data-outcome]")];
+
+    expect({ marked: marked.length > 0, outside: marked.filter((element) => !element.closest(`svg.${styles.svg}`)) }).toEqual({ marked: true, outside: [] });
   });
 });
