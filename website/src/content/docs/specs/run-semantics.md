@@ -13,10 +13,10 @@ An event starts a run of every line whose `start.on` lists the event's name and 
 
 1. Each argument is filled from the payload by its [start template](/floor/specs/placeholders/#1-start-templates).
 2. A start MUST give every argument the line declares. If not, the run does not start and the floor says `startItems.X: required by the line, as kind "K"`.
-3. A start through `POST /assembly-lines/{id}/start` MAY give items the line does not declare as arguments, and they are kept in the run's bag. A start by event cannot: a `start.args` entry for a name the line does not declare is refused with `start maps "X", which the line does not declare as an argument`.
-4. The run's repository is the one its `git` argument names. With no `git` argument it is the payload's `repo` or `repository` field, and with neither the run has no repository.
-5. A line with a `git` argument MUST be started with a repository. The floor says `line "L" has a git argument, so a start must name its repo`.
-6. A run walks the version of the line it started with. A newer version changes later runs only.
+3. A start through `POST /assembly-lines/{id}/start` MAY give items the line does not declare as arguments, and they are kept in the run's bag. ([validated by `start-args.test.ts:34`](https://github.com/re-cinq/floor/blob/main/packages/store/src/start-args.test.ts#L34)) ([validated by `assembly-run-store-start-args.test.ts:22`](https://github.com/re-cinq/floor/blob/main/packages/store/src/assembly-run-store-start-args.test.ts#L22)) A start by event cannot: a `start.args` entry for a name the line does not declare is refused with `start maps "X", which the line does not declare as an argument`. ([validated by `event-match.test.ts:71`](https://github.com/re-cinq/floor/blob/main/packages/store/src/event-match.test.ts#L71))
+4. The run's repository is the one its `git` argument names. With no `git` argument it is the payload's `repo` or `repository` field, and with neither the run has no repository. ([validated by `event-match.test.ts:79`](https://github.com/re-cinq/floor/blob/main/packages/store/src/event-match.test.ts#L79)) ([validated by `event-match.test.ts:83`](https://github.com/re-cinq/floor/blob/main/packages/store/src/event-match.test.ts#L83)) ([validated by `event-match.test.ts:87`](https://github.com/re-cinq/floor/blob/main/packages/store/src/event-match.test.ts#L87)) ([validated by `event-match.test.ts:91`](https://github.com/re-cinq/floor/blob/main/packages/store/src/event-match.test.ts#L91))
+5. A line with a `git` argument MUST be started with a repository. The floor says `line "L" has a git argument, so a start must name its repo`. ([validated by `assembly-run-store.test.ts:102`](https://github.com/re-cinq/floor/blob/main/packages/store/src/assembly-run-store.test.ts#L102)) ([validated by `runs.test.ts:62`](https://github.com/re-cinq/floor/blob/main/apps/api/src/routes/runs.test.ts#L62))
+6. A run walks the version of the line it started with. A newer version changes later runs only. ([validated by `assembly-run-store-report.test.ts:98`](https://github.com/re-cinq/floor/blob/main/packages/store/src/assembly-run-store-report.test.ts#L98))
 
 ### 1.1 The subject
 
@@ -35,7 +35,7 @@ An event names a run by `runId` in its payload, or by `subjectKey` and `repo`. A
 
 A report from an event needs a visit that is open at the node. With none, nothing happens.
 
-A start for a node that already has an open visit, sent with no iteration (a start by hand), returns that visit and opens nothing. The walk itself opens no visit while any visit of the run is open. A start that names another iteration of a node with an open visit is refused with `node "N" already has an open visit, iteration I`. The run and its open visit stay as they were. The branches of a [fan-out](#6-fan-out) share one iteration, so they open side by side.
+A start for a node that already has an open visit, sent with no iteration (a start by hand), returns that visit and opens nothing. ([validated by `assembly-run-store-hand.test.ts:120`](https://github.com/re-cinq/floor/blob/main/packages/store/src/assembly-run-store-hand.test.ts#L120)) The walk itself opens no visit while any visit of the run is open. A start that names another iteration of a node with an open visit is refused with `node "N" already has an open visit, iteration I`. ([validated by `assembly-run-store-hand.test.ts:68`](https://github.com/re-cinq/floor/blob/main/packages/store/src/assembly-run-store-hand.test.ts#L68)) The run and its open visit stay as they were. ([validated by `dispatcher.test.ts:108`](https://github.com/re-cinq/floor/blob/main/apps/api/src/engine/dispatcher.test.ts#L108)) The branches of a [fan-out](#6-fan-out) share one iteration, so they open side by side.
 
 ## 3. A visit
 
@@ -48,7 +48,7 @@ When the walk reaches a node, a visit opens.
 | A `service` station | A worker that claims `station:<id>` does the work and reports |
 | A `human` station | The visit waits for a report, or for an event one of the node's `reports` names |
 
-Each need of the station is filled from the run's bag when the visit opens, and stays as it was filled. When a required need is not in the bag, the visit is refused with `node "N": missing required need(s) X`, no visit is recorded, and the run ends as `error` with that message as its reason.
+Each need of the station is filled from the run's bag when the visit opens, and stays as it was filled. When a required need is not in the bag, the visit is refused with `node "N": missing required need(s) X`, no visit is recorded, and the run ends as `error` with that message as its reason. ([validated by `dispatcher.test.ts:54`](https://github.com/re-cinq/floor/blob/main/apps/api/src/engine/dispatcher.test.ts#L54))
 
 A need with `fresh: true` is filled only by an item produced since a person last acted: by the last `human` station's visit, or by a visit after it. Until a person acts, every item is fresh. An older item counts as not in the bag, so an optional need is left out, and a required one refuses the visit with `node "N": missing required need(s) X (not produced since a person last acted)`. A visit a person starts by hand opens with nothing fresh.
 
@@ -134,4 +134,4 @@ With none to resume, the agent starts a new conversation.
 
 A visit of an `agent` station runs the agent's settings as they are when the visit opens. When the run has a repository and the agent has a variant for it, the variant is laid over the settings by field, by key of `config` and by model of `prices`.
 
-The agent definition MUST exist when the visit opens. If not, the visit is refused with `no agent definition "X"`, and the run ends as `error` with that message as its reason.
+The agent definition MUST exist when the visit opens. If not, the visit is refused with `no agent definition "X"`, and the run ends as `error` with that message as its reason. ([validated by `dispatcher.test.ts:63`](https://github.com/re-cinq/floor/blob/main/apps/api/src/engine/dispatcher.test.ts#L63))
