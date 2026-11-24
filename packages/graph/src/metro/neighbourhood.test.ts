@@ -53,6 +53,23 @@ describe("neighbourhoodOf", () => {
     });
   });
 
+  it("returns the whole upstream and downstream path a, b, c, d for b on a chain a to d", () => {
+    const line = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "c", "d", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "c", "success"],
+        ["c", "d", "success"],
+      ],
+    });
+
+    expect(neighbourhoodOf(line, "b")).toEqual({
+      nodes: new Set(["a", "b", "c", "d"]),
+      edges: new Set(["a|b|success", "b|c|success", "c|d|success"]),
+    });
+  });
+
   it("returns empty sets for the undeclared id ghost", () => {
     const line = markerLine({
       entry: "a",
