@@ -30,7 +30,7 @@ export interface NodeVisit {
   nodeId: string;
   iteration: number;
   outcome: string | null;
-  /** The person who opened this visit by hand (docs/assembly_run_storage.md, "reports from outside"); the walk restarts here, so what came before routes nothing and spends no budget. */
+  /** The person who opened this visit by hand (docs/assembly_run_storage.md, "A start by hand reopens a finished run"); the walk restarts here, so what came before routes nothing and spends no budget. */
   requestedBy?: string | null;
   /** Which item of a fan-out this visit is the body for; absent on an ordinary visit. */
   branch?: number;

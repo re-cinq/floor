@@ -105,7 +105,7 @@ A file changed after it ran fails the upgrade. Add a later file instead. A Confi
 
 ## Add a cluster
 
-A cluster joins by running a cluster agent. There is nothing to register by hand: the agent calls `PUT /clusters/{id}` on start and every minute, with its `clusterId`. Install the chart again on the other cluster with the api off and its own `clusterId`.
+A cluster joins by running a cluster agent. There is nothing to register by hand. The agent calls `PUT /clusters/{id}` on start and every minute, with its `clusterId`. Install the chart again on the other cluster with the api off and its own `clusterId`.
 
 ```bash
 helm install floor oci://ghcr.io/re-cinq/charts/floor --version <release> \

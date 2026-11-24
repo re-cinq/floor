@@ -1,18 +1,13 @@
 # Station
 
-**One unit of work, defined once, reused by many lines.** A station is a
-**definition** (what it needs, what it produces, which outcomes it can
-report) and one **function** that turns a brief into a report. The line
-decides when it runs and what comes after; the station never knows.
+A station is one unit of work, defined once and reused by many assembly lines. It is a definition (what it needs, what it produces, which outcomes it can report) and one function that turns a brief into a report. The assembly line decides when it runs and what comes after. The station never knows.
 
 ## What it is not
 
-- Not a node. A node is one *use* of a station inside one line.
+- Not a node. A node is one use of a station inside one assembly line.
 - Not a prompt or a model. Those live in the agent definition it references.
-- Not a running thing. One execution inside one run is a **station run**, a
-  visit. See [assembly-run.md](assembly-run.md).
-- Not the ai-agent-subsystem's `Station`. That one is a pod runtime (an image
-  and its resources). Where both appear, this doc says *subsystem station*.
+- Not a running thing. One execution inside one assembly run is a **station run**, a visit. See [assembly-run.md](assembly-run.md).
+- Not the ai-agent-subsystem's `Station`. That one is a pod runtime (an image and its resources). Where both appear, this doc says "subsystem station".
 
 ## The definition
 
@@ -38,24 +33,19 @@ produces:
 | `kind` | who does the work: `agent`, `service`, `human` |
 | `outcomes` | what it may report; default `[success, failed]`. The line must have an edge for each |
 | `needs` / `produces` | items read from and written to the run's bag, by name and kind |
-| `access` on a `git` need | `read` (default) or `write`; what the visit's token is traded for when git asks: a credential that reads the repository, or one that may push to it |
+| `access` on a `git` need | `read` (default) or `write`. When git asks, the visit's token is traded for a credential that reads the repository, or for one that may push to it |
 | `must_change` | agent kind: a `success` with no diff on the branch is recorded as `failed` |
-| `result_required` | agent kind: an agent that ends with neither a `LORE_NODE_RESULT:` line nor a `REVIEW_RESULT:` verdict has failed its visit; absent or `false`, its silence is read as `success` |
+| `result_required` | agent kind: an agent that ends with neither a `LORE_NODE_RESULT:` line nor a `REVIEW_RESULT:` verdict has failed its visit. When absent or `false`, its silence is read as `success` |
 | `agent_definition`, `conversation`, `conversation_key` | agent kind only |
 | `route` | human kind only: the page template a person works on |
 
-`path` is relative to the pod's workspace, `/workspace`, and matters only
-to the agent kind. The prompt gets each one as `{<name>_path}`, in full.
+`path` is relative to the pod's workspace, `/workspace`, and matters only to the agent kind. The prompt gets each one as `{<name>_path}`, in full.
 
-A file an agent produces is one it wrote at `path`, or, with
-`from: output` in place of a path, everything it said last. The second is
-for a prompt that answers in its output, which the next station then reads
-as a file.
+A file an agent produces is one it wrote at `path`. With `from: output` in place of a path, the file is everything the agent said last. That form is for a prompt that answers in its output, which the next station then reads as a file.
 
 > **Not built yet.** `must_change` is accepted and ignored.
 
-`route` is stored for whoever builds a human station's page and is never
-rendered by the floor, which serves no page of its own.
+`route` is stored for whoever builds a human station's page. The floor never renders it and serves no page of its own.
 
 ## The interface
 
@@ -79,17 +69,13 @@ interface Report {
 type Handle = (brief: Brief) => Promise<Report>;
 ```
 
-That is the whole interface. Every kind is a different way of running that
-one function. There is no floor-side class: the floor never starts a
-station, it enqueues `station_run.dispatch` and a worker pulls it.
+That is the whole interface. Every kind is a different way of running that one function. There is no floor-side class. The floor never starts a station, it enqueues `station_run.dispatch` and a worker pulls it.
 
 ## The three kinds
 
 ### agent
 
-**The author implements nothing, and no code of ours runs in the pod.** A
-cluster agent claims the dispatch and creates one `Agent` resource of the
-ai-agent-subsystem, translating the brief:
+The author implements nothing, and no code of ours runs in the pod. A cluster agent claims the dispatch and creates one `Agent` resource of the ai-agent-subsystem, translating the brief:
 
 | in the brief | in the `Agent` resource |
 |---|---|
@@ -97,41 +83,25 @@ ai-agent-subsystem, translating the brief:
 | a `file` need | a file to download to `path` |
 | a `value` need | a parameter that fills the prompt's `{placeholder}` |
 | anything with a path | a parameter, `{<name>_path}`: where it is in the workspace |
-| the run, its assembly line and the node | three parameters, `{run_id}`, `{line_id}` and `{node_id}`; a value need of the same name wins |
+| the run, its assembly line and the node | three parameters, `{run_id}`, `{line_id}` and `{node_id}`. A value need of the same name wins |
 | a `file` produce with a `path` | a watched path, uploaded to the blob store when the agent ends, and a parameter `{<name>_path}` |
 | a git need | two more parameters, `{git_credential}` and `{git_credential_url}`, for the clone's credential helper |
 | the previous conversation | restored before the agent starts, saved after |
 | turns, cost, the result | streamed to the visit's sink endpoint |
 
-`floor-pipeline lint` and the tools that draw a line answer from the same naming:
-`declaredParameters` in `@re-cinq/floor-assembly-lines` says which parameters a station's
-declaration gives its prompt, and `promptPlaceholders` says, for each `{name}` a prompt reads, what
-supplies it and whether it is filled on every path into the node.
+`floor-pipeline lint` and the tools that draw an assembly line use the same naming. `declaredParameters` in `@re-cinq/floor-assembly-lines` says which parameters a station's declaration gives its prompt. `promptPlaceholders` says, for each `{name}` a prompt reads, what supplies it and whether it is filled on every path into the node.
 
-The subsystem's supervisor does the fetching, cloning, prompt filling,
-uploading and posting. The floor's sink endpoint turns those events, one
-per request, into records, produced items and the report. A value the agent
-produces goes in its marker, as JSON:
-`LORE_NODE_RESULT: {"outcome":"success","produced":{"review_verdict":"approved"}}`.
-Only what the station declares is taken. The outcome is parsed from the
-agent's own output: `LORE_NODE_RESULT:` first, then `REVIEW_RESULT:`, then
-`success`; a malformed marker is `failed`. The marker starts its line; one
-wrapped in backticks, as an agent copies it from a prompt, is read the same.
+The subsystem's supervisor does the fetching, cloning, prompt filling, uploading and posting. The floor's sink endpoint turns those events, one per request, into records, produced items and the report.
 
-That last `success` is a guess. An agent whose CLI exits cleanly in the middle
-of its work, or whose answer is cut off before its verdict, says nothing, and
-is read as having succeeded. A station that declares `result_required: true`
-refuses the guess: an agent that printed neither a `LORE_NODE_RESULT:` line
-nor `REVIEW_RESULT: APPROVED` or `REVIEW_RESULT: CHANGES_REQUESTED` reports
+A value the agent produces goes in its marker, as JSON: `LORE_NODE_RESULT: {"outcome":"success","produced":{"review_verdict":"approved"}}`. Only what the station declares is taken. The outcome is parsed from the agent's own output, `LORE_NODE_RESULT:` first, then `REVIEW_RESULT:`, then `success`. A malformed marker is `failed`. The marker starts its line of output, and one wrapped in backticks, as an agent copies it from a prompt, is read the same.
+
+That last `success` is a guess. An agent whose CLI exits cleanly in the middle of its work, or whose answer is cut off before its verdict, says nothing and is read as having succeeded. A station that declares `result_required: true` refuses the guess. An agent that printed neither a `LORE_NODE_RESULT:` line nor `REVIEW_RESULT: APPROVED` or `REVIEW_RESULT: CHANGES_REQUESTED` reports
 
 ```
 { outcome: "failed", error: "the agent ended without a LORE_NODE_RESULT or REVIEW_RESULT line, and its station requires one" }
 ```
 
-and the line's edges for `failed` decide what happens next, a retry or the
-end of the run. A station whose files are all declared by path does not need
-it to catch a silent agent that wrote none of them: that visit already fails,
-naming the files.
+and the assembly line's edges for `failed` decide what happens next, a retry or the end of the run. A station whose files are all declared by path does not need `result_required` to catch a silent agent that wrote none of them. That visit already fails, naming the files.
 
 Writing an agent station is writing the YAML above and a prompt.
 
@@ -149,41 +119,28 @@ defineStation("close-issue", async (brief, tools) => {
 });
 ```
 
-The SDK claims `station_run.dispatch` events tagged `station:close-issue`
-and calls the function with the brief and four tools: `read` fetches a file
-need, `produce` uploads a file the station produces, `modelCall` records a
-model call as `llm_call`, and `signal` is aborted at the deadline. It posts
-what the function returns as the report; a function that throws has failed
-its visit. When the floor cannot be reached the dispatch goes back to the
-queue. The service needs only a way out to the floor; the floor never
-calls it.
+The SDK claims `station_run.dispatch` events tagged `station:close-issue` and calls the function with the brief and four tools:
 
-Lore's `merge_step`, `escalation_step`, `issues`, `comment-triage` and the
-real `retrospective` are this kind. So is everything that talks to GitHub on
-the floor's behalf: `open-pr`, `mark-ready`, `post-review`, `post-reply`.
+- `read` fetches a file need
+- `produce` uploads a file the station produces
+- `modelCall` records a model call as `llm_call`
+- `signal` is aborted at the deadline
+
+It posts what the function returns as the report. A function that throws has failed its visit. When the floor cannot be reached the dispatch goes back to the queue. The service needs only a way out to the floor, and the floor never calls it.
+
+Lore's `merge_step`, `escalation_step`, `issues`, `comment-triage` and the real `retrospective` are this kind. So is everything that talks to GitHub on the floor's behalf: `open-pr`, `mark-ready`, `post-review`, `post-reply`.
 
 ### human
 
-Nothing is dispatched. A human visit opens, waits with no deadline, and is
-answered by a report or by an event its node's `reports` names.
+Nothing is dispatched. A human visit opens, waits with no deadline, and is answered by a report or by an event its node's `reports` names.
 
-**The floor serves no page, by design.** Whoever maintains a human station
-builds whatever a person acts through, exactly as the maintainer of a
-service station writes its worker. The floor offers only what that page
-needs of it: the visit and its needs to read, `route` stored on the node for
-the page's own use, and a report or a named event to answer with. It renders
-nothing and calls nothing out.
+The floor serves no page, by design. Whoever maintains a human station builds whatever a person acts through, as the maintainer of a service station writes its worker. The floor offers what that page needs: the visit and its needs to read, `route` stored on the node for the page's own use, and a report or a named event to answer with. It renders nothing and calls nothing out.
 
-A page built this way shows the needs and offers actions, each posting a
-report: Refine is `changes_requested` with the edited file produced, Approve
-is `success`. A webhook can answer instead, for a page the platform does not
-own, like a GitHub PR.
+A page built this way shows the needs and offers actions, each posting a report. Refine is `changes_requested` with the edited file produced, and Approve is `success`. A webhook can answer instead, for a page the platform does not own, like a GitHub PR.
 
 ### Markers are not stations
 
-A node that names no station is a marker: its visit opens and reports
-`success` in the same transaction. Every terminal `done` node in lore is
-one. There is nothing to define or register.
+A node that names no station is a marker. Its visit opens and reports `success` in the same transaction. Every terminal `done` node in lore is one. There is nothing to define or register.
 
 ## Examples from lore, converted
 
@@ -248,15 +205,9 @@ produces:
 
 ## Workflow: one visit, any kind
 
-1. A node's start event arrives. The store resolves the station version,
-   its agent definition and repo variant, and each need from the bag.
-2. A visit opens with a frozen brief and a deadline, and, for agent and
-   service kinds, a `station_run.dispatch` event in the same transaction.
-   Its token is minted when its brief is asked for.
+1. A node's start event arrives. The store resolves the station version, its agent definition and repo variant, and each need from the bag.
+2. A visit opens with a frozen brief and a deadline. For agent and service kinds, a `station_run.dispatch` event is written in the same transaction. The visit's token is minted when its brief is asked for.
 3. A worker claims the dispatch. For human, a person opens the page.
-4. `handle(brief)` runs: in a pod, in a service, or on a page.
-5. Exactly one `station_run.reported` arrives. The store merges `produced`
-   into the bag and writes the next start event. The line decides what is
-   next.
-6. The worker that claimed the dispatch is told to let go, by
-   `station_run.abort`.
+4. `handle(brief)` runs in a pod, in a service, or on a page.
+5. Exactly one `station_run.reported` arrives. The store merges `produced` into the bag and writes the next start event. The assembly line decides what is next.
+6. The worker that claimed the dispatch is told to let go, by `station_run.abort`.

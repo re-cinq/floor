@@ -1,16 +1,12 @@
 # Assembly line
 
-**A graph of nodes, each pointing at a station, joined by edges that route
-on outcomes.** It is the blueprint. It does nothing by itself; a run is what
-executes it.
+An assembly line is a graph of nodes, each pointing at a station, joined by edges that route on outcomes. It is the blueprint and does nothing by itself. An assembly run is what executes it.
 
 ## What it is not
 
-- Not a run. Starting a line creates a run; the line is unchanged.
-- Not where models or prompts live. Nodes point at stations, stations point
-  at agent definitions. A node cannot override either.
-- Not mutable. Editing a line creates a new version with a new content hash.
-  Runs reference the version they started from.
+- Not an assembly run. Starting a run creates the run and leaves the assembly line unchanged.
+- Not where models or prompts live. Nodes point at stations, stations point at agent definitions. A node cannot override either.
+- Not mutable. Editing an assembly line creates a new version with a new content hash. Runs reference the version they started from.
 
 ## Fields
 
@@ -20,23 +16,18 @@ executes it.
 | `entry`, `exit` | the first node, and the terminal marker node |
 | `fail` | optional: a second terminal marker node. A run that arrives here settles as `failed` |
 | `start` | optional: the events that start a run of this line, and how their payload maps to arguments |
-| `args` | the typed arguments `start` must be given; one may be marked `subject` |
+| `args` | the typed arguments `start` must be given. One may be marked `subject` |
 | `files` | files shipped with the line version, seeded into every run's bag |
-| `nodes[]` | `id`, `station` (optionally pinned `@hash`; omitted for a marker), optional `start`, optional `bind`, optional `reports` (human nodes), optional `fanout` |
+| `nodes[]` | `id`, `station` (optionally pinned `@hash`, omitted for a marker), optional `start`, optional `bind`, optional `reports` (human nodes), optional `fanout` |
 | `edges[]` | `from`, `to`, `on` (`success`, `changes_requested`, `failed`, `always`), optional `iteration_max` |
 
 ### Nodes
 
-A node is one *use* of a station. Its `start` event defaults to
-`node.<id>.start`, which the walk posts when an edge leads here. A node may
-instead name an outside event, and then no edge needs to lead to it. `bind`
-maps a station's need name to a differently named bag item.
+A node is one use of a station. Its `start` event defaults to `node.<id>.start`, which the walk posts when an edge leads here. A node may instead name an outside event, and then no edge needs to lead to it. `bind` maps a station's need name to a differently named bag item.
 
 ### Start
 
-A line is started by the API, or by an event it declares. The mapping from
-payload to arguments uses the same logic-less templates as prompts, over
-the payload's fields only.
+A run of an assembly line is started by the API, or by an event the line declares. The mapping from payload to arguments uses the same logic-less templates as prompts, over the payload's fields only.
 
 ```yaml
 start:
@@ -47,17 +38,13 @@ start:
     pr_url: "{pull_request_url}"
 ```
 
-`when` is an equality match on payload fields, nothing more. If an open run
-already holds the subject, the event joins it and starts nothing.
+`when` is an equality match on payload fields. If an open run already holds the subject, the event joins it and starts nothing.
 
-This is also how one line starts another. A line that notifies on failure
-declares `on: internal.run.settled`, `when: { outcome: failed }`.
+This is also how a run of one assembly line starts a run of another. A line that notifies on failure declares `on: internal.run.settled`, `when: { outcome: failed }`.
 
 ### Reports from outside
 
-A human node waits for a person. Sometimes the answer comes from a system
-instead: a PR merges, CI turns green. The node declares which event answers
-and with what outcome:
+A human node waits for a person. Sometimes the answer comes from a system instead, when a PR merges or CI turns green. The node declares which event answers and with what outcome:
 
 ```yaml
 - id: merged
@@ -67,19 +54,11 @@ and with what outcome:
     - { on: github.pull_request.closed, when: { merged: false }, outcome: failed }
 ```
 
-The event finds the run by its subject, and the store writes the report on
-that node's open visit. Lore did this in code, once per case: a webhook
-handler for merged spec PRs, a sweep every two minutes for CI.
+The event finds the run by its subject, and the store writes the report on that node's open visit. Lore did this in code, once per case, with a webhook handler for merged spec PRs and a sweep every two minutes for CI.
 
 ### Fan-out
 
-A node with `fanout: { over, to }` reports a list, and node `to` then runs
-once for each entry of it. The list is the node's produced **value** `over`,
-a JSON array of strings. Each run of `to` is a *branch* of the same
-iteration (migration 0006: a visit is told apart by node, iteration and
-branch), and has its own entry as an `item` need of kind `value`, which no
-line has to seed or produce. Keep entries small — names or ids — and let the
-body read what it needs from the bag by them.
+A node with `fanout: { over, to }` reports a list, and node `to` then runs once for each entry of it. The list is the node's produced value `over`, a JSON array of strings. Each run of `to` is a **branch** of the same iteration (migration 0006: a visit is told apart by node, iteration and branch). A branch has its own entry as an `item` need of kind `value`, which no assembly line has to seed or produce. Keep entries small, such as names or ids, and let the body read what it needs from the bag by them.
 
 ```yaml
 nodes:
@@ -92,32 +71,15 @@ edges:
   - { from: write, to: failed, on: failed }
 ```
 
-The walk goes on past `to` only when every branch has reported. The branches
-count as one visit of `to`: **success** when every branch succeeded, **failed**
-otherwise (any other outcome of a branch counts as failed), and it is
-decided only after all of them have finished — a failed branch does not
-cancel its siblings. An empty list passes through `to` as a success at once.
-The edges out of `to`, and their `iteration_max`, are the ordinary ones.
+The walk goes on past `to` only when every branch has reported. The branches count as one visit of `to`. It is `success` when every branch succeeded and `failed` otherwise (any other outcome of a branch counts as failed). It is decided only after all of them have finished, so a failed branch does not cancel its siblings. An empty list passes through `to` as a success at once. The edges out of `to`, and their `iteration_max`, are the ordinary ones.
 
-A need with `collect: <name>` is filled, at open, with a JSON array of what
-the latest round of branches produced under `<name>`, in branch order,
-however they reported: a produced value as it is, a produced file as its
-text (UTF-8). The fan-out region does not nest, a
-body belongs to one fan-out, and a body cannot itself fan out.
+A need with `collect: <name>` is filled, at open, with a JSON array of what the latest round of branches produced under `<name>`, in branch order, however they reported. A produced value is taken as it is, and a produced file as its text (UTF-8). The fan-out region does not nest, a body belongs to one fan-out, and a body cannot itself fan out.
 
 ### Edges
 
-An edge says: when node A finishes with outcome X, node B is next. The
-kernel picks the exact-outcome edge over `always`. Revisiting a node bumps
-its iteration; an edge with `iteration_max` fails the run once exceeded.
+An edge says that when node A finishes with outcome X, node B is next. The kernel picks the exact-outcome edge over `always`. Revisiting a node bumps its iteration, and an edge with `iteration_max` fails the run once exceeded.
 
-A run ends in one of two places. An edge into the `exit` node settles it as
-`success`, whatever outcome led there. An edge into the `fail` node, when
-the line names one, settles it as `failed`, with a reason naming the node
-that was left and the outcome it reported. No visit opens on either: the
-run settles the moment the edge is taken, so a line that wants "this step
-failed, stop, and say the run failed" writes one edge and gets no retry it
-did not ask for.
+A run ends in one of two places. An edge into the `exit` node settles it as `success`, whatever outcome led there. An edge into the `fail` node, when the assembly line names one, settles it as `failed`, with a reason naming the node that was left and the outcome it reported. No visit opens on either. The run settles the moment the edge is taken, so a line that wants "this step failed, stop, and say the run failed" writes one edge and gets no retry it did not ask for.
 
 ```yaml
 exit: done
@@ -133,25 +95,19 @@ edges:
 
 ### Validation at creation
 
-- every edge endpoint names a real node; every node is reachable; only the
-  exit node and the fail node are terminal
-- `fail`, when given, names a node that is neither the entry nor the exit
-- every outcome a node's station declares has an edge
-- a cycle has an `iteration_max` somewhere, or a human node on it
-- a node whose station declares a `git` need with `access: write` has a
-  review or human node on every path into it, unless it is the first writer
-- a fan-out names a real body, lists a value its own station produces, has a
-  success edge to its body, and its body has an edge for `failed`; a body
-  belongs to one fan-out and does not fan out itself; a collected name is a
-  name that exactly one body produces (two fan-outs whose bodies produce the
-  same name would mix their branches)
-- every required need of every node is seeded at start or produced on every
-  path into it; a node with a custom start event must have its required
-  needs seeded
+- Every edge endpoint names a real node, every node is reachable, and only the exit node and the fail node are terminal.
+- `fail`, when given, names a node that is neither the entry nor the exit.
+- Every outcome a node's station declares has an edge.
+- A cycle has an `iteration_max` somewhere, or a human node on it.
+- A node whose station declares a `git` need with `access: write` has a review or human node on every path into it, unless it is the first writer.
+- A fan-out names a real body, lists a value its own station produces, has a success edge to its body, and its body has an edge for `failed`.
+- A body belongs to one fan-out and does not fan out itself.
+- A collected name is a name that exactly one body produces. Two fan-outs whose bodies produce the same name would mix their branches.
+- Every required need of every node is seeded at start or produced on every path into it. A node with a custom start event must have its required needs seeded.
 
 ## Example 1: the smallest real line, `code-review`
 
-Lore's `code-review.yaml`: one agent, one retry, one marker.
+Lore's `code-review.yaml` has one agent, one retry and one marker.
 
 ```yaml
 name: code-review
@@ -177,14 +133,11 @@ edges:
   - { from: post-review, to: done,        on: always }
 ```
 
-In lore the Floor posted the review to GitHub from a hook that ran when the
-node finished. Here it is a node like any other, so it is visible in the
-graph, retried by the same rules, and the floor needs no GitHub client.
+In lore the Floor posted the review to GitHub from a hook that ran when the node finished. Here it is a node like any other, so it is visible in the graph and retried by the same rules, and the floor needs no GitHub client.
 
 ## Example 2: a feedback loop, `implementation`
 
-Lore's `implementation.yaml`: implement, validate, push, review, address,
-with the review loop capped at two rounds.
+Lore's `implementation.yaml` goes implement, validate, push, review, address, with the review loop capped at two rounds.
 
 ```yaml
 name: implementation
@@ -220,21 +173,19 @@ edges:
   - { from: retrospective, to: done,      on: always }
 ```
 
-The bag makes the loop work without any node knowing about the others:
-`implement` produces `patch`, `open-pr` produces `pr_url`, `review` produces
-`review_findings`, `post-review` needs them and reports the review's own
-verdict as its outcome, `address` needs `review_findings` and produces a new
-`patch`. Each station declared only its own names.
+The bag makes the loop work without any node knowing about the others. Each station declared only its own names.
 
-The `repo` argument is a `git` item, `host/owner/name@branch`. Reading
-stations check out the sha it resolved to; `implement`, `push` and `address`
-declare `access: write` and push to the branch. The branch name is an
-argument, so whoever starts the run names it.
+- `implement` produces `patch`.
+- `open-pr` produces `pr_url`.
+- `review` produces `review_findings`.
+- `post-review` needs them and reports the review's own verdict as its outcome.
+- `address` needs `review_findings` and produces a new `patch`.
+
+The `repo` argument is a `git` item, `host/owner/name@branch`. Reading stations check out the sha it resolved to. `implement`, `push` and `address` declare `access: write` and push to the branch. The branch name is an argument, so whoever starts the run names it.
 
 ## Example 3: people in the loop, `feature-planning`
 
-Lore's `feature-planning.yaml` has two human nodes, one by-hand node, and a
-node that continues a conversation. Converted, with the interesting parts:
+Lore's `feature-planning.yaml` has two human nodes, one by-hand node, and a node that continues a conversation. Converted:
 
 ```yaml
 name: feature-planning
@@ -288,26 +239,13 @@ edges:
   - { from: issues,        to: done,          on: failed }
 ```
 
-Three things to see here:
-
-- **`author` is a node like any other.** The run sits at that visit for days.
-  A person clicking Refine on the plan page posts `station_run.reported` with
-  `changes_requested`; clicking Approve posts `success`. The edges do the rest.
-- **`validate` has no inbound edge.** The plan page's Validate button posts
-  `manual.plan.validate` with the run id. The node runs, its `always` edge
-  hands the findings back to `author`, which is still open. Lore called this
-  `by_hand`.
-- **`analyze` resumes itself.** Its station has `conversation: continue` with
-  `conversation_key: plan_id`, so each Refine round continues the same agent
-  conversation for that plan.
+- `author` is a node like any other. The run sits at that visit for days. A person clicking Refine on the plan page posts `station_run.reported` with `changes_requested`, and clicking Approve posts `success`. The edges do the rest.
+- `validate` has no inbound edge. The plan page's Validate button posts `manual.plan.validate` with the run id. The node runs, and its `always` edge hands the findings back to `author`, which is still open. Lore called this `by_hand`.
+- `analyze` resumes itself. Its station has `conversation: continue` with `conversation_key: plan_id`, so each Refine round continues the same agent conversation for that plan.
 
 ## Example 4: a straight line of service stations, `merge`
 
-Lore's `merge.yaml`: nine steps after a PR merges, each routing both
-`success` and `failed` onward so one failure is recorded and the line walks
-on. The one exception is `settle`: everything after it assumes the task is
-merged, so its failure ends the run as `failed` at the `fail` node. Every
-node is a service station beside lore's database.
+Lore's `merge.yaml` is nine steps after a PR merges. Each routes both `success` and `failed` onward, so one failure is recorded and the run walks on. The one exception is `settle`. Everything after it assumes the task is merged, so its failure ends the run as `failed` at the `fail` node. Every node is a service station beside lore's database.
 
 ```yaml
 name: merge
@@ -342,20 +280,16 @@ edges:
   - { from: resume-planning, to: done,            on: always }
 ```
 
-Lore wrote every pair as two edges; `always` is the same thing in one.
-The line itself starts on an event, `on: github.pull_request.closed`,
-`when: { merged: true }`, where lore ran a sweep every minute.
-`resume-planning` in lore created a new run inheriting the parked one's
-visits. Here the same webhook, carrying the plan's subject key, reports on
-the open `merged` visit of the feature-planning run, and that run continues.
+Lore wrote every pair as two edges, and `always` is the same thing in one. A run of this line starts on an event, `on: github.pull_request.closed`, `when: { merged: true }`, where lore ran a sweep every minute.
+
+`resume-planning` in lore created a new run inheriting the parked one's visits. Here the same webhook, carrying the plan's subject key, reports on the open `merged` visit of the feature-planning run, and that run continues.
 
 ## Workflow: authoring a line
 
-1. List the stations you need. Create the ones that do not exist, declaring
-   needs and produces by name.
+1. List the stations you need. Create the ones that do not exist, declaring needs and produces by name.
 2. Write nodes pointing at them. Use `bind` only where names differ.
 3. Write edges for every outcome each station can produce.
 4. Mark one argument as `subject` if two runs must not work the same thing.
-5. Declare `start.on` if an event, and not a person, starts it.
+5. Declare `start.on` if an event, and not a person, starts its runs.
 6. `POST /assembly-lines`. The validator returns every problem at once.
 7. `POST /assembly-lines/:id/start` with the arguments, or let the event arrive. You get a run.
