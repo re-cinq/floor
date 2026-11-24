@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { elkGraphOf } from "./elk-graph";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
+import { codeReviewDefinition } from "./definition.fixtures";
 import { markerLine } from "./metro/line.fixtures";
 
 describe("elkGraphOf", () => {
   it("returns the root with layout options and one 140x60 child for a single-station line", () => {
-    const singleStationLine = markerLine({ entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
+    const singleStationLine = markerLine({ kind: "agent", entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
 
     const graph = elkGraphOf(singleStationLine);
 
@@ -28,7 +29,7 @@ describe("elkGraphOf", () => {
   });
 
   it("returns a 160x92 child for a single-station line given a 160x92 size", () => {
-    const singleStationLine = markerLine({ entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
+    const singleStationLine = markerLine({ kind: "agent", entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
 
     const { children } = elkGraphOf(singleStationLine, { width: 160, height: 92 });
 
@@ -82,6 +83,7 @@ describe("elkGraphOf", () => {
 
   it("gives write -> done on success an east out-port on write and a west in-port on done", () => {
     const successLine = markerLine({
+      kind: "agent",
       entry: "write",
       exit: "done",
       nodeIds: ["write", "done"],
@@ -121,6 +123,7 @@ describe("elkGraphOf", () => {
 
   it("ends the failed review -> done line at its own exit dot and leaves done only the success in-port", () => {
     const branchingLine = markerLine({
+      kind: "agent",
       entry: "review",
       exit: "done",
       nodeIds: ["review", "done"],
@@ -151,5 +154,16 @@ describe("elkGraphOf", () => {
       ],
       failedTargets: ["review|done|failed:in"],
     });
+  });
+
+  it("sizes the done marker 22x60 and the review agent 216x60 for the code-review line at 216x60", () => {
+    const { children } = elkGraphOf(codeReviewDefinition, { width: 216, height: 60 });
+
+    expect(
+      children?.filter(({ id }) => id === "review" || id === "done").map(({ id, width, height }) => ({ id, width, height })),
+    ).toEqual([
+      { id: "review", width: 216, height: 60 },
+      { id: "done", width: 22, height: 60 },
+    ]);
   });
 });
