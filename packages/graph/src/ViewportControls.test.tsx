@@ -51,6 +51,18 @@ describe("ViewportControls", () => {
     const calls: string[] = [];
     const { container } = render(<ViewportControls dispatch={() => undefined} compactStopsOn onToggleCompactStops={() => calls.push("toggle")} />);
     fireEvent.click(within(container).getByRole("button", { name: "Compact stops" }));
+  });
+
+  it("draws Whole line pressed when onToggleWholeLine is given with wholeLineOn", () => {
+    const { container } = render(<ViewportControls dispatch={() => undefined} wholeLineOn onToggleWholeLine={() => undefined} />);
+
+    expect(within(container).getByRole("button", { name: "Whole line" }).getAttribute("aria-pressed")).toEqual("true");
+  });
+
+  it("calls onToggleWholeLine once on a press of Whole line", () => {
+    const calls: string[] = [];
+    const { container } = render(<ViewportControls dispatch={() => undefined} wholeLineOn onToggleWholeLine={() => calls.push("toggle")} />);
+    fireEvent.click(within(container).getByRole("button", { name: "Whole line" }));
 
     expect(calls).toEqual(["toggle"]);
   });
@@ -59,5 +71,11 @@ describe("ViewportControls", () => {
     const { container } = render(<ViewportControls dispatch={() => undefined} compactStopsOn />);
 
     expect(within(container).queryByRole("button", { name: "Compact stops" })).toBeNull();
+  });
+
+  it("draws no Whole line button when onToggleWholeLine is missing", () => {
+    const { container } = render(<ViewportControls dispatch={() => undefined} wholeLineOn />);
+
+    expect(within(container).queryByRole("button", { name: "Whole line" })).toBeNull();
   });
 });
