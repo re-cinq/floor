@@ -223,7 +223,7 @@ function useStopsLayout(
     initiallyOn: initialCompactStops,
   });
   const layoutOptions = useMemo(
-    () => (compactStops || taken ? { compactStops, takenCounts: taken } : undefined),
+    () => ({ compactStops, takenCounts: taken }),
     [compactStops, taken],
   );
   const stops = useMemo(

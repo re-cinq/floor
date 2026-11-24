@@ -117,7 +117,7 @@ function GraphEdgeLabels({
   marks,
 }: GraphSvgProps) {
   const { edges } = laid.layout;
-  const { lit, mainPath } = marks;
+  const { lit, mainPath, taken } = marks;
 
   return edges.map((edge) => (
     <EdgeLabel
@@ -126,6 +126,7 @@ function GraphEdgeLabels({
       dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))}
       selected={edgeKeyOf(edge) === selectedLineKey}
       offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))}
+      takenCount={taken?.get(edgeKeyOf(edge))}
       onSelectLine={onSelectLine}
     />
   ));
