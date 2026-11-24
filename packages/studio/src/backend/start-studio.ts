@@ -14,7 +14,7 @@ import { collectionView } from "./collection-view.js";
 import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
 import { editedAgentText, textVersion, withOneNewline, type AgentEdit } from "./agent-file-text.js";
 import { answerFrame, type StudioContext } from "./requests.js";
-import { skillNamesIn } from "./skill-names.js";
+import { isSkillPath, skillNamesIn } from "./skill-names.js";
 import { watchCollection } from "./watcher.js";
 
 /** Never `0.0.0.0`: the backend writes files and starts processes. */
@@ -47,7 +47,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   const token = randomBytes(TOKEN_BYTES).toString("hex");
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const folder = basename(resolve(dir));
-  const readCollection = async () => ({ ...collectionView(await collectionFilesIn(dir), hostKeys), folder, skills: await skillNamesIn(dir) });
+  const readCollection = async () => ({ ...collectionView((await collectionFilesIn(dir)).filter((file) => !isSkillPath(file.path)), hostKeys), folder, skills: await skillNamesIn(dir) });
 
   const writeAgent = async (file: string, edit: AgentEdit) => {
     const path = join(dir, file);

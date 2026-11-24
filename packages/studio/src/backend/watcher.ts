@@ -2,6 +2,7 @@
 import { watch } from "node:fs";
 import { sep } from "node:path";
 import { isReadPath } from "@re-cinq/floor-pipeline";
+import { isSkillPath } from "./skill-names.js";
 
 const DEBOUNCE_MS = 100;
 
@@ -13,7 +14,7 @@ export interface CollectionWatcher {
 export function isWatchedPath(path: string): boolean {
   const slashed = path.split(sep).join("/");
 
-  return (isReadPath(slashed) || /^(skills\/[^/]+\.md|agent-skills\/skills\/[^/]+\/SKILL\.md)$/.test(slashed)) && !slashed.split("/").some((part) => part.startsWith("."));
+  return (isReadPath(slashed) || isSkillPath(slashed)) && !slashed.split("/").some((part) => part.startsWith("."));
 }
 
 export function watchCollection(dir: string, onChange: () => void, debounceMs = DEBOUNCE_MS): CollectionWatcher {

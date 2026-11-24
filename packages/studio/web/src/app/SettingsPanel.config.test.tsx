@@ -92,6 +92,18 @@ describe("Inspector Settings panel config form", () => {
     }).toEqual({ url: true, command: false });
   });
 
+  it("shows chip env: LORE_MCP_URL instead of the url textbox for an mcp_servers url of ${LORE_MCP_URL}", async () => {
+    await openReviewerSettings({
+      image: "acme/agent:2",
+      config: { mcp_servers: [{ name: "lore", transport: "http", url: "${LORE_MCP_URL}" }] },
+    });
+
+    expect({
+      chip: screen.queryByText("env: LORE_MCP_URL")?.textContent,
+      field: screen.queryByRole("textbox", { name: "mcp_servers 1 url" }),
+    }).toEqual({ chip: "env: LORE_MCP_URL", field: null });
+  });
+
   it("saves config skills review and lint when lint is added to the review skills list", async () => {
     const saved = await openReviewerSettings({ image: "acme/agent:2", config: { skills: ["review"] } });
     await userEvent.click(screen.getByRole("button", { name: "Add to skills" }));

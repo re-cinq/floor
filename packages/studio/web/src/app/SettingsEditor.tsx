@@ -3,6 +3,7 @@ import type React from "react";
 import type { NodeView } from "@protocol";
 import ConfigForm from "./ConfigForm";
 import DiskVersionChoice from "./DiskVersionChoice";
+import EnvChip from "./EnvChip";
 import { envPlaceholder } from "./env-placeholder";
 import SaveButton from "./SaveButton";
 import { CUSTOM, MODEL_GROUPS, isKnownModel } from "./model-choices";
@@ -72,13 +73,7 @@ function kindOf({ settingKey, envName, nested, seedEnvName }: { settingKey: stri
 type ControlProps = React.JSX.IntrinsicElements["input"] & React.JSX.IntrinsicElements["textarea"] & React.JSX.IntrinsicElements["select"] & { envName?: string; onOverride?: () => void; seedEnvName?: string; onRestore?: () => void };
 
 const controlsByKind: Record<"env" | "model" | "nested" | "plain" | "restorable", (props: ControlProps) => React.JSX.Element> = {
-  env: ({ envName, onOverride }) => (
-    <>
-      <code>env: {envName}</code>
-      <span>Filled in from the host's {envName} when the collection is applied.</span>
-      <button type="button" aria-label="Override" onClick={onOverride}>Override</button>
-    </>
-  ),
+  env: (props) => <EnvChip {...props} />,
   model: (props) => <ModelSelect {...props} />,
   nested: (props) => <textarea {...props} />,
   plain: (props) => <input {...props} />,

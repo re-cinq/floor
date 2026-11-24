@@ -2,6 +2,11 @@
 import { access, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 
+/** A skill file: `skills/<name>.md` or `agent-skills/skills/<name>/SKILL.md`. */
+export function isSkillPath(path: string): boolean {
+  return /^(skills\/[^/]+\.md|agent-skills\/skills\/[^/]+\/SKILL\.md)$/.test(path);
+}
+
 export async function skillNamesIn(dir: string): Promise<string[]> {
   const files = await readdir(join(dir, "skills")).catch(() => []);
   const fileNames = files.filter((file) => file.endsWith(".md")).map((file) => basename(file, ".md"));

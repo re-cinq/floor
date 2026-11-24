@@ -83,6 +83,15 @@ describe("startStudio", () => {
     expect(await client.nextOfType("result")).toMatchObject({ result: { skills: ["lore-context", "tdd-start"] } });
   });
 
+  it("answers collection.read with no refused files when skills/tdd-start.md and agent-skills/skills/lore-context/SKILL.md are the extras", async () => {
+    const skillFiles = [{ path: "skills/tdd-start.md", text: "Start with a test.\n" }, { path: "agent-skills/skills/lore-context/SKILL.md", text: "Read the context.\n" }];
+    const { client } = await connectedTo(WORKER_COLLECTION.concat(skillFiles));
+
+    client.send({ id: "refusals", type: "collection.read" });
+
+    expect(await client.nextOfType("result")).toMatchObject({ result: { refused: [], counts: { refused: 0 } } });
+  });
+
   it("refuses with 401 a socket that carries no token", async () => {
     const { url } = await started();
 
