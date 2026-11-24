@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { useElkLayout } from "./use-elk-layout";
 import type { ElkLayout, LaidOutEdge } from "./elk-layout";
+import { edgeKeyOf } from "./metro/edge-key";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
@@ -15,7 +16,6 @@ import { nodeTooltipOf } from "./node-tooltip";
 import RunGraphLegend from "./RunGraphLegend";
 import {
   NODE_WIDTH,
-  edgeMapKey,
   fitView,
   nodeHeightFor,
   revealBoxOf,
@@ -162,31 +162,25 @@ function GraphSvg(props: GraphSvgProps) {
   );
 }
 
-/** ELK lays out one path per outcome, while the model has one edge per endpoint pair: each pair draws all its paths and one label, with the tone and label looked up from the model. A pair with no model draws neutral rather than disappearing. */
+/** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
 function GraphEdges({ laid, selectedNodeId }: GraphSvgProps) {
-  return (
-    <>
-      {[...laid.pathsByPair].map(([pair, edges]) => (
-        <GraphEdge key={pair} {...edgeProps(edges, laid, selectedNodeId)} />
-      ))}
-    </>
-  );
+  const { edges } = laid.layout;
+
+  return edges.map((edge) => (
+    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} />
+  ));
 }
 
 function GraphEdgeLabels({ laid, selectedNodeId }: GraphSvgProps) {
-  return (
-    <>
-      {[...laid.pathsByPair].map(([pair, edges]) => (
-        <EdgeLabel key={pair} {...edgeProps(edges, laid, selectedNodeId)} />
-      ))}
-    </>
-  );
+  const { edges } = laid.layout;
+
+  return edges.map((edge) => (
+    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} />
+  ));
 }
 
-function edgeProps(edges: LaidOutEdge[], laid: Drawing, selectedNodeId: GraphSvgProps["selectedNodeId"]) {
-  const [{ from, to }] = edges;
-
-  return { edges, model: laid.edgeByPair.get(edgeMapKey(from, to)), emphasis: emphasisOf(from, selectedNodeId) };
+function edgeProps(edge: LaidOutEdge, laid: Drawing, selectedNodeId: GraphSvgProps["selectedNodeId"]) {
+  return { edge, model: laid.edgeByKey.get(edgeKeyOf(edge)), emphasis: emphasisOf(edge.from, selectedNodeId) };
 }
 
 function emphasisOf(from: string, selectedNodeId: string | null | undefined): EdgeEmphasis {
@@ -225,7 +219,6 @@ type Drawing = ReturnType<typeof drawingOf>;
 function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string, nodeHeight: number) {
   return {
     layout,
-    pathsByPair: pathsByPairOf(layout.edges),
     view: fitView(layout.contentBox),
     nodeHeight,
     titleId: `graph-title-${name}`,
@@ -233,21 +226,11 @@ function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string, nodeHei
   };
 }
 
-function pathsByPairOf(edges: LaidOutEdge[]): Map<string, LaidOutEdge[]> {
-  const pairs = new Map<string, LaidOutEdge[]>();
-  edges.forEach((edge) => {
-    const pair = edgeMapKey(edge.from, edge.to);
-    pairs.set(pair, [...(pairs.get(pair) ?? []), edge]);
-  });
-
-  return pairs;
-}
-
 /** The lookups that let the drawing match a laid-out node or edge back to its model. A node with no outgoing edge is terminal, which is read from the EDGES rather than from the node, because a definition does not mark its own ends. */
 function graphLookups({ nodes, edges }: VisibleGraph) {
   return {
     nodeById: new Map(nodes.map((node) => [node.id, node])),
-    edgeByPair: new Map(edges.map((edge) => [edgeMapKey(edge.from, edge.to), edge])),
+    edgeByKey: new Map(edges.map((edge) => [edgeKeyOf(edge), edge])),
     nodesWithOutgoing: new Set(edges.map((edge) => edge.from)),
   };
 }

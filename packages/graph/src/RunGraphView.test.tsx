@@ -41,10 +41,25 @@ const edgeEl = (container: HTMLElement, key: string) => container.querySelector(
 const labelOf = (container: HTMLElement, key: string) => container.querySelector(`[data-edge-label="${key}"]`)?.textContent ?? "";
 
 describe("RunGraphView", () => {
-  it("draws every node and one connector for outcomes that lead to the same node", async () => {
+  it("draws every node and one connector per outcome, even when outcomes lead to the same node", async () => {
     const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
 
-    expect([container.querySelectorAll("[data-node]").length, container.querySelectorAll("[data-edge]").length]).toEqual([2, 1]);
+    expect([container.querySelectorAll("[data-node]").length, container.querySelectorAll("[data-edge]").length]).toEqual([2, 3]);
+  });
+
+  it("draws review to done as three connectors keyed, toned and labelled by their outcome", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    const drawn = [...container.querySelectorAll("[data-edge]")].map((edge) => {
+      const key = edge.getAttribute("data-edge") ?? "";
+
+      return { key, tone: edge.getAttribute("data-tone"), label: labelOf(container, key) };
+    });
+
+    expect(drawn).toEqual([
+      { key: "review|done|success", tone: "ok", label: "success" },
+      { key: "review|done|changes_requested", tone: "warn", label: "changes_requested" },
+      { key: "review|done|failed", tone: "err", label: "failed" },
+    ]);
   });
 
   it("lists the outcomes inside the node they leave, under their own names", async () => {
@@ -57,27 +72,29 @@ describe("RunGraphView", () => {
     ]);
   });
 
-  it("draws separate branches when outcomes lead to different nodes", async () => {
+  it("draws a connector from review for each outcome, to different nodes or the same one", async () => {
     const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} />);
-    const fromReview = [...container.querySelectorAll("[data-edge]")].map((edge) => edge.getAttribute("data-edge")).filter((key) => key?.startsWith("review->"));
+    const fromReview = [...container.querySelectorAll("[data-edge]")].map((edge) => edge.getAttribute("data-edge")).filter((key) => key?.startsWith("review|"));
 
-    expect(fromReview).toEqual(["review->retrospective", "review->address"]);
+    expect(fromReview).toEqual(["review|retrospective|success", "review|address|changes_requested", "review|retrospective|failed"]);
   });
 
-  it("labels a self loop and a back edge with their outcome and iteration cap, and a lone forward hop with nothing", async () => {
+  it("labels a self loop and a back edge with their outcome and iteration cap, and a lone forward hop with its outcome", async () => {
     const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} />);
 
     expect([
-      labelOf(container, "implement->implement"),
-      labelOf(container, "address->validate"),
-      labelOf(container, "push->review"),
-    ]).toEqual(["failed (max 1)", "always (max 2)", ""]);
+      labelOf(container, "implement|implement|failed"),
+      labelOf(container, "address|validate|always"),
+      labelOf(container, "push|review|always"),
+    ]).toEqual(["failed (max 1)", "always (max 2)", "always"]);
   });
 
-  it("tones the hop of a single outcome that branches off, and leaves a collapsed hop neutral", async () => {
+  it("tones each outcome's own hop, including two outcomes that lead to the same node", async () => {
     const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} />);
 
-    expect([edgeEl(container, "review->address").getAttribute("data-tone"), edgeEl(container, "review->retrospective").getAttribute("data-tone")]).toEqual(["warn", "neutral"]);
+    expect(
+      ["review|address|changes_requested", "review|retrospective|success", "review|retrospective|failed"].map((key) => edgeEl(container, key).getAttribute("data-tone")),
+    ).toEqual(["warn", "ok", "err"]);
   });
 
   it("names each node with its family, what it wears and its outcomes, so meaning does not rest on color", async () => {
@@ -176,8 +193,8 @@ describe("RunGraphView selection", () => {
     await userEvent.click(nodeEl(container, "review"));
 
     expect({
-      leaving: edgeEl(container, "review->address").getAttribute("data-emphasis"),
-      elsewhere: edgeEl(container, "push->review").getAttribute("data-emphasis"),
+      leaving: edgeEl(container, "review|address|changes_requested").getAttribute("data-emphasis"),
+      elsewhere: edgeEl(container, "push|review|always").getAttribute("data-emphasis"),
     }).toEqual({ leaving: "outgoing", elsewhere: "other" });
   });
 
@@ -240,13 +257,14 @@ describe("RunGraphView station tooltip", () => {
     expect([shown, screen.queryByRole("tooltip")]).toEqual(["ReviewAgentAn AI agent reviews the pull request.", null]);
   });
 
-  it("draws one path per outcome and no label when outcomes lead to the same node", async () => {
+  it("draws one path and one label per outcome when outcomes lead to the same node", async () => {
     const { container } = await renderGraph(<RunGraphView definition={featurePlanningDefinition} />);
+    const keys = ["analyze|author|success", "analyze|author|changes_requested", "analyze|author|failed"];
 
-    expect([
-      edgeEl(container, "analyze->author").querySelectorAll("path").length,
-      container.querySelectorAll('[data-edge-label="analyze->author"]').length,
-    ]).toEqual([3, 0]);
+    expect({
+      paths: keys.map((key) => edgeEl(container, key).querySelectorAll("path").length),
+      labels: keys.map((key) => container.querySelectorAll(`[data-edge-label="${key}"]`).length),
+    }).toEqual({ paths: [1, 1, 1], labels: [1, 1, 1] });
   });
 
   it("draws the definition's own nodes and no exit dot as a station", async () => {

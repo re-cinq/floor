@@ -19,22 +19,27 @@ describe("deriveVisibleGraph", () => {
     expect(deriveVisibleGraph(null)).toEqual({ nodes: [], edges: [] });
   });
 
-  it("renders one connector and lists the outcomes in the source node when all lead to one step", () => {
-    const graph = deriveVisibleGraph(codeReviewDefinition);
-    const [review] = graph.nodes;
+  it("lists the outcomes in the source node when all lead to one step", () => {
+    const [review] = deriveVisibleGraph(codeReviewDefinition).nodes;
 
-    expect({ connectors: graph.edges, outcomes: review.outcomes }).toEqual({
-      connectors: [{ from: "review", to: "done", tone: "neutral", label: "success, changes_requested, failed", branching: false }],
-      outcomes: ["success", "changes_requested", "failed"],
-    });
+    expect(review.outcomes).toEqual(["success", "changes_requested", "failed"]);
+  });
+
+  it("draws one toned connector per outcome, in definition order, when all lead to one step", () => {
+    expect(deriveVisibleGraph(codeReviewDefinition).edges).toEqual([
+      { from: "review", to: "done", on: "success", tone: "ok", label: "success", branching: false },
+      { from: "review", to: "done", on: "changes_requested", tone: "warn", label: "changes_requested", branching: false },
+      { from: "review", to: "done", on: "failed", tone: "err", label: "failed", branching: false },
+    ]);
   });
 
   it("renders separate branches when outcomes lead to different steps", () => {
     const fromReview = deriveVisibleGraph(implementationDefinition).edges.filter((edge) => edge.from === "review");
 
     expect(fromReview).toEqual([
-      { from: "review", to: "retrospective", tone: "neutral", label: "success, failed", branching: true },
-      { from: "review", to: "address", tone: "warn", label: "changes_requested (max 2)", branching: true },
+      { from: "review", to: "retrospective", on: "success", tone: "ok", label: "success", branching: true },
+      { from: "review", to: "address", on: "changes_requested", tone: "warn", label: "changes_requested (max 2)", branching: true },
+      { from: "review", to: "retrospective", on: "failed", tone: "err", label: "failed", branching: true },
     ]);
   });
 
