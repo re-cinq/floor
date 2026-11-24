@@ -1,17 +1,27 @@
-// The keys the latest layout added over the one before it, kept until the layout changes again.
+// The keys the latest layout added or moved over the one before it, kept until the layout changes again.
 import { useEffect, useMemo, useRef } from "react";
 import type { ElkLayout } from "./elk-layout";
 import { diffLayouts } from "./metro/layout-diff";
 
-const NOTHING_ADDED: ReadonlySet<string> = new Set();
+export interface LayoutChanges {
+  added: ReadonlySet<string>;
+  moved: ReadonlySet<string>;
+}
 
-export function useLayoutChanges(layout: ElkLayout | null): ReadonlySet<string> {
+const NOTHING_CHANGED: LayoutChanges = { added: new Set(), moved: new Set() };
+
+export function useLayoutChanges(layout: ElkLayout | null): LayoutChanges {
   const previous = useRef<ElkLayout | null>(null);
-  const added = useMemo(() => (layout ? new Set(diffLayouts(previous.current, layout).added) : NOTHING_ADDED), [layout]);
+  const changes = useMemo(() => {
+    if (!layout) return NOTHING_CHANGED;
+    const { added, moved } = diffLayouts(previous.current, layout);
+
+    return { added: new Set(added), moved: new Set(moved) };
+  }, [layout]);
 
   useEffect(() => {
     if (layout) previous.current = layout;
   }, [layout]);
 
-  return added;
+  return changes;
 }

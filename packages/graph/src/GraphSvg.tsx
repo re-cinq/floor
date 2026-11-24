@@ -28,6 +28,8 @@ export interface LineMarks {
   keyboard: KeyboardCursor;
   /** Keys the latest layout added. */
   added: ReadonlySet<string>;
+  /** Keys the latest layout moved. */
+  moved: ReadonlySet<string>;
   /** The lines the run took (undefined without a run). */
   taken: ReadonlyMap<string, number> | undefined;
   /** The one connector a station run took, marked when there is no run overlay. */
@@ -169,7 +171,7 @@ function GraphStation({
   ...props
 }: GraphSvgProps & { node: LaidOutNode }) {
   const { laid, selectedNodeId, describedNode, onHover, marks } = props;
-  const { lit, mainPath, unreachable, added } = marks;
+  const { lit, mainPath } = marks;
   const model = laid.nodeById.get(node.id);
 
   return (
@@ -181,7 +183,7 @@ function GraphStation({
         height={NODE_HEIGHT}
         isTerminal={!laid.nodesWithOutgoing.has(node.id)}
         selected={node.id === selectedNodeId}
-        isUnreachable={unreachable.has(node.id)}
+        isUnreachable={marks.unreachable.has(node.id)}
         isStop={laid.stops.has(node.id)}
         toneByEdge={laid.toneByEdge}
         onSelect={props.onSelectNode}
@@ -189,7 +191,7 @@ function GraphStation({
         keyboard={marks.keyboard}
         dimmed={!!lit && !lit.nodes.has(node.id)}
         offPath={isOffPath(mainPath, "nodes", node.id)}
-        added={added.has(node.id)}
+        {...changesOf(marks, node.id)}
         {...annotationsOf(describedNode, marks.visits, node.id)}
       />
     ))
@@ -219,4 +221,8 @@ function isOffPath(
   key: string,
 ) {
   return !!mainPath && !mainPath[part].has(key);
+}
+
+function changesOf({ added, moved }: LineMarks, key: string) {
+  return { added: added.has(key), moved: moved.has(key) };
 }

@@ -420,12 +420,18 @@ text[data-selected="true"] {
 [data-change="added"] {
   animation: changeFlash 1.2s ease-out;
 }
+[data-change="moved"] {
+  transition: transform 400ms ease;
+}
 .edge {
   transition: d 400ms;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-change="added"] {
     animation: none;
+  }
+  [data-change="moved"] {
+    transition: none;
   }
   .edge {
     transition: none;

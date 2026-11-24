@@ -161,7 +161,7 @@ function useGraphCanvasState(view: ShownView, graph: VisibleGraph) {
     useLineMarkings(view);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
   const keyboard = useKeyboardCursor(view.definition);
-  const { elkLayout, added, stops, compactStops, toggleCompactStops } =
+  const { elkLayout, changes, stops, compactStops, toggleCompactStops } =
     useStopsLayout(view, graph, { visits, taken });
   const laid = useMemo(
     () => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops),
@@ -179,7 +179,7 @@ function useGraphCanvasState(view: ShownView, graph: VisibleGraph) {
   return {
     laid,
     tooltip: useNodeTooltip(),
-    marks: { lit, mainPath, unreachable, keyboard, added, taken, visits, takenEdgeKey: view.takenEdge && edgeKeyOf(view.takenEdge) },
+    marks: { lit, mainPath, unreachable, keyboard, ...changes, taken, visits, takenEdgeKey: view.takenEdge && edgeKeyOf(view.takenEdge) },
     toggles,
     setHoveredId,
   };
@@ -240,7 +240,7 @@ function useStopsLayout(
 
   return {
     elkLayout,
-    added: useLayoutChanges(elkLayout),
+    changes: useLayoutChanges(elkLayout),
     stops,
     compactStops,
     toggleCompactStops,
