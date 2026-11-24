@@ -362,6 +362,11 @@ text[data-selected="true"] {
   transition: opacity 150ms;
 }
 
+[data-off-path="true"] {
+  opacity: 0.25;
+  transition: opacity 150ms;
+}
+
 .stubBar {
   stroke: var(--warning);
   stroke-width: 2;

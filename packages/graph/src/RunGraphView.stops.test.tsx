@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
+  });
+
+import { fireEvent, screen } from "@testing-library/react";
 import RunGraphView from "./RunGraphView";
 import { implementationDefinition } from "./definition.fixtures";
 import { nodeTitle } from "./node-tooltip";
@@ -61,5 +64,12 @@ describe("RunGraphView with compactStops", () => {
       shape: push.getAttribute("data-shape"),
       badges: [...push.querySelectorAll("[data-badge] text")].map((word) => word.textContent),
     }).toEqual({ shape: "stop", badges: ["problem"] });
+  });
+
+  it("draws push as a stop after pressing Compact stops", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} />);
+    fireEvent.click(screen.getByRole("button", { name: "Compact stops" }));
+
+    expect(nodeEl(container, "push").getAttribute("data-shape")).toEqual("stop");
   });
 });

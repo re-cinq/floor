@@ -12,4 +12,6 @@ import { RunGraphView, type AssemblyLineDefinition } from "@re-cinq/floor-graph"
 <RunGraphView definition={definition} />;
 ```
 
+The controls hold zoom, fit and two toggles. "Main path" fades every station and line off the path from the entry along `success` (or a lone `always`). "Compact stops" draws a station with one line in and one `always` line out as a stop on the track. The `mainPathOnly` and `compactStops` props set where each toggle starts. `onSelectLine(key)` and `selectedLineKey` select a line by its `from|to|event` key (`edgeKeyOf`).
+
 Started as a copy of re-cinq/lore-security `apps/web-ui/src` at commit 4598c19791154a2ae6afffa65e8b26c0825140b6, with everything about a run stripped. The layout is no longer lore's.

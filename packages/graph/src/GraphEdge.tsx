@@ -15,17 +15,19 @@ export interface GraphEdgeProps {
   emphasis: EdgeEmphasis;
   /** Outside the hovered node's neighbourhood. */
   dimmed?: boolean;
+  /** Off the main line. */
+  offPath?: boolean;
   /** The line the inspector shows. */
   selected?: boolean;
   onSelectLine?: (key: string) => void;
 }
 
 export default function GraphEdge(props: GraphEdgeProps) {
-  const { edge, model, emphasis, dimmed, selected, onSelectLine } = props;
+  const { edge, model, emphasis, dimmed, offPath, selected, onSelectLine } = props;
   const tone = model?.tone ?? "neutral";
 
   return (
-    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} data-dim={dimmed || undefined} data-selected={selected || undefined} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
+    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} {...stateAttrsOf({ dimmed, offPath, selected })} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
       <path data-hit className={styles.edgeHit} d={edge.d} />
       <path
         className={pathClassOf(edge, tone, emphasis)}
@@ -47,14 +49,13 @@ function pathClassOf(edge: LaidOutEdge, tone: VisibleEdge["tone"], emphasis: Edg
 }
 
 /** Drawn after the nodes, so a label in the narrow air between two columns is not hidden behind them. */
-export function EdgeLabel({ edge, model, emphasis, dimmed, selected, onSelectLine }: GraphEdgeProps) {
+export function EdgeLabel({ edge, model, emphasis, dimmed, offPath, selected, onSelectLine }: GraphEdgeProps) {
   if (!model) return null;
 
   return (
     <text
       data-edge-label={edgeKeyOf(edge)}
-      data-dim={dimmed || undefined}
-      data-selected={selected || undefined}
+      {...stateAttrsOf({ dimmed, offPath, selected })}
       onClick={() => onSelectLine?.(edgeKeyOf(edge))}
       className={classes(styles.edgeLabel, textFillClass(model.tone), emphasis === "other" ? styles.dim : undefined)}
       x={edge.mid.x}
@@ -65,4 +66,9 @@ export function EdgeLabel({ edge, model, emphasis, dimmed, selected, onSelectLin
       {model.label}
     </text>
   );
+}
+
+/** The data attributes a line and its label share, each left off when false. */
+function stateAttrsOf({ dimmed, offPath, selected }: Pick<GraphEdgeProps, "dimmed" | "offPath" | "selected">) {
+  return { "data-dim": dimmed || undefined, "data-off-path": offPath || undefined, "data-selected": selected || undefined };
 }

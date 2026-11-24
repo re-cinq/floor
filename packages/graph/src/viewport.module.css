@@ -56,3 +56,9 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+.controls button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-surface));
+  transition: background 150ms, border-color 150ms, transform 150ms;
+}

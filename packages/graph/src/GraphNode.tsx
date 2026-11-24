@@ -28,6 +28,8 @@ export interface GraphNodeProps {
   onHover?: (nodeId: string | null) => void;
   /** Outside the hovered node's neighbourhood. */
   dimmed?: boolean;
+  /** Off the main line. */
+  offPath?: boolean;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
   /** The tone of each out-port's line, by edge key; a port with no line draws neutral. */
@@ -53,6 +55,7 @@ export default function GraphNode(props: GraphNodeProps) {
       data-shape={shape}
       data-selected={selected || undefined}
       data-unreachable={isUnreachable || undefined}
+      data-off-path={props.offPath || undefined}
       {...neighbourhoodAttrs(node.id, props)}
       aria-label={nodeAriaLabel({ node: model, isTerminal, isUnreachable })}
       aria-describedby={props.describedBy}
