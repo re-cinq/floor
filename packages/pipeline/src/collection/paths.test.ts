@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { agentFileOf, isCollectionFile, isReadPath, pipelineFolderOf } from "./paths.js";
+import {
+  agentFileOf,
+  isCollectionFile,
+  isReadPath,
+  lineFolderPathOf,
+  pipelineFolderOf,
+} from "./paths.js";
 
 describe("pipelineFolderOf", () => {
   it.each([
@@ -21,8 +27,22 @@ describe("pipelineFolderOf", () => {
     ["skills/code-review/assembly-line.yaml", undefined],
     ["stock/skills/assembly-line.yaml", undefined],
     ["stock/agents/assembly-line.yaml", undefined],
+    ["stock/.hidden/assembly-line.yaml", undefined],
+    [".github/code-review/assembly-line.yaml", undefined],
   ])("returns %s for the path %s", (path, folder) => {
     expect(pipelineFolderOf(path)).toEqual(folder);
+  });
+});
+
+describe("lineFolderPathOf", () => {
+  it.each([
+    ["stock/code-review/assembly-line.yaml", "stock/code-review"],
+    ["code-review/assembly-line.yaml", "code-review"],
+    ["stock/code-review/pipeline.yaml", "stock/code-review"],
+    ["stock/code-review/agents/reviewer.md", undefined],
+    ["stock/ours/code-review/assembly-line.yaml", undefined],
+  ])("reads the folder of %s as %s", (path, folderPath) => {
+    expect(lineFolderPathOf(path)).toEqual(folderPath);
   });
 });
 
@@ -40,6 +60,7 @@ describe("agentFileOf", () => {
     ["stock/ours/code-review/agents/reviewer.md", undefined],
     ["stock/../agents/reviewer.md", undefined],
     ["agent-skills/code-review/agents/reviewer.md", undefined],
+    ["stock/.hidden/agents/reviewer.md", undefined],
   ])("reads the path %s as %j", (path, read) => {
     expect(agentFileOf(path)).toEqual(read);
   });
