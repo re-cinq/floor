@@ -21,6 +21,7 @@ sidebar:
 | outcome | The word a visit reports. An edge's `on` picks the next node by it. |
 | subject | The argument whose value says what a run is about. One run is open per repository and subject. |
 | collection | A folder of lines and agents. See [Collection](/floor/concepts/collection/). |
+| group folder | A folder in a collection that holds line folders. It is in no name. See [Collection](/floor/specs/collection/#1-layout). |
 | cluster agent | The process that claims agent visits and runs each as a pod in one cluster. |
 | service token | The token you use to post events and apply definitions. It may touch any visit. |
 | visit token | A token scoped to one visit that expires at its deadline. A pod uses it to report. |

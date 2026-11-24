@@ -1,16 +1,24 @@
-// The layout of a collection: `<line>/assembly-line.yaml`, `<line>/agents/<agent>.md` and `<line>/agents/<agent>.extra.md`. A line folder written before the file was renamed holds `pipeline.yaml`, which is read as the same thing.
+// The layout of a collection: `<line>/assembly-line.yaml`, `<line>/agents/<agent>.md` and `<line>/agents/<agent>.extra.md`, where a line folder may sit inside a group folder. A line folder written before the file was renamed holds `pipeline.yaml`, which is read as the same thing.
 /** The host's own top folders: the skills it serves its agents, not lines. */
 const HOST_FOLDERS = ["skills", "agent-skills"];
 
-const FOLDER = String.raw`(?!\.\.?\/)(?!(?:${HOST_FOLDERS.join("|")})\/)[^/]+`;
-const PIPELINE_FILE = new RegExp(String.raw`^(${FOLDER})\/(assembly-line|pipeline)\.yaml$`);
+/** A line or group folder: any name but a host folder or one starting with a dot. */
+const FOLDER = String.raw`(?!\.)(?!(?:${HOST_FOLDERS.join("|")})\/)[^/]+`;
+
+/** A folder that holds lines. One directly above `agents/` is a line folder, never a group, and a top-level `docs/` is never one. */
+function optionalGroup(group: string): string {
+  return String.raw`(?:(?!docs\/)${group}\/(?!agents\/))?`;
+}
+
+const OPTIONAL_GROUP = optionalGroup(FOLDER);
+const PIPELINE_FILE = new RegExp(String.raw`^(${optionalGroup(`(${FOLDER})`)}(${FOLDER}))\/(assembly-line|pipeline)\.yaml$`);
 
 /** The name a line's file has. */
 export const LINE_FILE = "assembly-line.yaml";
 
 /** The name it had, still read. */
 export const FORMER_LINE_FILE = "pipeline.yaml";
-const AGENT_FILE = new RegExp(String.raw`^${FOLDER}\/agents\/([^/]+?)(\.extra)?\.md$`);
+const AGENT_FILE = new RegExp(String.raw`^${OPTIONAL_GROUP}${FOLDER}\/agents\/([^/]+?)(\.extra)?\.md$`);
 
 /** A file of a collection: its path from the collection's root, and its text. */
 export interface CollectionFile {
@@ -18,9 +26,27 @@ export interface CollectionFile {
   text: string;
 }
 
-/** The line folder a line's file sits in. */
+/** Where a line's file sits: its line folder's name, that folder's path, and the group folder above it, undefined for a top-level line folder. */
+export interface LineFilePlace {
+  folder: string;
+  folderPath: string;
+  group: string | undefined;
+}
+
+export function lineFilePlaceOf(path: string): LineFilePlace | undefined {
+  const match = PIPELINE_FILE.exec(path);
+
+  return match ? { folderPath: match[1], group: match[2], folder: match[3] } : undefined;
+}
+
+/** The name of the line folder a line's file sits in. */
 export function pipelineFolderOf(path: string): string | undefined {
-  return PIPELINE_FILE.exec(path)?.[1];
+  return lineFilePlaceOf(path)?.folder;
+}
+
+/** The line folder a line's file sits in, with its group folder if it has one. */
+export function lineFolderPathOf(path: string): string | undefined {
+  return lineFilePlaceOf(path)?.folderPath;
 }
 
 export function agentFileOf(path: string): { agent: string; isExtension: boolean } | undefined {

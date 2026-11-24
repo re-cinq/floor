@@ -1,6 +1,6 @@
 # @re-cinq/floor-studio
 
-A local studio for a collection of assembly lines. A collection is a folder with one folder per assembly line, each holding `assembly-line.yaml` and `agents/<agent>.md`. The studio reads the folder and tells every client what it holds: each assembly line with its nodes, edges and problems, each agent with its settings and prompt, and each file it refused and why. A change to a file on disk reaches every client at once.
+A local studio for a collection of assembly lines. A collection is a folder with one folder per assembly line, at the top or in a group folder, each holding `assembly-line.yaml` and `agents/<agent>.md`. The studio reads the folder and tells every client what it holds: each assembly line with its nodes, edges and problems, each agent with its settings and prompt, and each file it refused and why. A change to a file on disk reaches every client at once.
 
 This package is the backend, the protocol, the command that starts them, and the page that draws the assembly lines (`web/`). It is published to npm, so this starts it without a checkout:
 
@@ -109,7 +109,7 @@ A save sends `agent.write` with the version of the file the edit started from. T
 
 With no unsaved edits, a change on disk shows at once. With unsaved edits, the edits are kept and the tab offers "Take the version on disk" or "Keep my edits". A save before choosing is refused.
 
-An agent extended by `<line>/agents/<agent>.extra.md` also gets an "Extra prompt" editor for that file's text on its own, saved with the same version check. The studio is told no shipped agents, so it shows no merged prompt and the collection still lists the extension as refused.
+An agent extended by `<line>/agents/<agent>.extra.md` (or `<group>/<line>/agents/<agent>.extra.md`) also gets an "Extra prompt" editor for that file's text on its own, saved with the same version check. The studio is told no shipped agents, so it shows no merged prompt and the collection still lists the extension as refused.
 
 ### Running one station
 
@@ -139,7 +139,7 @@ When the run ends the tab shows the agent's final answer under Answer. Its words
 
 Two things match the pod. The run gets the agent's `config.env` over the studio's own environment, so `CLAUDE_CODE_DISABLE_CLAUDE_MDS` and the like apply. And `/workspace`, as the pod spells the working folder, is replaced by the picked folder in the prompt's text and in the `<name>_path` parameters.
 
-The need values are saved in `.floor-studio/fixtures/<line>/<node>.json` and each run in `.floor-studio/runs/<id>.json`, both in the collection folder. The store folder gets a `.gitignore` of `*` on its first write. The run's id is kept in the page's fragment (`&run=<id>`), so after a reload the tab reads the transcript again with `run.read`, also for a run still going. Closing the studio cancels its runs.
+The need values are saved in `.floor-studio/fixtures/<line>/<node>.json` and each run in `.floor-studio/runs/<id>.json`, both in the collection folder. They are keyed by the line's name, so they do not move when a line folder moves into a group folder. The store folder gets a `.gitignore` of `*` on its first write. The run's id is kept in the page's fragment (`&run=<id>`), so after a reload the tab reads the transcript again with `run.read`, also for a run still going. Closing the studio cancels its runs.
 
 ### The environment
 

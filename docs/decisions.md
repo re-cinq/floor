@@ -244,6 +244,7 @@ A flag on the station was chosen over failing every silent agent, because a prom
 ## Collections, and the website
 
 - A **collection** is a folder of line folders, each holding `pipeline.yaml` and `agents/<agent>.md`. Its parser, its layout rules and its lint were lore's, where it is called a pack. They moved into `@re-cinq/floor-pipeline` so that the floor owns the format it documents. Fetching a collection from a git host and applying it to a floor stayed in lore.
+- A line folder may sit one level down, in a group folder, so that a collection can keep the lines its host ships apart from its own. The group is only a place on disk and is in no name. A line's id is unique in the whole collection, and lines are read and applied in the order of their names, so moving a line into a group changes nothing on the floor.
 - A line folder holds its line in `assembly-line.yaml`. The file was `pipeline.yaml`, and that name is still read, so that a collection written before the rename keeps loading. A folder with both is refused. The website and every message name the one it is now.
 - `floor-pipeline lint <dir>` needs no floor. It cannot run the floor's own `validateLine` or `agentConfigSchema`, because both live in private packages a published one cannot depend on. A collection that passes lint can still be refused when it is put.
 - `floor-pipeline apply <dir>` puts a collection to a floor with no host: agents first, then each line. It keeps the repository variants the floor holds for an agent, and takes nothing away when a file leaves the collection.

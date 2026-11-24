@@ -84,6 +84,15 @@ describe("collectionView", () => {
     expect(work.extra).toEqual({ file: "flow/agents/worker.extra.md", text: extraText, version: textVersion(extraText) });
   });
 
+  it("carries stock/flow/agents/worker.extra.md with its version as extra of node work for a line in group stock", () => {
+    const extraText = "Also check the tests.\n";
+    const files = [{ ...FLOW_LINE, path: "stock/flow/assembly-line.yaml" }, { path: "stock/flow/agents/worker.extra.md", text: extraText }];
+
+    const [work] = onlyLine(files).nodes;
+
+    expect(work.extra).toEqual({ file: "stock/flow/agents/worker.extra.md", text: extraText, version: textVersion(extraText) });
+  });
+
   it("marks the node whose line names a fanout with that fanout", () => {
     const fanning = FLOW_LINE.text.replace("    - id: work\n      station: work\n", "    - id: work\n      station: work\n      fanout:\n        over: tickets\n        to: done\n");
 
@@ -154,6 +163,25 @@ describe("collectionView", () => {
     const files = [...WORKER_COLLECTION, { path: "flow/pipeline.yaml", text: lineYaml("flow", "worker") }];
 
     expect(collectionView(files, [])).toMatchObject({ lines: [{ file: "flow/assembly-line.yaml" }], refused: [{ path: "flow/pipeline.yaml", reason: expect.stringContaining("holds its line twice") }] });
+  });
+
+  it("shows ours/flow and refuses stock/flow as already set when both group folders hold the line flow", () => {
+    const files = [{ ...FLOW_LINE, path: "ours/flow/assembly-line.yaml" }, { ...FLOW_LINE, path: "stock/flow/assembly-line.yaml" }, { ...WORKER_AGENT, path: "ours/flow/agents/worker.md" }];
+
+    expect(collectionView(files, [])).toMatchObject({ lines: [{ id: "flow", file: "ours/flow/assembly-line.yaml" }], refused: [{ path: "stock/flow/assembly-line.yaml", reason: "flow is already set by ours/flow/assembly-line.yaml" }] });
+  });
+
+
+  it("shows ours/flow/pipeline.yaml and refuses stock/flow/assembly-line.yaml as already set, hiding neither file", () => {
+    const files = [{ ...FLOW_LINE, path: "ours/flow/pipeline.yaml" }, { ...FLOW_LINE, path: "stock/flow/assembly-line.yaml" }];
+
+    expect(collectionView(files, [])).toMatchObject({ lines: [{ file: "ours/flow/pipeline.yaml" }], refused: [{ path: "stock/flow/assembly-line.yaml", reason: "flow is already set by ours/flow/pipeline.yaml" }] });
+  });
+
+  it("shows the line stock and refuses stock/flow/assembly-line.yaml below it as not in a group", () => {
+    const files = [{ path: "stock/assembly-line.yaml", text: lineYaml("stock", "worker") }, { ...FLOW_LINE, path: "stock/flow/assembly-line.yaml" }];
+
+    expect(collectionView(files, [])).toMatchObject({ lines: [{ id: "stock" }], refused: [{ path: "stock/flow/assembly-line.yaml", reason: "the folder stock holds a line, so it is not a group: move flow out of it" }] });
   });
 
   it("keeps a line whose id is not its folder's name, with a folder-name problem", () => {

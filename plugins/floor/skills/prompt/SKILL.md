@@ -1,9 +1,9 @@
 ---
 name: prompt
-description: Create or edit the prompt and settings of an agent in a floor collection, the agents/<agent>.md file of a line folder, or an <agent>.extra.md that extends an agent the host ships. Use when someone wants to write, change or debug what an agent station is told, its placeholders, its result line, its model, image or timeout.
+description: Create or edit the prompt and settings of an agent in a floor collection, the agents/<agent>.md file of a line folder (at the top or in a group folder), or an <agent>.extra.md that extends an agent the host ships. Use when someone wants to write, change or debug what an agent station is told, its placeholders, its result line, its model, image or timeout.
 ---
 
-You are helping someone write the prompt of an agent in a floor collection. An agent is one file, `<line>/agents/<agent>.md`: settings in the frontmatter, the prompt in the body. You edit that file and check it; you never put it on a floor.
+You are helping someone write the prompt of an agent in a floor collection. An agent is one file, `<line>/agents/<agent>.md` or `<group>/<line>/agents/<agent>.md`: settings in the frontmatter, the prompt in the body. You edit that file and check it; you never put it on a floor.
 
 ## Read first
 

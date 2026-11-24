@@ -170,6 +170,19 @@ describe("printCollectionLint", () => {
     expect({ code, lines }).toEqual({ code: 0, lines: ["collection ok: 1 agents, 1 pipelines, 0 extensions"] });
   });
 
+  it("prints collection ok with 2 pipelines and exits 0 for the line folders stock/acme-flow and ours/review-flow", async () => {
+    const root = collectionOnDisk({
+      "stock/acme-flow/assembly-line.yaml": PIPELINE_YAML,
+      "stock/acme-flow/agents/acme-worker.md": NEW_AGENT,
+      "ours/review-flow/assembly-line.yaml": pipelineYaml("review-flow", "acme-worker"),
+    });
+    const { lines, out } = collected();
+
+    const code = await printCollectionLint(root, [], out);
+
+    expect({ code, lines }).toEqual({ code: 0, lines: ["collection ok: 1 agents, 2 pipelines, 0 extensions"] });
+  });
+
   it("exits 0 for an agent file with the host key execution_mode when the key is named", async () => {
     const root = collectionOnDisk({ "acme-flow/agents/acme-worker.md": "---\nimage: acme/agent:2\ntimeout_minutes: 10\nexecution_mode: station\n---\nWork.\n" });
     const { lines, out } = collected();

@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-An agent file is a markdown file in a [collection](/floor/specs/collection/). Its frontmatter holds the agent's settings and its body is the agent's prompt.
+An agent file is a markdown file in a [collection](/floor/specs/collection/), at `<line>/agents/<agent>.md` or, for a line folder in a group folder, `<group>/<line>/agents/<agent>.md`. Its frontmatter holds the agent's settings and its body is the agent's prompt.
 
 The words MUST, MUST NOT, SHOULD and MAY are used as in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
