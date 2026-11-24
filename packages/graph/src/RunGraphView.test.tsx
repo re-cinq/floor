@@ -5,6 +5,9 @@ import { render, screen, fireEvent, act, within, waitFor } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import RunGraphView from "./RunGraphView";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
+import { markerLine } from "./metro/line.fixtures";
+import { nodeTitle } from "./node-tooltip";
+import { cardWidthOf } from "./run-graph-geometry";
 import { codeReviewDefinition, featurePlanningDefinition, implementationDefinition } from "./definition.fixtures";
 
 function Selectable({ definition }: { definition: AssemblyLineDefinition }) {
@@ -45,6 +48,19 @@ describe("RunGraphView", () => {
     const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
 
     expect([container.querySelectorAll("[data-node]").length, container.querySelectorAll("[data-edge]").length]).toEqual([2, 3]);
+  });
+
+  it("draws a card as wide as its full title when the station id is long", async () => {
+    const stationId = "reviewTheWholeChangesetCarefully";
+    const title = nodeTitle(stationId);
+    const definition = markerLine({ entry: stationId, nodeIds: [stationId, "done"], edges: [[stationId, "done", "success"]], kind: "agent" });
+    const { container } = await renderGraph(<RunGraphView definition={definition} />);
+    const card = nodeEl(container, stationId);
+
+    expect({ width: card.querySelector("rect")?.getAttribute("width"), title: card.querySelector("text")?.textContent }).toEqual({
+      width: String(cardWidthOf(title)),
+      title,
+    });
   });
 
   it("draws every station card 60 tall, even review with three outcomes", async () => {
@@ -242,14 +258,14 @@ describe("RunGraphView selection", () => {
 describe("RunGraphView bringing a selected node into view", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("pans to translate(-683.46 -43.7) scale(1.69) when done, below the zoomed view, is selected", async () => {
+  it("pans to translate(-532.86 -43.7) scale(1.69) when done, below the zoomed view, is selected", async () => {
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 300));
     const { container, rerender } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
     await waitForFittedView(container);
     for (let press = 0; press < 4; press++) fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     rerender(<RunGraphView definition={codeReviewDefinition} selectedNodeId="done" />);
 
-    await waitFor(() => expect(roundedTransformOf(container)).toBe("translate(-683.46 -43.7) scale(1.69)"));
+    await waitFor(() => expect(roundedTransformOf(container)).toBe("translate(-532.86 -43.7) scale(1.69)"));
   });
 });
 
