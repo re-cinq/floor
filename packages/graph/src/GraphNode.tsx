@@ -31,6 +31,8 @@ export interface GraphNodeProps {
   dimmed?: boolean;
   /** Off the main line. */
   offPath?: boolean;
+  /** Newly drawn by the latest layout. */
+  added?: boolean;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
   /** The keyboard cursor: told when this node takes focus, and given its keys. */
@@ -59,6 +61,7 @@ export default function GraphNode(props: GraphNodeProps) {
       data-selected={selected || undefined}
       data-unreachable={isUnreachable || undefined}
       data-off-path={props.offPath || undefined}
+      {...changeAttrOf(props)}
       {...neighbourhoodAttrs(node.id, props)}
       aria-label={nodeAriaLabel({ node: model, isTerminal, isUnreachable })}
       aria-describedby={props.describedBy}
@@ -69,6 +72,10 @@ export default function GraphNode(props: GraphNodeProps) {
       <NodePorts ports={node.ports} toneByEdge={props.toneByEdge} />
     </g>
   );
+}
+
+function changeAttrOf({ added }: Pick<GraphNodeProps, "added">) {
+  return { "data-change": added ? "added" : undefined };
 }
 
 function shapeOf(family: ReturnType<typeof typeFamilyOf>, { isStop }: GraphNodeProps) {
