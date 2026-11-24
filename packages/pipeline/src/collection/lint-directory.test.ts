@@ -239,6 +239,16 @@ describe("lintCommand", () => {
 
     expect({ code, out }).toEqual({ code: 0, out: ["collection ok: 1 agents, 0 pipelines, 1 extensions"] });
   });
+
+  it("refuses optional on a produce as unknown-key and exits 1", async () => {
+    const withOptional = PIPELINE_YAML.replace("    produces: []\n", "    produces:\n      - name: report\n        kind: file\n        path: report.md\n        optional: true\n");
+    const directory = collectionOnDisk({ "acme-flow/assembly-line.yaml": withOptional, "acme-flow/agents/acme-worker.md": NEW_AGENT });
+    const { out, writers } = outputs();
+
+    const code = await lintCommand({ directory, hostKeys: [] }, USAGE, writers);
+
+    expect({ code, out }).toEqual({ code: 1, out: ['acme-flow/assembly-line.yaml: stations.work.produces[0]: unknown key "optional"'] });
+  });
 });
 
 describe("hostKeysIn", () => {

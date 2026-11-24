@@ -33,6 +33,10 @@
     "./agent-config": {
       "types": "./dist/agent-config-schema.d.ts",
       "default": "./dist/agent-config-schema.js"
+    },
+    "./definition-schemas": {
+      "types": "./dist/definition-schemas.d.ts",
+      "default": "./dist/definition-schemas.js"
     }
   },
   "files": [

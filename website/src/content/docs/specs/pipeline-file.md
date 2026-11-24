@@ -344,7 +344,7 @@ stations:
 
 ## 10. Limits
 
-- Inside `line`, a station or a schedule, the floor drops a key it does not know and says nothing. A misspelt `iteration-max` is an edge with no limit. The JSON Schema refuses unknown keys, so check a file against it.
+- Inside `line`, a station or a schedule, the floor drops a key it does not know and says nothing. A misspelt `iteration-max` is an edge with no limit. The JSON Schema refuses unknown keys, and so does `floor-pipeline lint` on a [collection](/floor/specs/collection/#2-rules), as `unknown-key`. Check a file with one of them.
 - A station can report `failed` whether it lists it or not. A node with no edge for `failed` halts the run when that happens. List `failed` in `outcomes`.
 - `must_change` and `url` are accepted and do nothing. `route` is stored and never read by the floor.
 - An edge's `on` is not checked against the station's outcomes by the floor. A collection's lint checks it.
