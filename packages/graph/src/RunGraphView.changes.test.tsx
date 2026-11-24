@@ -33,4 +33,15 @@ describe("RunGraphView change marking", () => {
 
     expect(addedKeys(container)).toEqual(["a|b|success", "b", "b|done|success"]);
   });
+
+  it("marks nothing as added on the first draw", async () => {
+    const definition = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} />);
+    await waitFor(() => {
+      if (!container.querySelector("[data-node=\"done\"]")) throw new Error("layout not drawn yet");
+    });
+
+    expect(addedKeys(container)).toEqual([]);
+  });
 });
