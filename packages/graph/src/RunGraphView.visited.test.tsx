@@ -225,4 +225,32 @@ describe("RunGraphView visited-only drawing", () => {
 
     expect(drawnIds(container, "data-node")).toEqual(["a", "done"]);
   });
+
+  it("keeps the whole line after the Whole line button is pressed when the run prop later changes", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "success", open: false },
+        { nodeId: "done", iteration: 1, outcome: "success", open: false },
+      ],
+    };
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={definition} run={run} />);
+    fireEvent.click(within(container).getByRole("button", { name: "Whole line" }));
+    await waitFor(() => {
+      if (!container.querySelector('[data-node="fix"]')) throw new Error("fix not drawn yet");
+    });
+    rerender(<RunGraphView definition={definition} run={{ visits: [...run.visits] }} />);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(drawnIds(container, "data-node")).toEqual(["a", "done", "fix"]);
+  });
 });
