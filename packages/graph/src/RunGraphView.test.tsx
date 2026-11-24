@@ -25,6 +25,17 @@ async function renderGraph(ui: React.ReactElement) {
   return rendered;
 }
 
+const roundedToHundredths = (text: string) => text.replace(/-?\d+(\.\d+)?(e-?\d+)?/g, (number) => String(Math.round(Number(number) * 100) / 100));
+
+function roundedTransformOf(container: HTMLElement) {
+  const drawing = container.querySelector("svg[role='img']");
+  const transform = drawing?.parentElement?.getAttribute("transform") ?? "";
+
+  return roundedToHundredths(transform);
+}
+
+const waitForFittedView = (container: HTMLElement) => waitFor(() => expect(roundedTransformOf(container)).toBe("translate(0 71.66) scale(0.52)"));
+
 const nodeEl = (container: HTMLElement, id: string) => container.querySelector(`[data-node="${id}"]`) as HTMLElement;
 const edgeEl = (container: HTMLElement, key: string) => container.querySelector(`[data-edge="${key}"]`) as HTMLElement;
 const labelOf = (container: HTMLElement, key: string) => container.querySelector(`[data-edge-label="${key}"]`)?.textContent ?? "";
@@ -180,14 +191,14 @@ describe("RunGraphView selection", () => {
 describe("RunGraphView bringing a selected node into view", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("pans to translate(-1006 -56) when done, below the zoomed view, is selected", async () => {
+  it("pans to translate(-549.9 -26.66) scale(1.27) when done, below the zoomed view, is selected", async () => {
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 300));
     const { container, rerender } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    await waitForFittedView(container);
     for (let press = 0; press < 4; press++) fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     rerender(<RunGraphView definition={codeReviewDefinition} selectedNodeId="done" />);
-    const drawing = container.querySelector("svg[role='img']")?.parentElement;
 
-    expect(drawing?.getAttribute("transform")).toBe("translate(-1006 -56) scale(2)");
+    await waitFor(() => expect(roundedTransformOf(container)).toBe("translate(-549.9 -26.66) scale(1.27)"));
   });
 });
 
