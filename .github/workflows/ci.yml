@@ -126,6 +126,19 @@ jobs:
       - name: Lint the example collections
         run: for collection in examples/*/; do [ "$collection" = "examples/code/" ] || node packages/pipeline/dist/cli.js lint "$collection"; done
 
+  # The release scripts decide what npm receives and a published version cannot be taken back, so their tests run on every change. They need no install: node:test and a fake npm.
+  scripts:
+    name: release scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm run test:scripts
+
   chart:
     name: helm chart
     runs-on: ubuntu-latest
