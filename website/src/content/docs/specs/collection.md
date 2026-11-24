@@ -58,7 +58,7 @@ my-collection/
 6. A group folder MUST NOT sit in another group folder. A line file two folders down is refused as in rule 2.
 7. The name of a line folder or a group folder MUST NOT start with `.`, and MUST NOT be `skills` or `agent-skills`. A group folder MUST NOT be named `docs`. A line folder in a group MUST NOT be named `agents`. Such a path is ignored or refused as in rule 2.
 8. A folder that holds a line file is a line folder, not a group. A line file below it is refused with `the folder G holds a line, so it is not a group: move L out of it`.
-9. A line's id MUST be unique in the whole collection. Of two line folders with the same name, the first by path owns the name and the second is refused with `<line> is already set by <path>`. The first owns the name whether or not its file can be read, so a broken file never lets another folder's copy through.
+9. A line's id MUST be unique in the whole collection. Of two line folders with the same name, the first by path owns the name and the second is refused with `<line> is already set by <path>`. The first owns the name whether or not its file can be read, so a broken file never lets another folder's copy through. Path order is the only order: `ours/triage/` comes before a top-level `triage/`, and wins over it.
 10. Lines are read, and applied, in the order of their names, then of their paths. Moving a line folder into a group folder does not change that order.
 
 ## 2. Rules

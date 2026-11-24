@@ -75,6 +75,14 @@ describe("collectionOverlay with group folders", () => {
     ]);
   });
 
+  it("reads ours/triage and refuses the top-level folder triage, since the path ours/triage sorts first", () => {
+    const triageYaml = pipelineYaml("triage", "reviewer");
+
+    expect(linesAndRefusalsOf({ "triage/assembly-line.yaml": triageYaml, "ours/triage/assembly-line.yaml": triageYaml }).refused).toEqual([
+      { path: "triage/assembly-line.yaml", reason: "triage is already set by ours/triage/assembly-line.yaml" },
+    ]);
+  });
+
   it("reads no line and refuses both files when ours/code-review holds the line sorting and stock/code-review holds code-review", () => {
     expect(linesAndRefusalsOf({
       "ours/code-review/assembly-line.yaml": pipelineYaml("sorting", "reviewer"),
@@ -101,5 +109,14 @@ describe("collectionOverlay with group folders", () => {
       { path: "stock/code-review/notes.md", reason },
       { path: "stock/README.md", reason },
     ]);
+  });
+
+  it("refuses stock/code-review/pipeline.yaml as held twice when stock/code-review/assembly-line.yaml sits beside it", () => {
+    const reviewYaml = pipelineYaml("code-review", "reviewer");
+
+    expect(linesAndRefusalsOf({ "stock/code-review/assembly-line.yaml": reviewYaml, "stock/code-review/pipeline.yaml": reviewYaml })).toEqual({
+      lines: ["code-review"],
+      refused: [{ path: "stock/code-review/pipeline.yaml", reason: "the folder code-review holds its line twice: assembly-line.yaml is read, so remove pipeline.yaml" }],
+    });
   });
 });

@@ -5,9 +5,9 @@ const HOST_FOLDERS = ["skills", "agent-skills"];
 /** A line or group folder: any name but a host folder or one starting with a dot. */
 const FOLDER = String.raw`(?!\.)(?!(?:${HOST_FOLDERS.join("|")})\/)[^/]+`;
 
-/** A folder that holds lines. One directly above `agents/` is a line folder, never a group. */
+/** A folder that holds lines. One directly above `agents/` is a line folder, never a group, and a top-level `docs/` is never one. */
 function optionalGroup(group: string): string {
-  return String.raw`(?:${group}\/(?!agents\/))?`;
+  return String.raw`(?:(?!docs\/)${group}\/(?!agents\/))?`;
 }
 
 const OPTIONAL_GROUP = optionalGroup(FOLDER);

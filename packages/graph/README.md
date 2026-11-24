@@ -36,7 +36,7 @@ Pass `run={{ visits }}` to overlay one assembly run. A `Visit` is `nodeId`, `ite
 - An edge the run did not take fades to 30% (`takenLinesOf`, lore's first-match rule).
 - An edge taken more than once shows ×N beside its label, and the layout reserves room for it.
 - An unvisited station fades to 40%.
-- A visited card's border takes the colour of its last closed outcome. Its subtitle counts visits above one (`agent · 2 visits`). While a visit is open the subtitle adds ` · open` and the border pulses.
+- A visited card's border takes the colour of its last closed outcome. Its subtitle counts visits above one (`agent · 2 visits`). While a visit is open the subtitle adds ` · open` and the border's dashes march round it.
 
 With a run, `show` defaults to `"visited"`. ELK then lays out only the entry, the visited stations, the edges the run took and the stations they reach (`visitedPartOf`), so the graph stays small. A "Whole line" toggle brings in the rest, faded, and `show="all"` starts there. A station removed by an edit, or hidden by turning "Whole line" off, fades out over 300 ms.
 
