@@ -29,7 +29,30 @@
 }
 
 .controls button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   min-height: 0;
-  padding: var(--space-1) var(--space-4);
-  font-size: var(--fs-xs);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: inherit;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, transform 150ms;
+}
+
+.controls button:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+}
+
+.controls button:active {
+  transform: scale(0.94);
+}
+
+.controls button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

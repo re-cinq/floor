@@ -21,15 +21,16 @@ export function dragAction(previous: PointerPosition, pointer: PointerPosition):
 
 export interface ViewportControl {
   label: string;
+  icon: string;
   key: string;
   action: ViewportAction;
 }
 
 // One list read by both the buttons and the keyboard, so a control and its key cannot drift apart.
 export const viewportControls: ReadonlyArray<ViewportControl> = [
-  { label: "Zoom in", key: "+", action: { type: "zoomed", direction: "in" } },
-  { label: "Zoom out", key: "-", action: { type: "zoomed", direction: "out" } },
-  { label: "Fit", key: "0", action: { type: "fit" } },
+  { label: "Zoom in", icon: "M8 3v10M3 8h10", key: "+", action: { type: "zoomed", direction: "in" } },
+  { label: "Zoom out", icon: "M3 8h10", key: "-", action: { type: "zoomed", direction: "out" } },
+  { label: "Fit", icon: "M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4", key: "0", action: { type: "fit" } },
 ];
 
 export function keyAction(key: string): ViewportAction | undefined {
