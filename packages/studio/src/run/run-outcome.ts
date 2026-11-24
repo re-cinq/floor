@@ -8,10 +8,12 @@ interface RunOutcomeInput {
   station: StationBody;
 }
 
-export function runOutcome({ lines, station }: RunOutcomeInput): { outcome: string } {
-  const verdict = requiredVerdict(readAgentVerdict(finalAgentText(lines), station.outcomes), station);
+/** The outcome the agent reported, and its final answer. */
+export function runOutcome({ lines, station }: RunOutcomeInput): { outcome: string; answer?: string } {
+  const answer = finalAgentText(lines);
+  const verdict = requiredVerdict(readAgentVerdict(answer, station.outcomes), station);
 
-  return { outcome: verdict.outcome };
+  return { outcome: verdict.outcome, answer };
 }
 
 function finalAgentText(lines: RunLine[]): string | undefined {

@@ -25,7 +25,7 @@ export const runStartHandler: Handler<RunStartRequest> = {
 
     context.runs.set(run, record);
     await context.writeRun(run, record);
-    const running = runProcess({ command: preview.command, folder: request.folder, env: context.runEnv }, (line) => {
+    const running = runProcess({ command: preview.command, folder: request.folder, env: { ...preview.env, ...context.runEnv } }, (line) => {
       appendLine(record, line);
       context.broadcast({ type: "run.output", run, line });
     });

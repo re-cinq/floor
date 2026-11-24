@@ -7,10 +7,12 @@ import type {
   RunReadResult,
   RunStartResult,
 } from "@/socket/studio-connection";
+import RunAnswer from "./RunAnswer";
 import RunResult from "./RunResult";
+import { finalAnswer } from "./answer-parts";
 import RunTranscript from "./RunTranscript";
 import { useFixture } from "./use-fixture";
-import { useRun } from "./use-run";
+import { useRun, type RunEnded } from "./use-run";
 
 /** What a run is given: a value for each need, the folder and the permission the agent works under. */
 export interface RunFields {
@@ -69,7 +71,7 @@ export default function RunPanel({ node, onPreview, runs, fixtures }: { node: No
       {fixture.failure && <p role="alert">{fixture.failure}</p>}
       {run.refusal && <p role="alert">{run.refusal}</p>}
       {run.lines.length > 0 && <RunTranscript lines={run.lines} />}
-      {run.ended && <RunResult ended={run.ended} raises={node.events.raises} />}
+      {run.ended && <RunEnding ended={run.ended} answer={finalAnswer(run.lines)} raises={node.events.raises} />}
       {preview && <PreviewView preview={preview} />}
     </>
   );
@@ -114,6 +116,16 @@ function RunActions({ onPreview, onRun, onCancel }: { onPreview?: () => void; on
         </button>
       )}
     </div>
+  );
+}
+
+/** What the agent answered, then how the run ended. */
+function RunEnding({ ended, answer, raises }: { ended: RunEnded; answer?: string; raises: NodeView["events"]["raises"] }) {
+  return (
+    <>
+      {answer && <RunAnswer text={answer} />}
+      <RunResult ended={ended} raises={raises} />
+    </>
   );
 }
 

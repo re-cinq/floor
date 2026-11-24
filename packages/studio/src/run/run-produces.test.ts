@@ -30,4 +30,15 @@ describe("producesFound", () => {
       { name: "notes", found: false },
     ]);
   });
+
+  it.each([
+    { answer: "The tests add host keys.", found: true },
+    { answer: "", found: false },
+    { answer: undefined, found: false },
+  ])("returns story found $found for a produce from output when the agent's final answer is $answer", async ({ answer, found }) => {
+    const station = { ...agentStation, produces: [{ name: "story", kind: "file" as const, from: "output" as const }] };
+
+    await expect(producesFound({ station, folder: tmpdir(), answer })).resolves.toEqual([{ name: "story", found }]);
+  });
 });
+

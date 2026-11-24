@@ -1,4 +1,4 @@
-// Checks which declared file produces of a station exist in the run folder.
+// Checks which declared produces of a station a run left: a file produce in the run folder, a produce from output in the agent's final answer.
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import type { StationBody } from "@re-cinq/floor-contracts";
@@ -6,18 +6,23 @@ import type { StationBody } from "@re-cinq/floor-contracts";
 interface ProducesFoundInput {
   station: StationBody;
   folder: string;
+  /** The agent's final answer, which a produce `from: output` holds. */
+  answer?: string;
 }
 
-export function producesFound({ station, folder }: ProducesFoundInput): Promise<{ name: string; found: boolean }[]> {
-  const fileProduces = station.produces.filter((produce) => produce.kind === "file" && produce.path);
+type Produce = StationBody["produces"][number];
 
-  return Promise.all(
-    fileProduces.map(async ({ name, path }) => ({
-      name,
-      found: await access(join(folder, path as string)).then(
-        () => true,
-        () => false,
-      ),
-    })),
+export function producesFound({ station, folder, answer }: ProducesFoundInput): Promise<{ name: string; found: boolean }[]> {
+  const checked = station.produces.filter((produce) => produce.kind === "file" && (produce.path || produce.from === "output"));
+
+  return Promise.all(checked.map(async (produce) => ({ name: produce.name, found: await isFound(produce, folder, answer) })));
+}
+
+function isFound(produce: Produce, folder: string, answer: string | undefined): Promise<boolean> {
+  if (produce.from === "output") return Promise.resolve(Boolean(answer?.trim()));
+
+  return access(join(folder, produce.path as string)).then(
+    () => true,
+    () => false,
   );
 }

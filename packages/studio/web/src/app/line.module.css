@@ -490,6 +490,64 @@
   overflow-wrap: anywhere;
 }
 
+/* The transcript: the agent's words in the body font, tool calls and the run's sum as quiet mono lines, refusals in red; Raw shows the lines as printed. */
+.inspector [role="tabpanel"] section[aria-label="Transcript"] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  white-space: normal;
+}
+
+.inspector [role="tabpanel"] section[aria-label="Transcript"] > button {
+  align-self: flex-end;
+}
+
+.inspector [role="tabpanel"] section[aria-label="Transcript"] ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspector [data-transcript] li {
+  white-space: pre-wrap;
+  color: var(--text-muted);
+}
+
+.inspector [data-transcript] li[data-kind="said"] {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+.inspector [data-transcript] li[data-kind="tool"]::before {
+  content: "› ";
+}
+
+.inspector [data-transcript] li[data-kind="error"] {
+  color: var(--danger);
+}
+
+/* The run result: each fact under its label, the label quiet and narrow. */
+.inspector section[aria-label="Run result"] dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+}
+
+.inspector section[aria-label="Run result"] dt {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.inspector section[aria-label="Run result"] dd {
+  margin: 0;
+}
+
 .inspector [role="tabpanel"] section[aria-label="Blockers"] {
   color: var(--danger);
 }

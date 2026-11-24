@@ -18,7 +18,7 @@ interface RunResultInput {
 export async function runResult({ exitCode, lines, station, line, node, folder }: RunResultInput): Promise<Omit<RunEnding, "exitCode">> {
   if (exitCode === null) return {};
 
-  const { outcome } = runOutcome({ lines, station });
+  const { outcome, answer } = runOutcome({ lines, station });
 
-  return { outcome, produced: await producesFound({ station, folder }), edge: edgeTaken({ line, node, outcome }) };
+  return { outcome, produced: await producesFound({ station, folder, answer }), edge: edgeTaken({ line, node, outcome }) };
 }

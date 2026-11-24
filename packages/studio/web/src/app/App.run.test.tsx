@@ -74,6 +74,12 @@ describe("App run tab", () => {
     });
   });
 
+  it("shows the agent's answer Done. under Answer, without its LORE_NODE_RESULT line, when node work ended", async () => {
+    await withEndedRun(async (panel) => {
+      expect((await within(panel).findByRole("region", { name: "Answer" })).querySelector("p")?.textContent).toEqual("Done.");
+    });
+  });
+
   it("lists node.done.start under Raised next when node work ended with LORE_NODE_RESULT: success", async () => {
     await withEndedRun(async (panel) => {
       expect((await within(panel).findByRole("region", { name: "Raised next" })).textContent).toContain("node.done.start");
