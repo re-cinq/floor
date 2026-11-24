@@ -90,4 +90,22 @@ describe("RunGraphView keyboard path", () => {
 
     expect({ arrowHandled, letterHandled, chosen: chosenKeys(container) }).toEqual({ arrowHandled: false, letterHandled: true, chosen: ["a|fix|failed"] });
   });
+
+  it("keeps a|fix|failed chosen when a takes focus again", async () => {
+    const { container } = await renderBranchingLine();
+
+    fireEvent.focus(nodeEl(container, "a"));
+    fireEvent.keyDown(nodeEl(container, "a"), { key: "ArrowDown" });
+    fireEvent.focus(nodeEl(container, "a"));
+
+    expect(chosenKeys(container)).toEqual(["a|fix|failed"]);
+  });
+
+  it("prevents the default of ArrowDown but chooses no line when no station has taken focus", async () => {
+    const { container } = await renderBranchingLine();
+
+    const handled = fireEvent.keyDown(nodeEl(container, "a"), { key: "ArrowDown" });
+
+    expect({ handled, chosen: chosenKeys(container) }).toEqual({ handled: false, chosen: [] });
+  });
 });
