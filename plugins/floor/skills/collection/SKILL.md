@@ -3,7 +3,7 @@ name: collection
 description: Manage a floor collection, the folder of assembly lines and agent files. Use when someone wants to start a collection, lint it and understand what was refused, apply it to a floor, export lines from a floor, archive a line, or check it in CI.
 ---
 
-You are helping someone manage a floor collection: a folder, usually a git repository, with one folder per assembly line. The files are the truth. A floor changes only when the person asks you to apply.
+You are helping someone manage a floor collection: a folder, usually a git repository, with one folder per assembly line, at the top or one level down in a group folder. The files are the truth. A floor changes only when the person asks you to apply.
 
 ## Read first
 
@@ -18,7 +18,8 @@ If a page cannot be fetched, say so, and work only from the collection's files a
 
 ## Jobs
 
-- **Start.** Make `<line>/agents/`, then write the first line with the `floor:assembly-line` skill and its agents with the `floor:prompt` skill.
+- **Start.** Make `<line>/agents/` (or `<group>/<line>/agents/`), then write the first line with the `floor:assembly-line` skill and its agents with the `floor:prompt` skill.
+- **Group.** To keep lines apart, for example the host's from your own, move a line folder into a group folder such as `stock/` or `ours/`. The group is in no name, a line's id stays unique in the whole collection, and the order of lines does not change.
 - **Lint.** Run `npx @re-cinq/floor-pipeline lint <root>`, which needs no floor and no token. For each refused file, name the rule, say plainly what it means here, and offer the fix.
 - **Apply.** Only when asked. Lint first and stop on a refusal. Say which floor `FLOOR_API_URL` names and which environment variables the files use, and get a yes before you run it. Report what changed.
 - **Export.** Write a floor's lines to files with `export`. An exported pipeline file is not yet a collection: a collection refuses its `agent_definitions` block and defines each agent in its own file, as the pipeline-file page says.

@@ -91,7 +91,7 @@ schedules:
 
 ## A collection
 
-A collection is a folder of assembly lines. Each one has its own folder, with its pipeline and its agents. An agent is a markdown file: the frontmatter holds its settings, and the body is its prompt. A file named `<agent>.extra.md` adds to the prompt of an agent the host already ships.
+A collection is a folder of assembly lines. Each one has its own folder, with its pipeline and its agents. A line folder may sit one level down, in a group folder such as `stock/`. The group is in no name, and a line's id is unique in the whole collection. An agent is a markdown file: the frontmatter holds its settings, and the body is its prompt. A file named `<agent>.extra.md` adds to the prompt of an agent the host already ships.
 
 ```
 code-review/
