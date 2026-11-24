@@ -330,3 +330,12 @@
   opacity: 0.15;
   transition: opacity 150ms;
 }
+
+.stubBar {
+  stroke: var(--warning);
+  stroke-width: 2;
+}
+.stubText {
+  fill: var(--warning);
+  font-size: 11px;
+}
