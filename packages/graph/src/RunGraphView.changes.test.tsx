@@ -145,4 +145,25 @@ describe("RunGraphView change marking", () => {
 
     expect(addedKeys(container)).toEqual([]);
   });
+
+  it("leaves a, which did not move, without an offset or a change mark when b is inserted between a and done", async () => {
+    const before = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
+    const after = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+      ],
+    });
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={before} />);
+    rerender(<RunGraphView definition={after} />);
+    await waitFor(() => {
+      if (container.querySelector('[data-node="done"]')?.getAttribute("data-change") !== "moved") throw new Error("done not marked moved yet");
+    });
+    const a = container.querySelector<HTMLElement>('[data-node="a"]');
+
+    expect({ change: a?.getAttribute("data-change"), transform: a?.style.transform }).toEqual({ change: null, transform: "" });
+  });
 });
