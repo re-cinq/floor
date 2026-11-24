@@ -9,6 +9,7 @@ import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
 import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
+import DanglingStub from "./DanglingStub";
 import ExitDot from "./ExitDot";
 import GraphNode from "./GraphNode";
 import GraphViewport from "./GraphViewport";
@@ -214,8 +215,10 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, l
   return nodes.map((node) => {
     const model = laid.nodeById.get(node.id);
 
-    if (node.id.endsWith(":exit")) {
-      return <ExitDot key={node.id} node={node} exit={exit} />;
+    const marker = markerOf(node, exit);
+
+    if (marker) {
+      return marker;
     }
 
     return model ? (
@@ -234,6 +237,14 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, l
       />
     ) : null;
   });
+}
+
+function markerOf(node: ElkLayout["nodes"][number], exit: string) {
+  if (node.id.endsWith(":exit")) {
+    return <ExitDot key={node.id} node={node} exit={exit} />;
+  }
+
+  return node.id.endsWith(":stub") ? <DanglingStub key={node.id} node={node} /> : null;
 }
 
 type Drawing = ReturnType<typeof drawingOf>;
