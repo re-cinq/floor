@@ -36,4 +36,19 @@ describe("RunGraphView warnings", () => {
       a: { flag: null, texts: ["A", "agent"] },
     });
   });
+  it("draws no stub for the ghost|done|failed line whose source ghost is undeclared", async () => {
+    const definition = markerLine({
+      kind: "agent",
+      entry: "a",
+      nodeIds: ["a", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["ghost", "done", "failed"],
+      ],
+    });
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} />);
+
+    expect(container.querySelectorAll("[data-stub]")).toHaveLength(0);
+  });
 });
