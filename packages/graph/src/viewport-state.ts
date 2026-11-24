@@ -1,5 +1,5 @@
 // The viewport's behavior over time, held with `useReducer`; adding an action is its payload in `ViewportEvents` and its rule in `RULES`.
-import type { Box } from "./dag-layout";
+import type { Box } from "./elk-layout";
 import { fitTransform, IDENTITY, isSameTransform, keepInView, panBy, revealArea, UNMEASURED, zoomAt, type BoxOffset, type BoxPoint, type Size, type ViewportTransform } from "./viewport";
 
 export interface ViewportState {

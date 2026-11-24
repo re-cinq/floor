@@ -1,12 +1,9 @@
 // Pure geometry for the graph (box height, viewBox, layout-shaped definition) — no React, no styles, only WHERE things sit.
-import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import type { Box } from "./dag-layout";
+import type { Box } from "./elk-layout";
 import type { VisibleGraph } from "./graph-view-model";
 
-// Box width, sized for a node's id and its outcome rows; the layout uses this same constant as column pitch.
+// Box width, sized for a node's id and its outcome rows; ELK is given the same width.
 export const NODE_WIDTH = 216;
-// Column pitch: a node box plus the air its connectors curve through.
-export const LAYER_GAP = 240;
 // Clear space kept around the drawing.
 export const VIEW_PADDING = 28;
 // Vertical pitch of one outcome row inside a node.
@@ -76,35 +73,6 @@ export function nodeHeightFor(graph: VisibleGraph): number {
   return rows > 0
     ? BASE_NODE_HEIGHT + OUTCOME_TOP + rows * OUTCOME_ROW
     : BASE_NODE_HEIGHT;
-}
-
-// A layout-shaped definition from the visible graph.
-export function toLayoutDefinition(
-  graph: VisibleGraph,
-  definition: AssemblyLineDefinition,
-): AssemblyLineDefinition {
-  return {
-    name: definition.name,
-    description: "",
-    version: 1,
-    entry: definition.entry,
-    exit: definition.exit,
-    nodes: layoutNodes(graph),
-    edges: layoutEdges(graph),
-  };
-}
-
-function layoutNodes(graph: VisibleGraph): AssemblyLineDefinition["nodes"] {
-  return graph.nodes.map((node) => ({ id: node.id, type: node.type }));
-}
-
-// Connectors carry no condition — layout needs structure, not routing.
-function layoutEdges(graph: VisibleGraph): AssemblyLineDefinition["edges"] {
-  return graph.edges.map((edge) => ({
-    from: edge.from,
-    to: edge.to,
-    on: "always",
-  }));
 }
 
 // The one key shape for an edge, shared by the model lookup and the `data-edge` attribute tests query, so the two can never drift apart.

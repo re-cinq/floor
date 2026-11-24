@@ -3,7 +3,7 @@ import ELK, { type ElkEdgeSection, type ElkLabel, type ElkNode } from "elkjs/lib
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { elkGraphOf } from "./elk-graph";
 
-type Box = { minX: number; minY: number; maxX: number; maxY: number };
+export type Box = { minX: number; minY: number; maxX: number; maxY: number };
 
 export interface ElkLayout {
   nodes: { id: string; x: number; y: number; width: number; height: number }[];
@@ -19,8 +19,8 @@ export interface ElkLayout {
   contentBox: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
-type LaidOutNode = ElkLayout["nodes"][number];
-type LaidOutEdge = ElkLayout["edges"][number];
+export type LaidOutNode = ElkLayout["nodes"][number];
+export type LaidOutEdge = ElkLayout["edges"][number];
 
 /** Lays out a line with ELK: node centres, one SVG path and label centre per edge, and the canvas box. */
 export async function layoutWithElk(definition: AssemblyLineDefinition, size?: { width: number; height: number }): Promise<ElkLayout> {

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { fitNodeLabel, nodeHeightFor, toLayoutDefinition, NODE_LABEL_CHARS } from "./run-graph-geometry";
+import { fitNodeLabel, nodeHeightFor, NODE_LABEL_CHARS } from "./run-graph-geometry";
 import type { VisibleGraph, VisibleNode } from "./graph-view-model";
-import type { AssemblyLineDefinition } from "./assembly-line-definition";
 
 const node = (id: string, outcomes: readonly string[] = []): VisibleNode => ({
   id,
@@ -40,22 +39,5 @@ describe("nodeHeightFor", () => {
 
   it("grows to fit the widest outcome list", () => {
     expect(nodeHeightFor(graph({ nodes: [node("a", ["success", "failed"]), node("b")] }))).toEqual(48 + 14 + 2 * 15);
-  });
-});
-
-describe("toLayoutDefinition", () => {
-  it("takes the definition's own name, entry and exit, and the graph's nodes and hops as plain always edges", () => {
-    const definition: AssemblyLineDefinition = { name: "code-review", description: "", version: 1, entry: "review", exit: "done", nodes: [], edges: [] };
-    const hop = { from: "review", to: "done", tone: "ok" as const, label: "success", branching: false };
-
-    expect(toLayoutDefinition(graph({ nodes: [node("review")], edges: [hop] }), definition)).toEqual({
-      name: "code-review",
-      description: "",
-      version: 1,
-      entry: "review",
-      exit: "done",
-      nodes: [{ id: "review", type: "agent" }],
-      edges: [{ from: "review", to: "done", on: "always" }],
-    });
   });
 });
