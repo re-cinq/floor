@@ -530,6 +530,41 @@
   color: var(--danger);
 }
 
+/* The agent's answer: each JSON field's name small above its value, list items as numbered blocks. */
+.inspector [data-answer] dl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.inspector [data-answer] dt {
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.inspector [data-answer] dd {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.inspector [data-answer] ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+}
+
+.inspector [data-answer] ol ol {
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
 /* The run result: each fact under its label, the label quiet and narrow. */
 .inspector section[aria-label="Run result"] dl {
   display: grid;
