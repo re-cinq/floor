@@ -42,6 +42,12 @@ describe("layoutWithElk", () => {
     expect(edges[0].mid).toEqual({ x: 201, y: 53, vertical: false });
   });
 
+  it("returns the write -> done success label box 172,45 to 230,61", async () => {
+    const { edges } = await layoutWithElk(twoStationLine);
+
+    expect(edges[0].labelBox).toEqual({ minX: 172, minY: 45, maxX: 230, maxY: 61 });
+  });
+
   it("returns kind self for the review -> review failed edge", async () => {
     const retryLine = markerLine({
       entry: "review",
