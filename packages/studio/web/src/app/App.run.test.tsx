@@ -127,7 +127,7 @@ async function withEndedRun(body: (panel: HTMLElement) => Promise<void>): Promis
   try {
     mkdirSync(bin);
     mkdirSync(join(scratch, "folder"));
-    writeFileSync(join(bin, "claude"), `#!/bin/sh\necho '{"type":"system"}'\necho '${result}'\n`, { mode: 0o755 });
+    writeFileSync(join(bin, "claude"), `#!/bin/sh\necho '{"type":"system"}'\nprintf '%s\\n' '${result}'\n`, { mode: 0o755 });
     await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work&tab=Run", runEnv: { PATH: `${bin}:${process.env.PATH}` } });
     const panel = await screen.findByRole("tabpanel", { name: "Run" });
 
