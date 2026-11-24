@@ -37,6 +37,16 @@
 .typeGlyph {
   fill: var(--family);
 }
+.stopCircle {
+  fill: color-mix(in srgb, var(--family) 12%, var(--bg-surface));
+  stroke: var(--family);
+  stroke-width: 1.5;
+}
+.stopTitle {
+  fill: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}
 .legend {
   display: flex;
   flex-wrap: wrap;

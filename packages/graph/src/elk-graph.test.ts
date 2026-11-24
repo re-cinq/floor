@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { elkGraphOf } from "./elk-graph";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import { codeReviewDefinition } from "./definition.fixtures";
+import { codeReviewDefinition, implementationDefinition } from "./definition.fixtures";
+import { nodeTitle } from "./node-tooltip";
 import { markerLine } from "./metro/line.fixtures";
 
 describe("elkGraphOf", () => {
@@ -188,5 +189,22 @@ describe("elkGraphOf", () => {
       { id: "a-very-long-station-id", width: 300 },
       { id: "done", width: 22 },
     ]);
+  });
+
+  it("turns the pass-through push station into a stop node with west and east ports at its centre when compactStops is on", () => {
+    const stopWidth = Math.max(32, Math.ceil(nodeTitle("push").length * 6.8 + 10));
+
+    const { children } = elkGraphOf(implementationDefinition, { width: 216, height: 60 }, { compactStops: true });
+
+    expect(children?.find(({ id }) => id === "push")).toEqual({
+      id: "push",
+      width: stopWidth,
+      height: 46,
+      layoutOptions: { "elk.portConstraints": "FIXED_POS" },
+      ports: [
+        { id: "validate|push|success:in", x: 0, y: 14, width: 0, height: 0 },
+        { id: "push|review|always:out", x: stopWidth, y: 14, width: 0, height: 0 },
+      ],
+    });
   });
 });

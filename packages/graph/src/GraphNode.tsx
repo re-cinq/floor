@@ -19,6 +19,8 @@ export interface GraphNodeProps {
   isTerminal: boolean;
   /** No start leads to it. */
   isUnreachable?: boolean;
+  /** Drawn as a small stop rather than a card. */
+  isStop?: boolean;
   /** The node the inspector shows; drawn with a ring so the graph says which one. */
   selected?: boolean;
   onSelect?: (nodeId: string) => void;
@@ -40,7 +42,7 @@ const NO_TONES: ReadonlyMap<string, ConnectorTone> = new Map();
 export default function GraphNode(props: GraphNodeProps) {
   const { node, model, height, isTerminal, selected = false, isUnreachable, onSelect } = props;
   const family = typeFamilyOf(model.type);
-  const shape = family === "marker" ? "terminal" : "card";
+  const shape = shapeOf(family, props);
   const BODY = BODY_BY_SHAPE[shape];
 
   return (
@@ -61,6 +63,14 @@ export default function GraphNode(props: GraphNodeProps) {
       <NodePorts ports={node.ports} toneByEdge={props.toneByEdge} />
     </g>
   );
+}
+
+function shapeOf(family: ReturnType<typeof typeFamilyOf>, { isStop }: GraphNodeProps) {
+  if (family === "marker") {
+    return "terminal";
+  }
+
+  return isStop ? "stop" : "card";
 }
 
 interface NodeBodyProps {
@@ -94,7 +104,26 @@ function TerminalBody({ node }: NodeBodyProps) {
   );
 }
 
-const BODY_BY_SHAPE = { card: CardBody, terminal: TerminalBody };
+// The stop's circle centre from the box's top, and the title's drop below it.
+const STOP_RADIUS = 12;
+const STOP_CENTRE_DROP = 14;
+const STOP_TITLE_DROP = 26;
+
+function StopBody({ node, family, height }: NodeBodyProps) {
+  const cy = node.y - height / 2 + STOP_CENTRE_DROP;
+
+  return (
+    <>
+      <circle className={styles.stopCircle} cx={node.x} cy={cy} r={STOP_RADIUS} />
+      <TypeGlyph family={family} cx={node.x} cy={cy} />
+      <text className={styles.stopTitle} x={node.x} y={cy + STOP_TITLE_DROP} textAnchor="middle">
+        {nodeTitle(node.id)}
+      </text>
+    </>
+  );
+}
+
+const BODY_BY_SHAPE = { card: CardBody, terminal: TerminalBody, stop: StopBody };
 
 function NodePorts({ ports, toneByEdge = NO_TONES }: { ports: LaidOutNode["ports"]; toneByEdge?: ReadonlyMap<string, ConnectorTone> }) {
   return ports.map((port) => {
