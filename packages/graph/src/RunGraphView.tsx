@@ -10,7 +10,7 @@ import { isPassThrough } from "./metro/pass-through";
 import { neighbourhoodOf } from "./metro/neighbourhood";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
-import GraphSvg, { type DescribedNode } from "./GraphSvg";
+import GraphSvg, { type DescribedNode, type LineMarks } from "./GraphSvg";
 import { useKeyboardCursor } from "./use-keyboard-cursor";
 import GraphViewport from "./GraphViewport";
 import { useLayoutChanges } from "./use-layout-changes";
@@ -22,14 +22,10 @@ import {
 import { edgeKeyOf } from "./metro/edge-key";
 import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
-import { nodeTitle, nodeTooltipOf } from "./node-tooltip";
+import { nodeTooltipOf } from "./node-tooltip";
+import { useNodeSize } from "./use-node-size";
 import RunGraphLegend from "./RunGraphLegend";
-import {
-  NODE_HEIGHT,
-  NODE_WIDTH,
-  cardWidthOf,
-  revealBoxOf,
-} from "./run-graph-geometry";
+import { NODE_HEIGHT, revealBoxOf } from "./run-graph-geometry";
 import styles from "./run-graph.module.css";
 
 export interface RunGraphViewProps {
@@ -72,12 +68,6 @@ export default function RunGraphView(props: RunGraphViewProps) {
     </section>
   );
 }
-
-const NODE_SIZE = {
-  width: NODE_WIDTH,
-  height: NODE_HEIGHT,
-  widthOf: (nodeId: string) => cardWidthOf(nodeTitle(nodeId)),
-};
 
 interface GraphCanvasProps {
   view: RunGraphViewProps;
@@ -138,7 +128,7 @@ function useGraphCanvasState(view: RunGraphViewProps, graph: VisibleGraph) {
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
   const keyboard = useKeyboardCursor(view.definition);
   const { elkLayout, added, stops, compactStops, toggleCompactStops } =
-    useStopsLayout(view, graph);
+    useStopsLayout(view, graph, visits);
   const laid = useMemo(
     () => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops),
     [elkLayout, graph, view.definition.name, stops],
@@ -191,6 +181,7 @@ function useLineMarkings({
 function useStopsLayout(
   { definition, compactStops: initialCompactStops }: RunGraphViewProps,
   graph: VisibleGraph,
+  visits: LineMarks["visits"],
 ) {
   const [compactStops, toggleCompactStops] = useToggle({
     initiallyOn: initialCompactStops,
@@ -206,7 +197,7 @@ function useStopsLayout(
 
   const elkLayout = useElkLayout(
     definition,
-    NODE_SIZE,
+    useNodeSize(definition, visits),
     undefined,
     layoutOptions,
   );

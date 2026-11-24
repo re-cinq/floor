@@ -4,12 +4,15 @@ import type { KeyboardCursor } from "./use-keyboard-cursor";
 import type { LaidOutNode } from "./elk-layout";
 import type { ConnectorTone, VisibleNode } from "./graph-view-model";
 import NodeBadges from "./NodeBadges";
+import NodeBox from "./NodeBox";
 import NodeTitle from "./NodeTitle";
 import TypeGlyph, { FAMILY_CLASS } from "./TypeGlyph";
 import { badgesOf } from "./node-badges";
 import { nodeAriaLabel } from "./node-aria-label";
 import { typeFamilyOf } from "./node-type-family";
 import { nodeTitle } from "./node-tooltip";
+import type { StationVisits } from "./metro/station-visits";
+import { subtitleOf } from "./station-subtitle";
 import { classes, portFillClass } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
 
@@ -39,6 +42,8 @@ export interface GraphNodeProps {
   visited?: boolean;
   /** How the run's last closed visit here ended. */
   outcome?: string;
+  /** What the run did here: how often it came, and whether a visit is open. */
+  status?: StationVisits;
   /** The keyboard cursor: told when this node takes focus, and given its keys. */
   keyboard?: Pick<KeyboardCursor, "onFocusNode" | "onKeyDown">;
   /** The tone of each out-port's line, by edge key; a port with no line draws neutral. */
@@ -68,6 +73,7 @@ export default function GraphNode(props: GraphNodeProps) {
       <BODY
         node={node}
         family={family}
+        subtitle={subtitleOf(family, props.status)}
         height={height}
         isUnreachable={isUnreachable}
       />
@@ -112,8 +118,10 @@ function stationAttrsOf(
 function runAttrsOf({
   visited,
   outcome,
-}: Pick<GraphNodeProps, "visited" | "outcome">) {
+  status,
+}: Pick<GraphNodeProps, "visited" | "outcome" | "status">) {
   return {
+    "data-open": status?.open || undefined,
     "data-visited": visited === false ? "false" : undefined,
     "data-outcome": outcome,
   };
@@ -137,22 +145,24 @@ function shapeOf(
 interface NodeBodyProps {
   node: LaidOutNode;
   family: ReturnType<typeof typeFamilyOf>;
+  subtitle: string;
   height: number;
   isUnreachable?: boolean;
 }
 
-function CardBody({ node, family, height, isUnreachable }: NodeBodyProps) {
-  const { top, leftEdge, width } = boxOf(node, height);
+function CardBody({
+  node,
+  family,
+  subtitle,
+  height,
+  isUnreachable,
+}: NodeBodyProps) {
+  const box = boxOf(node, height);
+  const { top, leftEdge } = box;
 
   return (
     <>
-      <NodeBox
-        leftEdge={leftEdge}
-        top={top}
-        width={width}
-        height={height}
-        isUnreachable={isUnreachable}
-      />
+      <NodeBox {...box} height={height} isUnreachable={isUnreachable} />
       <TypeGlyph
         family={family}
         cx={leftEdge + GLYPH_INSET}
@@ -160,7 +170,7 @@ function CardBody({ node, family, height, isUnreachable }: NodeBodyProps) {
       />
       <NodeTitle
         title={nodeTitle(node.id)}
-        kind={family}
+        subtitle={subtitle}
         isUnreachable={isUnreachable}
         centerX={node.x}
         centerY={node.y}
@@ -315,34 +325,4 @@ function selectOnActivationKey(
     event.preventDefault();
     onSelect(nodeId);
   };
-}
-
-interface NodeBoxProps {
-  leftEdge: number;
-  top: number;
-  width: number;
-  height: number;
-  isUnreachable?: boolean;
-}
-
-function NodeBox({
-  leftEdge,
-  top,
-  width,
-  height,
-  isUnreachable,
-}: NodeBoxProps) {
-  return (
-    <rect
-      className={classes(
-        styles.box,
-        isUnreachable ? styles.boxUnreachable : undefined,
-      )}
-      x={leftEdge}
-      y={top}
-      width={width}
-      height={height}
-      rx={10}
-    />
-  );
 }

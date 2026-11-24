@@ -207,6 +207,7 @@ function annotationsOf(
       describedNode?.nodeId === nodeId ? describedNode.tooltipId : undefined,
     visited: visits && !!stationVisits,
     outcome: stationVisits?.outcome,
+    status: stationVisits,
   };
 }
 
