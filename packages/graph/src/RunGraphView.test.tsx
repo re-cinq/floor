@@ -8,6 +8,7 @@ import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { markerLine } from "./metro/line.fixtures";
 import { nodeTitle } from "./node-tooltip";
 import { cardWidthOf } from "./run-graph-geometry";
+import { edgeEl, labelOf, nodeEl, renderGraph } from "./run-graph.test-helpers";
 import { codeReviewDefinition, featurePlanningDefinition, implementationDefinition } from "./definition.fixtures";
 
 function Selectable({ definition }: { definition: AssemblyLineDefinition }) {
@@ -21,13 +22,6 @@ function Selectable({ definition }: { definition: AssemblyLineDefinition }) {
   );
 }
 
-async function renderGraph(ui: React.ReactElement) {
-  const rendered = render(ui);
-  await waitFor(() => expect(rendered.container.querySelector("[data-node]")).not.toBeNull());
-
-  return rendered;
-}
-
 const roundedToHundredths = (text: string) => text.replace(/-?\d+(\.\d+)?(e-?\d+)?/g, (number) => String(Math.round(Number(number) * 100) / 100));
 
 function roundedTransformOf(container: HTMLElement) {
@@ -39,9 +33,6 @@ function roundedTransformOf(container: HTMLElement) {
 
 const waitForFittedView = (container: HTMLElement) => waitFor(() => expect(roundedTransformOf(container)).toBe("translate(0 61.61) scale(0.69)"));
 
-const nodeEl = (container: HTMLElement, id: string) => container.querySelector(`[data-node="${id}"]`) as HTMLElement;
-const edgeEl = (container: HTMLElement, key: string) => container.querySelector(`[data-edge="${key}"]`) as HTMLElement;
-const labelOf = (container: HTMLElement, key: string) => container.querySelector(`[data-edge-label="${key}"]`)?.textContent ?? "";
 
 describe("RunGraphView", () => {
   it("draws every node and one connector per outcome, even when outcomes lead to the same node", async () => {

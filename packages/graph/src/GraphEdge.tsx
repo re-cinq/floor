@@ -13,13 +13,15 @@ export interface GraphEdgeProps {
   model: VisibleEdge | undefined;
   /** Outgoing: leaves the selected node. Other: something is selected and this hop is not from it. Undefined when nothing is selected. */
   emphasis: EdgeEmphasis;
+  /** Outside the hovered node's neighbourhood. */
+  dimmed?: boolean;
 }
 
-export default function GraphEdge({ edge, model, emphasis }: GraphEdgeProps) {
+export default function GraphEdge({ edge, model, emphasis, dimmed }: GraphEdgeProps) {
   const tone = model?.tone ?? "neutral";
 
   return (
-    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis}>
+    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} data-dim={dimmed || undefined}>
       <path
         className={classes(
           styles.edge,

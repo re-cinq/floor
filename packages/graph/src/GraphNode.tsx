@@ -20,6 +20,10 @@ export interface GraphNodeProps {
   /** The node the inspector shows; drawn with a ring so the graph says which one. */
   selected?: boolean;
   onSelect?: (nodeId: string) => void;
+  /** Told which node the pointer or the keyboard focus is on, or null once it leaves. */
+  onHover?: (nodeId: string | null) => void;
+  /** Outside the hovered node's neighbourhood. */
+  dimmed?: boolean;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
   /** The tone of each out-port's line, by edge key; a port with no line draws neutral. */
@@ -44,6 +48,7 @@ export default function GraphNode(props: GraphNodeProps) {
       data-family={family}
       data-shape={shape}
       data-selected={selected || undefined}
+      {...neighbourhoodAttrs(node.id, props)}
       aria-label={nodeAriaLabel({ node: model, isTerminal })}
       aria-describedby={props.describedBy}
       {...interactionAttrs({ nodeId: node.id, onSelect, selected })}
@@ -108,6 +113,17 @@ function NodePorts({ ports, toneByEdge }: { ports: LaidOutNode["ports"]; toneByE
 /** The box's top-left, from the layout's CENTRE point. The layout places node centres so edges can aim at them; SVG rects are drawn from a corner. */
 function boxOf(node: GraphNodeProps["node"], height: number) {
   return { top: node.y - height / 2, leftEdge: node.x - node.width / 2, width: node.width };
+}
+
+/** Marks the node dimmed, and reports pointer and focus entering and leaving it so the graph can light its neighbourhood. */
+function neighbourhoodAttrs(nodeId: string, { dimmed, onHover }: GraphNodeProps) {
+  return {
+    "data-dim": dimmed || undefined,
+    onPointerEnter: () => onHover?.(nodeId),
+    onPointerLeave: () => onHover?.(null),
+    onFocus: () => onHover?.(nodeId),
+    onBlur: () => onHover?.(null),
+  };
 }
 
 interface InteractionInput {
