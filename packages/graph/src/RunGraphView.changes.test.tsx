@@ -34,6 +34,38 @@ describe("RunGraphView change marking", () => {
     expect(addedKeys(container)).toEqual(["a|b|success", "b", "b|done|success"]);
   });
 
+  it("clears the added marks when a later layout adds nothing", async () => {
+    const before = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
+    const withB = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+      ],
+    });
+    const withBRenamedEntry = markerLine({
+      entry: "b",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+      ],
+    });
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={before} />);
+    rerender(<RunGraphView definition={withB} />);
+    await waitFor(() => {
+      if (addedKeys(container).length === 0) throw new Error("added marks not drawn yet");
+    });
+    rerender(<RunGraphView definition={withBRenamedEntry} />);
+    await waitFor(() => {
+      if (addedKeys(container).length !== 0) throw new Error("added marks not cleared yet");
+    });
+
+    expect(addedKeys(container)).toEqual([]);
+  });
+
   it("marks nothing as added on the first draw", async () => {
     const definition = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
 
