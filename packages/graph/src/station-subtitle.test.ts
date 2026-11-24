@@ -10,4 +10,8 @@ describe("subtitleOf", () => {
 
     expect(subtitles).toEqual(["agent · 2 visits", "agent"]);
   });
+
+  it("reads agent · open for a first visit that is still open", () => {
+    expect(subtitleOf("agent", { count: 1, open: true })).toEqual("agent · open");
+  });
 });
