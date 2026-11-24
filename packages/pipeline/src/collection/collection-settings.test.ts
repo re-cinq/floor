@@ -13,7 +13,7 @@ describe("collectionSettingsOf", () => {
     });
   });
 
-  it.each([["groups: stock\n"], ["groups: [stock, stock]\n"], ["groups: [stock, 7]\n"], ["groups: [stock/ours]\n"]])("refuses the settings %j, since groups is not a list of distinct folder names", (text) => {
+  it.each([["groups: stock\n"], ["groups: [stock, stock]\n"], ["groups: [stock, 7]\n"], ["groups: [stock/ours]\n"], ["groups: {}\n"], ["groups: [~]\n"]])("refuses the settings %j, since groups is not a list of distinct folder names", (text) => {
     expect(() => collectionSettingsOf(text)).toThrow(new Error("floor-collection.yaml: groups is a list of distinct folder names"));
   });
 });

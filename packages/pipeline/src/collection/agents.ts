@@ -2,8 +2,7 @@
 import { floorSettingsOf, readAgentFile, type AgentFileSettings, type ShippedAgents } from "./agent-file.js";
 import { settingsWithEnvironment, type Environment } from "./environment.js";
 import { enforce } from "./enforce.js";
-import { withoutEarlierGroups } from "./group-precedence.js";
-import { agentFileGroupOf, agentFileOf, type CollectionFile } from "./paths.js";
+import { agentFileOf, type CollectionFile } from "./paths.js";
 import { attempt, type Refusal } from "./refusal.js";
 
 export interface ShippedCatalog {
@@ -33,7 +32,6 @@ export interface OverlayAgent {
 interface AgentEntry extends CollectionFile {
   agent: string;
   isExtension: boolean;
-  group: string | undefined;
 }
 
 const REQUIRED_SETTINGS = ["image", "timeout_minutes", "prompt"] as const;
@@ -44,7 +42,7 @@ export function agentsOverlay(input: CollectionOverlayInput) {
   const setBy = new Map<string, string>();
   const refused: Refusal[] = [];
 
-  for (const file of agentFilesOf(input.files, input.groups)) {
+  for (const file of agentFilesOf(input.files)) {
     const result = attempt(file.path, () => agentOf(file, input, setBy));
 
     if ("refusal" in result) {
@@ -64,15 +62,14 @@ export function extendedPrompt(base: string, extra: string): string {
   return `${base}\n\n${extra}`;
 }
 
-function agentFilesOf(files: readonly CollectionFile[], groups: readonly string[] = []): AgentEntry[] {
-  const sorted = [...files]
+function agentFilesOf(files: readonly CollectionFile[]): AgentEntry[] {
+  const agentFiles = [...files]
     .sort((left, right) => left.path.localeCompare(right.path))
     .flatMap((file) => {
       const named = agentFileOf(file.path);
 
-      return named ? [{ ...file, ...named, group: agentFileGroupOf(file.path) }] : [];
+      return named ? [{ ...file, ...named }] : [];
     });
-  const agentFiles = withoutEarlierGroups(sorted, groups, (file) => file.agent);
 
   // A full definition goes first, so an extension of the same agent is the one refused.
   return [...agentFiles.filter((file) => !file.isExtension), ...agentFiles.filter((file) => file.isExtension)];

@@ -8,6 +8,7 @@ export type { Floor } from "./floor.js";
 export { collectionOverlay, type CollectionFile, type CollectionOverlay, type CollectionOverlayInput, type OverlayAgent, type AgentSource, type ShippedCatalog, type Refusal } from "./collection/collection.js";
 export { attempt, type Attempt } from "./collection/refusal.js";
 export { lineLayoutOf, type LineFile, type LineLayout } from "./collection/line-layout.js";
+export { withoutReplacedFiles } from "./collection/group-precedence.js";
 export { applyCollection } from "./collection/apply.js";
 export { COLLECTION_SETTINGS_FILE, collectionSettingsIn, collectionSettingsOf, hostKeysIn, type CollectionSettings } from "./collection/collection-settings.js";
 export { collectionFilesIn, lintCollectionDirectory, lintCommand, printCollectionLint, readCollectionDirectory, shippedCatalogIn, type LintCommand } from "./collection/lint-directory.js";

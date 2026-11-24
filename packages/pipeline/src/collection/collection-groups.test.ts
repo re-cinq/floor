@@ -177,4 +177,18 @@ describe("collectionOverlay with declared groups", () => {
 
     expect({ source: agentNamed(overlay, "triager")?.source, refused: overlay.refused }).toEqual({ source: "collection-new", refused: [] });
   });
+
+  it("refuses stock/code-review as nested below the line folder stock and reads ours/code-review when groups are stock then ours", () => {
+    const files = {
+      "stock/assembly-line.yaml": pipelineYaml("stock", "reviewer"),
+      "stock/code-review/assembly-line.yaml": pipelineYaml("code-review", "merger"),
+      "ours/code-review/assembly-line.yaml": pipelineYaml("code-review", "reviewer"),
+    };
+
+    expect(readWith(files, ["stock", "ours"])).toEqual({
+      lines: ["code-review", "stock"],
+      agentOfLine: ["reviewer", "reviewer"],
+      refused: [{ path: "stock/code-review/assembly-line.yaml", reason: "the folder stock holds a line, so it is not a group: move code-review out of it" }],
+    });
+  });
 });

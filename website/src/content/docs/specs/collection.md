@@ -69,7 +69,7 @@ my-collection/
     ```
 
     With this list, `ours/write-note/` is read and `stock/write-note/` is left out. One name is one line on the host: the two never run side by side.
-12. A group need not be listed to be read. A duplicate that the list does not settle is refused as in rule 9, or as in rule 3 for an agent: two folders of which one is in an unlisted group, or a top-level line folder and a grouped one.
+12. A group need not be listed to be read. A folder that holds a line file is not a group, listed or not, so rule 8 still refuses a line file below it. A duplicate that the list does not settle is refused as in rule 9, or as in rule 3 for an agent: two folders of which one is in an unlisted group, or a top-level line folder and a grouped one.
 13. `groups` MUST be a list of distinct folder names, each one folder and not a path. If not, the collection is refused with `floor-collection.yaml: groups is a list of distinct folder names`. A listed name with no folder is accepted.
 
 ## 2. Rules

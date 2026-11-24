@@ -1,6 +1,5 @@
 // Which line files a collection reads, decided from paths alone: a line held twice in one folder, a line folder used as a group, and a second folder for one line name are refused.
 import { enforce } from "./enforce.js";
-import { withoutEarlierGroups } from "./group-precedence.js";
 import { FORMER_LINE_FILE, LINE_FILE, lineFilePlaceOf, type CollectionFile, type LineFilePlace } from "./paths.js";
 import { attempt, type Refusal } from "./refusal.js";
 
@@ -14,8 +13,8 @@ export interface LineLayout {
 }
 
 /** The line files a collection reads, and the ones its layout refuses, decided from paths alone. */
-export function lineLayoutOf(files: readonly CollectionFile[], groups: readonly string[] = []): LineLayout {
-  const lineFiles = withoutEarlierGroups(lineFilesOf(files), groups, (file) => file.folder);
+export function lineLayoutOf(files: readonly CollectionFile[]): LineLayout {
+  const lineFiles = lineFilesOf(files);
   const superseded = supersededBy(lineFiles);
   const lineFolders = new Set(lineFiles.map((file) => file.folderPath));
   const setBy = new Map<string, string>();
