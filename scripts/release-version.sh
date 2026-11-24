@@ -6,9 +6,16 @@
 #
 #   scripts/release-version.sh --check v1.2.3     prints 1.2.3
 #   scripts/release-version.sh v1.2.3             stamps 1.2.3 into the published packages
+#   scripts/release-version.sh --list             prints the published package directories, in dependency order
 set -euo pipefail
 
-PUBLISHED=(@re-cinq/floor-contracts @re-cinq/floor-assembly-lines @re-cinq/floor-graph @re-cinq/floor-client @re-cinq/floor-station @re-cinq/floor-pipeline)
+# The one list of what a release publishes, in dependency order. publish.yml builds, checks and publishes from it.
+PUBLISHED=(packages/contracts packages/assembly-lines packages/graph packages/client packages/station packages/pipeline packages/studio)
+
+if [ "${1:-}" = "--list" ]; then
+  printf '%s\n' "${PUBLISHED[@]}"
+  exit 0
+fi
 
 check_only=false
 if [ "${1:-}" = "--check" ]; then
@@ -28,7 +35,7 @@ if [ "${check_only}" = false ]; then
   for package in "${PUBLISHED[@]}"; do
     npm version "${version}" --workspace "${package}" --no-git-tag-version --allow-same-version >/dev/null
   done
-  # The four are released together, so each one asks for exactly the others' version, not "*".
+  # They are released together, so each one asks for exactly the others' version, not "*".
   for package in "${PUBLISHED[@]}"; do
     for dependency in $(npm pkg get dependencies --workspace "${package}" | node -e '
       const found = Object.values(JSON.parse(require("fs").readFileSync(0, "utf8")))[0] ?? {};

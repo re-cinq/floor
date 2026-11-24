@@ -1,7 +1,7 @@
 # Releasing
 
-A release is a version of eight things, published together: the image, the chart, the wire
-contracts, the assembly-line rules, the graph view, the client, the station SDK and the pipeline tool. Pushing a `vX.Y.Z` tag is the whole act.
+A release is a version of nine things, published together: the image, the chart, the wire
+contracts, the assembly-line rules, the graph view, the client, the station SDK, the pipeline tool and the studio. Pushing a `vX.Y.Z` tag is the whole act.
 No commit bumps a version, and nothing waits for a hand afterwards.
 
 ## What a release publishes
@@ -16,6 +16,7 @@ No commit bumps a version, and nothing waits for a hand afterwards.
 | the client | npm, `@re-cinq/floor-client` | `1.2.3` |
 | the station SDK | npm, `@re-cinq/floor-station` | `1.2.3` |
 | the pipeline tool | npm, `@re-cinq/floor-pipeline` | `1.2.3` |
+| the studio | npm, `@re-cinq/floor-studio` | `1.2.3` |
 | the deploy | nothing, by itself: re:cinq's cluster runs the `version` pinned in `deploy/clusters/internal-cluster.values.yaml` | bump it in a pull request, Argo CD syncs the merge |
 
 A commit to `main` publishes no version. It publishes the image under its short SHA and
@@ -48,11 +49,11 @@ commit must be on `main`, and `main` takes a pull request.
 
 ## The version is the tag
 
-The six packages carry a placeholder version on `main`. `scripts/release-version.sh v1.2.3`
+The npm packages carry a placeholder version on `main`. `scripts/release-version.sh --list` is the one list of them, in dependency order; `publish.yml` builds, checks and publishes from it, and `ci.yml` runs the same steps with `npm publish --dry-run` on every pull request, so a package that cannot be published fails before a tag exists. `scripts/release-version.sh v1.2.3`
 stamps `1.2.3` into them, and into the ranges they ask of one another, just before they are built, in the workflow's checkout, and commits
 nothing. The chart carries a placeholder too, and no `appVersion`: `helm package --version 1.2.3
 --app-version 1.2.3` stamps both, and the `appVersion` is the image tag an install of the chart runs
-when it names none. A checkout has no `appVersion`, so an install from one must set `version`. `scripts/check-pack-list.mjs` then reads what each tarball would hold: the entry point
+when it names none. A checkout has no `appVersion`, so an install from one must set `version`. `scripts/check-pack-list.mjs` then reads what each tarball would hold: every file its `exports` and `bin` name
 and the license are there, and no test and no source map is.
 
 ## A package's first version
@@ -75,7 +76,11 @@ package the usual way, in `scripts/publish-packages.sh`, which `scripts/publish-
 | organization | `re-cinq` |
 | repository | `floor` |
 | workflow filename | `publish.yml` |
+| allowed actions | `npm publish` (a configuration made after 2026-09-03 allows only `npm stage publish` unless this is ticked, and the workflow publishes directly) |
 
+   npm drops a configuration that has not published within two days of being saved, and the
+   token publish of step 3 does not count. Save it when the next release is due, or delete and
+   save it again before that release.
 5. Delete the `NPM_BOOTSTRAP_TOKEN` secret and revoke the token. The next release of that
    package goes through OIDC.
 

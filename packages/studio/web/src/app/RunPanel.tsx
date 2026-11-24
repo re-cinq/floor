@@ -66,6 +66,7 @@ export default function RunPanel({ node, onPreview, runs, fixtures }: { node: No
       <TextField label="Folder" value={folder} onChange={setFolder} />
       <PermissionChoice value={permission} onChange={setPermission} />
       <RunActions {...runActions({ fixture, fields, onPreview, setPreview, runs, run })} />
+      {fixture.failure && <p role="alert">{fixture.failure}</p>}
       {run.refusal && <p role="alert">{run.refusal}</p>}
       {run.lines.length > 0 && <RunTranscript lines={run.lines} />}
       {run.ended && <RunResult ended={run.ended} raises={node.events.raises} />}

@@ -11,11 +11,12 @@ export function useRun(runs: RunControls | undefined) {
   const [run, setRun] = useState(runs?.current);
   const follow = runs?.follow;
   const read = runs?.read;
+  const [refusal, setRefusal] = useState<string>();
 
   useEffect(() => follow?.((frame) => setFrames((held) => [...held, frame])), [follow]);
 
   useEffect(() => {
-    if (run && read) void read(run, 0).then((answer) => setFrames(framesOfRead(run, answer)), () => undefined);
+    if (run && read) void read(run, 0).then((answer) => setFrames(framesOfRead(run, answer)), (error: Error) => setRefusal(error.message));
   }, [read]);
 
   const own = frames.filter((frame) => frame.run === run);
@@ -23,7 +24,6 @@ export function useRun(runs: RunControls | undefined) {
   const lines = own.flatMap((frame) => (frame.type === "run.output" ? [frame.line] : []));
 
   useReportedEdge(ended, runs?.onEnded);
-  const [refusal, setRefusal] = useState<string>();
 
   return {
     lines,

@@ -71,4 +71,20 @@ describe("release-version.sh", () => {
 
     assert.equal(run.status, 1);
   });
+
+  it("prints the seven published package directories in dependency order, packages/studio last, for --list", () => {
+    const run = releaseVersion(REPOSITORY, "--list");
+
+    assert.equal(run.status, 0);
+    assert.deepEqual(run.stdout.trim().split("\n"), ["packages/contracts", "packages/assembly-lines", "packages/graph", "packages/client", "packages/station", "packages/pipeline", "packages/studio"]);
+  });
+
+  it("stamps 1.2.3 into packages/studio and pins its @re-cinq/floor-graph to 1.2.3 for the tag v1.2.3", () => {
+    const root = copyOfManifests();
+
+    releaseVersion(root, "v1.2.3");
+
+    assert.deepEqual([manifestOf(root, "packages/studio").version, manifestOf(root, "packages/studio").dependencies["@re-cinq/floor-graph"]], ["1.2.3", "1.2.3"]);
+  });
 });
+

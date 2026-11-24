@@ -319,4 +319,39 @@ describe("Inspector", () => {
 
     expect(screen.queryAllByRole("tab")).toHaveLength(0);
   });
+
+  it('shows "the folder is read-only" in an alert when saving the fixture fails on Preview', async () => {
+    const fixtures = { read: () => Promise.resolve({ needs: {} }), write: () => Promise.reject(new Error("the folder is read-only")) };
+    const previewRun = () => new Promise<never>(() => undefined);
+    render(<Inspector node={workNode} actions={{ fixtures, previewRun }} />);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Run" }));
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("the folder is read-only");
+  });
+
+  it('shows "the store is unreadable" in an alert when loading the fixture fails on opening the Run tab', async () => {
+    const fixtures = { read: () => Promise.reject(new Error("the store is unreadable")), write: () => Promise.resolve() };
+    render(<Inspector node={workNode} actions={{ fixtures }} />);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Run" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("the store is unreadable");
+  });
+
+  it('shows "no run gone" in an alert when reading the kept run gone fails on opening the Run tab', async () => {
+    const runs = {
+      start: () => new Promise<never>(() => undefined),
+      cancel: () => Promise.resolve(),
+      follow: () => () => undefined,
+      read: () => Promise.reject(new Error("no run gone")),
+      current: "gone",
+    };
+    render(<Inspector node={workNode} actions={{ runs }} />);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Run" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("no run gone");
+  });
 });

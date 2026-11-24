@@ -1,7 +1,7 @@
 name: Publish
 
 # Publishes a version: the image to ghcr.io/re-cinq/floor, the chart to oci://ghcr.io/re-cinq/charts,
-# the wire contracts, the assembly-line rules, the graph view, the client, the station SDK and the pipeline tool to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
+# the wire contracts, the assembly-line rules, the graph view, the client, the station SDK, the pipeline tool and the studio to npm, and then the deploy. The same shape as HALEngine's and bowman-ui's publish.yml.
 #
 # Pushing a `vX.Y.Z` tag is what starts this file, and the tag is the version: the packages carry
 # a placeholder on main, stamped just before they are built, so a release is one act and no
@@ -183,11 +183,11 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Build
-        run: npm run build -w @re-cinq/floor-contracts -w @re-cinq/floor-assembly-lines -w @re-cinq/floor-graph -w @re-cinq/floor-client -w @re-cinq/floor-station -w @re-cinq/floor-pipeline
+        run: for package in $(./scripts/release-version.sh --list); do npm run build -w "${package}"; done
 
       # The pack list is the only place where what ships is a fact and not an intention.
       - name: Pack lists carry the packages and nothing else
-        run: node scripts/check-pack-list.mjs packages/contracts packages/assembly-lines packages/graph packages/client packages/station packages/pipeline
+        run: node scripts/check-pack-list.mjs $(./scripts/release-version.sh --list)
 
       - name: Publish the versions to npm
         env:
@@ -196,7 +196,7 @@ jobs:
           NPM_BOOTSTRAP_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
         run: |
           set -o pipefail
-          bash scripts/publish-packages.sh packages/contracts packages/assembly-lines packages/graph packages/client packages/station packages/pipeline
+          bash scripts/publish-packages.sh $(./scripts/release-version.sh --list)
           {
             echo "## Published to npm"
             echo

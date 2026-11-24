@@ -3,7 +3,6 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const ALWAYS = ["package.json", "README.md", "LICENSE", "dist/index.js", "dist/index.d.ts"];
 const SHIPPED_BESIDE_DIST = ["package.json", "README.md", "LICENSE"];
 const USAGE_ERROR = 2;
 const directories = process.argv.slice(USAGE_ERROR);
@@ -11,12 +10,17 @@ const directories = process.argv.slice(USAGE_ERROR);
 function problemsOf(directory) {
   const manifest = JSON.parse(readFileSync(join(directory, "package.json"), "utf8"));
   const packed = packListOf(directory);
-  const required = [...ALWAYS, ...Object.values(manifest.bin ?? {})];
+  const required = [...SHIPPED_BESIDE_DIST, ...exportedFilesOf(manifest), ...Object.values(manifest.bin ?? {})];
 
   return [
     ...required.filter((path) => !packed.includes(path)).map((path) => `${manifest.name}: ${path} is missing`),
     ...packed.filter(isUnwanted).map((path) => `${manifest.name}: ${path} must not ship`),
   ];
+}
+
+// Every file an export points at, as a path in the pack list.
+function exportedFilesOf(manifest) {
+  return Object.values(manifest.exports ?? {}).flatMap((conditions) => Object.values(conditions)).map((path) => path.replace(/^\.\//, ""));
 }
 
 // `--ignore-scripts`: what is listed is what was built, and no second build of it.

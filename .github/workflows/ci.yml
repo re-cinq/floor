@@ -139,6 +139,24 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: npm run test:scripts
 
+  # What publish.yml would do, short of publishing: a package that cannot be published fails here, before a tag exists.
+  publish-dry-run:
+    name: publish dry run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: ./scripts/release-version.sh v0.0.0
+      - run: npm ci --ignore-scripts
+      - run: for package in $(./scripts/release-version.sh --list); do npm run build -w "${package}"; done
+      - run: node scripts/check-pack-list.mjs $(./scripts/release-version.sh --list)
+      - run: for package in $(./scripts/release-version.sh --list); do (cd "${package}" && npm publish --dry-run --access public --ignore-scripts); done
+
   chart:
     name: helm chart
     runs-on: ubuntu-latest
