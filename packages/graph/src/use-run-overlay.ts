@@ -1,7 +1,7 @@
 // The lines an assembly run took, for the graph to mark; undefined while no run is shown.
 import { useMemo } from "react";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import { stationVisitsOf } from "./metro/station-visits";
+import { stationVisitsOf, withWaiting } from "./metro/station-visits";
 import { takenLinesOf, type Visit } from "./metro/taken-lines";
 
 export interface RunOverlay {
@@ -18,6 +18,12 @@ export function useTakenLines(
   );
 }
 
-export function useStationVisits(run: RunOverlay | undefined) {
-  return useMemo(() => run && stationVisitsOf(run.visits), [run]);
+export function useStationVisits(
+  run: RunOverlay | undefined,
+  waiting?: Readonly<Record<string, string>>,
+) {
+  return useMemo(
+    () => run && withWaiting(stationVisitsOf(run.visits), waiting),
+    [run, waiting],
+  );
 }

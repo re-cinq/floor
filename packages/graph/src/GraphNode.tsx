@@ -127,10 +127,16 @@ function runAttrsOf({
   status,
 }: Pick<GraphNodeProps, "visited" | "outcome" | "status">) {
   return {
-    "data-open": status?.open || undefined,
+    ...openAttrsOf(status),
     "data-visited": visited === false ? "false" : undefined,
     "data-outcome": outcome,
   };
+}
+
+function openAttrsOf(status: GraphNodeProps["status"]) {
+  return status?.waiting
+    ? { "data-waiting": "true" }
+    : { "data-open": status?.open || undefined };
 }
 
 function changeAttrOf({ added, moved, removed }: Pick<GraphNodeProps, "added" | "moved" | "removed">) {

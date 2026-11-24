@@ -5,6 +5,7 @@ export interface StationVisits {
   count: number;
   outcome?: string;
   open: boolean;
+  waiting?: string;
 }
 
 export function stationVisitsOf(
@@ -31,4 +32,18 @@ function afterVisit(
     outcome: visit.open ? before?.outcome : visit.outcome,
     open: visit.open,
   };
+}
+
+export function withWaiting(
+  stations: ReadonlyMap<string, StationVisits>,
+  waiting: Readonly<Record<string, string>> = {},
+): ReadonlyMap<string, StationVisits> {
+  return new Map(
+    [...stations].map(([nodeId, status]) => [
+      nodeId,
+      status.open && nodeId in waiting
+        ? { ...status, waiting: waiting[nodeId] }
+        : status,
+    ]),
+  );
 }

@@ -116,6 +116,34 @@ describe("RunGraphView run overlay", () => {
     expect([...container.querySelectorAll("[data-open]")].map((element) => element.getAttribute("data-node"))).toEqual(["fix"]);
   });
 
+  it("reads the waiting label in place of open on a waiting station when its visit is open", async () => {
+    const definition = markerLine({
+      kind: "human",
+      entry: "a",
+      nodeIds: ["a", "merged", "done"],
+      edges: [
+        ["a", "merged", "success"],
+        ["merged", "done", "success"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "success", open: false },
+        { nodeId: "merged", iteration: 1, open: true },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} waiting={{ merged: "Waiting for the spec PR" }} />);
+    const card = container.querySelector('[data-node="merged"]');
+    const [, subtitle] = card?.querySelectorAll("text:not([data-badge] text)") ?? [];
+
+    expect({
+      subtitle: subtitle.textContent,
+      waiting: card?.getAttribute("data-waiting"),
+      open: card?.getAttribute("data-open"),
+    }).toEqual({ subtitle: "person · Waiting for the spec PR", waiting: "true", open: null });
+  });
+
   it("keeps a's last closed outcome failed while its second visit is open", async () => {
     const definition = markerLine({
       entry: "a",
