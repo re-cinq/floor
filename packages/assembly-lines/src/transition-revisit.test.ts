@@ -196,4 +196,11 @@ describe("an edge's unattended budget counts takes with no person acting", () =>
       iteration: 4,
     });
   });
+
+  it("launches work at iteration 3 when review->work with unattendedMax 1 is taken a second time from a review a person ran by hand", () => {
+    const ranByHand: NodeVisit = { ...visit("review", 2, "changes_requested"), requestedBy: "gedaiu" };
+    const visits = [visit("work", 1, "success"), visit("review", 1, "changes_requested"), visit("work", 2, "success"), ranByHand];
+
+    expect(getNextTransition(reviewWithHuman, visits)).toEqual({ kind: "launch", nodeId: "work", iteration: 3 });
+  });
 });
