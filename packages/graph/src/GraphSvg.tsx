@@ -3,6 +3,7 @@ import type { Drawing } from "./run-graph-drawing";
 import type { MainPath } from "./metro/main-path";
 import { edgeKeyOf } from "./metro/edge-key";
 import type { StationVisits } from "./metro/station-visits";
+import type { NodeOffset } from "./metro/layout-diff";
 import type { Neighbourhood } from "./metro/neighbourhood";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
 import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
@@ -30,6 +31,8 @@ export interface LineMarks {
   added: ReadonlySet<string>;
   /** Keys the latest layout moved. */
   moved: ReadonlySet<string>;
+  /** Where each node was, relative to where the latest layout put it. */
+  offsets: ReadonlyMap<string, NodeOffset>;
   /** The lines the run took (undefined without a run). */
   taken: ReadonlyMap<string, number> | undefined;
   /** The one connector a station run took, marked when there is no run overlay. */
@@ -223,6 +226,6 @@ function isOffPath(
   return !!mainPath && !mainPath[part].has(key);
 }
 
-function changesOf({ added, moved }: LineMarks, key: string) {
-  return { added: added.has(key), moved: moved.has(key) };
+function changesOf({ added, moved, offsets }: LineMarks, key: string) {
+  return { added: added.has(key), moved: moved.has(key), offset: moved.has(key) ? offsets.get(key) : undefined };
 }

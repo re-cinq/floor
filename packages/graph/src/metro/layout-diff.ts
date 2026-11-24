@@ -25,3 +25,17 @@ function signaturesOf({ nodes, edges }: ElkLayout): Map<string, string> {
 
   return signatures;
 }
+
+export type NodeOffset = { dx: number; dy: number };
+
+export function offsetsOf(before: ElkLayout | null, after: ElkLayout): Map<string, NodeOffset> {
+  const offsets = new Map<string, NodeOffset>();
+  const oldNodes = new Map((before?.nodes ?? []).map((node) => [node.id, node]));
+
+  for (const node of after.nodes) {
+    const old = oldNodes.get(node.id);
+    if (old) offsets.set(node.id, { dx: old.x - node.x, dy: old.y - node.y });
+  }
+
+  return offsets;
+}
