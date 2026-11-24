@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RunFrame, RunReadResult } from "@/socket/studio-connection";
 import type { RunControls, RunFields } from "./RunPanel";
 
@@ -15,8 +15,11 @@ export function useRun(runs: RunControls | undefined) {
 
   useEffect(() => follow?.((frame) => setFrames((held) => [...held, frame])), [follow]);
 
+  const startedHere = useRef<string>(undefined);
+
+  // A run this hook started is told live from its first line; a read answered later would replace those lines with fewer.
   useEffect(() => {
-    if (run && read) void read(run, 0).then((answer) => setFrames(framesOfRead(run, answer)), (error: Error) => setRefusal(error.message));
+    if (run && read && run !== startedHere.current) void read(run, 0).then((answer) => setFrames(framesOfRead(run, answer)), (error: Error) => setRefusal(error.message));
   }, [read]);
 
   const own = frames.filter((frame) => frame.run === run);
@@ -33,7 +36,7 @@ export function useRun(runs: RunControls | undefined) {
     start: (fields: RunFields) => {
       setFrames([]);
       setRefusal(undefined);
-      void runs?.start(fields).then(keepRun(runs, setRun), (error: Error) => setRefusal(error.message));
+      void runs?.start(fields).then(keepRun(runs, (started) => { startedHere.current = started; setRun(started); }), (error: Error) => setRefusal(error.message));
     },
     cancel: () => void (run && runs?.cancel(run)),
   };
