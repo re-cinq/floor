@@ -128,6 +128,7 @@ it `needs` and what it `produces`; floor moves the bytes and nothing else crosse
 | [`packages/pipeline`](packages/pipeline/README.md) | A whole pipeline as one file, exported from or imported into a floor over HTTP. |
 | [`packages/studio`](packages/studio/README.md) | A local page for a collection folder: draws each line, explains each station, edits prompts and settings, runs one agent station with your own `claude` or `codex`. To be published as `@re-cinq/floor-studio`. |
 | [`packages/lore-converter`](packages/lore-converter/README.md) | Reads a lore checkout and writes the definitions this floor runs in its place. |
+| [`plugins/floor`](plugins/floor) | The Claude Code plugin: three skills that write and check a collection's assembly lines and agent prompts. Listed by the marketplace in [`.claude-plugin`](.claude-plugin/marketplace.json). |
 | [`deploy/chart`](deploy/chart/README.md) | One Helm chart, one image, both apps, toggled. |
 | [`.github/workflows`](.github/workflows) | CI on every pull request; build and push the image on `main`; a release on a `v*` tag. Argo CD deploys `main` to re:cinq's cluster, see [`deploy/chart`](deploy/chart/README.md#how-recinq-deploys-it). |
 
@@ -141,6 +142,13 @@ Floor's own GitHub app was deleted — see [docs/decisions.md](docs/decisions.md
 The documentation is at **https://re-cinq.github.io/floor/**: what floor is, tutorials, the specifications of the pipeline file, the agent file and the collection, and the references.
 
 To design a workflow, start with a product decision you can trace on paper. The first tutorial turns a launch approval into a complete YAML file. The second changes it so two teams must sign off. [Define your first assembly line](https://re-cinq.github.io/floor/tutorials/define-a-launch-approval/) · [Add a second sign-off](https://re-cinq.github.io/floor/tutorials/add-a-launch-review/)
+
+To write a collection with Claude Code, install the floor skills. They create and edit assembly lines and agent prompts in your collection's files, lint after every change, and apply to a floor only when you ask. See [The floor skills](https://re-cinq.github.io/floor/reference/skills/).
+
+```
+claude plugin marketplace add re-cinq/floor --sparse .claude-plugin plugins/floor
+claude plugin install floor@floor
+```
 
 To see a run on your machine, follow [Run floor and walk your first line](https://re-cinq.github.io/floor/tutorials/first-run/). To install on a cluster, see [Install on a cluster](https://re-cinq.github.io/floor/reference/install/), and for a first agent run there, the [installation and first run tutorial](docs/tutorial.md).
 

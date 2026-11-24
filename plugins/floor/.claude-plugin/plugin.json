@@ -1,0 +1,7 @@
+{
+  "name": "floor",
+  "description": "Create, edit and check the assembly lines and agent prompts of a floor collection.",
+  "author": { "name": "re:cinq" },
+  "homepage": "https://re-cinq.github.io/floor/reference/skills/",
+  "repository": "https://github.com/re-cinq/floor"
+}

@@ -105,6 +105,8 @@ code-review/
     reviewer.extra.md
 ```
 
+With Claude Code, the [floor skills](https://re-cinq.github.io/floor/reference/skills/) write these files and run `lint` after every change.
+
 `lint` checks a collection without a floor and without a token. A key that belongs to the host is named in the collection's `floor-collection.yaml` (`host_keys: [execution_mode]`), or with `--host-key`, as often as needed; `lint` and `apply` use both.
 
 ```
