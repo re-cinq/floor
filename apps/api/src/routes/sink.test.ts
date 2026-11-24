@@ -28,6 +28,8 @@ const REVIEW_STATION: StationBody = {
   ],
 };
 
+const OUTPUT_ONLY_STATION: StationBody = { ...REVIEW_STATION, produces: [{ name: "review_output", kind: "file", from: "output" }] };
+
 const LORE_MCP = { name: "lore", transport: "http", url: "http://gateway.test/mcp", headers_secret: "lore-mcp-auth" };
 
 const REVIEWER = {
@@ -79,6 +81,12 @@ async function agentRan(brief: Brief, resultText: string): Promise<void> {
   await post(brief, { type: "result", result: resultText, is_error: false, total_cost_usd: 0.42, num_turns: 3 });
   await post(brief, { kind: "file", event: "produced.review_findings", path: "/w/findings.md", uploaded: true, sha256: findings.slice("sha256-".length) });
   await upload(brief, `/conversations/${brief.visitId}`, "archive-of-round-one");
+  await post(brief, { kind: "lifecycle", phase: "agent", status: "succeeded", exitCode: 0 });
+  await loop().pass();
+}
+
+async function agentEndedSaying(brief: Brief, resultText: string): Promise<void> {
+  await post(brief, { type: "result", result: resultText, is_error: false, total_cost_usd: 0.1, num_turns: 1 });
   await post(brief, { kind: "lifecycle", phase: "agent", status: "succeeded", exitCode: 0 });
   await loop().pass();
 }
@@ -257,6 +265,24 @@ describe("POST /station-runs/:id/sink", () => {
     const visit = await deps().runs.visit(brief.visitId);
 
     expect(visit!.report).toEqual({ outcome: "failed", error: "the agent ended without a LORE_NODE_RESULT line and without producing review_findings (findings.md)" });
+  });
+
+  it("fails a visit whose last reply has a REVIEW_RESULT line and no LORE_NODE_RESULT, without the file it was to produce, naming the file", async () => {
+    const { brief } = await reviewDispatched();
+
+    await agentEndedSaying(brief, "Looks fine.\nREVIEW_RESULT: APPROVED");
+    const visit = await deps().runs.visit(brief.visitId);
+
+    expect(visit!.report).toEqual({ outcome: "failed", error: "the agent ended without a LORE_NODE_RESULT line and without producing review_findings (findings.md)" });
+  });
+
+  it("does not fail a visit for a missing file when the only file its station produces is from output", async () => {
+    const { brief } = await reviewDispatched(OUTPUT_ONLY_STATION);
+
+    await agentEndedSaying(brief, "Read the diff.");
+    const visit = await deps().runs.visit(brief.visitId);
+
+    expect(visit!.report?.outcome).toBe("success");
   });
 
   it("refuses an event for a visit already done", async () => {

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { OutsideEvents, type FloorEvent, type LineBody, type ScheduleBody } from "@floor/store";
+import { OutsideEvents, type FloorEvent, type LineBody, type ScheduleBody, type StationBody } from "@floor/store";
 import { setupTestServer } from "../test-server.js";
 import { MARKER_LINE } from "./lines.fixtures.js";
-import { MISSING_RUN, MISSING_VISIT, NEEDY_STATION, WORK_LINE, DispatcherScene } from "./dispatcher.fixtures.js";
+import { MISSING_RUN, MISSING_VISIT, NEEDY_STATION, WORK_LINE, WORK_STATION, DispatcherScene } from "./dispatcher.fixtures.js";
 
 const { deps } = setupTestServer();
+const GHOST_AGENT_STATION: StationBody = { ...WORK_STATION, kind: "agent", agentDefinition: "ghost" };
+
 const { tickUntilIdle, dispatcher, startLine, workOpened, postedThenHandled } = new DispatcherScene(deps);
 
 describe("Dispatcher: the walk", () => {
@@ -56,6 +58,15 @@ describe("Dispatcher: events it cannot act on", () => {
     const run = await deps().runs.get(runId);
 
     expect(run).toMatchObject({ outcome: "error", reason: expect.stringContaining("missing required need") });
+  });
+
+  it("fails the run with no agent definition \"ghost\" when its agent station names one never put", async () => {
+    const runId = await startLine(WORK_LINE, GHOST_AGENT_STATION);
+
+    await tickUntilIdle();
+    const run = await deps().runs.get(runId);
+
+    expect(run).toMatchObject({ outcome: "error", reason: 'no agent definition "ghost"' });
   });
 
   it("dead-letters the start event of a node that can never open", async () => {

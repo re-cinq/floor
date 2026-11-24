@@ -3,13 +3,18 @@ import type { LineBody, Visit } from "./types.js";
 import { RecordsStore, type RecordInput } from "./records.js";
 import { FIXED_NOW, REVIEW_LINE, setupStoreFixture, startItems } from "./assembly-run-store.fixtures.js";
 
-const { pool, store, events, seedReviewLine, openEntryVisit, reviewSucceedsIntoRetrospective } = setupStoreFixture();
+const { pool, store, definitions, events, seedReviewLine, openEntryVisit, reviewSucceedsIntoRetrospective } = setupStoreFixture();
 
 const FAIL_ROUTED_LINE: LineBody = {
   ...REVIEW_LINE,
   fail: "failed",
   nodes: [...REVIEW_LINE.nodes, { id: "failed" }],
   edges: REVIEW_LINE.edges.map((edge) => (edge.from === "review" && edge.on === "failed" ? { from: "review", to: "failed", on: "failed" } : edge)),
+};
+
+const REVIEW_TO_EXIT_LINE: LineBody = {
+  ...REVIEW_LINE,
+  edges: REVIEW_LINE.edges.map((edge) => (edge.from === "review" && edge.on === "success" ? { from: "review", to: "done", on: "success" } : edge)),
 };
 
 const UNATTENDED_RETRY_LINE: LineBody = {
@@ -88,6 +93,16 @@ describe("AssemblyRunStore.report", () => {
     const settled = (await events().listByRun(runId)).find((event) => event.name === "internal.run.settled");
 
     expect(settled?.payload).toMatchObject({ causedBy: { visitId: opened.visit.id } });
+  });
+
+  it("walks the version the run started with after a newer version of the line is put", async () => {
+    const { runId, visitId } = await openEntryVisit();
+
+    await definitions().put("line", "code-review", REVIEW_TO_EXIT_LINE);
+    await store().report(visitId, { outcome: "success" });
+    const openRun = await store().get(runId);
+
+    expect(openRun).toMatchObject({ outcome: null });
   });
 
   it("posts the next node's start event", async () => {

@@ -209,10 +209,10 @@ export class AssemblyRunStore {
   }
 
   async openVisit(runId: string, nodeId: string, iteration: number, branch?: number): Promise<OpenVisitResult> {
-    const [{ run, line }, { openVisit }] = await Promise.all([this.lineOf(this.deps.pool, runId), nodeVisitCount(this.deps.pool, runId, nodeId)]);
+    const { run, line } = await this.lineOf(this.deps.pool, runId);
 
     enforce(!run.finishedAt, `run "${runId}" is already finished`);
-    if (openVisit && openVisit.iteration !== iteration) throw new VisitAlreadyOpen(`node "${nodeId}" already has an open visit, iteration ${openVisit.iteration}`);
+    await enforceNoOtherOpenVisit(this.deps.pool, runId, nodeId, iteration);
 
     return this.openNode({ run, line, nodeId, iteration, branch });
   }
@@ -230,6 +230,7 @@ export class AssemblyRunStore {
     const context = await this.openVisitResolver.resolve(request);
 
     return withTransaction(this.deps.pool, async (client) => {
+      if (!request.requestedBy) await this.enforceNoOtherOpenVisitUnderLock(client, request);
       if (request.requestedBy) await clearTheWayByHand(client, { runId: request.run.id, requestedBy: request.requestedBy, now: this.now(), events: this.eventsOn(client) });
       const inserted = await insertVisit(client, request.run.id, context);
 
@@ -238,6 +239,12 @@ export class AssemblyRunStore {
 
       return { visit, created: true };
     });
+  }
+
+  // The early check in openVisit keeps a stray start refused as VisitAlreadyOpen before the resolver can refuse it otherwise; only under the run lock is it race-free.
+  private async enforceNoOtherOpenVisitUnderLock(client: PoolClient, request: OpenRequest): Promise<void> {
+    await lockRun(client, request.run.id);
+    await enforceNoOtherOpenVisit(client, request.run.id, request.nodeId, request.iteration);
   }
 
   private async dispatchOpened(client: PoolClient, runId: string, visit: Visit, context: OpenContext): Promise<Visit> {
@@ -385,4 +392,10 @@ function settleInputFor(runId: string, transition: Transition, now: Date): { run
   const reason = transition.kind === "halt" ? transition.reason : null;
 
   return { runId, outcome, reason, now };
+}
+
+async function enforceNoOtherOpenVisit(connection: Queryable, runId: string, nodeId: string, iteration: number): Promise<void> {
+  const { openVisit } = await nodeVisitCount(connection, runId, nodeId);
+
+  if (openVisit && openVisit.iteration !== iteration) throw new VisitAlreadyOpen(`node "${nodeId}" already has an open visit, iteration ${openVisit.iteration}`);
 }

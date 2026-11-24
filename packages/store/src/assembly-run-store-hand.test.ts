@@ -22,15 +22,21 @@ const PLAN_LINE: LineBody = {
 const AUTHOR_STATION: StationBody = { kind: "human", outcomes: ["success"], needs: [], produces: [], route: "/plans" };
 const VALIDATE_STATION: StationBody = { kind: "service", outcomes: ["success"], needs: [], produces: [] };
 
-async function runWaitingOnAuthor(): Promise<string> {
+async function startedPlanRun(): Promise<string> {
   await definitions().put("line", "plan", PLAN_LINE);
   await definitions().put("station", "plan-author", AUTHOR_STATION);
   await definitions().put("station", "plan-validate", VALIDATE_STATION);
   const { run } = await store().start({ lineId: "plan", repo: "r", startItems: {} });
 
-  await store().openVisit(run.id, "author", 1);
-
   return run.id;
+}
+
+async function runWaitingOnAuthor(): Promise<string> {
+  const runId = await startedPlanRun();
+
+  await store().openVisit(runId, "author", 1);
+
+  return runId;
 }
 
 async function validatedByHand() {
@@ -72,6 +78,15 @@ describe("AssemblyRunStore.openVisit", () => {
     const visits = await store().visits(runId);
 
     expect(visits.map((visit) => visit.iteration)).toEqual([1]);
+  });
+
+  it("opens one visit of author when iterations 2 and 3 are started at the same time", async () => {
+    const runId = await startedPlanRun();
+
+    await Promise.allSettled([store().openVisit(runId, "author", 2), store().openVisit(runId, "author", 3)]);
+    const visits = await store().visits(runId);
+
+    expect(visits.filter((visit) => visit.nodeId === "author" && !visit.report)).toHaveLength(1);
   });
 });
 

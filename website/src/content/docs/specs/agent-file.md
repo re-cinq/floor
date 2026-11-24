@@ -139,11 +139,11 @@ An agent says how its visit ended on a line of its own in its last reply.
 | No such line, and `REVIEW_RESULT: APPROVED` | `success` |
 | None of these | `success`, or `failed` when the station sets `result_required` |
 
-Every value of `produced` MUST be text. A value that is not text (a number, a list, an object, `true`, `null`) is dropped, and the floor says nothing. A list for a fan-out is a JSON array written as text, such as `"topics": "[\"billing\", \"search\"]"`.
+Every value of `produced` MUST be text. A value that is not text (a number, a list, an object, `true`, `null`) is dropped, and the floor says nothing. ([validated by `agent-verdict.test.ts:39`](https://github.com/re-cinq/floor/blob/main/packages/assembly-lines/src/agent-verdict.test.ts#L39)) A list for a fan-out is a JSON array written as text, such as `"topics": "[\"billing\", \"search\"]"`.
 
-In the JSON result line, `extras` is read in place of `produced` when the line has no `produced`. The two are never merged.
+In the JSON result line, `extras` is read in place of `produced` when the line has no `produced`. ([validated by `agent-verdict.test.ts:33`](https://github.com/re-cinq/floor/blob/main/packages/assembly-lines/src/agent-verdict.test.ts#L33)) The two are never merged.
 
-A visit whose last reply has no `LORE_NODE_RESULT:` line is `failed` when a `file` the station produces was not written, and the error names the file. This holds even when a `REVIEW_RESULT:` line is there. It does not apply to a produce with `from: output`.
+A visit whose last reply has no `LORE_NODE_RESULT:` line is `failed` when a `file` the station produces was not written, and the error names the file. ([validated by `sink.test.ts:258`](https://github.com/re-cinq/floor/blob/main/apps/api/src/routes/sink.test.ts#L258)) This holds even when a `REVIEW_RESULT:` line is there. ([validated by `sink.test.ts:270`](https://github.com/re-cinq/floor/blob/main/apps/api/src/routes/sink.test.ts#L270)) It does not apply to a produce with `from: output`. ([validated by `sink.test.ts:279`](https://github.com/re-cinq/floor/blob/main/apps/api/src/routes/sink.test.ts#L279))
 
 The last `LORE_NODE_RESULT:` line wins. The line MUST start with it, so a prompt can mention the marker inside a sentence.
 
