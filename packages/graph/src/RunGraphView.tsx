@@ -1,5 +1,5 @@
 // Renders an assembly line — lays out the nodes/connectors from graph-view-model and hands drawing to its sibling files; every node also says its outcomes and badges as text, so meaning never rests on color alone.
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useToggle } from "./use-toggle";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { useElkLayout } from "./use-elk-layout";
@@ -77,11 +77,11 @@ export default function RunGraphView(givenProps: RunGraphViewProps) {
   );
 }
 
-/** The whole definition or the part the run visited, and the toggle between them, offered only with a run. */
+/** The whole definition or the part the run visited, and the toggle between them, offered only with a run. Until it is pressed, the default follows the props, so a run that arrives after the first draw still opens on its visited part. */
 function useWholeLine({ definition, run, show }: RunGraphViewProps) {
-  const [wholeLineOn, toggleWholeLine] = useToggle({
-    initiallyOn: (show ?? (run ? "visited" : "all")) === "all",
-  });
+  const [pressedOn, setPressedOn] = useState<boolean | null>(null);
+  const wholeLineOn = pressedOn ?? (show ?? (run ? "visited" : "all")) === "all";
+  const toggleWholeLine = useCallback(() => setPressedOn(!wholeLineOn), [wholeLineOn]);
   const shown = useMemo(
     () =>
       run && !wholeLineOn ? visitedPartOf(definition, run.visits) : definition,

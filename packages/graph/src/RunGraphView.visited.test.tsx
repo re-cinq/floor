@@ -199,4 +199,30 @@ describe("RunGraphView visited-only drawing", () => {
       button: within(container).queryByRole("button", { name: "Whole line" }),
     }).toEqual({ nodes: ["a", "done", "fix"], button: null });
   });
+
+  it("draws only a and done once a run that visited a and done arrives after the graph was drawn without one", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "success", open: false },
+        { nodeId: "done", iteration: 1, outcome: "success", open: false },
+      ],
+    };
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={definition} />);
+    rerender(<RunGraphView definition={definition} run={run} />);
+    await waitFor(() => {
+      if (container.querySelector('[data-node="fix"]')) throw new Error("fix still drawn");
+    });
+
+    expect(drawnIds(container, "data-node")).toEqual(["a", "done"]);
+  });
 });
