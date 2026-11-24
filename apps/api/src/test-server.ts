@@ -63,9 +63,7 @@ export function setupTestServer(configured: Partial<Config> = {}): TestServer {
     server = await buildServer(deps, () => loop.holdsLease());
   });
 
-  beforeEach(async () => {
-    await pool.query("truncate definitions, assembly_runs, station_runs, station_run_records, events, blobs, clusters restart identity cascade");
-  });
+  beforeEach(() => emptied(pool));
 
   afterAll(async () => {
     await loop.stop();
@@ -76,6 +74,27 @@ export function setupTestServer(configured: Partial<Config> = {}): TestServer {
   });
 
   return { server: () => server, loop: () => loop, deps: () => deps, pool: () => pool };
+}
+
+const TRUNCATE_ALL = "truncate definitions, assembly_runs, station_runs, station_run_records, events, blobs, clusters restart identity cascade";
+const DEADLOCK = "40P01";
+const TRUNCATE_TRIES = 5;
+
+/** Work the previous test set off can still hold a lock the truncate needs; Postgres then picks one side as the deadlock's victim, and the victim is retried. */
+async function emptied(pool: PgPool, triesLeft = TRUNCATE_TRIES): Promise<void> {
+  const failure = await pool.query(TRUNCATE_ALL).then(
+    () => null,
+    (error: unknown) => error,
+  );
+
+  if (!failure) return;
+  if (!isDeadlock(failure) || triesLeft <= 1) throw failure;
+
+  return emptied(pool, triesLeft - 1);
+}
+
+function isDeadlock(error: unknown): boolean {
+  return (error as { code?: unknown }).code === DEADLOCK;
 }
 
 const MAX_POLLS = 250;
