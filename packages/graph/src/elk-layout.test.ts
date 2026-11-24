@@ -81,6 +81,46 @@ describe("layoutWithElk", () => {
     ).toEqual([{ edge: "write|done|success", side: "out", nearRightEdge: true, onPathStart: true }]);
   });
 
+  it("returns a drawn triage|escalation|escalated edge when escalation is undeclared", async () => {
+    const danglingLine = markerLine({
+      kind: "agent",
+      entry: "triage",
+      nodeIds: ["triage", "done"],
+      edges: [
+        ["triage", "done", "success"],
+        ["triage", "escalation", "escalated"],
+      ],
+    });
+
+    const { edges } = await layoutWithElk(danglingLine);
+    const danglingEdge = edges.find((edge) => edge.to === "escalation");
+
+    expect({ keys: edges.map((edge) => `${edge.from}|${edge.to}|${edge.on}`).sort(), dashed: danglingEdge?.d !== "" && danglingEdge?.d !== undefined }).toEqual({
+      keys: ["triage|done|success", "triage|escalation|escalated"],
+      dashed: true,
+    });
+  });
+
+  it("returns a drawn ghost|done|failed edge when ghost is undeclared", async () => {
+    const orphanLine = markerLine({
+      kind: "agent",
+      entry: "a",
+      nodeIds: ["a", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["ghost", "done", "failed"],
+      ],
+    });
+
+    const { edges } = await layoutWithElk(orphanLine);
+    const orphanEdge = edges.find((edge) => edge.from === "ghost");
+
+    expect({ keys: edges.map((edge) => `${edge.from}|${edge.to}|${edge.on}`).sort(), drawn: orphanEdge?.d !== "" && orphanEdge?.d !== undefined }).toEqual({
+      keys: ["a|done|success", "ghost|done|failed"],
+      drawn: true,
+    });
+  });
+
   it("returns kind self for the review -> review failed edge", async () => {
     const retryLine = markerLine({
       kind: "agent",

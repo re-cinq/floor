@@ -1,6 +1,7 @@
 // The input graph ELK lays out for a line.
 import type { ElkLabel, ElkNode, ElkPort } from "elkjs/lib/elk-api";
 import type { AssemblyLineDefinition, DefinitionEdge } from "./assembly-line-definition";
+import { declaredIdsOf } from "./metro/declared-ids";
 import { edgeKeyOf } from "./metro/edge-key";
 import { mainPathOf } from "./metro/main-path";
 import { incomingEdgesOf, outgoingEdgesOf } from "./metro/node-edges";
@@ -11,6 +12,16 @@ const NODE_SIZE = { width: 140, height: 60 };
 const MARKER_SIZE = { width: 22, height: NODE_SIZE.height };
 const PORT_SIZE = 8;
 const EXIT_DOT_SIZE = 14;
+const STUB_SIZE = 14;
+
+interface StubEnd {
+  idSuffix: string;
+  direction: "in" | "out";
+  side: "WEST" | "EAST";
+}
+
+const TARGET_STUB: StubEnd = { idSuffix: "stub", direction: "in", side: "WEST" };
+const SOURCE_STUB: StubEnd = { idSuffix: "source-stub", direction: "out", side: "EAST" };
 const LABEL_HEIGHT = 16;
 const LABEL_CHAR_WIDTH = 7.3;
 const LABEL_PADDING = 6;
@@ -59,6 +70,7 @@ export function elkGraphOf(definition: AssemblyLineDefinition, size: NodeSize = 
         ],
       })),
       ...exitDotEdges.map(exitDotOf),
+      ...undeclaredStubsOf(definition),
     ],
     edges: definition.edges.map((edge) => ({
       id: edgeKeyOf(edge),
@@ -82,6 +94,27 @@ function exitDotOf(edge: DefinitionEdge): ElkNode {
     height: EXIT_DOT_SIZE,
     layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
     ports: [portOf(edge, "in", "WEST")],
+  };
+}
+
+function undeclaredStubsOf(definition: AssemblyLineDefinition): ElkNode[] {
+  const declaredIds = declaredIdsOf(definition);
+  const undeclaredTargetEdges = definition.edges.filter((edge) => !declaredIds.has(edge.to));
+  const undeclaredSourceEdges = definition.edges.filter((edge) => !declaredIds.has(edge.from));
+
+  return [
+    ...undeclaredTargetEdges.map((edge) => stubOf(edge, TARGET_STUB)),
+    ...undeclaredSourceEdges.map((edge) => stubOf(edge, SOURCE_STUB)),
+  ];
+}
+
+function stubOf(edge: DefinitionEdge, { idSuffix, direction, side }: StubEnd): ElkNode {
+  return {
+    id: `${edgeKeyOf(edge)}:${idSuffix}`,
+    width: STUB_SIZE,
+    height: STUB_SIZE,
+    layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
+    ports: [portOf(edge, direction, side)],
   };
 }
 
