@@ -18,6 +18,7 @@ import { markerOf } from "./graph-markers";
 import { useKeyboardCursor, type KeyboardCursor } from "./use-keyboard-cursor";
 import GraphNode from "./GraphNode";
 import GraphViewport from "./GraphViewport";
+import { useLayoutChanges } from "./use-layout-changes";
 import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
 import { nodeTitle, nodeTooltipOf } from "./node-tooltip";
@@ -73,12 +74,12 @@ interface GraphCanvasProps {
 
 /** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
 function GraphCanvas({ view, graph }: GraphCanvasProps) {
-  const tooltip = useNodeTooltip();
   const { unreachable, mainPath, mainPathOnly, toggleMainPath } = useLineMarkings(view);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
   const keyboard = useKeyboardCursor(view.definition);
-  const { elkLayout, stops, compactStops, toggleCompactStops } = useStopsLayout(view, graph);
+  const { elkLayout, added, stops, compactStops, toggleCompactStops } = useStopsLayout(view, graph);
   const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops), [elkLayout, graph, view.definition.name, stops]);
+  const tooltip = useNodeTooltip();
 
   return (
     <>
@@ -94,7 +95,7 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               selectedNodeId={view.selectedNodeId} takenEdge={view.takenEdge}
               describedNode={describedNodeOf(tooltip)}
               lit={lit} onHover={setHoveredId} keyboard={keyboard}
-              unreachable={unreachable} mainPath={mainPath}
+              unreachable={unreachable} mainPath={mainPath} added={added}
             />
           </GraphViewport>
         )}
@@ -119,7 +120,9 @@ function useStopsLayout({ definition, compactStops: initialCompactStops }: RunGr
   const layoutOptions = useMemo(() => (compactStops ? { compactStops: true } : undefined), [compactStops]);
   const stops = useMemo(() => stopsOf({ definition, compactStops }, graph), [definition, compactStops, graph]);
 
-  return { elkLayout: useElkLayout(definition, NODE_SIZE, undefined, layoutOptions), stops, compactStops, toggleCompactStops };
+  const elkLayout = useElkLayout(definition, NODE_SIZE, undefined, layoutOptions);
+
+  return { elkLayout, added: useLayoutChanges(elkLayout), stops, compactStops, toggleCompactStops };
 }
 
 function stopsOf({ definition, compactStops }: RunGraphViewProps, { nodes }: VisibleGraph): ReadonlySet<string> {
@@ -198,6 +201,8 @@ interface GraphSvgProps {
   onHover: (nodeId: string | null) => void;
   takenEdge: RunGraphViewProps["takenEdge"];
   keyboard: KeyboardCursor;
+  /** Keys the latest layout added. */
+  added: ReadonlySet<string>;
 }
 
 /** The graph itself. A node nothing leaves is terminal, which the plain label renders differently. `role="img"` with a `<title>`: the drawing is one picture to a screen reader, the nodes inside it focusable buttons. */
@@ -227,11 +232,11 @@ function GraphSvg(props: GraphSvgProps) {
 }
 
 /** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine, keyboard, takenEdge }: GraphSvgProps) {
+function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine, keyboard, added, takenEdge }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} chosen={edgeKeyOf(edge) === keyboard.chosenKey} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} taken={isTaken(edge, takenEdge)} />
+    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} chosen={edgeKeyOf(edge) === keyboard.chosenKey} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} added={added.has(edgeKeyOf(edge))} onSelectLine={onSelectLine} taken={isTaken(edge, takenEdge)} />
   ));
 }
 
@@ -260,7 +265,7 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
 }
 
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
-function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, mainPath, unreachable, onHover, keyboard }: GraphSvgProps) {
+function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, mainPath, unreachable, onHover, keyboard, added }: GraphSvgProps) {
   const { nodes } = laid.layout;
 
   return nodes.map((node) => {
@@ -288,6 +293,7 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, l
         keyboard={keyboard}
         dimmed={!!lit && !lit.nodes.has(node.id)}
         offPath={isOffPath(mainPath, "nodes", node.id)}
+        added={added.has(node.id)}
         describedBy={describedNode?.nodeId === node.id ? describedNode.tooltipId : undefined}
       />
     ) : null;

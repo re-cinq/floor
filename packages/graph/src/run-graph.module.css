@@ -382,3 +382,28 @@ text[data-selected="true"] {
   fill: var(--warning);
   font-size: 11px;
 }
+
+@keyframes changeFlash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.45;
+    filter: drop-shadow(0 0 6px var(--accent));
+  }
+}
+[data-change="added"] {
+  animation: changeFlash 1.2s ease-out;
+}
+.edge {
+  transition: d 400ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-change="added"] {
+    animation: none;
+  }
+  .edge {
+    transition: none;
+  }
+}

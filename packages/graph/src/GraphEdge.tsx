@@ -17,6 +17,8 @@ export interface GraphEdgeProps {
   dimmed?: boolean;
   /** Off the main line. */
   offPath?: boolean;
+  /** Newly drawn by the latest layout. */
+  added?: boolean;
   /** The line the inspector shows. */
   selected?: boolean;
   /** The line the keyboard cursor is on. */
@@ -27,11 +29,11 @@ export interface GraphEdgeProps {
 }
 
 export default function GraphEdge(props: GraphEdgeProps) {
-  const { edge, model, emphasis, dimmed, offPath, selected, chosen, onSelectLine, taken } = props;
+  const { edge, model, emphasis, dimmed, offPath, selected, chosen, added, onSelectLine, taken } = props;
   const tone = model?.tone ?? "neutral";
 
   return (
-    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} {...stateAttrsOf({ dimmed, offPath, selected, chosen })} data-taken={taken ? "true" : undefined} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
+    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} {...stateAttrsOf({ dimmed, offPath, selected, chosen, added })} data-taken={taken ? "true" : undefined} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
       <path data-hit className={styles.edgeHit} d={edge.d} />
       <path
         className={pathClassOf(edge, { tone, emphasis, taken })}
@@ -74,6 +76,6 @@ export function EdgeLabel({ edge, model, emphasis, dimmed, offPath, selected, on
 }
 
 /** The data attributes a line and its label share, each left off when false. */
-function stateAttrsOf({ dimmed, offPath, selected, chosen }: Pick<GraphEdgeProps, "dimmed" | "offPath" | "selected" | "chosen">) {
-  return { "data-dim": dimmed || undefined, "data-off-path": offPath || undefined, "data-selected": selected || undefined, "data-chosen": chosen || undefined };
+function stateAttrsOf({ dimmed, offPath, selected, chosen, added }: Pick<GraphEdgeProps, "dimmed" | "offPath" | "selected" | "chosen" | "added">) {
+  return { "data-dim": dimmed || undefined, "data-off-path": offPath || undefined, "data-selected": selected || undefined, "data-chosen": chosen || undefined, "data-change": added ? "added" : undefined };
 }
