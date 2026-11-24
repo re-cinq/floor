@@ -1,9 +1,10 @@
 // The overlay of a collection on a local directory, and the lines a lint prints about it: no floor, no network.
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import { parse } from "yaml";
 import { agentsOverlay, type ShippedCatalog } from "./agents.js";
 import { collectionOverlay, type CollectionOverlay } from "./collection.js";
+import { collectionSettingsIn } from "./collection-settings.js";
+export { COLLECTION_SETTINGS_FILE, hostKeysIn } from "./collection-settings.js";
 import { enforce } from "./enforce.js";
 import type { Environment } from "./environment.js";
 import { isCollectionFile, pipelineFolderOf, type CollectionFile } from "./paths.js";
@@ -20,9 +21,10 @@ export async function lintCollectionDirectory(root: string, hostKeys: readonly s
 
 /** The collection in a directory, with `${NAME}` filled from the environment given, and the host keys given joined by the ones its `floor-collection.yaml` names. Nothing is shipped unless a catalog is given. */
 export async function readCollectionDirectory(root: string, given: { hostKeys: readonly string[]; env: Environment; shipped?: ShippedCatalog }): Promise<CollectionOverlay> {
-  const hostKeys = [...given.hostKeys, ...(await hostKeysIn(root))];
+  const settings = await collectionSettingsIn(root);
+  const hostKeys = [...given.hostKeys, ...settings.hostKeys];
 
-  return collectionOverlay({ files: await collectionFilesIn(root), ...given, hostKeys, shipped: given.shipped ?? NOTHING_SHIPPED });
+  return collectionOverlay({ files: await collectionFilesIn(root), ...given, hostKeys, groups: settings.groups, shipped: given.shipped ?? NOTHING_SHIPPED });
 }
 
 /** The catalog a directory laid out as a collection stands for: the lines and the agents it holds are the ones shipped. */
@@ -65,20 +67,6 @@ export async function printCollectionLint(root: string, hostKeys: readonly strin
   print(`collection ok: ${counts.agents} agents, ${counts.pipelines} pipelines, ${counts.extensions} extensions`);
 
   return 0;
-}
-
-/** The file at a collection's root that says what the collection expects of its host. */
-export const COLLECTION_SETTINGS_FILE = "floor-collection.yaml";
-
-/** The frontmatter keys the collection's host owns, as its `floor-collection.yaml` names them under `host_keys`; none without the file. */
-export async function hostKeysIn(root: string): Promise<string[]> {
-  const text = await readFile(join(root, COLLECTION_SETTINGS_FILE), "utf8").catch(() => "");
-  const settings = new Map(Object.entries((parse(text) as Record<string, unknown> | null) ?? {}));
-  const hostKeys = settings.get("host_keys") ?? [];
-
-  enforce(Array.isArray(hostKeys) && hostKeys.every((key) => typeof key === "string"), `${COLLECTION_SETTINGS_FILE}: host_keys is a list of names`);
-
-  return hostKeys;
 }
 
 /** The files of a collection on disk, each with its path from the root: the ones a collection reads or refuses. */

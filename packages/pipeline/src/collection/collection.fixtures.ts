@@ -65,11 +65,12 @@ export function agentNamed(overlay: CollectionOverlay, name: string): OverlayAge
 
 const ENV = { ACME_IMAGE: "acme/agent:7" };
 
-export function overlayOf(files: Record<string, string>): CollectionOverlay {
+export function overlayOf(files: Record<string, string>, groups?: readonly string[]): CollectionOverlay {
   return collectionOverlay({
     files: Object.entries(files).map(([path, text]) => ({ path, text })),
     shipped: SHIPPED,
     env: ENV,
+    groups,
   });
 }
 

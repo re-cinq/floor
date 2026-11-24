@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentFileGroupOf,
   agentFileOf,
   isCollectionFile,
   isReadPath,
@@ -79,6 +80,17 @@ describe("agentFileOf", () => {
     ["docs/code-review/agents/reviewer.md", undefined],
   ])("reads the path %s as %j", (path, read) => {
     expect(agentFileOf(path)).toEqual(read);
+  });
+});
+
+describe("agentFileGroupOf", () => {
+  it.each([
+    ["stock/code-review/agents/reviewer.md", "stock"],
+    ["stock/code-review/agents/reviewer.extra.md", "stock"],
+    ["code-review/agents/reviewer.md", undefined],
+    ["stock/code-review/assembly-line.yaml", undefined],
+  ])("reads the group of %s as %s", (path, group) => {
+    expect(agentFileGroupOf(path)).toEqual(group);
   });
 });
 

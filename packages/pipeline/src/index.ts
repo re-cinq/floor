@@ -9,6 +9,7 @@ export { collectionOverlay, type CollectionFile, type CollectionOverlay, type Co
 export { attempt, type Attempt } from "./collection/refusal.js";
 export { lineLayoutOf, type LineFile, type LineLayout } from "./collection/line-layout.js";
 export { applyCollection } from "./collection/apply.js";
+export { collectionSettingsIn, collectionSettingsOf, type CollectionSettings } from "./collection/collection-settings.js";
 export { collectionFilesIn, COLLECTION_SETTINGS_FILE, hostKeysIn, lintCollectionDirectory, lintCommand, printCollectionLint, readCollectionDirectory, shippedCatalogIn, type LintCommand } from "./collection/lint-directory.js";
 export { agentFrontmatterSchema, readAgentFile, floorSettingsOf, type ParsedAgentFile, type AgentFileSettings, type ShippedAgents, type AgentPrompts } from "./collection/agent-file.js";
 export { placeholdersIn, withEnvironment, settingsWithEnvironment, type Environment } from "./collection/environment.js";

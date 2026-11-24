@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TRIAGE_AGENT, linesAndRefusalsOf, overlayOf, pipelineYaml } from "./collection.fixtures.js";
+import { TRIAGE_AGENT, agentNamed, linesAndRefusalsOf, overlayOf, pipelineYaml } from "./collection.fixtures.js";
 
 describe("collectionOverlay with group folders", () => {
   it("refuses stock/code-review as a second line code-review when ours/code-review already sets it", () => {
@@ -118,5 +118,63 @@ describe("collectionOverlay with group folders", () => {
       lines: ["code-review"],
       refused: [{ path: "stock/code-review/pipeline.yaml", reason: "the folder code-review holds its line twice: assembly-line.yaml is read, so remove pipeline.yaml" }],
     });
+  });
+});
+
+describe("collectionOverlay with declared groups", () => {
+  const REVIEW_IN_BOTH = {
+    "ours/code-review/assembly-line.yaml": pipelineYaml("code-review", "reviewer"),
+    "stock/code-review/assembly-line.yaml": pipelineYaml("code-review", "merger"),
+  };
+
+  function readWith(files: Record<string, string>, groups: readonly string[]) {
+    const overlay = overlayOf(files, groups);
+
+    return {
+      lines: overlay.pipelines.map((pipeline) => pipeline.line?.id),
+      agentOfLine: overlay.pipelines.map(({ stations: [station] }) => station.body.agentDefinition),
+      refused: overlay.refused,
+    };
+  }
+
+  it("reads only ours/code-review and refuses nothing when groups are stock then ours and both hold code-review", () => {
+    expect(readWith(REVIEW_IN_BOTH, ["stock", "ours"])).toEqual({ lines: ["code-review"], agentOfLine: ["reviewer"], refused: [] });
+  });
+
+  it("reads only stock/code-review and refuses nothing when groups are ours then stock", () => {
+    expect(readWith(REVIEW_IN_BOTH, ["ours", "stock"])).toEqual({ lines: ["code-review"], agentOfLine: ["merger"], refused: [] });
+  });
+
+  it("refuses stock/code-review as already set when groups lists only stock, since ours is not listed", () => {
+    expect(readWith(REVIEW_IN_BOTH, ["stock"])).toEqual({
+      lines: ["code-review"],
+      agentOfLine: ["reviewer"],
+      refused: [{ path: "stock/code-review/assembly-line.yaml", reason: "code-review is already set by ours/code-review/assembly-line.yaml" }],
+    });
+  });
+
+  it("refuses stock/code-review as already set by the top-level folder code-review, which no list of groups outranks", () => {
+    const files = { "code-review/assembly-line.yaml": pipelineYaml("code-review", "reviewer"), "stock/code-review/assembly-line.yaml": pipelineYaml("code-review", "merger") };
+
+    expect(readWith(files, ["stock"])).toEqual({
+      lines: ["code-review"],
+      agentOfLine: ["reviewer"],
+      refused: [{ path: "stock/code-review/assembly-line.yaml", reason: "code-review is already set by code-review/assembly-line.yaml" }],
+    });
+  });
+
+  it("reads triager from stock/triage/agents/triager.md and refuses nothing when groups are ours then stock and both hold it", () => {
+    const overlay = overlayOf({
+      "ours/triage/agents/triager.md": TRIAGE_AGENT,
+      "stock/triage/agents/triager.md": TRIAGE_AGENT.replace("timeout_minutes: 10", "timeout_minutes: 20"),
+    }, ["ours", "stock"]);
+
+    expect({ timeout_minutes: agentNamed(overlay, "triager")?.settings.timeout_minutes, refused: overlay.refused }).toEqual({ timeout_minutes: 20, refused: [] });
+  });
+
+  it("reads the full file stock/triage/agents/triager.md and leaves out the extension ours/triage/agents/triager.extra.md when groups are ours then stock", () => {
+    const overlay = overlayOf({ "ours/triage/agents/triager.extra.md": "Also sort by age.", "stock/triage/agents/triager.md": TRIAGE_AGENT }, ["ours", "stock"]);
+
+    expect({ source: agentNamed(overlay, "triager")?.source, refused: overlay.refused }).toEqual({ source: "collection-new", refused: [] });
   });
 });

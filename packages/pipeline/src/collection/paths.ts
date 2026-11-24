@@ -10,7 +10,6 @@ function optionalGroup(group: string): string {
   return String.raw`(?:(?!docs\/)${group}\/(?!agents\/))?`;
 }
 
-const OPTIONAL_GROUP = optionalGroup(FOLDER);
 const PIPELINE_FILE = new RegExp(String.raw`^(${optionalGroup(`(${FOLDER})`)}(${FOLDER}))\/(assembly-line|pipeline)\.yaml$`);
 
 /** The name a line's file has. */
@@ -18,7 +17,7 @@ export const LINE_FILE = "assembly-line.yaml";
 
 /** The name it had, still read. */
 export const FORMER_LINE_FILE = "pipeline.yaml";
-const AGENT_FILE = new RegExp(String.raw`^${OPTIONAL_GROUP}${FOLDER}\/agents\/([^/]+?)(\.extra)?\.md$`);
+const AGENT_FILE = new RegExp(String.raw`^${optionalGroup(`(${FOLDER})`)}${FOLDER}\/agents\/([^/]+?)(\.extra)?\.md$`);
 
 /** A file of a collection: its path from the collection's root, and its text. */
 export interface CollectionFile {
@@ -52,7 +51,12 @@ export function lineFolderPathOf(path: string): string | undefined {
 export function agentFileOf(path: string): { agent: string; isExtension: boolean } | undefined {
   const match = AGENT_FILE.exec(path);
 
-  return match ? { agent: match[1], isExtension: Boolean(match[2]) } : undefined;
+  return match ? { agent: match[2], isExtension: Boolean(match[3]) } : undefined;
+}
+
+/** The group folder an agent file sits in, undefined for a top-level line folder or a path that is no agent file. */
+export function agentFileGroupOf(path: string): string | undefined {
+  return AGENT_FILE.exec(path)?.[1];
 }
 
 /** A markdown or YAML file inside a line folder: read, or refused as a path a collection does not read. A file at the top, under `docs/`, under a host folder or under a dot folder is not the collection's. */
