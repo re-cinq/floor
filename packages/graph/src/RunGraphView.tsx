@@ -31,6 +31,9 @@ import styles from "./run-graph.module.css";
 export interface RunGraphViewProps {
   definition: AssemblyLineDefinition;
   onSelectNode?: (nodeId: string) => void;
+  onSelectLine?: (key: string) => void;
+  /** The line the inspector shows, drawn bold. */
+  selectedLineKey?: string | null;
   /** The node the inspector shows, drawn with a ring; its outgoing hops draw bold. */
   selectedNodeId?: string | null;
   /** Height at the bottom of the graph that the inspector covers. */
@@ -80,7 +83,7 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               graph={graph}
               name={view.definition.name}
               exit={view.definition.exit}
-              onSelectNode={view.onSelectNode}
+              onSelectNode={view.onSelectNode} onSelectLine={view.onSelectLine} selectedLineKey={view.selectedLineKey}
               selectedNodeId={view.selectedNodeId}
               describedNode={describedNodeOf(tooltip)}
               lit={lit}
@@ -167,6 +170,8 @@ interface GraphSvgProps {
   /** The node whose tooltip is up, which points at it through aria-describedby. */
   describedNode: DescribedNode | null;
   onSelectNode: RunGraphViewProps["onSelectNode"];
+  onSelectLine: RunGraphViewProps["onSelectLine"];
+  selectedLineKey: RunGraphViewProps["selectedLineKey"];
   selectedNodeId: RunGraphViewProps["selectedNodeId"];
   /** What the hovered node touches; everything else dims. Null while nothing is hovered. */
   lit: Neighbourhood | null;
@@ -202,19 +207,19 @@ function GraphSvg(props: GraphSvgProps) {
 }
 
 /** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ laid, selectedNodeId, lit }: GraphSvgProps) {
+function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, onSelectLine }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} />
+    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} onSelectLine={onSelectLine} />
   ));
 }
 
-function GraphEdgeLabels({ laid, selectedNodeId, lit }: GraphSvgProps) {
+function GraphEdgeLabels({ laid, selectedNodeId, selectedLineKey, lit, onSelectLine }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} />
+    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} onSelectLine={onSelectLine} />
   ));
 }
 

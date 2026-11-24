@@ -311,7 +311,7 @@ describe("RunGraphView station tooltip", () => {
     const keys = ["analyze|author|success", "analyze|author|changes_requested", "analyze|author|failed"];
 
     expect({
-      paths: keys.map((key) => edgeEl(container, key).querySelectorAll("path").length),
+      paths: keys.map((key) => edgeEl(container, key).querySelectorAll("path:not([data-hit])").length),
       labels: keys.map((key) => container.querySelectorAll(`[data-edge-label="${key}"]`).length),
     }).toEqual({ paths: [1, 1, 1], labels: [1, 1, 1] });
   });
