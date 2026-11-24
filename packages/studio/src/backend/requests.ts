@@ -4,7 +4,7 @@ import { enforce } from "@re-cinq/floor-assembly-lines";
 import { z } from "zod";
 import type { CollectionView } from "../view.js";
 import type { AgentEdit } from "./agent-file-text.js";
-import { fixtureRead, fixtureWrite, type FixtureRead, type FixtureWrite } from "./fixture-requests.js";
+import { fixtureRead, fixtureWrite, type FixtureRead, type FixtureWrite } from "./fixture-requests.js";import { runPreviewHandler, type RunPreviewRequest } from "./run-preview-request.js";
 
 export interface StudioContext {
   readCollection(): Promise<CollectionView>;
@@ -71,7 +71,7 @@ type CollectionRead = Extract<Request, { type: "collection.read" }>;
 const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
 
 /** One handler for each request type: a test holds the list to `REQUEST_TYPES`. */
-export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead];
+export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead> | Handler<RunPreviewRequest>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead, runPreviewHandler];
 
 export async function answerFrame(text: string, context: StudioContext): Promise<ServerFrame> {
   const held = parsedJson(text);

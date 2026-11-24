@@ -30,7 +30,7 @@ floor-studio [dir] [--port <n>] [--host-key <name>]... [--no-open]
 | `dir` | the collection. Default: the current directory. A directory that does not exist is an error, exit 1 |
 | `--port <n>` | the port of the backend's socket on `127.0.0.1`. Default: a free one. The page's own port is always a free one |
 | `--host-key <name>` | a frontmatter key the host owns, accepted in an agent file and left out of its settings. As often as needed |
-| `--no-open` | print the url and do not open a browser. Without it the default browser is opened with `xdg-open`, `open` or `start`; failing to open one is not an error |
+| `--no-open` | print the url and do not open a browser. Without it the studio waits 3 seconds and opens the default browser with `xdg-open`, `open` or `start`, unless a page has connected by then, such as a tab left open from before a restart; failing to open one is not an error |
 | `--help` | print the usage and exit 0. A bad argument prints the usage to standard error and exits 2 |
 
 It prints one line, `floor-studio: <url>`. The url is the page's, and carries what the page needs in its fragment, which a browser does not send to a server:

@@ -1,10 +1,9 @@
 import type { StationBody } from "@re-cinq/floor-contracts";
 import { describe, expect, it } from "vitest";
+import { agentStation, stationNeeding } from "./station-fixtures.js";
 import { workspaceOf } from "./workspace.js";
 
-const agentStation: StationBody = { kind: "agent", outcomes: [], needs: [], produces: [] };
 const planNeed: StationBody["needs"][number] = { name: "plan", kind: "file", path: "plan.md" };
-const stationNeeding = (needs: StationBody["needs"]): StationBody => ({ ...agentStation, needs });
 
 describe("workspaceOf", () => {
   it("copies a file need to its path under the folder and fills plan_path", () => {

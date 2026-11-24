@@ -1,13 +1,17 @@
 // The requests that save and read the needs a node is tried with. The line and node come only from the collection view, so a path-like name never reaches the disk.
 import { enforce } from "@re-cinq/floor-assembly-lines";
 import type { Request } from "../protocol.js";
-import type { CollectionView } from "../view.js";
+import type { CollectionView, NodeView } from "../view.js";
 import type { Handler } from "./requests.js";
 
-function hasNode({ lines }: CollectionView, lineId: string, nodeId: string): boolean {
+export function nodeOf({ lines }: CollectionView, lineId: string, nodeId: string): NodeView | undefined {
   const nodes = lines.find(({ id }) => id === lineId)?.nodes ?? [];
 
-  return nodes.some(({ id }) => id === nodeId);
+  return nodes.find(({ id }) => id === nodeId);
+}
+
+function hasNode(view: CollectionView, lineId: string, nodeId: string): boolean {
+  return nodeOf(view, lineId, nodeId) !== undefined;
 }
 
 export type FixtureWrite = Extract<Request, { type: "fixture.write" }>;

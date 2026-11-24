@@ -47,6 +47,8 @@ const commandBuilders: Partial<Record<Vendor, (input: AgentCommandInput) => stri
   codex: codexCommand,
 };
 
+export const runnableVendors = Object.keys(commandBuilders);
+
 export function agentCommand(input: AgentCommandInput): string[] {
   const build = commandBuilders[input.vendor];
   if (!build) throw new Error(`No agent command for vendor ${input.vendor}`);

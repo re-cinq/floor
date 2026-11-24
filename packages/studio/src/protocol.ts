@@ -2,6 +2,7 @@
 import { z } from "zod";
 import type { LineArgSpec, LineEdge, LineStart, StationKind } from "@re-cinq/floor-contracts";
 import type { NodeEvents, PromptPlaceholders } from "@re-cinq/floor-assembly-lines";
+import type { RunPreview } from "./run/run-preview.js";
 import type { CollectionView, NodeNeed, NodeProduce } from "./view.js";
 
 export type { AgentUse, AgentView, CollectionView, LineView, NodeAgent, NodeNeed, NodeView, RefusedFile, ViewProblem } from "./view.js";
@@ -21,8 +22,10 @@ export const fixtureWriteRequest = z.strictObject({ id: requestId, type: z.liter
 
 export const fixtureReadRequest = z.strictObject({ id: requestId, type: z.literal("fixture.read"), line: z.string(), node: z.string() });
 
+export const runPreviewRequest = z.strictObject({ id: requestId, type: z.literal("run.preview"), line: z.string(), node: z.string(), fixture: z.record(z.string(), z.string()), folder: z.string(), permission: z.enum(["acceptEdits", "bypass"]) });
+
 /** A new request type is one schema here and one handler in the backend's table. */
-export const requestSchema = z.discriminatedUnion("type", [collectionReadRequest, agentWriteRequest, extraWriteRequest, fixtureWriteRequest, fixtureReadRequest]);
+export const requestSchema = z.discriminatedUnion("type", [collectionReadRequest, agentWriteRequest, extraWriteRequest, fixtureWriteRequest, fixtureReadRequest, runPreviewRequest]);
 
 export type Request = z.infer<typeof requestSchema>;
 export type RequestKind = Request["type"];
@@ -30,7 +33,7 @@ export type RequestKind = Request["type"];
 export const REQUEST_TYPES: RequestKind[] = requestSchema.options.map(({ shape }) => shape.type.value);
 
 /** What a request is answered with, in a `result` frame. */
-export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" | "extra.write" } ? { written: string } : Asked extends { type: "fixture.write" } ? { written: string } : Asked extends { type: "fixture.read" } ? { needs: Record<string, string> } : never;
+export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" | "extra.write" } ? { written: string } : Asked extends { type: "fixture.write" } ? { written: string } : Asked extends { type: "fixture.read" } ? { needs: Record<string, string> } : Asked extends { type: "run.preview" } ? RunPreview : never;
 
 // Strict down to a node's agent; events, placeholders, needs, produces, edges, args, start and kind come from other packages and are only checked to be objects where required.
 const presentObject = <Shape>() => z.custom<Shape>((value) => typeof value === "object" && value !== null);

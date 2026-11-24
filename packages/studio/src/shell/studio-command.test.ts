@@ -23,7 +23,7 @@ function collected() {
   const out: string[] = [];
   const err: string[] = [];
 
-  return { out, err, shell: { out: (line: string) => out.push(line), err: (line: string) => err.push(line), pageDir: join(tmpdir(), "no-built-page-here") } };
+  return { out, err, shell: { out: (line: string) => out.push(line), err: (line: string) => err.push(line), pageDir: join(tmpdir(), "no-built-page-here"), openBrowser: () => undefined, pageWaitMs: 3000 } };
 }
 
 afterEach(async () => {
@@ -74,6 +74,28 @@ describe("studioCommand", () => {
     const client = await openClient(fragment.get("socket") ?? "", { token: fragment.get("token") ?? "", origin: `http://localhost:${new URL(origin).port}` });
 
     expect(await client.next()).toMatchObject({ type: "hello" });
+  });
+
+  it("opens the page url in the browser once after 300ms when no page connected", async () => {
+    const opened: string[] = [];
+    const shell = { ...collected().shell, openBrowser: (url: string) => void opened.push(url), pageWaitMs: 300 };
+    const { running: started } = await startedStudio([collectionOnDisk(WORKER_COLLECTION)], shell);
+
+    await new Promise((done) => setTimeout(done, 600));
+
+    expect(opened).toEqual([started.pageUrl]);
+  });
+
+  it("does not open the browser when a page connected within the 300ms wait", async () => {
+    const opened: string[] = [];
+    const shell = { ...collected().shell, openBrowser: (url: string) => void opened.push(url), pageWaitMs: 300 };
+    const { fragment, origin } = await startedStudio([collectionOnDisk(WORKER_COLLECTION)], shell);
+    const client = await openClient(fragment.get("socket") ?? "", { token: fragment.get("token") ?? "", origin });
+
+    await client.next();
+    await new Promise((done) => setTimeout(done, 600));
+
+    expect(opened).toEqual([]);
   });
 
   it("serves the built page from its folder at the page url", async () => {

@@ -39,6 +39,8 @@ export interface Studio {
   /** `ws://127.0.0.1:<port>`: the real port, the token not in it. */
   url: string;
   token: string;
+  /** The sockets that passed the token and origin check and are still open. */
+  pageCount(): number;
   close(): Promise<void>;
 }
 
@@ -76,6 +78,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   return {
     url: `ws://${LOOPBACK}:${(server.address() as AddressInfo).port}`,
     token,
+    pageCount: () => sockets.clients.size,
     close: () => closed({ watcher, sockets, server }),
   };
 }

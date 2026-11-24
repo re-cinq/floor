@@ -2,7 +2,6 @@
 import { resolve } from "node:path";
 import { startStudio } from "../backend/start-studio.js";
 import { parseStudioArguments, type RunArguments } from "./arguments.js";
-import { openBrowser } from "./open-browser.js";
 import { pageUrl } from "./page-url.js";
 import { startPageServer } from "./static-files.js";
 
@@ -11,7 +10,8 @@ export const USAGE = `floor-studio [dir] [--port <n>] [--host-key <name>]... [--
   dir               the collection: one folder a line, with its assembly-line.yaml and agents/. Default: the current directory
   --port <n>        the port of the backend's socket on 127.0.0.1. Default: a free one
   --host-key <name> a frontmatter key the host owns, accepted in an agent file; as often as needed
-  --no-open         print the url and do not open a browser
+  --no-open         print the url and do not open a browser. Without it a browser opens after 3 seconds, unless a page
+                    (such as a tab left open from before a restart) has connected by then
   --help            this text`;
 
 export interface Shell {
@@ -19,6 +19,9 @@ export interface Shell {
   err(line: string): void;
   /** The folder the built page is in. */
   pageDir: string;
+  openBrowser(url: string): void;
+  /** How long to wait for a page to connect before opening the browser. */
+  pageWaitMs: number;
 }
 
 export interface RunningStudio {
@@ -62,7 +65,10 @@ async function started(given: RunArguments, shell: Shell): Promise<Outcome> {
   const url = pageUrl({ origin: page.origin, socket: studio.url, token: studio.token });
 
   shell.out(`floor-studio: ${url}`);
-  if (given.open) openBrowser(url);
+  const opening = given.open ? setTimeout(() => studio.pageCount() === 0 && shell.openBrowser(url), shell.pageWaitMs) : undefined;
 
-  return { running: { pageUrl: url, close: async () => void (await Promise.all([studio.close(), page.close()])) } };
+  return { running: { pageUrl: url, close: async () => {
+    clearTimeout(opening);
+    await Promise.all([studio.close(), page.close()]);
+  } } };
 }

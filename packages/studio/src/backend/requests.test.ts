@@ -23,7 +23,7 @@ describe("answerFrame", () => {
   });
 
   it("refuses an unknown request type, naming it, with the id it carried", async () => {
-    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.start" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.start"; known: collection.read, agent.write, extra.write, fixture.write, fixture.read' });
+    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.start" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.start"; known: collection.read, agent.write, extra.write, fixture.write, fixture.read, run.preview' });
   });
 
   it("refuses a request that fails its schema, with the id it carried and the field named", async () => {

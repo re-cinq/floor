@@ -3,7 +3,7 @@ import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { PROTOCOL_VERSION } from "../protocol.js";
 import { textVersion } from "./agent-file-text.js";
-import { agentMarkdown, WORKER_COLLECTION } from "./collection-view.fixtures.js";
+import { agentMarkdown, lineYaml, WORKER_COLLECTION } from "./collection-view.fixtures.js";
 import { collectionOnDisk, openClient, refusalStatus } from "./studio.fixtures.js";
 import { startStudio, type Studio } from "./start-studio.js";
 
@@ -307,6 +307,27 @@ describe("startStudio", () => {
     const answer = await client.next();
 
     expect(answer).toMatchObject({ type: "result", result: { needs: { ticket: "ENG-1" } } });
+  });
+
+  it("answers run.preview with the prompt Work ENG-1. and no blockers for flow/work with ticket ENG-1", async () => {
+    const { client } = await connectedToWorkerCollection();
+
+    await client.next();
+    client.send({ id: "p1", type: "run.preview", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder: "/tmp/run-1", permission: "acceptEdits" });
+    const answer = await client.next();
+
+    expect(answer).toMatchObject({ type: "result", result: { prompt: "Work ENG-1.", blockers: [] } });
+  });
+
+  it('answers run.preview with the blocker "plan": /no/such/plan.md is not on disk, for file need plan fixtured to /no/such/plan.md', async () => {
+    const fileNeedLine = lineYaml("flow", "worker").replace("name: ticket\n        kind: value", "name: plan\n        kind: file\n        path: plan.md");
+    const { client } = await connectedTo([{ path: "flow/assembly-line.yaml", text: fileNeedLine }, WORKER_COLLECTION[1]]);
+
+    await client.next();
+    client.send({ id: "p2", type: "run.preview", line: "flow", node: "work", fixture: { plan: "/no/such/plan.md" }, folder: "/tmp/run-1", permission: "acceptEdits" });
+    const answer = await client.next();
+
+    expect(answer).toMatchObject({ type: "result", result: { blockers: ['"plan": /no/such/plan.md is not on disk'] } });
   });
 
   it("refuses to start on a directory that does not exist", async () => {
