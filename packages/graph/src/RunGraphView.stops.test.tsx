@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import RunGraphView from "./RunGraphView";
 import { implementationDefinition } from "./definition.fixtures";
 import { nodeTitle } from "./node-tooltip";
@@ -77,5 +77,17 @@ describe("RunGraphView with compactStops", () => {
     fireEvent.click(screen.getByRole("button", { name: "Compact stops" }));
 
     expect(nodeEl(container, "push").getAttribute("data-shape")).toEqual("card");
+  });
+
+  it("marks the Compact stops button pressed after one press and not pressed after two", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} />);
+    const button = within(container).getByRole("button", { name: "Compact stops" });
+    const states = [button.getAttribute("aria-pressed")];
+    fireEvent.click(button);
+    states.push(button.getAttribute("aria-pressed"));
+    fireEvent.click(button);
+    states.push(button.getAttribute("aria-pressed"));
+
+    expect(states).toEqual(["false", "true", "false"]);
   });
 });
