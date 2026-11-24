@@ -8,6 +8,7 @@ import { mainPathOf } from "./metro/main-path";
 import { reachabilityOf } from "./metro/reachability";
 import { isPassThrough } from "./metro/pass-through";
 import { neighbourhoodOf } from "./metro/neighbourhood";
+import { visitedPartOf } from "./metro/visited-part";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import GraphSvg, { type DescribedNode, type LineMarks } from "./GraphSvg";
@@ -45,10 +46,17 @@ export interface RunGraphViewProps {
   /** The connector to draw as the one that was taken. */
   takenEdge?: { from: string; to: string; on: string };
   run?: RunOverlay;
+  /** Draws the whole line or only the part the run walked; defaults to the walked part when a run is given. */
+  show?: "all" | "visited";
 }
 
 // The graph: laid out by ELK, then fitted to the panel by the viewport. Until ELK resolves, the panel and legend show with an empty canvas.
-export default function RunGraphView(props: RunGraphViewProps) {
+export default function RunGraphView(givenProps: RunGraphViewProps) {
+  const wholeLine = useWholeLine(givenProps);
+  const props = useMemo(
+    () => ({ ...givenProps, ...wholeLine }),
+    [givenProps, wholeLine],
+  );
   const graph = useMemo(
     () => deriveVisibleGraph(props.definition),
     [props.definition],
@@ -69,8 +77,34 @@ export default function RunGraphView(props: RunGraphViewProps) {
   );
 }
 
+/** The whole definition or the part the run visited, and the toggle between them, offered only with a run. */
+function useWholeLine({ definition, run, show }: RunGraphViewProps) {
+  const [wholeLineOn, toggleWholeLine] = useToggle({
+    initiallyOn: (show ?? (run ? "visited" : "all")) === "all",
+  });
+  const shown = useMemo(
+    () =>
+      run && !wholeLineOn ? visitedPartOf(definition, run.visits) : definition,
+    [definition, run, wholeLineOn],
+  );
+
+  return useMemo(
+    () => ({
+      definition: shown,
+      wholeLineOn,
+      onToggleWholeLine: run ? toggleWholeLine : undefined,
+    }),
+    [shown, wholeLineOn, run, toggleWholeLine],
+  );
+}
+
+interface ShownView extends RunGraphViewProps {
+  wholeLineOn: boolean;
+  onToggleWholeLine?: () => void;
+}
+
 interface GraphCanvasProps {
-  view: RunGraphViewProps;
+  view: ShownView;
   graph: VisibleGraph;
 }
 
@@ -122,7 +156,7 @@ function drawnFrom(view: RunGraphViewProps) {
 }
 
 /** Everything the canvas draws from: the laid-out drawing, the tooltip, the marks on its elements and the viewport's two toggles. */
-function useGraphCanvasState(view: RunGraphViewProps, graph: VisibleGraph) {
+function useGraphCanvasState(view: ShownView, graph: VisibleGraph) {
   const { unreachable, mainPath, mainPathOnly, toggleMainPath, taken, visits } =
     useLineMarkings(view);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
@@ -138,6 +172,8 @@ function useGraphCanvasState(view: RunGraphViewProps, graph: VisibleGraph) {
     onToggleMainPath: toggleMainPath,
     compactStopsOn: compactStops,
     onToggleCompactStops: toggleCompactStops,
+    wholeLineOn: view.wholeLineOn,
+    onToggleWholeLine: view.onToggleWholeLine,
   };
 
   return {

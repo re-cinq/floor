@@ -20,10 +20,12 @@ export interface GraphViewportProps {
   onToggleMainPath?: () => void;
   compactStopsOn?: boolean;
   onToggleCompactStops?: () => void;
+  wholeLineOn?: boolean;
+  onToggleWholeLine?: () => void;
   children: ReactNode;
 }
 
-export default function GraphViewport({ drawing, reveal, coveredBelow, mainPathOn, onToggleMainPath, compactStopsOn, onToggleCompactStops, children }: GraphViewportProps) {
+export default function GraphViewport({ drawing, reveal, coveredBelow, mainPathOn, onToggleMainPath, compactStopsOn, onToggleCompactStops, wholeLineOn, onToggleWholeLine, children }: GraphViewportProps) {
   const [{ transform }, dispatch] = useReducer(viewportReducer, drawing, initialViewport);
   const svgRef = useMeasuredBox<SVGSVGElement>(dispatch);
   const pointerHandlers = usePointerDrag(dispatch);
@@ -49,7 +51,7 @@ export default function GraphViewport({ drawing, reveal, coveredBelow, mainPathO
         <g transform={svgTransformOf(transform)}>{children}</g>
       </svg>
       <div className={styles.controls}>
-        <ViewportControls dispatch={dispatch} mainPathOn={mainPathOn} onToggleMainPath={onToggleMainPath} compactStopsOn={compactStopsOn} onToggleCompactStops={onToggleCompactStops} />
+        <ViewportControls dispatch={dispatch} mainPathOn={mainPathOn} onToggleMainPath={onToggleMainPath} compactStopsOn={compactStopsOn} onToggleCompactStops={onToggleCompactStops} wholeLineOn={wholeLineOn} onToggleWholeLine={onToggleWholeLine} />
       </div>
     </div>
   );

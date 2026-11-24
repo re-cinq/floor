@@ -1,0 +1,33 @@
+import { describe, it, expect } from "vitest";
+import { visitedPartOf } from "./visited-part";
+import { markerLine } from "./line.fixtures";
+import { edgeKeyOf } from "./edge-key";
+
+describe("visitedPartOf", () => {
+  it("keeps the start entry and its taken line start|a|always when the run never visited start", () => {
+    const definition = markerLine({
+      entry: "start",
+      exit: "done",
+      nodeIds: ["start", "a", "fix", "done"],
+      edges: [
+        ["start", "a", "always"],
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+      ],
+    });
+
+    const { entry, nodes, edges } = visitedPartOf(definition, [
+      { nodeId: "a", iteration: 1, outcome: "success", open: false },
+    ]);
+
+    expect({
+      entry,
+      nodes: nodes.map((node) => node.id).sort(),
+      edges: edges.map(edgeKeyOf).sort(),
+    }).toEqual({
+      entry: "start",
+      nodes: ["a", "done", "start"],
+      edges: ["a|done|success", "start|a|always"],
+    });
+  });
+});
