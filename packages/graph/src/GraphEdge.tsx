@@ -1,13 +1,11 @@
 // One connector between two steps; its tone carries the branch's meaning, and a hop that branches or loops says its outcome in a label beside it (EdgeLabel), so colour is never the only signal. The selected node's outgoing hops draw bold and the others step back.
 import type { LaidOutEdge } from "./elk-layout";
+import { COUNT_CHAR_WIDTH, COUNT_GAP } from "./elk-graph";
 import type { VisibleEdge } from "./graph-view-model";
 import { ARROW_MARKER_URL } from "./ArrowMarkerDefs";
 import { edgeKeyOf } from "./metro/edge-key";
 import { classes, edgeStrokeClass, textFillClass } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
-
-const COUNT_LABEL_CHAR_WIDTH = 6;
-const COUNT_GAP = 3;
 
 export type EdgeEmphasis = "outgoing" | "other" | undefined;
 
@@ -53,7 +51,7 @@ export default function GraphEdge(props: GraphEdgeProps) {
 /** Sits right after the label, inside its air, so it never lands under the line. */
 function TakenCount({ edge, model, count }: { edge: LaidOutEdge; model: VisibleEdge | undefined; count: number }) {
   const { x: midX, y: midY, vertical } = edge.mid;
-  const labelHalfWidth = ((model?.label.length ?? 0) * COUNT_LABEL_CHAR_WIDTH) / 2;
+  const labelHalfWidth = ((model?.label.length ?? 0) * COUNT_CHAR_WIDTH) / 2;
 
   return (
     <text
