@@ -217,7 +217,13 @@ describe("elkGraphOf", () => {
         ["fix", "a", "always"],
       ],
     });
-    const labelWidthOf = (options: ElkGraphOptions) => elkGraphOf(loopLine, undefined, options).edges?.[0].labels?.[0].width ?? 0;
+
+    const labelWidthOf = (options: ElkGraphOptions) => {
+      const [firstEdge] = elkGraphOf(loopLine, undefined, options).edges ?? [];
+      const [label] = firstEdge.labels ?? [];
+
+      return label.width ?? 0;
+    };
 
     expect(labelWidthOf({ takenCounts: new Map([["a|fix|failed", 2]]) })).toBeGreaterThan(labelWidthOf({}));
   });

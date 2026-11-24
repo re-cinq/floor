@@ -32,6 +32,8 @@ const SOURCE_STUB: StubEnd = { idSuffix: "source-stub", direction: "out", side: 
 const LABEL_HEIGHT = 16;
 const LABEL_CHAR_WIDTH = 7.3;
 const LABEL_PADDING = 6;
+export const COUNT_CHAR_WIDTH = 6;
+export const COUNT_GAP = 3;
 
 const LAYOUT_OPTIONS = {
   "elk.algorithm": "layered",
@@ -61,6 +63,8 @@ export interface NodeSize {
 export interface ElkGraphOptions {
   /** Draws each pass-through station as a small stop instead of a card. */
   compactStops?: boolean;
+  /** How many times a run took each line by edge key; a line taken twice or more reserves room for its count. */
+  takenCounts?: ReadonlyMap<string, number>;
 }
 
 export function elkGraphOf(definition: AssemblyLineDefinition, size: NodeSize = NODE_SIZE, options: ElkGraphOptions = {}): ElkNode {
@@ -88,7 +92,7 @@ export function elkGraphOf(definition: AssemblyLineDefinition, size: NodeSize = 
       id: edgeKeyOf(edge),
       sources: [`${edgeKeyOf(edge)}:out`],
       targets: [`${edgeKeyOf(edge)}:in`],
-      labels: [edgeLabelOf(edge)],
+      labels: [edgeLabelOf(edge, options.takenCounts?.get(edgeKeyOf(edge)))],
     })),
   };
 }
@@ -156,12 +160,13 @@ function portOf(edge: DefinitionEdge, direction: "in" | "out", side: "WEST" | "E
   };
 }
 
-function edgeLabelOf({ on, iterationMax }: DefinitionEdge): ElkLabel {
+function edgeLabelOf({ on, iterationMax }: DefinitionEdge, takenCount = 0): ElkLabel {
   const text = iterationMax === undefined ? on : `${on} · max ${iterationMax}`;
+  const countWidth = takenCount > 1 ? COUNT_GAP + `×${takenCount}`.length * COUNT_CHAR_WIDTH : 0;
 
   return {
     text,
-    width: Math.ceil(text.length * LABEL_CHAR_WIDTH + LABEL_PADDING),
+    width: Math.ceil(text.length * LABEL_CHAR_WIDTH + LABEL_PADDING + countWidth),
     height: LABEL_HEIGHT,
   };
 }
