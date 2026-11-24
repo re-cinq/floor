@@ -30,4 +30,19 @@ describe("takenLinesOf", () => {
 
     expect(takenLinesOf(implementationDefinition, visits)).toEqual(new Map());
   });
+
+  it("counts the review to done success edge twice for two finished review visits with outcome success", () => {
+    const visits = [
+      { nodeId: "review", iteration: 1, outcome: "success", open: false },
+      { nodeId: "review", iteration: 2, outcome: "success", open: false },
+    ];
+
+    expect(takenLinesOf(codeReviewDefinition, visits)).toEqual(new Map([["review|done|success", 2]]));
+  });
+
+  it("returns no taken lines for a finished review visit with outcome timed-out and no matching or always edge", () => {
+    const visits = [{ nodeId: "review", iteration: 1, outcome: "timed-out", open: false }];
+
+    expect(takenLinesOf(codeReviewDefinition, visits)).toEqual(new Map());
+  });
 });
