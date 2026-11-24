@@ -5,6 +5,8 @@ import InspectorTabs, { type InspectorTab, type TabChoice } from "./InspectorTab
 import styles from "./line.module.css";
 import type { SavePrompt } from "./PromptEditor";
 import PromptPanel from "./PromptPanel";
+import RunPanel from "./RunPanel";
+import type { FixtureStore, PreviewRun, RunControls } from "./RunPanel";
 import type { SaveSettings } from "./SettingsEditor";
 import SettingsPanel from "./SettingsPanel";
 import { SETTINGS_SECTIONS, type SettingsSection } from "./settings-sections";
@@ -17,6 +19,9 @@ export interface InspectorActions {
   savePrompt?: SavePrompt;
   saveExtra?: SavePrompt;
   saveSettings?: SaveSettings;
+  previewRun?: PreviewRun;
+  runs?: RunControls;
+  fixtures?: FixtureStore;
   skillNames?: string[];
 }
 
@@ -70,6 +75,7 @@ function NodeTabs({ node, actions, tabChoice }: { node: NodeView; actions: Inspe
         Station: <StationPanel node={node} />,
         Events: <EventsPanel node={node} />,
         Prompt: <PromptPanel node={node} onSave={actions.savePrompt} onSaveExtra={actions.saveExtra} />,
+        Run: <RunPanel node={node} onPreview={actions.previewRun} runs={actions.runs} fixtures={actions.fixtures} />,
         ...Object.fromEntries(SETTINGS_TABS.map((section) => [section, settingsPanel(section)])),
       }}
     />
@@ -82,5 +88,5 @@ function tabsFor(node: NodeView): InspectorTab[] {
 
   const common: InspectorTab[] = ["Station", "Events"];
 
-  return node.kind === "agent" ? [...common, "Prompt", ...SETTINGS_TABS] : common;
+  return node.kind === "agent" ? [...common, "Prompt", "Run", ...SETTINGS_TABS] : common;
 }

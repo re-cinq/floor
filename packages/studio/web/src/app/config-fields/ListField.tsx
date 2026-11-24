@@ -1,9 +1,10 @@
 import { CUSTOM } from "../model-choices";
+import { addLabel } from "./item-noun";
 import FieldFrame from "./FieldFrame";
 import RemoveButton from "./RemoveButton";
 import type { FieldProps } from "./field-props";
 
-export default function ListField({ name, value, help, skillNames, onChange }: FieldProps) {
+export default function ListField({ name, value, help, skillNames, caption, onChange }: FieldProps) {
   const entries = Array.isArray(value) ? value.map(String) : [];
   const change = (next: string[]) => onChange(next.length === 0 ? undefined : next);
   const choices = name === "skills" ? skillNames : undefined;
@@ -19,7 +20,7 @@ export default function ListField({ name, value, help, skillNames, onChange }: F
             </div>
           ))}
           <button type="button" onClick={() => change([...entries, ""])}>
-            Add to {name}
+            {addLabel(name, caption)}
           </button>
         </>
       )}

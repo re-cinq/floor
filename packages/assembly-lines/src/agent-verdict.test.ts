@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readAgentVerdict } from "./agent-verdict.js";
+import { readAgentVerdict, requiredVerdict, UNSPOKEN_RESULT } from "./agent-verdict.js";
 
 const OUTCOMES = ["success", "changes_requested", "needs_human"];
 
@@ -113,5 +113,15 @@ describe("readAgentVerdict", () => {
 
   it("says the agent spoke a marker when it printed both a marker and REVIEW_RESULT", () => {
     expect(readAgentVerdict("REVIEW_RESULT: CHANGES_REQUESTED\nLORE_NODE_RESULT: success", OUTCOMES).spoke).toBe("marker");
+  });
+
+  it("fails a verdict the agent never spoke when its station requires a result", () => {
+    expect(requiredVerdict(readAgentVerdict("All done.", OUTCOMES), { resultRequired: true })).toEqual({ outcome: "failed", produced: {}, spoke: "nothing", error: UNSPOKEN_RESULT });
+  });
+
+  it("keeps a verdict the agent never spoke when its station does not require a result", () => {
+    const verdict = readAgentVerdict("All done.", OUTCOMES);
+
+    expect(requiredVerdict(verdict, {})).toBe(verdict);
   });
 });

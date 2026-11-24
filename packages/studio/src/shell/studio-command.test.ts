@@ -26,6 +26,12 @@ function collected() {
   return { out, err, shell: { out: (line: string) => out.push(line), err: (line: string) => err.push(line), pageDir: join(tmpdir(), "no-built-page-here"), openBrowser: () => undefined, pageWaitMs: 3000 } };
 }
 
+function recordingBrowser() {
+  const opened: string[] = [];
+
+  return { opened, shell: { ...collected().shell, openBrowser: (url: string) => void opened.push(url), pageWaitMs: 300 } };
+}
+
 afterEach(async () => {
   await Promise.all(running.splice(0).map((studio) => studio.close()));
 });
@@ -77,8 +83,7 @@ describe("studioCommand", () => {
   });
 
   it("opens the page url in the browser once after 300ms when no page connected", async () => {
-    const opened: string[] = [];
-    const shell = { ...collected().shell, openBrowser: (url: string) => void opened.push(url), pageWaitMs: 300 };
+    const { opened, shell } = recordingBrowser();
     const { running: started } = await startedStudio([collectionOnDisk(WORKER_COLLECTION)], shell);
 
     await new Promise((done) => setTimeout(done, 600));
@@ -87,12 +92,20 @@ describe("studioCommand", () => {
   });
 
   it("does not open the browser when a page connected within the 300ms wait", async () => {
-    const opened: string[] = [];
-    const shell = { ...collected().shell, openBrowser: (url: string) => void opened.push(url), pageWaitMs: 300 };
+    const { opened, shell } = recordingBrowser();
     const { fragment, origin } = await startedStudio([collectionOnDisk(WORKER_COLLECTION)], shell);
     const client = await openClient(fragment.get("socket") ?? "", { token: fragment.get("token") ?? "", origin });
 
     await client.next();
+    await new Promise((done) => setTimeout(done, 600));
+
+    expect(opened).toEqual([]);
+  });
+
+  it("does not open the browser with --no-open when no page connected", async () => {
+    const { opened, shell } = recordingBrowser();
+
+    await startedStudio([collectionOnDisk(WORKER_COLLECTION), "--no-open"], shell);
     await new Promise((done) => setTimeout(done, 600));
 
     expect(opened).toEqual([]);

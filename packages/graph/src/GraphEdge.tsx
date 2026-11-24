@@ -20,17 +20,19 @@ export interface GraphEdgeProps {
   /** The line the inspector shows. */
   selected?: boolean;
   onSelectLine?: (key: string) => void;
+  /** The connector a run took. */
+  taken?: boolean;
 }
 
 export default function GraphEdge(props: GraphEdgeProps) {
-  const { edge, model, emphasis, dimmed, offPath, selected, onSelectLine } = props;
+  const { edge, model, emphasis, dimmed, offPath, selected, onSelectLine, taken } = props;
   const tone = model?.tone ?? "neutral";
 
   return (
-    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} {...stateAttrsOf({ dimmed, offPath, selected })} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
+    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} {...stateAttrsOf({ dimmed, offPath, selected })} data-taken={taken ? "true" : undefined} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
       <path data-hit className={styles.edgeHit} d={edge.d} />
       <path
-        className={pathClassOf(edge, tone, emphasis)}
+        className={pathClassOf(edge, { tone, emphasis, taken })}
         d={edge.d}
         markerEnd={ARROW_MARKER_URL}
       />
@@ -38,13 +40,14 @@ export default function GraphEdge(props: GraphEdgeProps) {
   );
 }
 
-function pathClassOf(edge: LaidOutEdge, tone: VisibleEdge["tone"], emphasis: EdgeEmphasis) {
+function pathClassOf(edge: LaidOutEdge, { tone, emphasis, taken }: { tone: VisibleEdge["tone"]; emphasis: EdgeEmphasis; taken: boolean | undefined }) {
   return classes(
     styles.edge,
     styles[edge.kind],
     edgeStrokeClass(tone),
     emphasis === "outgoing" ? styles.outgoing : undefined,
     emphasis === "other" ? styles.dim : undefined,
+    taken ? styles.taken : undefined,
   );
 }
 

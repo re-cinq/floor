@@ -8,8 +8,8 @@ export type RunReadRequest = Extract<Request, { type: "run.read" }>;
 
 export const runReadHandler: Handler<RunReadRequest> = {
   type: "run.read",
-  handle: async ({ runs }, { run, after }) => {
-    const record = runs.get(run);
+  handle: async ({ runs, readRun }, { run, after }) => {
+    const record = runs.get(run) ?? (await readRun(run));
 
     enforce(record, `no run ${run}`);
 

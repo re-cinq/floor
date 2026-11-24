@@ -131,6 +131,15 @@ describe("Inspector Settings panel config form", () => {
     });
   });
 
+  it("shows Add arg on the add button of the mcp_servers 1 args list", async () => {
+    await openReviewerSettings("MCP", {
+      image: "acme/agent:2",
+      config: { mcp_servers: [{ name: "files", transport: "stdio", command: "npx" }] },
+    });
+
+    expect(screen.getByRole("button", { name: "mcp_servers 1 args" }).textContent).toBe("Add arg");
+  });
+
   it("shows chip env: LORE_MCP_URL instead of the url textbox for an mcp_servers url of ${LORE_MCP_URL}", async () => {
     await openReviewerSettings("MCP", {
       image: "acme/agent:2",

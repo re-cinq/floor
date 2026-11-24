@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
 import { WORKER_COLLECTION } from "../../../src/backend/collection-view.fixtures";
@@ -18,15 +18,20 @@ interface OpenedPage {
   studio: Studio;
 }
 
-export async function openPage(files: CollectionFile[], options: { token?: string; hash?: string } = {}): Promise<OpenedPage> {
+export async function openPage(files: CollectionFile[], options: { token?: string; hash?: string; runEnv?: Record<string, string> } = {}): Promise<OpenedPage> {
   const dir = collectionOnDisk(files);
-  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [] });
+  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [], runEnv: options.runEnv });
 
   running.push(studio);
   window.location.hash = `#${new URLSearchParams({ socket: studio.url, token: options.token ?? studio.token }).toString()}${options.hash ?? ""}`;
   render(<App />);
 
   return { dir, studio };
+}
+
+export function reloadPage(): void {
+  cleanup();
+  render(<App />);
 }
 
 interface OpenedPromptEditor {

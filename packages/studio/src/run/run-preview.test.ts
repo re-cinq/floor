@@ -35,6 +35,12 @@ describe("runPreview", () => {
     });
   });
 
+  it("blocks with 'the folder must be an absolute path: example' when the folder is example", () => {
+    expect(runPreview(previewInput({ folder: "example", fixture: { ticket: "ENG-1" } }))).toMatchObject({
+      blockers: ["the folder must be an absolute path: example"],
+    });
+  });
+
   it("blocks with an empty command when gemini-2.5-pro is a vendor the studio cannot run", () => {
     expect(runPreview(previewInput({ settings: { model: "gemini-2.5-pro" }, fixture: { ticket: "ENG-1" } }))).toMatchObject({
       command: [],

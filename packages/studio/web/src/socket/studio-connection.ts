@@ -1,6 +1,6 @@
 // The page's one link to the backend: a WebSocket opened with the launch token, every frame checked against the protocol's schema, requests matched to their answers by id, and a reconnect with backoff that reads the collection again. Pushes are not replayed, so a connection that drops and returns asks again. A read that fails, whether the page asked or the backend re-read on its own and pushed an unasked `refused`, replaces the collection with its reason.
 import type { ZodError } from "zod";
-import { collectionViewSchema, PROTOCOL_VERSION, serverFrameSchema, type CollectionView, type Request, type ServerFrame } from "@protocol";
+import { collectionViewSchema, PROTOCOL_VERSION, serverFrameSchema, type CollectionView, type Request, type ResultOf, type ServerFrame } from "@protocol";
 
 export type ConnectionState =
   | { status: "connecting" }
@@ -35,6 +35,17 @@ interface Attempt {
   ended: boolean;
 }
 
+type PreviewRequest = Extract<Request, { type: "run.preview" }>;
+export type PreviewFields = Omit<PreviewRequest, "id" | "type">;
+export type RunPreviewResult = ResultOf<PreviewRequest>;
+type StartRequest = Extract<Request, { type: "run.start" }>;
+export type StartFields = Omit<StartRequest, "id" | "type">;
+export type RunStartResult = ResultOf<StartRequest>;
+type ReadRequest = Extract<Request, { type: "run.read" }>;
+export type RunReadResult = ResultOf<ReadRequest>;
+export type RunFrame = Extract<ServerFrame, { type: "run.output" | "run.ended" }>;
+export type RunFrameListener = (frame: RunFrame) => void;
+
 const backoff = (attempt: number): number => Math.min(FIRST_RETRY_MS * 2 ** attempt, LONGEST_RETRY_MS);
 
 interface Waiting {
@@ -46,6 +57,7 @@ export class StudioConnection {
   private current: StudioSnapshot = { connection: { status: "connecting" }, collection: null, readError: null };
   private readonly listeners = new Set<() => void>();
   private readonly waiting = new Map<string, Waiting>();
+  private readonly runListeners = new Set<RunFrameListener>();
   private socket: WebSocket | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private attempt = 0;
@@ -96,6 +108,43 @@ export class StudioConnection {
   /** Asks the backend to write an agent's extra prompt file, given the version of the file the page read. */
   writeExtra(fields: { line: string; agent: string; text: string; version: string }): Promise<unknown> {
     return this.request("extra.write", fields);
+  }
+
+  /** Asks the backend what a run of one station would do, without starting it. */
+  previewRun(fields: PreviewFields): Promise<RunPreviewResult> {
+    return this.request("run.preview", fields) as Promise<RunPreviewResult>;
+  }
+
+  /** Asks the backend to start a run of one station. */
+  startRun(fields: StartFields): Promise<RunStartResult> {
+    return this.request("run.start", fields) as Promise<RunStartResult>;
+  }
+
+  /** Asks the backend for a run's transcript from a line on, and how it ended if it has. */
+  readRun(fields: { run: string; after: number }): Promise<RunReadResult> {
+    return this.request("run.read", fields) as Promise<RunReadResult>;
+  }
+
+  /** Asks the backend for the need values kept for a node's station. */
+  readFixture(fields: { line: string; node: string }): Promise<{ needs: Record<string, string> }> {
+    return this.request("fixture.read", fields) as Promise<{ needs: Record<string, string> }>;
+  }
+
+  /** Asks the backend to keep the need values for a node's station. */
+  writeFixture(fields: { line: string; node: string; needs: Record<string, string> }): Promise<unknown> {
+    return this.request("fixture.write", fields);
+  }
+
+  /** Asks the backend to cancel a run it started. */
+  cancelRun(run: string): Promise<unknown> {
+    return this.request("run.cancel", { run });
+  }
+
+  /** Hands every run frame that arrives to the listener until the returned function is called. */
+  onRunFrame(listener: RunFrameListener): () => void {
+    this.runListeners.add(listener);
+
+    return () => this.runListeners.delete(listener);
   }
 
   private change(part: Partial<StudioSnapshot>): void {
@@ -159,9 +208,8 @@ export class StudioConnection {
     void this.readCollection();
   }
 
-  // Run frames are for the Run tab, which does not listen yet.
   private answer(frame: Exclude<ServerFrame, { type: "hello" | "collection" }>): void {
-    if (isRunFrame(frame)) return;
+    if (isRunFrame(frame)) return this.runListeners.forEach((listener) => listener(frame));
     if (frame.type === "result") return this.settle(frame.id)?.resolve(frame.result);
     if (frame.id === undefined) return this.unreadable(frame.reason);
     this.settle(frame.id)?.reject(new Error(frame.reason));
@@ -263,8 +311,6 @@ function firstIssue({ issues }: ZodError): string {
 
   return issue.message;
 }
-
-type RunFrame = Extract<ServerFrame, { type: "run.output" | "run.ended" }>;
 
 function isRunFrame(frame: ServerFrame): frame is RunFrame {
   return frame.type.startsWith("run.");

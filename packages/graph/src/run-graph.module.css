@@ -110,6 +110,12 @@
   stroke: var(--border);
 }
 
+/* The connector a run took: stronger, in the success colour. */
+.edge.taken {
+  stroke: var(--success);
+  stroke-width: 4;
+}
+
 /* Hover an edge to bring it forward: thicken it  and lift any dimming. */
 .edge:hover {
   stroke-width: 3;

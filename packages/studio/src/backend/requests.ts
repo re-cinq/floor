@@ -9,7 +9,7 @@ import { runPreviewHandler, type RunPreviewRequest } from "./run-preview-request
 import { runCancelHandler, type RunCancelRequest } from "./run-cancel-request.js";
 import { runStartHandler, type RunStartRequest } from "./run-start-request.js";
 import { runReadHandler, type RunReadRequest } from "./run-read-request.js";
-import type { RunRecord } from "../run/run-records.js";
+import type { RunRecord, RunTranscript } from "../run/run-records.js";
 
 export interface StudioContext {
   readCollection(): Promise<CollectionView>;
@@ -20,6 +20,8 @@ export interface StudioContext {
   /** The saved needs of a node's fixture; empty when none was saved. */
   readFixture(line: string, node: string): Promise<Record<string, string>>;
   writeFixture(line: string, node: string, needs: Record<string, string>): Promise<void>;
+  readRun(run: string): Promise<RunTranscript | undefined>;
+  writeRun(run: string, transcript: RunTranscript): Promise<void>;
   /** The record of each run started by `run.start`, by run id; kept after the run ends. */
   runs: Map<string, RunRecord>;
   /** Environment laid over the studio's own for each started process. */

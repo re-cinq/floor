@@ -1,5 +1,5 @@
 // The sink (docs/assembly_run_storage.md, "The agent kind runs on the ai-agent-subsystem"): each event the pod's supervisor posts becomes a record, and the one that ends the visit becomes its report.
-import { readAgentVerdict } from "@re-cinq/floor-assembly-lines";
+import { readAgentVerdict, requiredVerdict } from "@re-cinq/floor-assembly-lines";
 import { enforce, type RecordKind, type Report, type StationBody, type Visit } from "@floor/store";
 import type { Deps } from "../deps.js";
 import { pricedBy } from "./pricing.js";
@@ -7,7 +7,6 @@ import { peel, readSinkEvent, spokenIn, type SinkEvent } from "./sink-event.js";
 
 const MAX_ERROR_CHARS = 300;
 const MAX_NOTES = 200;
-const UNSPOKEN_RESULT = "the agent ended without a LORE_NODE_RESULT or REVIEW_RESULT line, and its station requires one";
 
 type SinkDeps = Pick<Deps, "runs" | "records" | "blobs" | "events" | "definitions" | "now">;
 type Ended = Extract<SinkEvent, { kind: "ended" }>;
@@ -69,11 +68,12 @@ export class Sink {
 
     enforce(station, `visit "${visit.id}" has no station to read outcomes from`);
     const verdict = readAgentVerdict(said, station.body.outcomes);
+    const required = requiredVerdict(verdict, station.body);
     const produced = { ...declaredValues(station.body, verdict.produced), ...(await this.allFilesOf(visit.id, station.body, said)) };
     const unproduced = verdict.spoke === "marker" ? [] : missingFiles(station.body, produced);
 
     if (unproduced.length > 0) return { outcome: "failed", error: silentFailure(unproduced) };
-    if (station.body.resultRequired && verdict.spoke === "nothing") return { outcome: "failed", error: UNSPOKEN_RESULT };
+    if (required !== verdict) return { outcome: required.outcome, error: required.error };
 
     return { outcome: verdict.outcome, produced, error: verdict.error };
   }

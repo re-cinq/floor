@@ -2,7 +2,7 @@ import { useId, useState, type ReactNode } from "react";
 
 import type { SettingsSection } from "./settings-sections";
 
-export type InspectorTab = "Station" | "Events" | "Prompt" | SettingsSection;
+export type InspectorTab = "Station" | "Events" | "Prompt" | "Run" | SettingsSection;
 
 /** The tab the address names and how a press records a new one there. */
 export interface TabChoice {

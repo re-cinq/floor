@@ -44,6 +44,8 @@ export interface RunGraphViewProps {
   compactStops?: boolean;
   /** Fades the stations and lines off the main line. */
   mainPathOnly?: boolean;
+  /** The connector to draw as the one that was taken. */
+  takenEdge?: { from: string; to: string; on: string };
 }
 
 // The graph: laid out by ELK, then fitted to the panel by the viewport. Until ELK resolves, the panel and legend show with an empty canvas.
@@ -88,7 +90,7 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               name={view.definition.name}
               exit={view.definition.exit}
               onSelectNode={view.onSelectNode} onSelectLine={view.onSelectLine} selectedLineKey={view.selectedLineKey}
-              selectedNodeId={view.selectedNodeId}
+              selectedNodeId={view.selectedNodeId} takenEdge={view.takenEdge}
               describedNode={describedNodeOf(tooltip)}
               lit={lit}
               unreachable={unreachable} mainPath={mainPath}
@@ -194,6 +196,7 @@ interface GraphSvgProps {
   /** Stations no start leads to. */
   unreachable: ReadonlySet<string>;
   onHover: (nodeId: string | null) => void;
+  takenEdge: RunGraphViewProps["takenEdge"];
 }
 
 /** The graph itself. A node nothing leaves is terminal, which the plain label renders differently. `role="img"` with a `<title>`: the drawing is one picture to a screen reader, the nodes inside it focusable buttons. */
@@ -223,11 +226,11 @@ function GraphSvg(props: GraphSvgProps) {
 }
 
 /** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine }: GraphSvgProps) {
+function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine, takenEdge }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} />
+    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} taken={isTaken(edge, takenEdge)} />
   ));
 }
 
@@ -237,6 +240,10 @@ function GraphEdgeLabels({ laid, selectedNodeId, selectedLineKey, lit, mainPath,
   return edges.map((edge) => (
     <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} />
   ));
+}
+
+function isTaken(edge: LaidOutEdge, takenEdge: RunGraphViewProps["takenEdge"]): boolean {
+  return takenEdge !== undefined && edgeKeyOf(edge) === edgeKeyOf(takenEdge);
 }
 
 function edgeProps(edge: LaidOutEdge, laid: Drawing, selectedNodeId: GraphSvgProps["selectedNodeId"]) {

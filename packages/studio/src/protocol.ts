@@ -104,7 +104,12 @@ export const refusedFrame = z.strictObject({ id: requestId.optional(), type: z.l
 export const collectionFrame = z.strictObject({ type: z.literal("collection"), collection: collectionViewSchema });
 
 export const runOutputFrame = z.strictObject({ type: z.literal("run.output"), run: z.string(), line: z.strictObject({ stream: z.enum(["stdout", "stderr"]), text: z.string() }) });
-export const runEndedFrame = z.strictObject({ type: z.literal("run.ended"), run: z.string(), exitCode: z.number().nullable() });
+export const runEndedFrame = z.strictObject({ type: z.literal("run.ended"), run: z.string(),
+  exitCode: z.number().nullable(),
+  outcome: z.string().optional(),
+  produced: z.array(z.strictObject({ name: z.string(), found: z.boolean() })).optional(),
+  edge: z.strictObject({ from: z.string(), to: z.string(), on: z.string(), iterationMax: z.number().optional() }).optional(),
+});
 
 export const serverFrameSchema = z.discriminatedUnion("type", [helloFrame, resultFrame, refusedFrame, collectionFrame, runOutputFrame, runEndedFrame]);
 

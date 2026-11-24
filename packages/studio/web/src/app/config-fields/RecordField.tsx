@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { addLabel } from "./item-noun";
 import FieldFrame from "./FieldFrame";
 import RemoveButton from "./RemoveButton";
 import type { FieldProps } from "./field-props";
 
 type Row = [string, string];
 
-export default function RecordField({ name, value, help, onChange }: FieldProps) {
+export default function RecordField({ name, value, help, caption, onChange }: FieldProps) {
   const [rows, setRows] = useState<Row[]>(() => Object.entries((value ?? {}) as Record<string, string>));
 
   const change = (next: Row[]) => {
@@ -28,7 +29,7 @@ export default function RecordField({ name, value, help, onChange }: FieldProps)
             </div>
           ))}
           <button type="button" onClick={() => change([...rows, ["", ""]])}>
-            Add to {name}
+            {addLabel(name, caption)}
           </button>
         </>
       )}

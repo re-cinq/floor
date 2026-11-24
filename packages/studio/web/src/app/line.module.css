@@ -464,6 +464,36 @@
   font-size: var(--fs-xs);
 }
 
+/* The Run tab: permission radios sit beside their words; prompt, command and transcript read as text boxes. */
+.inspector [role="tabpanel"] [role="radiogroup"] label {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  width: auto;
+}
+
+.inspector [role="tabpanel"] [role="radiogroup"] input {
+  width: auto;
+}
+
+.inspector [role="tabpanel"] section[aria-label="Rendered prompt"],
+.inspector [role="tabpanel"] section[aria-label="Command"],
+.inspector [role="tabpanel"] section[aria-label="Transcript"] {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inspector [role="tabpanel"] section[aria-label="Blockers"] {
+  color: var(--danger);
+}
+
 .inspector li {
   overflow-wrap: anywhere;
 }

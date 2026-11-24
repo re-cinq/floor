@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Property } from "./schema-property";
 import { fieldsShownFor } from "./transport-fields";
+import { nounOf } from "./item-noun";
 import { schemaProps, withEntry, type FieldProps } from "./field-props";
 
 type Card = Record<string, unknown>;
@@ -58,8 +59,4 @@ function CardHeader({ noun, card, position, onRemove }: CardHeaderProps) {
       </button>
     </div>
   );
-}
-
-function nounOf(listName: string) {
-  return (listName.split(/[\s_]/).pop() ?? listName).replace(/s$/, "");
 }

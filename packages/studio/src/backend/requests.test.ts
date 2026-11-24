@@ -5,7 +5,7 @@ import { REQUEST_TYPES } from "../protocol.js";
 import { HANDLERS, answerFrame } from "./requests.js";
 
 const VIEW = collectionView(WORKER_COLLECTION, []);
-const CONTEXT = { readCollection: async () => VIEW, writeAgent: async () => undefined, writeExtra: async () => undefined, readFixture: async () => ({}), writeFixture: async () => undefined, runs: new Map(), broadcast: () => undefined };
+const CONTEXT = { readCollection: async () => VIEW, writeAgent: async () => undefined, writeExtra: async () => undefined, readFixture: async () => ({}), writeFixture: async () => undefined, readRun: async () => undefined, writeRun: async () => undefined, runs: new Map(), broadcast: () => undefined };
 
 describe("HANDLERS", () => {
   it("holds one handler for each request type of the protocol", () => {

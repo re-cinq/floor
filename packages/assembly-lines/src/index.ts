@@ -12,7 +12,7 @@ export {
 } from "./transition.js";
 
 export { definitionHash } from "./definition-hash.js";
-export { readAgentVerdict, type AgentVerdict } from "./agent-verdict.js";
+export { readAgentVerdict, requiredVerdict, type AgentVerdict } from "./agent-verdict.js";
 
 export { Refusal, enforce } from "./refusal.js";
 export { validateLine, type KnownDefinitions } from "./line-validation.js";

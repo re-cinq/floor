@@ -15,6 +15,7 @@ import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
 import { editedAgentText, textVersion, withOneNewline, type AgentEdit } from "./agent-file-text.js";
 import { environmentOf } from "./environment-usage.js";
 import { fixtureFilesIn } from "./fixture-files.js";
+import { runFilesIn } from "./run-files.js";
 import { answerFrame, type StudioContext } from "./requests.js";
 import { isSkillPath, skillNamesIn } from "./skill-names.js";
 import { watchCollection } from "./watcher.js";
@@ -63,7 +64,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     await writeFile(path, text);
   };
 
-  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), runs: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)) };
+  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), ...runFilesIn(dir), runs: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)) };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {

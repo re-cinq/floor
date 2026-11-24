@@ -1,4 +1,5 @@
 // What a run of one agent station would do, before it is started.
+import { isAbsolute } from "node:path";
 import type { StationBody } from "@re-cinq/floor-contracts";
 import { agentCommand, runnableVendors, type AgentCommandInput, type AgentCommandSettings } from "./agent-command.js";
 import { renderPrompt } from "./render-prompt.js";
@@ -36,7 +37,11 @@ export function runPreview({ station, prompt, settings, fixture, folder, permiss
   const unrunnable = runnableVendors.includes(vendor) ? [] : [unrunnableBlocker(settings.model ?? "", vendor)];
   const command = unrunnable.length ? [] : agentCommand({ vendor, settings: commandSettingsOf(settings), prompt: rendered, permission });
 
-  return { prompt: rendered, command, copies, links, blockers: [...missing.map((name) => `"${name}" has no value`), ...unrunnable] };
+  return { prompt: rendered, command, copies, links, blockers: [...missing.map((name) => `"${name}" has no value`), ...unrunnable, ...relativeFolderBlockers(folder)] };
+}
+
+function relativeFolderBlockers(folder: string): string[] {
+  return isAbsolute(folder) ? [] : [`the folder must be an absolute path: ${folder}`];
 }
 
 function unrunnableBlocker(model: string, vendor: string): string {

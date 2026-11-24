@@ -286,6 +286,12 @@ describe("RunGraphView station tooltip", () => {
     });
   });
 
+  it("marks only the review to done line on failed as taken when takenEdge is review to done on failed", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} takenEdge={{ from: "review", to: "done", on: "failed" }} />);
+
+    expect(["review|done|success", "review|done|failed"].map((key) => edgeEl(container, key).getAttribute("data-taken"))).toEqual([null, "true"]);
+  });
+
   it("hides the tooltip once the pointer leaves review", async () => {
     const { container } = await renderGraph(<RunGraphView definition={described} />);
 

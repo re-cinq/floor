@@ -15,6 +15,7 @@ export interface AgentVerdict {
 const MARKER = /^`*LORE_NODE_RESULT:[ \t]*(.*?)`*[ \t]*$/gm;
 const REVIEW_VERDICT = /REVIEW_RESULT:\s*(APPROVED|CHANGES_REQUESTED)/i;
 const MAX_ERROR_CHARS = 300;
+export const UNSPOKEN_RESULT = "the agent ended without a LORE_NODE_RESULT or REVIEW_RESULT line, and its station requires one";
 
 export function readAgentVerdict(output: string | undefined, outcomes: readonly string[]): AgentVerdict {
   const payload = lastMarkerPayload(output ?? "");
@@ -22,6 +23,12 @@ export function readAgentVerdict(output: string | undefined, outcomes: readonly 
   if (payload === null) return reviewVerdict(output ?? "");
 
   return verdictFromPayload(payload, [...outcomes, "failed"]) ?? malformed(payload);
+}
+
+export function requiredVerdict(verdict: AgentVerdict, station: { resultRequired?: boolean }): AgentVerdict {
+  if (!station.resultRequired || verdict.spoke !== "nothing") return verdict;
+
+  return { ...verdict, outcome: "failed", error: UNSPOKEN_RESULT };
 }
 
 // Line-start and last-wins together make the marker safe to discuss: quoting it mid-sentence decides nothing, and printing it after explaining it is read by its final word.
