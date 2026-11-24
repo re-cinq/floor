@@ -1,7 +1,7 @@
 // One step in the graph: the box, its type mark, its badges, selection, and its title over its kind — the aria-label says the same in words.
 import type { KeyboardEvent } from "react";
 import type { LaidOutNode } from "./elk-layout";
-import type { VisibleNode } from "./graph-view-model";
+import type { ConnectorTone, VisibleNode } from "./graph-view-model";
 import NodeBadges from "./NodeBadges";
 import NodeTitle from "./NodeTitle";
 import TypeGlyph, { FAMILY_CLASS } from "./TypeGlyph";
@@ -10,7 +10,7 @@ import { nodeAriaLabel } from "./node-aria-label";
 import { typeFamilyOf } from "./node-type-family";
 import { NODE_WIDTH } from "./run-graph-geometry";
 import { nodeTitle } from "./node-tooltip";
-import { classes } from "./run-graph-tone-classes";
+import { classes, portFillClass } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
 
 export interface GraphNodeProps {
@@ -23,10 +23,14 @@ export interface GraphNodeProps {
   onSelect?: (nodeId: string) => void;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
+  /** The tone of each out-port's line, by edge key; a port with no line draws neutral. */
+  toneByEdge?: ReadonlyMap<string, ConnectorTone>;
 }
 
 // The type mark's centre from the box's top-left: inside the corner, clear of the text to its right.
 const GLYPH_INSET = 11;
+
+const NO_TONES: ReadonlyMap<string, ConnectorTone> = new Map();
 
 export default function GraphNode(props: GraphNodeProps) {
   const { node, model, height, isTerminal, selected = false, onSelect } = props;
@@ -48,8 +52,27 @@ export default function GraphNode(props: GraphNodeProps) {
       <TypeGlyph family={family} cx={leftEdge + GLYPH_INSET} cy={top + GLYPH_INSET} />
       <NodeTitle title={title} kind={family} centerX={node.x} centerY={node.y} />
       <NodeBadges badges={badgesOf(model)} rightEdge={leftEdge + NODE_WIDTH} top={top} />
+      <NodePorts ports={node.ports} toneByEdge={props.toneByEdge ?? NO_TONES} />
     </g>
   );
+}
+
+function NodePorts({ ports, toneByEdge }: { ports: LaidOutNode["ports"]; toneByEdge: ReadonlyMap<string, ConnectorTone> }) {
+  return ports.map((port) => {
+    const tone = port.side === "in" ? "in" : (toneByEdge.get(port.edge) ?? "neutral");
+
+    return (
+      <circle
+        key={`${port.edge}:${port.side}`}
+        data-port={`${port.edge}:${port.side}`}
+        data-tone={tone}
+        className={portFillClass(tone)}
+        cx={port.x}
+        cy={port.y}
+        r={4}
+      />
+    );
+  });
 }
 
 /** The box's top-left, from the layout's CENTRE point. The layout places node centres so edges can aim at them; SVG rects are drawn from a corner. */

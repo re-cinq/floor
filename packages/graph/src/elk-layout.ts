@@ -1,12 +1,19 @@
 // Runs ELK on a line's graph and maps the result into what the view draws.
-import ELK, { type ElkEdgeSection, type ElkLabel, type ElkNode } from "elkjs/lib/elk.bundled.js";
+import ELK, { type ElkEdgeSection, type ElkLabel, type ElkNode, type ElkPort } from "elkjs/lib/elk.bundled.js";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { elkGraphOf } from "./elk-graph";
 
 export type Box = { minX: number; minY: number; maxX: number; maxY: number };
 
 export interface ElkLayout {
-  nodes: { id: string; x: number; y: number; width: number; height: number }[];
+  nodes: {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    ports: { edge: string; side: "in" | "out"; x: number; y: number }[];
+  }[];
   edges: {
     from: string;
     to: string;
@@ -35,13 +42,25 @@ export async function layoutWithElk(definition: AssemblyLineDefinition, size?: {
 }
 
 function nodesOf(laidOut: ElkNode): LaidOutNode[] {
-  return (laidOut.children ?? []).map(({ id, x: left = 0, y: top = 0, width = 0, height = 0 }) => ({
+  return (laidOut.children ?? []).map(({ id, x: left = 0, y: top = 0, width = 0, height = 0, ports = [] }) => ({
     id,
     x: left + width / 2,
     y: top + height / 2,
     width,
     height,
+    ports: ports.map((port) => portOf(port, left, top)),
   }));
+}
+
+function portOf({ id, x: portLeft = 0, y: portTop = 0, width = 0, height = 0 }: ElkPort, left: number, top: number): LaidOutNode["ports"][number] {
+  const separator = id.lastIndexOf(":");
+
+  return {
+    edge: id.slice(0, separator),
+    side: id.slice(separator + 1) === "in" ? "in" : "out",
+    x: left + portLeft + width / 2,
+    y: top + portTop + height / 2,
+  };
 }
 
 function edgesOf(laidOut: ElkNode, definition: AssemblyLineDefinition, nodes: LaidOutNode[]): LaidOutEdge[] {
