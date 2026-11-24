@@ -72,4 +72,12 @@ describe("RunGraphView with compactStops", () => {
 
     expect(nodeEl(container, "push").getAttribute("data-shape")).toEqual("stop");
   });
+
+  it("draws push as a card after pressing Compact stops twice", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} />);
+    fireEvent.click(screen.getByRole("button", { name: "Compact stops" }));
+    fireEvent.click(screen.getByRole("button", { name: "Compact stops" }));
+
+    expect(nodeEl(container, "push").getAttribute("data-shape")).toEqual("card");
+  });
 });
