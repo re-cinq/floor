@@ -17,7 +17,7 @@ describe("useElkLayout", () => {
     const lineA = markerLine({ entry: "a", exit: "a", nodeIds: ["a"], edges: [] });
     const lineB = markerLine({ entry: "b", exit: "b", nodeIds: ["b"], edges: [] });
     const layoutOf = (id: string): ElkLayout => ({
-      nodes: [{ id, x: 0, y: 0, width: 1, height: 1 }],
+      nodes: [{ id, x: 0, y: 0, width: 1, height: 1, ports: [] }],
       edges: [],
       contentBox: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
     });

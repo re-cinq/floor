@@ -17,7 +17,7 @@ describe("layoutWithElk", () => {
     const { nodes, edges } = await layoutWithElk(singleStationLine);
 
     expect({ nodes, edges }).toEqual({
-      nodes: [{ id: "review", x: 82, y: 42, width: 140, height: 60 }],
+      nodes: [{ id: "review", x: 82, y: 42, width: 140, height: 60, ports: [] }],
       edges: [],
     });
   });
@@ -63,6 +63,22 @@ describe("layoutWithElk", () => {
     const { minX, minY, maxX, maxY } = edges[0].labelBox;
 
     expect({ width: maxX - minX, height: maxY - minY }).toEqual({ width: 58, height: 16 });
+  });
+
+  it("returns one out port on write's right edge at the path start for the write -> done success line", async () => {
+    const { nodes, edges } = await layoutWithElk(twoStationLine);
+    const write = nodes.find((node) => node.id === "write")!;
+    const [startX, startY] = straightSegmentOf(edges[0].d);
+    const rightEdge = write.x + write.width / 2;
+
+    expect(
+      write.ports.map((port) => ({
+        edge: port.edge,
+        side: port.side,
+        nearRightEdge: Math.abs(port.x - rightEdge) <= 5 && Math.abs(port.x - startX) <= 5,
+        onPathStart: port.y === startY,
+      })),
+    ).toEqual([{ edge: "write|done|success", side: "out", nearRightEdge: true, onPathStart: true }]);
   });
 
   it("returns kind self for the review -> review failed edge", async () => {

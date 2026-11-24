@@ -28,3 +28,15 @@ export function edgeStrokeClass(tone: ConnectorTone): string {
 export function textFillClass(tone: ConnectorTone): string {
   return TEXT_FILL[tone];
 }
+
+const PORT_FILL: Record<ConnectorTone | "in", string> = {
+  ok: styles.portOk,
+  warn: styles.portWarn,
+  err: styles.portErr,
+  neutral: styles.portNeutral,
+  in: styles.portIn,
+};
+
+export function portFillClass(tone: ConnectorTone | "in"): string {
+  return PORT_FILL[tone];
+}

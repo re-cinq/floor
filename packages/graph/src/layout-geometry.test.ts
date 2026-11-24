@@ -5,7 +5,7 @@ import { linesOverLabels, linesThroughStations, tinyTurns } from "./layout-geome
 type Station = ElkLayout["nodes"][number];
 type Edge = ElkLayout["edges"][number];
 
-const stationAt = (id: string, across: number): Station => ({ id, x: across, y: 50, width: 140, height: 60 });
+const stationAt = (id: string, across: number): Station => ({ id, x: across, y: 50, width: 140, height: 60, ports: [] });
 
 const edgeAt = ({ from, to, on, d, labelBox }: Pick<Edge, "from" | "to" | "on" | "d" | "labelBox">): Edge => ({
   from,

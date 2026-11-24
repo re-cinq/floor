@@ -152,6 +152,23 @@ describe("RunGraphView", () => {
 
     expect(within(await screen.findByRole("group", { name: "Graph viewport" })).getByRole("group", { name: /^review,/ })).toBeTruthy();
   });
+
+  it("draws three toned out-ports on review and one grey in-port on done for code review", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    const portsOf = (id: string) =>
+      [...nodeEl(container, id).querySelectorAll("[data-port]")]
+        .map((port) => ({ port: port.getAttribute("data-port"), tone: port.getAttribute("data-tone") }))
+        .sort((left, right) => String(left.port).localeCompare(String(right.port)));
+
+    expect({ review: portsOf("review"), done: portsOf("done") }).toEqual({
+      review: [
+        { port: "review|done|changes_requested:out", tone: "warn" },
+        { port: "review|done|failed:out", tone: "err" },
+        { port: "review|done|success:out", tone: "ok" },
+      ],
+      done: [{ port: "review|done|success:in", tone: "in" }],
+    });
+  });
 });
 
 describe("RunGraphView selection", () => {

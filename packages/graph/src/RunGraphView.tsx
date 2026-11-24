@@ -213,6 +213,7 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit }:
         height={NODE_HEIGHT}
         isTerminal={!laid.nodesWithOutgoing.has(node.id)}
         selected={node.id === selectedNodeId}
+        toneByEdge={laid.toneByEdge}
         onSelect={onSelectNode}
         describedBy={describedNode?.nodeId === node.id ? describedNode.tooltipId : undefined}
       />
@@ -237,6 +238,7 @@ function graphLookups({ nodes, edges }: VisibleGraph) {
   return {
     nodeById: new Map(nodes.map((node) => [node.id, node])),
     edgeByKey: new Map(edges.map((edge) => [edgeKeyOf(edge), edge])),
+    toneByEdge: new Map(edges.map((edge) => [edgeKeyOf(edge), edge.tone])),
     nodesWithOutgoing: new Set(edges.map((edge) => edge.from)),
   };
 }

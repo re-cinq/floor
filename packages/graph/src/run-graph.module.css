@@ -302,3 +302,18 @@
 .exitCore {
   fill: var(--text);
 }
+
+/* A port sits on the node's border in its line's colour; an in-port is grey. */
+.portOk {
+  fill: var(--success);
+}
+.portWarn {
+  fill: var(--warning);
+}
+.portErr {
+  fill: var(--danger);
+}
+.portNeutral,
+.portIn {
+  fill: var(--text-muted);
+}
