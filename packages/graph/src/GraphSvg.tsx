@@ -10,6 +10,7 @@ import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
 import { markerOf } from "./graph-markers";
 import type { KeyboardCursor } from "./use-keyboard-cursor";
 import GraphNode from "./GraphNode";
+import type { RemovedStation } from "./metro/removed-stations";
 import { NODE_HEIGHT } from "./run-graph-geometry";
 import styles from "./run-graph.module.css";
 
@@ -33,6 +34,8 @@ export interface LineMarks {
   moved: ReadonlySet<string>;
   /** Where each node was, relative to where the latest layout put it. */
   offsets: ReadonlyMap<string, NodeOffset>;
+  /** Stations the latest layout dropped, drawn fading out where they stood. */
+  removed: readonly RemovedStation[];
   /** The lines the run took (undefined without a run). */
   taken: ReadonlyMap<string, number> | undefined;
   /** The one connector a station run took, marked when there is no run overlay. */
@@ -163,10 +166,23 @@ function emphasisOf(
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
 function GraphNodes(props: GraphSvgProps) {
   const { nodes } = props.laid.layout;
+  const { removed } = props.marks;
 
-  return nodes.map((node) => (
-    <GraphStation key={node.id} node={node} {...props} />
-  ));
+  return (
+    <>
+      {nodes.map((node) => (
+        <GraphStation key={node.id} node={node} {...props} />
+      ))}
+      {removed.map((station) => (
+        <RemovedStationGhost key={station.node.id} {...station} />
+      ))}
+    </>
+  );
+}
+
+/** A station the latest layout dropped, fading out where it stood. */
+function RemovedStationGhost({ node, model }: RemovedStation) {
+  return <GraphNode node={node} model={model} height={NODE_HEIGHT} isTerminal={false} removed />;
 }
 
 function GraphStation({

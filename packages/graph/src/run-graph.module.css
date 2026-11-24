@@ -417,17 +417,28 @@ text[data-selected="true"] {
     filter: drop-shadow(0 0 6px var(--accent));
   }
 }
+@keyframes changeFade {
+  to {
+    opacity: 0;
+  }
+}
 [data-change="added"] {
   animation: changeFlash 1.2s ease-out;
 }
 [data-change="moved"] {
   transition: transform 400ms ease;
 }
+
+[data-change="removed"] {
+  animation: changeFade 300ms ease-out forwards;
+  pointer-events: none;
+}
 .edge {
   transition: d 400ms;
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-change="added"] {
+  [data-change="added"],
+  [data-change="removed"] {
     animation: none;
   }
   [data-change="moved"] {

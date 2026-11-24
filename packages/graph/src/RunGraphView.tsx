@@ -240,7 +240,7 @@ function useStopsLayout(
 
   return {
     elkLayout,
-    changes: useLayoutChanges(elkLayout),
+    changes: useLayoutChanges(elkLayout, graph),
     stops,
     compactStops,
     toggleCompactStops,

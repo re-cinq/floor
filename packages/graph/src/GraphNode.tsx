@@ -39,6 +39,8 @@ export interface GraphNodeProps {
   added?: boolean;
   moved?: boolean;
   offset?: NodeOffset;
+  /** Dropped by the latest layout; fading out and out of reach. */
+  removed?: boolean;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
   /** Whether the run came here (undefined without a run). */
@@ -131,8 +133,10 @@ function runAttrsOf({
   };
 }
 
-function changeAttrOf({ added, moved }: Pick<GraphNodeProps, "added" | "moved">) {
-  return { "data-change": (added && "added") || (moved && "moved") || undefined };
+function changeAttrOf({ added, moved, removed }: Pick<GraphNodeProps, "added" | "moved" | "removed">) {
+  if (removed) return { "data-change": "removed", "aria-hidden": true };
+
+  return { "data-change": (added && "added") || (moved && "moved") || undefined, "aria-hidden": undefined };
 }
 
 function shapeOf(

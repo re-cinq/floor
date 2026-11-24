@@ -13,6 +13,12 @@ function addedKeys(container: HTMLElement) {
   return added.sort();
 }
 
+function drawnNodeIds(container: HTMLElement) {
+  const nodes = [...container.querySelectorAll("[data-node]")].map((element) => element.getAttribute("data-node"));
+
+  return nodes.sort();
+}
+
 describe("RunGraphView change marking", () => {
   it("marks b, a|b|success and b|done|success as added when b is inserted between a and done", async () => {
     const before = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
@@ -165,5 +171,48 @@ describe("RunGraphView change marking", () => {
     const a = container.querySelector<HTMLElement>('[data-node="a"]');
 
     expect({ change: a?.getAttribute("data-change"), transform: a?.style.transform }).toEqual({ change: null, transform: "" });
+  });
+
+  it("keeps b drawn as removed when b is dropped from a to b to done", async () => {
+    const before = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+      ],
+    });
+    const after = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={before} />);
+    rerender(<RunGraphView definition={after} />);
+    await waitFor(() => {
+      if (!container.querySelector("[data-edge=\"a|done|success\"]")) throw new Error("a to done not drawn yet");
+    });
+
+    expect(container.querySelector("[data-node=\"b\"]")?.getAttribute("data-change")).toBe("removed");
+  });
+
+  it("drops b from the drawing once its fade is over when b is removed from a to b to done", async () => {
+    const before = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+      ],
+    });
+    const after = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={before} />);
+    rerender(<RunGraphView definition={after} />);
+    await waitFor(() => {
+      if (!container.querySelector("[data-edge=\"a|done|success\"]")) throw new Error("a to done not drawn yet");
+    });
+    await waitFor(() => {
+      if (container.querySelector("[data-node=\"b\"]")) throw new Error("b still drawn");
+    });
+
+    expect(drawnNodeIds(container)).toEqual(["a", "done"]);
   });
 });
