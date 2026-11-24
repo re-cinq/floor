@@ -30,4 +30,20 @@ describe("visitedPartOf", () => {
       edges: ["a|done|success", "start|a|always"],
     });
   });
+
+  it("sets exit to an empty string when the run never reached done", () => {
+    const definition = markerLine({
+      entry: "start",
+      exit: "done",
+      nodeIds: ["start", "a", "done"],
+      edges: [
+        ["start", "a", "always"],
+        ["a", "done", "success"],
+      ],
+    });
+
+    const { exit } = visitedPartOf(definition, [{ nodeId: "a", iteration: 1, outcome: "failed", open: false }]);
+
+    expect(exit).toEqual("");
+  });
 });

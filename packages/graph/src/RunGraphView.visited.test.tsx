@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import RunGraphView from "./RunGraphView";
 import { markerLine } from "./metro/line.fixtures";
 import { renderGraph } from "./run-graph.test-helpers";
@@ -62,5 +62,17 @@ describe("RunGraphView visited-only drawing", () => {
       nodes: ["a", "done", "fix"],
       edges: ["a|done|success", "a|fix|failed", "fix|a|always"],
     });
+  });
+
+  it("offers no Whole line button when no run is passed", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "done"],
+      edges: [["a", "done", "success"]],
+    });
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} />);
+
+    expect(within(container).queryByRole("button", { name: "Whole line" })).toBeNull();
   });
 });
