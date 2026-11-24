@@ -60,13 +60,13 @@ Each entry of `prices` is the price of one model, by its name.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `skills` | list of string | no | Names of the skills the agent is given. |
-| `skills_source` | URL | no | Where the pod fetches each named skill and the agent's settings. Defaults to the floor's own `/skills`, which serves no skills. |
+| `skills_source` | URL | no | The address the pod downloads the agent's skills from, usually the host's skills service. Without it the pod asks the floor, which has no skills to give. |
 | `mcp_servers` | list of object | no | The MCP servers the agent can call. |
 | `disallowed_tools` | list of string | no | Tools the agent may not use. |
 | `env` | map of string | no | Environment variables of the agent, as plain values. |
-| `permission_mode` | `auto` or `bypass` | no | How the agent asks before it acts. Defaults to `bypass`. |
+| `permission_mode` | `auto` or `bypass` | no | `bypass` (the default) lets the agent run any tool without asking. `auto` keeps the CLI's own permission checks, so in the pod, where nobody can answer, an action that needs approval is refused. |
 | `max_turns` | integer above 0 | no | The most turns the agent takes in one visit. |
-| `model_secret_key` | string | no | The key of `agent-secrets` that holds the model's API key. |
+| `model_secret_key` | string | no | Which key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holds the model's API key. Without it, the key the install sets for the model's family is used. |
 | `pod_resources` | object | no | The resources of the agent's container. With none, the cluster's default applies. |
 
 <!-- /generated -->
@@ -82,9 +82,9 @@ An entry of `mcp_servers`:
 | `command` | string | no | `stdio` only, and required there. The command that starts the server. |
 | `args` | list of string | no | `stdio` only. The command's arguments. |
 | `url` | URL | no | `http` and `sse` only, and required there. The server's address. |
-| `headers_secret` | string | no | The key of `agent-secrets` that holds one whole header line, such as `Authorization: Bearer <token>`. |
-| `headers` | list of object | no | `http` and `sse` only. Headers sent to the server, each valued from `agent-secrets`. |
-| `env` | list of object | no | `stdio` only. Environment variables of the server's process, each valued from `agent-secrets`. |
+| `headers_secret` | string | no | The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holding one whole header line, such as `Authorization: Bearer <token>`. |
+| `headers` | list of object | no | `http` and `sse` only. Headers sent to the server, each taking its value from a key in `agent-secrets`. |
+| `env` | list of object | no | `stdio` only. Environment variables of the server's process, each taking its value from a key in `agent-secrets`. |
 
 <!-- /generated -->
 
@@ -97,7 +97,7 @@ An entry of `headers` or of a server's `env`:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `name` | string | yes | The name of the header or environment variable. |
-| `ref` | string | yes | The key of the cluster's `agent-secrets` that holds its value. |
+| `ref` | string | yes | The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, whose value it gets. |
 
 <!-- /generated -->
 

@@ -23,7 +23,7 @@ describe("runPreview", () => {
       ),
     ).toMatchObject({
       prompt: "Fix ENG-1.",
-      command: ["claude", "--print", "--verbose", "--output-format", "stream-json", "--model", "claude-sonnet-5-5", "--permission-mode", "acceptEdits", "--max-turns", "30", "--", "Fix ENG-1."],
+      command: ["claude", "--print", "--verbose", "--output-format", "stream-json", "--setting-sources", "project", "--model", "claude-sonnet-5-5", "--permission-mode", "acceptEdits", "--max-turns", "30", "--", "Fix ENG-1."],
       blockers: [],
     });
   });

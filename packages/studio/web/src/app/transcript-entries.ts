@@ -12,8 +12,22 @@ const MS_PER_SECOND = 1000;
 const COST_DIGITS = 4;
 const SUMMARY_KEYS = ["file_path", "command", "pattern", "path", "url"];
 
+const FINAL_ANSWER_POINTER: TranscriptEntry = { kind: "tool", text: "Final answer, shown under Answer" };
+
+/** The final answer the result event repeats is shown once, under Answer: the agent's last message, when it is that answer, becomes a pointer to it. */
 export function transcriptEntries(lines: readonly RunOutput[]): TranscriptEntry[] {
-  return lines.flatMap(entriesOfLine);
+  const finals = new Set(lines.flatMap((line) => finalTextOf(line.text)));
+  const entries = lines.flatMap(entriesOfLine);
+  const lastSaid = entries.findLastIndex((entry) => entry.kind === "said");
+  const isFinal = lastSaid >= 0 && finals.has(entries[lastSaid].text);
+
+  return entries.map((entry, index) => (isFinal && index === lastSaid ? FINAL_ANSWER_POINTER : entry));
+}
+
+function finalTextOf(text: string): string[] {
+  const event = parsedEvent(text);
+
+  return event?.type === "result" && typeof event.result === "string" ? [event.result] : [];
 }
 
 function entriesOfLine(line: RunOutput): TranscriptEntry[] {

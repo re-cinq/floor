@@ -4,7 +4,7 @@ import { z } from "zod";
 // A header or env var the server needs, valued from the key `ref` of the cluster's agent-secrets.
 const secretRef = z.object({
   name: z.string().min(1).describe("The name of the header or environment variable."),
-  ref: z.string().min(1).describe("The key of the cluster's `agent-secrets` that holds its value."),
+  ref: z.string().min(1).describe("The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, whose value it gets."),
 });
 
 // One of the two ways to reach a server, never neither: a process the pod starts, or an address it calls.
@@ -15,9 +15,9 @@ const mcpServer = z
     command: z.string().min(1).describe("`stdio` only, and required there. The command that starts the server.").optional(),
     args: z.array(z.string()).describe("`stdio` only. The command's arguments.").optional(),
     url: z.url().describe("`http` and `sse` only, and required there. The server's address.").optional(),
-    headers_secret: z.string().min(1).describe("The key of `agent-secrets` that holds one whole header line, such as `Authorization: Bearer <token>`.").optional(),
-    headers: z.array(secretRef).describe("`http` and `sse` only. Headers sent to the server, each valued from `agent-secrets`.").optional(),
-    env: z.array(secretRef).describe("`stdio` only. Environment variables of the server's process, each valued from `agent-secrets`.").optional(),
+    headers_secret: z.string().min(1).describe("The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holding one whole header line, such as `Authorization: Bearer <token>`.").optional(),
+    headers: z.array(secretRef).describe("`http` and `sse` only. Headers sent to the server, each taking its value from a key in `agent-secrets`.").optional(),
+    env: z.array(secretRef).describe("`stdio` only. Environment variables of the server's process, each taking its value from a key in `agent-secrets`.").optional(),
   })
   .refine((server) => (server.transport === "stdio" ? Boolean(server.command) : Boolean(server.url)), {
     message: "a stdio server needs a command, any other a url",
@@ -40,13 +40,13 @@ const podResources = z.strictObject({
 
 export const agentConfigSchema = z.looseObject({
   skills: z.array(z.string()).describe("Names of the skills the agent is given.").optional(),
-  skills_source: z.url().describe("Where the pod fetches each named skill and the agent's settings. Defaults to the floor's own `/skills`, which serves no skills.").optional(),
+  skills_source: z.url().describe("The address the pod downloads the agent's skills from, usually the host's skills service. Without it the pod asks the floor, which has no skills to give.").optional(),
   mcp_servers: z.array(mcpServer).describe("The MCP servers the agent can call.").optional(),
   disallowed_tools: z.array(z.string()).describe("Tools the agent may not use.").optional(),
   env: z.record(z.string(), z.string()).describe("Environment variables of the agent, as plain values.").optional(),
-  permission_mode: z.enum(["auto", "bypass"]).describe("How the agent asks before it acts. Defaults to `bypass`.").optional(),
+  permission_mode: z.enum(["auto", "bypass"]).describe("`bypass` (the default) lets the agent run any tool without asking. `auto` keeps the CLI's own permission checks, so in the pod, where nobody can answer, an action that needs approval is refused.").optional(),
   max_turns: z.number().int().positive().describe("The most turns the agent takes in one visit.").optional(),
-  model_secret_key: z.string().min(1).describe("The key of `agent-secrets` that holds the model's API key.").optional(),
+  model_secret_key: z.string().min(1).describe("Which key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holds the model's API key. Without it, the key the install sets for the model's family is used.").optional(),
   pod_resources: podResources.describe("The resources of the agent's container. With none, the cluster's default applies.").optional(),
 });
 
