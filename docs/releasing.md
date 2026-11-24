@@ -36,7 +36,8 @@ That starts `.github/workflows/publish.yml`:
 2. **The gates run again**, against the tagged commit: every job of `ci.yml`. A tag points at
    whatever its author chose, so a green `main` says nothing about it.
 3. **The image is built and pushed**, **the chart is packaged and pushed**, and **the packages
-   are published to npm**, installable at once.
+   are staged on npm**. A staged version is not installable until a maintainer approves it:
+   see [Approving the npm versions](#approving-the-npm-versions).
 4. **The leftover push deploy runs**, `deploy.yml`, into the cluster the repository variables
    still name, the decommissioned `n8n-cluster`. It is not how the release reaches re:cinq's
    floor: that is a pull request setting `version: 1.2.3` in
@@ -58,31 +59,40 @@ and the license are there, and no test and no source map is.
 
 ## A package's first version
 
-npm publishes from this repository through Trusted Publishing: the workflow trades its OIDC
+npm stages from this repository through Trusted Publishing: the workflow trades its OIDC
 token for a credential that lives for minutes. A trusted publisher is registered on a package,
 and a package that was never published is not there to register it on. So `publish.yml`
-publishes a package with no version on the registry yet with a token instead, and every other
+stages a package with no version on the registry yet with a token instead, and every other
 package the usual way, in `scripts/publish-packages.sh`, which `scripts/publish-packages.test.mjs` covers. Nothing is published by hand.
 
-1. On npmjs.com, create a granular access token that can publish to the `@re-cinq` scope, with
-   a short expiry.
+1. On npmjs.com, create a granular access token with read and write on the `@re-cinq` scope
+   and a short expiry. npm caps a writing token at 90 days.
 2. Add it to the repository as the Actions secret `NPM_BOOTSTRAP_TOKEN`.
-3. Push the tag. The workflow publishes the new package with the token, and the rest through
+3. Push the tag. The workflow stages the new package with the token, and the rest through
    OIDC. Without the secret, the run stops at the new package and names it.
-4. On npmjs.com, open the new package: Settings, Trusted Publisher, GitHub Actions.
+4. Approve the staged versions (below).
+5. On npmjs.com, open the new package: Settings, Trusted Publisher, GitHub Actions.
 
 | field | value |
 |---|---|
 | organization | `re-cinq` |
 | repository | `floor` |
 | workflow filename | `publish.yml` |
-| allowed actions | `npm publish` (a configuration made after 2026-09-03 allows only `npm stage publish` unless this is ticked, and the workflow publishes directly) |
+| allowed actions | `npm stage publish`, the default since 2026-09-03 |
 
    npm drops a configuration that has not published within two days of being saved, and the
-   token publish of step 3 does not count. Save it when the next release is due, or delete and
+   token stage of step 3 does not count. Save it when the next release is due, or delete and
    save it again before that release.
-5. Delete the `NPM_BOOTSTRAP_TOKEN` secret and revoke the token. The next release of that
+6. Delete the `NPM_BOOTSTRAP_TOKEN` secret and revoke the token. The next release of that
    package goes through OIDC.
+
+## Approving the npm versions
+
+`publish.yml` stages, and does not publish: a direct publish with a token is refused with
+`EOTP`, since it would need a one-time password the workflow does not have. A staged version
+is on the registry, with its provenance, but is not installable until a maintainer approves it
+with 2FA, one package at a time: on npmjs.com, the package's Versions tab, Approve; or
+`npm stage list`, then `npm stage approve <id>`. The run's summary lists what it staged.
 
 **The publisher is registered against the workflow's file name.** Renaming or moving
 `publish.yml` breaks publishing until it is registered again.
@@ -91,7 +101,8 @@ package the usual way, in `scripts/publish-packages.sh`, which `scripts/publish-
 
 Run `Publish` again by hand, from the Actions tab, **on the tag** and not on a branch.
 What reached a registry before the failure is left as it is: the image is pushed again under
-the same tags, and a package whose version is on npm already is skipped.
+the same tags, and a package whose version is on npm already is skipped. A version that is
+staged but not yet approved is not on npm yet: approve it, or reject it, before running again.
 
 ## What `latest` is
 

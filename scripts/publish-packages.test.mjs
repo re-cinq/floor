@@ -20,8 +20,8 @@ if (command === "view") {
   const found = isVersion ? scenario.versions.includes(target) : scenario.packages.includes(target);
   process.exit(found ? 0 : 1);
 }
-if (command === "publish") {
-  const call = { cwd: process.cwd(), token: process.env.NODE_AUTH_TOKEN ?? null, args: process.argv.slice(3) };
+if (command === "stage" && target === "publish") {
+  const call = { cwd: process.cwd(), token: process.env.NODE_AUTH_TOKEN ?? null, args: process.argv.slice(4) };
   appendFileSync(process.env.FAKE_NPM_PUBLISH_LOG, JSON.stringify(call) + "\\n");
   process.exit(0);
 }
@@ -65,7 +65,7 @@ describe("publish-packages.sh", () => {
     assert.deepEqual(run.publishes, []);
   });
 
-  it("publishes an existing package from its directory with no NODE_AUTH_TOKEN when the bootstrap token is set", () => {
+  it("stages an existing package from its directory with no NODE_AUTH_TOKEN when the bootstrap token is set", () => {
     const run = publishWith({ scenario: { versions: [], packages: [NAME] }, token: "secret-token" });
 
     assert.equal(run.status, 0);
@@ -80,7 +80,7 @@ describe("publish-packages.sh", () => {
     assert.deepEqual(run.publishes, []);
   });
 
-  it("publishes a new package with NODE_AUTH_TOKEN equal to the bootstrap token", () => {
+  it("stages a new package with NODE_AUTH_TOKEN equal to the bootstrap token", () => {
     const run = publishWith({ scenario: { versions: [], packages: [] }, token: "secret-token" });
 
     assert.equal(run.status, 0);
