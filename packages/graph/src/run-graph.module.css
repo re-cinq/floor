@@ -177,6 +177,20 @@ text[data-selected="true"] {
   stroke-width: 4;
   filter: brightness(0.8) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
 }
+.node[data-open="true"] .box {
+  stroke-dasharray: 6 4;
+  animation: openPulse 1.6s ease-in-out infinite;
+}
+@keyframes openPulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node[data-open="true"] .box {
+    animation: none;
+  }
+}
 .nodeId {
   fill: var(--text);
   font-size: var(--fs-sm);

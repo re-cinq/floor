@@ -67,4 +67,29 @@ describe("RunGraphView run overlay", () => {
       done: ["false", null],
     });
   });
+
+  it("reads agent · 2 visits · open on a's card when a was visited twice and its second visit is open", async () => {
+    const definition = markerLine({
+      kind: "agent",
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "failed", open: false },
+        { nodeId: "fix", iteration: 1, outcome: "success", open: false },
+        { nodeId: "a", iteration: 2, open: true },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} />);
+    const cardTexts = [...container.querySelectorAll('[data-node="a"] text:not([data-badge] text)')].map((text) => text.textContent);
+
+    expect(cardTexts).toEqual(["A", "agent · 2 visits · open"]);
+  });
 });

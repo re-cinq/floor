@@ -13,10 +13,14 @@ const LABEL_RIGHT_PADDING = 12;
 // Average advance of the node font in px — an average, not a measurement, since SVG text cannot reflow and per-glyph measuring needs a DOM round-trip.
 const LABEL_CHAR_WIDTH = 6.8;
 
-export function cardWidthOf(title: string): number {
+export function cardWidthOf(title: string, subtitle = ""): number {
+  const longestLine = Math.max(title.length, subtitle.length);
+
   return Math.max(
     NODE_WIDTH,
-    Math.ceil(LABEL_LEFT_OFFSET + title.length * LABEL_CHAR_WIDTH + LABEL_RIGHT_PADDING),
+    Math.ceil(
+      LABEL_LEFT_OFFSET + longestLine * LABEL_CHAR_WIDTH + LABEL_RIGHT_PADDING,
+    ),
   );
 }
 
@@ -49,7 +53,11 @@ export function fitView(box: Box): FittedView {
 }
 
 // A node's box in drawing coordinates, which start at the viewBox origin rather than at the layout's.
-export function revealBoxOf(node: { x: number; y: number; width: number }, view: FittedView, nodeHeight: number): Box {
+export function revealBoxOf(
+  node: { x: number; y: number; width: number },
+  view: FittedView,
+  nodeHeight: number,
+): Box {
   const minX = node.x - node.width / 2 - view.originX;
   const minY = node.y - nodeHeight / 2 - view.originY;
 
