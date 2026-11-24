@@ -166,4 +166,27 @@ describe("elkGraphOf", () => {
       { id: "done", width: 22, height: 60 },
     ]);
   });
+
+  it("sizes write 216, the long-id station 300 and the done marker 22 when widthOf names each card", () => {
+    const mixedLine: AssemblyLineDefinition = {
+      ...markerLine({ entry: "write", nodeIds: [], edges: [] }),
+      nodes: [
+        { id: "write", type: "agent" },
+        { id: "a-very-long-station-id", type: "agent" },
+        { id: "done", type: "marker" },
+      ],
+      edges: [
+        { from: "write", to: "a-very-long-station-id", on: "success" },
+        { from: "a-very-long-station-id", to: "done", on: "success" },
+      ],
+    };
+
+    const { children } = elkGraphOf(mixedLine, { width: 216, height: 60, widthOf: (id) => (id === "write" ? 216 : 300) });
+
+    expect(children?.filter(({ id }) => !id.endsWith(":exit")).map(({ id, width }) => ({ id, width }))).toEqual([
+      { id: "write", width: 216 },
+      { id: "a-very-long-station-id", width: 300 },
+      { id: "done", width: 22 },
+    ]);
+  });
 });
