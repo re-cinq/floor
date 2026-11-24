@@ -126,7 +126,7 @@ it `needs` and what it `produces`; floor moves the bytes and nothing else crosse
 | [`packages/client`](packages/client/README.md) | The floor over HTTP and its live socket, typed. What anything outside a floor reaches it through. |
 | [`packages/station`](packages/station/README.md) | The SDK a service station is written with: one function, and the claim loop around it. |
 | [`packages/pipeline`](packages/pipeline/README.md) | A whole pipeline as one file, exported from or imported into a floor over HTTP. |
-| [`packages/studio`](packages/studio/README.md) | A local page for a collection folder: draws each line, explains each station, edits prompts and settings, runs one agent station with your own `claude` or `codex`. To be published as `@re-cinq/floor-studio`. |
+| [`packages/studio`](packages/studio/README.md) | A local page for a collection folder: draws each line, explains each station, edits prompts and settings, runs one agent station with your own `claude` or `codex`. Published as `@re-cinq/floor-studio`. |
 | [`packages/lore-converter`](packages/lore-converter/README.md) | Reads a lore checkout and writes the definitions this floor runs in its place. |
 | [`plugins/floor`](plugins/floor) | The Claude Code plugin: three skills that write and check a collection's assembly lines and agent prompts. Listed by the marketplace in [`.claude-plugin`](.claude-plugin/marketplace.json). |
 | [`deploy/chart`](deploy/chart/README.md) | One Helm chart, one image, both apps, toggled. |
@@ -150,11 +150,17 @@ claude plugin marketplace add re-cinq/floor --sparse .claude-plugin plugins/floo
 claude plugin install floor@floor
 ```
 
+To look at a collection in the studio, point the command at the folder. It prints a url and opens it in your browser. `examples/cookbook` in this repository is a collection to try it on. See the [studio README](packages/studio/README.md) for the options and the Run tab.
+
+```
+npx @re-cinq/floor-studio path/to/collection
+```
+
 To see a run on your machine, follow [Run floor and walk your first line](https://re-cinq.github.io/floor/tutorials/first-run/). To install on a cluster, see [Install on a cluster](https://re-cinq.github.io/floor/reference/install/), and for a first agent run there, the [installation and first run tutorial](docs/tutorial.md).
 
 Every [release](https://github.com/re-cinq/floor/releases) publishes the chart at
 `oci://ghcr.io/re-cinq/charts/floor`, the image at `ghcr.io/re-cinq/floor` for `linux/amd64` and
-`linux/arm64`, and five npm packages, all under one version.
+`linux/arm64`, and seven npm packages, all under one version.
 
 To work on floor itself:
 
