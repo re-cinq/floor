@@ -9,6 +9,14 @@ function drawnIds(container: HTMLElement, attribute: string) {
   return [...container.querySelectorAll(`[${attribute}]`)].map((element) => element.getAttribute(attribute)).sort();
 }
 
+function addedIds(container: HTMLElement) {
+  const added = [...container.querySelectorAll("[data-change='added']")].map(
+    (element) => element.getAttribute("data-node") ?? element.getAttribute("data-edge"),
+  );
+
+  return added.sort();
+}
+
 describe("RunGraphView visited-only drawing", () => {
   it("draws only a, done and a|done|success when a run closed a in success and visited done", async () => {
     const definition = markerLine({
@@ -95,6 +103,64 @@ describe("RunGraphView visited-only drawing", () => {
       nodes: ["a", "done"],
       edges: ["a|done|success"],
     });
+  });
+
+  it("draws only a and done after pressing Whole line on a run that visited a and done when show is all", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "success", open: false },
+        { nodeId: "done", iteration: 1, outcome: "success", open: false },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} show="all" />);
+    await waitFor(() => {
+      if (!container.querySelector('[data-node="fix"]')) throw new Error("whole line not drawn yet");
+    });
+    fireEvent.click(within(container).getByRole("button", { name: "Whole line" }));
+    await waitFor(() => {
+      if (container.querySelector('[data-edge="a|fix|failed"]')) throw new Error("edge to fix still drawn");
+    });
+
+    expect({ nodes: drawnIds(container, "data-node"), edges: drawnIds(container, "data-edge") }).toEqual({
+      nodes: ["a", "done"],
+      edges: ["a|done|success"],
+    });
+  });
+
+  it("marks fix, a|fix|failed and fix|a|always as added after pressing Whole line on a run that visited a and done", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "success", open: false },
+        { nodeId: "done", iteration: 1, outcome: "success", open: false },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} />);
+    fireEvent.click(within(container).getByRole("button", { name: "Whole line" }));
+    await waitFor(() => {
+      if (!container.querySelector('[data-node="fix"]')) throw new Error("layout of fix not drawn yet");
+    });
+
+    expect(addedIds(container)).toEqual(["a|fix|failed", "fix", "fix|a|always"]);
   });
 
   it("offers no Whole line button when no run is passed", async () => {
