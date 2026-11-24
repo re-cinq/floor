@@ -66,6 +66,26 @@ describe("RunGraphView change marking", () => {
     expect(addedKeys(container)).toEqual([]);
   });
 
+  it("marks done as moved when b is inserted between a and done", async () => {
+    const before = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
+    const after = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+      ],
+    });
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={before} />);
+    rerender(<RunGraphView definition={after} />);
+    await waitFor(() => {
+      if (!container.querySelector("[data-node=\"b\"]")) throw new Error("layout of b not drawn yet");
+    });
+
+    expect(container.querySelector("[data-node=\"done\"]")?.getAttribute("data-change")).toBe("moved");
+  });
+
   it("marks nothing as added on the first draw", async () => {
     const definition = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
 

@@ -36,6 +36,7 @@ export interface GraphNodeProps {
   offPath?: boolean;
   /** Newly drawn by the latest layout. */
   added?: boolean;
+  moved?: boolean;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
   /** Whether the run came here (undefined without a run). */
@@ -127,8 +128,8 @@ function runAttrsOf({
   };
 }
 
-function changeAttrOf({ added }: Pick<GraphNodeProps, "added">) {
-  return { "data-change": added ? "added" : undefined };
+function changeAttrOf({ added, moved }: Pick<GraphNodeProps, "added" | "moved">) {
+  return { "data-change": (added && "added") || (moved && "moved") || undefined };
 }
 
 function shapeOf(
