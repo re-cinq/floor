@@ -211,6 +211,23 @@ describe("App line view", () => {
     expect(terms).toContainEqual(["Iteration limit", "3"]);
   });
 
+  it("shows no Iteration limit in the line inspector when the line work|done|success has none", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&edge=work|done|success" });
+
+    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
+    const terms = Array.from(inspector.querySelectorAll("dt"), (term) => term.textContent);
+
+    expect(terms).not.toContain("Iteration limit");
+  });
+
+  it("shows no line inspector when the address names an edge the line does not have", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&edge=work|gone|success" });
+
+    await screen.findByRole("img", { name: "Assembly line graph: flow" });
+
+    expect(screen.queryByRole("complementary", { name: "Line inspector" })).toBeNull();
+  });
+
   it("keeps the place on a reload: the node in the address is selected", async () => {
     await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work" });
 
