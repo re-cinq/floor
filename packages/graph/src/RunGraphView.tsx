@@ -13,11 +13,12 @@ import GraphNode from "./GraphNode";
 import GraphViewport from "./GraphViewport";
 import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
-import { nodeTooltipOf } from "./node-tooltip";
+import { nodeTitle, nodeTooltipOf } from "./node-tooltip";
 import RunGraphLegend from "./RunGraphLegend";
 import {
   NODE_HEIGHT,
   NODE_WIDTH,
+  cardWidthOf,
   fitView,
   revealBoxOf,
 } from "./run-graph-geometry";
@@ -48,7 +49,7 @@ export default function RunGraphView(props: RunGraphViewProps) {
   );
 }
 
-const NODE_SIZE = { width: NODE_WIDTH, height: NODE_HEIGHT };
+const NODE_SIZE = { width: NODE_WIDTH, height: NODE_HEIGHT, widthOf: (nodeId: string) => cardWidthOf(nodeTitle(nodeId)) };
 
 interface GraphCanvasProps {
   view: RunGraphViewProps;

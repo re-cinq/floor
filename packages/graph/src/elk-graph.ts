@@ -33,7 +33,14 @@ const LAYOUT_OPTIONS = {
 };
 
 /** Builds the ELK input graph for a line: one child per node, markers 22x22, others 140x60 unless sized. */
-export function elkGraphOf(definition: AssemblyLineDefinition, size = NODE_SIZE): ElkNode {
+export interface NodeSize {
+  width: number;
+  height: number;
+  /** A card's own width by node id; cards without one take `width`. */
+  widthOf?: (nodeId: string) => number;
+}
+
+export function elkGraphOf(definition: AssemblyLineDefinition, size: NodeSize = NODE_SIZE): ElkNode {
   const exitDotEdges = exitDotEdgesOf(definition);
 
   return {
@@ -42,7 +49,7 @@ export function elkGraphOf(definition: AssemblyLineDefinition, size = NODE_SIZE)
     children: [
       ...definition.nodes.map((node) => ({
         id: node.id,
-        ...(typeFamilyOf(node.type) === "marker" ? MARKER_SIZE : size),
+        ...(typeFamilyOf(node.type) === "marker" ? MARKER_SIZE : { width: size.widthOf?.(node.id) ?? size.width, height: size.height }),
         layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
         ports: [
           ...incomingEdgesOf(definition, node.id)

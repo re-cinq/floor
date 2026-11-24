@@ -8,7 +8,6 @@ import TypeGlyph, { FAMILY_CLASS } from "./TypeGlyph";
 import { badgesOf } from "./node-badges";
 import { nodeAriaLabel } from "./node-aria-label";
 import { typeFamilyOf } from "./node-type-family";
-import { NODE_WIDTH, fitNodeLabel } from "./run-graph-geometry";
 import { nodeTitle } from "./node-tooltip";
 import { classes, portFillClass } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
@@ -50,7 +49,7 @@ export default function GraphNode(props: GraphNodeProps) {
       {...interactionAttrs({ nodeId: node.id, onSelect, selected })}
     >
       <BODY node={node} family={family} height={height} />
-      <NodeBadges badges={badgesOf(model)} rightEdge={node.x + NODE_WIDTH / 2} top={node.y - height / 2} />
+      <NodeBadges badges={badgesOf(model)} rightEdge={node.x + node.width / 2} top={node.y - height / 2} />
       <NodePorts ports={node.ports} toneByEdge={props.toneByEdge ?? NO_TONES} />
     </g>
   );
@@ -63,11 +62,11 @@ interface NodeBodyProps {
 }
 
 function CardBody({ node, family, height }: NodeBodyProps) {
-  const { top, leftEdge } = boxOf(node, height);
+  const { top, leftEdge, width } = boxOf(node, height);
 
   return (
     <>
-      <NodeBox leftEdge={leftEdge} top={top} height={height} />
+      <NodeBox leftEdge={leftEdge} top={top} width={width} height={height} />
       <TypeGlyph family={family} cx={leftEdge + GLYPH_INSET} cy={top + GLYPH_INSET} />
       <NodeTitle title={nodeTitle(node.id)} kind={family} centerX={node.x} centerY={node.y} />
     </>
@@ -80,7 +79,7 @@ function TerminalBody({ node }: NodeBodyProps) {
       <circle className={styles.terminalRing} cx={node.x} cy={node.y} r={11} />
       <circle className={styles.terminalCore} cx={node.x} cy={node.y} r={5} />
       <text className={styles.nodeId} x={node.x} y={node.y + 24} textAnchor="middle">
-        {fitNodeLabel(nodeTitle(node.id))}
+        {nodeTitle(node.id)}
       </text>
     </>
   );
@@ -108,7 +107,7 @@ function NodePorts({ ports, toneByEdge }: { ports: LaidOutNode["ports"]; toneByE
 
 /** The box's top-left, from the layout's CENTRE point. The layout places node centres so edges can aim at them; SVG rects are drawn from a corner. */
 function boxOf(node: GraphNodeProps["node"], height: number) {
-  return { top: node.y - height / 2, leftEdge: node.x - NODE_WIDTH / 2 };
+  return { top: node.y - height / 2, leftEdge: node.x - node.width / 2, width: node.width };
 }
 
 interface InteractionInput {
@@ -150,16 +149,17 @@ function selectOnActivationKey(
 interface NodeBoxProps {
   leftEdge: number;
   top: number;
+  width: number;
   height: number;
 }
 
-function NodeBox({ leftEdge, top, height }: NodeBoxProps) {
+function NodeBox({ leftEdge, top, width, height }: NodeBoxProps) {
   return (
     <rect
       className={styles.box}
       x={leftEdge}
       y={top}
-      width={NODE_WIDTH}
+      width={width}
       height={height}
       rx={10}
     />
