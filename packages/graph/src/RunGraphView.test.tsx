@@ -83,6 +83,14 @@ describe("RunGraphView", () => {
     });
   });
 
+  it("captions the done terminal dot with its title and draws its ring and core", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    const terminal = nodeEl(container, "done");
+    const texts = [...terminal.querySelectorAll("text")].filter((text) => !text.closest("[data-badge]")).map((text) => text.textContent);
+
+    expect({ texts, circles: terminal.querySelectorAll("circle:not([data-port])").length }).toEqual({ texts: [nodeTitle("done")], circles: 2 });
+  });
+
   it("draws review to done as three connectors keyed, toned and labelled by their outcome", async () => {
     const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
     const drawn = [...container.querySelectorAll("[data-edge]")].map((edge) => {
