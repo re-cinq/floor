@@ -128,4 +128,16 @@ describe("RunGraphView run overlay", () => {
 
     expect(Number(container.querySelector('[data-node="a"] rect')?.getAttribute("width"))).toBeGreaterThan(216);
   });
+
+  it("leaves every line and station without run marks when no run is given", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "done"],
+      edges: [["a", "done", "success"]],
+    });
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} />);
+
+    expect(container.querySelectorAll("[data-taken], [data-visited], [data-open], [data-outcome]").length).toBe(0);
+  });
 });
