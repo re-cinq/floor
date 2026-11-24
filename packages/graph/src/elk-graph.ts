@@ -6,6 +6,7 @@ import { edgeKeyOf } from "./metro/edge-key";
 import { mainPathOf } from "./metro/main-path";
 import { incomingEdgesOf, outgoingEdgesOf } from "./metro/node-edges";
 import { isPassThrough } from "./metro/pass-through";
+import { countWidthOf } from "./metro/taken-count";
 import { nodeTitle } from "./node-tooltip";
 import { typeFamilyOf } from "./node-type-family";
 
@@ -32,8 +33,6 @@ const SOURCE_STUB: StubEnd = { idSuffix: "source-stub", direction: "out", side: 
 const LABEL_HEIGHT = 16;
 const LABEL_CHAR_WIDTH = 7.3;
 const LABEL_PADDING = 6;
-export const COUNT_CHAR_WIDTH = 6;
-export const COUNT_GAP = 3;
 
 const LAYOUT_OPTIONS = {
   "elk.algorithm": "layered",
@@ -162,11 +161,10 @@ function portOf(edge: DefinitionEdge, direction: "in" | "out", side: "WEST" | "E
 
 function edgeLabelOf({ on, iterationMax }: DefinitionEdge, takenCount = 0): ElkLabel {
   const text = iterationMax === undefined ? on : `${on} · max ${iterationMax}`;
-  const countWidth = takenCount > 1 ? COUNT_GAP + `×${takenCount}`.length * COUNT_CHAR_WIDTH : 0;
 
   return {
     text,
-    width: Math.ceil(text.length * LABEL_CHAR_WIDTH + LABEL_PADDING + countWidth),
+    width: Math.ceil(text.length * LABEL_CHAR_WIDTH + LABEL_PADDING + countWidthOf(takenCount)),
     height: LABEL_HEIGHT,
   };
 }

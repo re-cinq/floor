@@ -1,6 +1,6 @@
 // One connector between two steps; its tone carries the branch's meaning, and a hop that branches or loops says its outcome in a label beside it (EdgeLabel), so colour is never the only signal. The selected node's outgoing hops draw bold and the others step back.
 import type { LaidOutEdge } from "./elk-layout";
-import { COUNT_CHAR_WIDTH, COUNT_GAP } from "./elk-graph";
+import { COUNT_GAP, countTextOf, countWidthOf } from "./metro/taken-count";
 import type { VisibleEdge } from "./graph-view-model";
 import { ARROW_MARKER_URL } from "./ArrowMarkerDefs";
 import { edgeKeyOf } from "./metro/edge-key";
@@ -48,20 +48,21 @@ export default function GraphEdge(props: GraphEdgeProps) {
   );
 }
 
-/** Sits right after the label, inside its air, so it never lands under the line. */
+/** Ends at the right edge of the box the layout reserved for the label, so it never lands under the line. */
 function TakenCount({ edge, model, count }: { edge: LaidOutEdge; model: VisibleEdge | undefined; count: number }) {
-  const { x: midX, y: midY, vertical } = edge.mid;
-  const labelHalfWidth = ((model?.label.length ?? 0) * COUNT_CHAR_WIDTH) / 2;
+  const { y: midY, vertical } = edge.mid;
+  const countX = edge.labelBox.maxX - COUNT_GAP;
 
   return (
     <text
       data-taken-count
       className={classes(styles.takenCount, textFillClass(model?.tone ?? "neutral"))}
-      x={midX + labelHalfWidth + COUNT_GAP}
+      x={countX}
       y={midY}
-      transform={vertical ? `rotate(-90 ${midX} ${midY})` : undefined}
+      textAnchor="end"
+      transform={vertical ? `rotate(-90 ${countX} ${midY})` : undefined}
     >
-      ×{count}
+      {countTextOf(count)}
     </text>
   );
 }
@@ -78,8 +79,9 @@ function pathClassOf(edge: LaidOutEdge, { tone, emphasis, taken }: { tone: Visib
 }
 
 /** Drawn after the nodes, so a label in the narrow air between two columns is not hidden behind them. */
-export function EdgeLabel({ edge, model, emphasis, dimmed, offPath, selected, onSelectLine }: GraphEdgeProps) {
+export function EdgeLabel({ edge, model, emphasis, dimmed, offPath, selected, takenCount = 0, onSelectLine }: GraphEdgeProps) {
   if (!model) return null;
+  const labelX = edge.mid.x - countWidthOf(takenCount) / 2;
 
   return (
     <text
@@ -87,10 +89,10 @@ export function EdgeLabel({ edge, model, emphasis, dimmed, offPath, selected, on
       {...stateAttrsOf({ dimmed, offPath, selected })}
       onClick={() => onSelectLine?.(edgeKeyOf(edge))}
       className={classes(styles.edgeLabel, textFillClass(model.tone), emphasis === "other" ? styles.dim : undefined)}
-      x={edge.mid.x}
+      x={labelX}
       y={edge.mid.y}
       textAnchor="middle"
-      transform={edge.mid.vertical ? `rotate(-90 ${edge.mid.x} ${edge.mid.y})` : undefined}
+      transform={edge.mid.vertical ? `rotate(-90 ${labelX} ${edge.mid.y})` : undefined}
     >
       {model.label}
     </text>
