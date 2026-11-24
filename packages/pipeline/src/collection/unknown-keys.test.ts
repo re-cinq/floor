@@ -22,6 +22,21 @@ describe("unknownKeys", () => {
     expect(unknownKeysOf(withOptional)).toEqual([unknownKeyOnSound('stations.work.produces[0]: unknown key "optional"')]);
   });
 
+  it("reports nothing for fresh on a need", () => {
+    const withFreshNeed = SOUND.replace("    needs: []\n", "    needs:\n      - name: issue_url\n        kind: value\n        fresh: true\n");
+
+    expect(unknownKeysOf(withFreshNeed)).toEqual([]);
+  });
+
+  it("reports unknown-key for fresh on a produce", () => {
+    const withFreshProduce = SOUND.replace(
+      "    produces: []\n",
+      "    produces:\n      - name: report\n        kind: file\n        path: report.md\n        fresh: true\n",
+    );
+
+    expect(unknownKeysOf(withFreshProduce)).toEqual([unknownKeyOnSound('stations.work.produces[0]: unknown key "fresh"')]);
+  });
+
   it("reports unknown-key for iteration-max on an edge", () => {
     const withIterationMax = SOUND.replace("      on: failed\n", "      on: failed\n      iteration-max: 3\n");
 

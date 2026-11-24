@@ -114,8 +114,9 @@ function needOf(object: ObjectOf) {
     path: z.string().describe("Agent stations only. Where the item is put in the pod, relative to `/workspace`.").optional(),
     access: z.enum(["read", "write"]).describe("`git` needs only. `write` lets the visit push to the repository. Defaults to `read`.").optional(),
     optional: z.boolean().describe("The visit opens without the item when the bag does not hold it.").optional(),
+    fresh: z.boolean().describe("The need is filled only by an item produced since a person last acted: since a human station reported, or a node was started by hand. An older item counts as not there, so an optional need is left out and a required one refuses the visit.").optional(),
     collect: z.string().describe("`value` needs only. The name of an item the body of a fan-out produces. The need is filled with a JSON array of what each branch produced, in branch order.").optional(),
-  });
+  }).refine((need) => !(need.fresh && need.collect), { message: "fresh is for a bag item, and takes no collect" });
 }
 
 function produceOf(object: ObjectOf) {

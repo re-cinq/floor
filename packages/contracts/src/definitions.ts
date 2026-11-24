@@ -88,6 +88,8 @@ export interface NeedSpec {
   optional?: boolean;
   /** `value` needs only: the name of an item the body of a fan-out produces. The need is filled with a JSON array of what each branch of the latest fan-out produced under it, in branch order. */
   collect?: string;
+  /** The need is filled only by an item produced since a person last acted. */
+  fresh?: boolean;
 }
 
 export interface ProduceSpec {

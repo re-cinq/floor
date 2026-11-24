@@ -50,6 +50,8 @@ When the walk reaches a node, a visit opens.
 
 Each need of the station is filled from the run's bag when the visit opens, and stays as it was filled. When a required need is not in the bag, the visit is refused with `node "N": missing required need(s) X`, no visit is recorded, and the run ends as `error` with that message as its reason.
 
+A need with `fresh: true` is filled only by an item produced since a person last acted: by the last `human` station's visit, or by a visit after it. Until a person acts, every item is fresh. An older item counts as not in the bag, so an optional need is left out, and a required one refuses the visit with `node "N": missing required need(s) X (not produced since a person last acted)`. A visit a person starts by hand opens with nothing fresh.
+
 | Station | A visit's deadline |
 | --- | --- |
 | `agent` | 30 minutes of waiting to be claimed, plus the agent's `timeout_minutes` |

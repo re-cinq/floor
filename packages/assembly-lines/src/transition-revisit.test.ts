@@ -1,6 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { getNextTransition, type WalkGraph, type NodeVisit } from "./transition.js";
+import { getNextTransition, personLastActedAt, type WalkGraph, type NodeVisit } from "./transition.js";
 import { visit, reviewLoop, twoWaysBack, twoRoundsThenThirdRoundSetup } from "./transition.fixtures.js";
+
+const reviewWithHumanStations: Omit<WalkGraph, "edges"> = {
+  name: "review-with-human",
+  entry: "work",
+  exit: "done",
+  nodes: [
+    { id: "work", kind: "agent" },
+    { id: "review", kind: "agent" },
+    { id: "human", kind: "human" },
+    { id: "done" },
+  ],
+};
 
 describe("rework: a station's objection routes back to the step that fed it, then halts rather than looping", () => {
   const decompose: WalkGraph = {
@@ -146,15 +158,7 @@ describe("a visit a person opened by hand restarts the walk there", () => {
 
 describe("an edge's unattended budget counts takes with no person acting", () => {
   const reviewWithHuman: WalkGraph = {
-    name: "review-with-human",
-    entry: "work",
-    exit: "done",
-    nodes: [
-      { id: "work", kind: "agent" },
-      { id: "review", kind: "agent" },
-      { id: "human", kind: "human" },
-      { id: "done" },
-    ],
+    ...reviewWithHumanStations,
     edges: [
       { from: "work", to: "review", on: "success" },
       { from: "review", to: "work", on: "changes_requested", unattendedMax: 1 },
@@ -202,5 +206,19 @@ describe("an edge's unattended budget counts takes with no person acting", () =>
     const visits = [visit("work", 1, "success"), visit("review", 1, "changes_requested"), visit("work", 2, "success"), ranByHand];
 
     expect(getNextTransition(reviewWithHuman, visits)).toEqual({ kind: "launch", nodeId: "work", iteration: 3 });
+  });
+});
+
+describe("personLastActedAt", () => {
+  const withHuman: WalkGraph = { ...reviewWithHumanStations, edges: [] };
+  const withoutKinds: WalkGraph = { name: "no-kinds", entry: "work", exit: "done", edges: [] };
+
+  it.each([
+    { name: "is -1 when work and review ran and nobody acted", graph: withHuman, visits: [{ nodeId: "work" }, { nodeId: "review" }], expected: -1 },
+    { name: "is 2 when human is the third of five visits", graph: withHuman, visits: [{ nodeId: "work" }, { nodeId: "review" }, { nodeId: "human" }, { nodeId: "work" }, { nodeId: "review" }], expected: 2 },
+    { name: "is 3 when ana started the fourth visit by hand after human", graph: withHuman, visits: [{ nodeId: "work" }, { nodeId: "review" }, { nodeId: "human" }, { nodeId: "work", requestedBy: "ana" }], expected: 3 },
+    { name: "is -1 when the graph has no nodes and no visit was started by hand", graph: withoutKinds, visits: [{ nodeId: "work" }, { nodeId: "human" }], expected: -1 },
+  ])("$name", ({ graph, visits, expected }) => {
+    expect(personLastActedAt(graph, visits)).toBe(expected);
   });
 });

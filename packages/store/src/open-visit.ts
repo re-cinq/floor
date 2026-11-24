@@ -7,7 +7,8 @@ import type { Pool } from "pg";
 import { DefinitionsStore } from "./definitions.js";
 import { Refusal, enforce, requireNode } from "@re-cinq/floor-assembly-lines";
 import { visitsWith, type Queryable } from "./rows.js";
-import { mergeAgentSettings, previousErrorNeed, previousFailuresNeed, resolveNeeds } from "./resolve.js";
+import { buildWalkGraph } from "./walk-graph.js";
+import { mergeAgentSettings, previousErrorNeed, previousFailuresNeed, resolveNeeds, visitIdsSincePersonActed } from "./resolve.js";
 import type {
   AgentDefinitionBody,
   AgentSettings,
@@ -17,6 +18,7 @@ import type {
   LineNode,
   Run,
   StationBody,
+  Visit,
 } from "./types.js";
 
 const QUEUE_WAIT_MINUTES = 30;
@@ -77,13 +79,26 @@ export class OpenVisitResolver {
     const bag = await this.deps.bag(request.run.id);
     const visits = await visitsWith(this.deps.pool, request.run.id);
     const fanned = { ...itemNeed(request.line, node, request.branch, visits), ...(await collectNeeds(node, station.body, visits, this.collectReaders())) };
-    const { needs: resolvedNeeds, missing } = resolveNeeds(station.body.needs, node.bind, { ...bag, ...fanned });
+    const { needs: resolvedNeeds, missing } = resolveNeeds(
+      station.body.needs,
+      node.bind,
+      { ...bag, ...fanned },
+      await this.producedSincePerson(request, station.body, visits),
+    );
 
     if (missing.length > 0) {
       throw new Refusal(`node "${node.id}": missing required need(s) ${missing.join(", ")}`);
     }
 
     return this.finishStationContext(request, station, resolvedNeeds);
+  }
+
+  private async producedSincePerson(request: OpenRequest, station: StationBody, visits: Visit[]): Promise<ReadonlySet<string> | undefined> {
+    if (!station.needs.some((need) => need.fresh)) return undefined;
+    if (request.requestedBy) return new Set();
+    const graph = await buildWalkGraph(this.deps.definitions, request.run.lineId, request.line);
+
+    return visitIdsSincePersonActed(graph, visits);
   }
 
   private async finishStationContext(

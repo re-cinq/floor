@@ -184,6 +184,7 @@ An entry of `needs`:
 | `path` | string | no | Agent stations only. Where the item is put in the pod, relative to `/workspace`. |
 | `access` | `read` or `write` | no | `git` needs only. `write` lets the visit push to the repository. Defaults to `read`. |
 | `optional` | boolean | no | The visit opens without the item when the bag does not hold it. |
+| `fresh` | boolean | no | The need is filled only by an item produced since a person last acted: since a human station reported, or a node was started by hand. An older item counts as not there, so an optional need is left out and a required one refuses the visit. |
 | `collect` | string | no | `value` needs only. The name of an item the body of a fan-out produces. The need is filled with a JSON array of what each branch produced, in branch order. |
 
 <!-- /generated -->
@@ -212,8 +213,11 @@ A need is filled from the run's [bag](/floor/concepts/bag/), the items a run has
 | A need MUST be an argument, a line file, or produced on every path into the node. | `node "X" needs "n", which is not seeded at start and not produced on every path into it` |
 | A `git` need MUST be a `git` argument. | `node "X" needs "n" as kind "git", which nothing in the line seeds` |
 | A need of a node that sets `start` MUST be an argument or a line file. | `node "X" starts by its own event, so its need "n" must be seeded at start` |
+| A need MUST NOT set both `fresh` and `collect`. | `fresh is for a bag item, and takes no collect` |
 
 These rules skip a need with `optional: true`, a need with `collect`, and the needs `previous_error`, `previous_failures` and `item`, which the floor fills.
+
+These rules do not know when a person acts. A required need with `fresh: true` that nothing produces after a person last acted passes them, and is found when its visit opens. See [A visit](/floor/specs/run-semantics/#3-a-visit).
 
 ## 6. Rules of a fan-out
 
