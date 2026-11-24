@@ -125,7 +125,8 @@
 }
 
 /* The selected line draws thicker, its label bold. */
-[data-selected="true"] .edge {
+[data-selected="true"] .edge,
+[data-chosen="true"] .edge {
   stroke-width: 3.5;
 }
 text[data-selected="true"] {
