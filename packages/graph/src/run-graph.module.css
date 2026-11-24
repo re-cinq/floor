@@ -407,3 +407,8 @@ text[data-selected="true"] {
     transition: none;
   }
 }
+
+[data-taken="false"] {
+  opacity: 0.3;
+  transition: opacity 150ms;
+}
