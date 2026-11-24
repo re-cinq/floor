@@ -76,7 +76,7 @@ export class DefinitionsStore {
     return rows[0] ? toRow(rows[0]) : null;
   }
 
-  /** Looked up by hash alone, with no id: a visit records only the hash it resolved to (docs/assembly_run_storage.md's six tables have no station_id column), and a sha256 collision across two different ids of the same kind is not a real risk. */
+  /** Looked up by hash alone, with no id: a visit records only the hash it resolved to (no table in docs/assembly_run_storage.md, "Tables", has a station_id column), and a sha256 collision across two different ids of the same kind is not a real risk. */
   async byHashOnly<Body>(kind: DefinitionKind, hash: string): Promise<DefinitionRow<Body> | null> {
     const { rows } = await this.deps.connection.query(
       `select * from definitions where kind = $1 and hash = $2 limit 1`,

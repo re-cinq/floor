@@ -1,4 +1,4 @@
-// The one object through which a run's state is read and changed. See docs/assembly_run_storage.md, "The store", and README.md for what this file does and does not implement yet.
+// The one object through which a run's state is read and changed. See docs/assembly_run_storage.md, "The store", and README.md.
 
 import type { Pool, PoolClient } from "pg";
 import { DefinitionsStore } from "./definitions.js";

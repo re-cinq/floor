@@ -1,27 +1,16 @@
 # Agent definition
 
-**The settings an agent runs with: model, prompt, timeout, image, tags.** A
-station of the agent kind references one; a visit records which version it
-used.
+An agent definition is the settings an agent runs with: model, prompt, timeout, image, tags. A station of the agent kind references one, and a visit records which version it used.
 
-Not the ai-agent-subsystem's `AgentDefinition`, which is a recipe resource
-inside a cluster. The cluster agent builds one of those from this: from the
-settings a visit resolved (the latest version, merged with the run's
-repository variant), named `floor-<12 hex>` after their hash, and shared by
-every visit that resolves the same settings, in that cluster. A new version
-or a changed variant makes a new one the first time a visit runs it; the old
-one is swept once no Agent runs it (`apps/cluster-agent/README.md`).
+It is not the ai-agent-subsystem's `AgentDefinition`, which is a recipe resource inside a cluster. The cluster agent builds one of those from the settings a visit resolved (the latest version, merged with the run's repository variant). The recipe is named `floor-<12 hex>` after the hash of those settings and is shared by every visit in that cluster that resolves the same settings. A new version or a changed variant makes a new recipe the first time a visit runs it. The old one is swept once no Agent runs it (`apps/cluster-agent/README.md`).
 
 ## Why it is separate from the station
 
-A station says what work is done; an agent definition says how the model is
-configured to do it.
+A station says what work is done. An agent definition says how the model is configured to do it.
 
-- one prompt fix does not re-version every station and line that uses it
-- a repo can override the model, the prompt, or where its pods run, through
-  a **variant**, without touching the station
-- lore's per-repo overrides (project row, then org default, per field) are
-  exactly a variant
+- One prompt fix does not re-version every station and assembly line that uses it.
+- A repo can override the model, the prompt, or where its pods run, through a **variant**, without touching the station.
+- Lore's per-repo overrides (project row, then org default, per field) are a variant.
 
 ## Fields
 
@@ -29,34 +18,21 @@ configured to do it.
 |---|---|
 | `name` | the id a station points at |
 | `settings.model` | e.g. `claude-sonnet-4-6`, `gemini-3.1-pro-preview` |
-| `settings.prompt` | the prompt template; `{placeholders}` name the station's needs |
+| `settings.prompt` | the prompt template. `{placeholders}` name the station's needs |
 | `settings.timeout_minutes` | the work budget of a visit |
 | `settings.image` | the execution image |
-| `settings.tags` | which cluster agents may run it; a claimer must offer all of them |
+| `settings.tags` | which cluster agents may run it. A claimer must offer all of them |
 | `settings.config` | open object, checked when the definition is put. Read today, under lore's names: `skills`, `skills_source`, `mcp_servers`, `disallowed_tools`, `env`, `permission_mode` (`bypass` when absent), `max_turns`, `model_secret_key`, `pod_resources`. Anything else is kept and unused. Not built yet: `command`, `workdir` |
 | `settings.prices` | model → what it costs, in US dollars for a million tokens: `inputPerMillion`, `outputPerMillion`, and `cacheReadPerMillion`, `cacheWritePerMillion` where the cache is priced apart |
 | `variants` | `host/owner/name` → partial settings merged over the defaults, per field, per key inside `config`, and per model inside `prices` |
 
-`pod_resources` sizes the agent's pod: `{ requests?, limits? }`, each holding
-any of `cpu`, `memory` and `ephemeral-storage` as a Kubernetes quantity
-(`250m`, `1`, `512Mi`, `2Gi`). Any other resource name, any other key, or a
-value that is not a quantity is refused when the definition is put. It
-reaches the cluster agent in the brief's settings as `podResources` and
-becomes the `resources` of the pod's `agent` container. Unset, the container
-carries none and the subsystem's default applies.
+`pod_resources` sizes the agent's pod. It is `{ requests?, limits? }`, each holding any of `cpu`, `memory` and `ephemeral-storage` as a Kubernetes quantity (`250m`, `1`, `512Mi`, `2Gi`). Any other resource name, any other key, or a value that is not a quantity is refused when the definition is put. It reaches the cluster agent in the brief's settings as `podResources` and becomes the `resources` of the pod's `agent` container. When unset, the container carries none and the subsystem's default applies.
 
-The model's API key is not here. The floor names a model; the cluster agent
-owns the secret for that model family, in its own cluster. A definition
-with no `model` gets no secret at all, since the family is read from the
-model's name.
+The model's API key is not here. The floor names a model, and the cluster agent owns the secret for that model family, in its own cluster. A definition with no `model` gets no secret, since the family is read from the model's name.
 
 ## What a visit cost
 
-An agent that says what it cost is believed: Claude ends with a price. One
-that only counts is priced from `prices`: Gemini and Codex end with tokens
-and no price. The floor holds no price of its own. Codex counts what it read
-from the cache inside its `input_tokens`, so the floor takes that part out
-and prices it as `cache_read_input_tokens`.
+An agent that says what it cost is believed. Claude ends with a price. An agent that only counts tokens is priced from `prices`. Gemini and Codex end with tokens and no price. The floor holds no price of its own. Codex counts what it read from the cache inside its `input_tokens`, so the floor takes that part out and prices it as `cache_read_input_tokens`.
 
 ```yaml
 prices:
@@ -64,21 +40,14 @@ prices:
   gemini-3-flash-preview: { input_per_million: 0.5, output_per_million: 3 }
 ```
 
-- **An agent calls more than the model it was given**: a cheaper one to
-  classify, or to compress what it has read. Each is priced at its own rate,
-  so each wants its own line.
-- **A model with no price is named**, as `unpriced`, on the visit and in
-  every sum of `GET /costs` it is part of, and its part is left out of the
-  cost. A cost that is short says so.
-- **The cache is priced as any other reading** unless a cache price is
-  stated.
-- **A visit is priced when it ends, at what its definition stated then.** A
-  price that changes later changes no visit already run.
+- An agent calls more than the model it was given, such as a cheaper one to classify or to compress what it has read. Each is priced at its own rate, so each wants its own entry in `prices`.
+- A model with no price is named as `unpriced` on the visit and in every sum of `GET /costs` it is part of, and its part is left out of the cost. A cost that is short says so.
+- The cache is priced as any other reading unless a cache price is stated.
+- A visit is priced when it ends, at what its definition stated then. A price that changes later changes no visit already run.
 
 ## Skills and MCP servers
 
-Both are the agent's, so both are declared here, in `config`, and a repo's
-variant may replace either.
+Both belong to the agent, so both are declared here, in `config`, and a repo's variant may replace either.
 
 ```yaml
 config:
@@ -89,21 +58,10 @@ config:
     - { name: files, transport: stdio, command: npx, args: ["-y", "@modelcontextprotocol/server-filesystem"] }
 ```
 
-- **`skills_source`** is where the pod fetches each named skill, and the
-  agent's `settings.json`, hooks included. With none, the floor's own
-  `/skills` is used, which serves empty settings and no skills.
-- **`headers_secret`** names a key in the cluster's `agent-secrets`, holding
-  the header whole: `Authorization: Bearer <token>`. The pod's reference to
-  it is not optional. A key that is not there is a pod that never starts.
-- **`headers`** (http and sse) and **`env`** (stdio) each take any number of
-  `{ name, ref }`: the header or env var the server wants, and the key in
-  `agent-secrets` holding its value alone (`ref: search-api-key` for
-  `X-API-Key`), not a whole header line. They replace `headers_secret`, which
-  keeps working. An entry without a `ref` is refused when the definition is put.
-- **A url is a fact about one environment.** The address above is a
-  cluster's; on a laptop the same gateway is at `host.minikube.internal`.
-  A variant is keyed by repo, not by environment, so a definition naming a
-  url works in one place.
+- `skills_source` is where the pod fetches each named skill, and the agent's `settings.json`, hooks included. With none, the floor's own `/skills` is used, which serves empty settings and no skills.
+- `headers_secret` names a key in the cluster's `agent-secrets` that holds the whole header, `Authorization: Bearer <token>`. The pod's reference to it is not optional. If the key is missing, the pod never starts.
+- `headers` (http and sse) and `env` (stdio) each take any number of `{ name, ref }`. `name` is the header or env var the server wants. `ref` is the key in `agent-secrets` holding its value alone (`ref: search-api-key` for `X-API-Key`), not a whole header line. They replace `headers_secret`, which keeps working. An entry without a `ref` is refused when the definition is put.
+- A url is a fact about one environment. The address above is a cluster's, and on a laptop the same gateway is at `host.minikube.internal`. A variant is keyed by repo, not by environment, so a definition naming a url works in one place.
 
 ## Example, from lore
 
@@ -132,33 +90,16 @@ variants:
 3. The run's repo selects its variant, merged over the defaults per field.
 4. The deadline is `now + queue_wait + timeout_minutes`.
 5. The dispatch event carries `kind:agent` plus the resolved `tags`.
-6. The visit records the agent definition hash. Reading the visit later
-   shows exactly what ran.
+6. The visit records the agent definition hash. Reading the visit later shows what ran.
 
 ## Distribution and presence
 
 A new version does not wait for a visit to reach the clusters.
 
-1. A cluster agent registers under its cluster id (`PUT /clusters/{id}`) on start and every minute after,
-   with `{tags, build, subsystem}`: the tags it claims by, its own build sha, and the agent subsystem
-   its cluster runs, `{version, clis: {claude, codex, gemini, opencode}}` read from the subsystem's
-   `agent-subsystem-versions` ConfigMap, or null when it cannot be read. `build` and `subsystem` are
-   optional, so an older agent registers with its tags alone. `GET /version` lists them per live cluster.
-2. A put that makes a new latest version writes one `agent_definition.changed` event per registered
-   cluster, tagged `cluster:<id>`, in the put's own transaction. A cluster registering later gets one
-   for every agent definition whose latest version it does not hold.
-3. The cluster agent claims its own events like a dispatch, and applies the recipe of each variant
-   (`GET /agent-definitions/{id}/recipes`: the settings a visit of that variant is briefed with, so the
-   pushed recipe is the one a visit names). It reads the **latest** version when it handles the event,
-   never the one the event named, so a late or repeated event cannot set a cluster back.
-4. It acks only once kube reads that version back. Anything else fails the event, which the queue
-   tries again with backoff.
-5. It watches its recipes and reports what kube holds as `agent_definition.reported`. A recipe
-   edited in kube by hand (prompt, model, image, timeout) is adopted by the floor as the newest
-   version, `created_by: cluster:<id>`, and goes to the other clusters by step 2. A cluster reporting an
-   older version the floor has stored is only behind; nothing is adopted.
+1. A cluster agent registers under its cluster id (`PUT /clusters/{id}`) on start and every minute after, with `{tags, build, subsystem}`. These are the tags it claims by, its own build sha, and the agent subsystem its cluster runs. `subsystem` is `{version, clis: {claude, codex, gemini, opencode}}`, read from the subsystem's `agent-subsystem-versions` ConfigMap, or null when it cannot be read. `build` and `subsystem` are optional, so an older agent registers with its tags alone. `GET /version` lists them per live cluster.
+2. A put that makes a new latest version writes one `agent_definition.changed` event per registered cluster, tagged `cluster:<id>`, in the put's own transaction. A cluster registering later gets one for every agent definition whose latest version it does not hold.
+3. The cluster agent claims its own events like a dispatch, and applies the recipe of each variant. `GET /agent-definitions/{id}/recipes` returns the settings a visit of that variant is briefed with, so the pushed recipe is the one a visit names. The cluster agent reads the latest version when it handles the event, never the one the event named, so a late or repeated event cannot set a cluster back.
+4. It acks only once kube reads that version back. Anything else fails the event, which the queue tries again with backoff.
+5. It watches its recipes and reports what kube holds as `agent_definition.reported`. A recipe edited in kube by hand (prompt, model, image, timeout) is adopted by the floor as the newest version, `created_by: cluster:<id>`, and goes to the other clusters by step 2. A cluster reporting an older version the floor has stored is only behind, and nothing is adopted.
 
-`GET /agent-definitions/presence` answers, per agent definition, `all` when every cluster seen in the
-last five minutes holds the latest version, `some` when one holds a version but not every one the
-latest, and `none` when none holds any. `GET /agent-definitions/{id}/clusters` answers what each
-cluster read back out of its kube.
+`GET /agent-definitions/presence` answers per agent definition. It says `all` when every cluster seen in the last five minutes holds the latest version, `some` when one holds a version but not every one the latest, and `none` when none holds any. `GET /agent-definitions/{id}/clusters` answers what each cluster read back out of its kube.

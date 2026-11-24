@@ -36,7 +36,7 @@ A JSON Schema of the frontmatter is at [`/floor/schemas/agent.schema.json`](/flo
 1. A key not in this table MUST NOT appear. The file is refused with `<agent>.md: ✖ Unrecognized key: "<key>"`.
 2. `image`, `timeout_minutes` and a prompt that is not empty are REQUIRED. The file is refused with `<agent> has no <field>, and a full agent definition needs a prompt, an image and timeout_minutes`.
 3. A string value MAY name an environment variable as `${NAME}`. See [Placeholders](/floor/specs/placeholders/#3-environment-variables).
-4. A host MAY accept keys of its own. A collection names them in `floor-collection.yaml` at its root, as `host_keys: [execution_mode, review_required]`; `floor-pipeline` and `floor-studio` also take each as `--host-key <name>`, and use both. The floor never reads them.
+4. A host MAY accept keys of its own. A collection names them in `floor-collection.yaml` at its root, as `host_keys: [execution_mode, review_required]`. `floor-pipeline` and `floor-studio` also take each as `--host-key <name>`, and use both. The floor never reads them.
 
 ### 2.1 Prices
 
