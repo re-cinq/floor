@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ElkLayout } from "../elk-layout";
-import { diffLayouts } from "./layout-diff";
+import { diffLayouts, offsetsOf } from "./layout-diff";
 
 const box = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 const contentBox = { minX: 0, minY: 0, maxX: 400, maxY: 100 };
@@ -59,5 +59,24 @@ describe("diffLayouts", () => {
     const after: ElkLayout = { nodes: [nodeA], edges: [], contentBox };
 
     expect(sortedDiff(null, after)).toEqual({ added: [], moved: [], removed: [] });
+  });
+});
+
+describe("offsetsOf", () => {
+  it("gives b the offset back to its old x and y and leaves out the added node c", () => {
+    const nodeC = { ...nodeA, id: "c" };
+    const before: ElkLayout = { nodes: [nodeA, nodeB], edges: [], contentBox };
+    const after: ElkLayout = { nodes: [nodeA, { ...nodeB, x: 250, y: 60 }, nodeC], edges: [], contentBox };
+
+    expect([...offsetsOf(before, after)]).toEqual([
+      ["a", { dx: 0, dy: 0 }],
+      ["b", { dx: -40, dy: -40 }],
+    ]);
+  });
+
+  it("returns no offsets when there is no earlier layout", () => {
+    const after: ElkLayout = { nodes: [nodeA], edges: [], contentBox };
+
+    expect([...offsetsOf(null, after)]).toEqual([]);
   });
 });
