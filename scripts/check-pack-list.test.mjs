@@ -11,6 +11,7 @@ const CHECK = join(dirname(fileURLToPath(import.meta.url)), "check-pack-list.mjs
 function packageWith(manifest, files) {
   const directory = mkdtempSync(join(tmpdir(), "pack-list-"));
   writeFileSync(join(directory, "package.json"), JSON.stringify({ name: "@re-cinq/floor-demo", version: "0.0.0", files: ["dist"], ...manifest }));
+
   for (const file of ["README.md", "LICENSE", ...files]) {
     mkdirSync(dirname(join(directory, file)), { recursive: true });
     writeFileSync(join(directory, file), "x");
