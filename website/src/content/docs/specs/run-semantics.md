@@ -35,7 +35,7 @@ An event names a run by `runId` in its payload, or by `subjectKey` and `repo`. A
 
 A report from an event needs a visit that is open at the node. With none, nothing happens.
 
-A start for a node that already has an open visit, sent with no iteration (a start by hand), returns that visit and opens nothing. The walk itself opens no visit while any visit of the run is open.
+A start for a node that already has an open visit, sent with no iteration (a start by hand), returns that visit and opens nothing. The walk itself opens no visit while any visit of the run is open. A start that names another iteration of a node with an open visit is refused with `node "N" already has an open visit, iteration I`. The run and its open visit stay as they were. The branches of a [fan-out](#6-fan-out) share one iteration, so they open side by side.
 
 ## 3. A visit
 

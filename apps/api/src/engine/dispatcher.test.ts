@@ -94,6 +94,23 @@ describe("Dispatcher: events it cannot act on", () => {
     expect(handled.ackedAt).not.toBeNull();
   });
 
+  it("leaves the run open when a start names iteration 2 of work while its iteration 1 visit is open", async () => {
+    const { runId } = await workOpened();
+
+    await postedThenHandled("node.work.start", { runId, iteration: 2 });
+    const run = await deps().runs.get(runId);
+
+    expect({ outcome: run!.outcome, finishedAt: run!.finishedAt }).toEqual({ outcome: null, finishedAt: null });
+  });
+
+  it("dead-letters a start that names iteration 2 of work while its iteration 1 visit is open", async () => {
+    const { runId } = await workOpened();
+
+    const handled = await postedThenHandled("node.work.start", { runId, iteration: 2 });
+
+    expect(handled.deadAt).not.toBeNull();
+  });
+
   it("dead-letters the walk's start of a node in a run already ended, leaving its outcome alone", async () => {
     const { runId } = await workOpened();
 

@@ -58,6 +58,23 @@ describe("AssemblyRunStore.start", () => {
   });
 });
 
+describe("AssemblyRunStore.openVisit", () => {
+  it("refuses iteration 2 of author while its iteration 1 visit is open", async () => {
+    const runId = await runWaitingOnAuthor();
+
+    await expect(store().openVisit(runId, "author", 2)).rejects.toThrow(new Error('node "author" already has an open visit, iteration 1'));
+  });
+
+  it("opens no second visit of author when iteration 2 is refused", async () => {
+    const runId = await runWaitingOnAuthor();
+
+    await store().openVisit(runId, "author", 2).catch(() => undefined);
+    const visits = await store().visits(runId);
+
+    expect(visits.map((visit) => visit.iteration)).toEqual([1]);
+  });
+});
+
 describe("AssemblyRunStore.openVisitByHand", () => {
   it("closes the run's open human visit as cancelled", async () => {
     const { visits } = await validatedByHand();

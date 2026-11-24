@@ -123,7 +123,7 @@ describe("the run journal", () => {
 
   it("numbers fifty records written through two visits at the same moment 3 to 52, with no gap", async () => {
     const { runId, visitId } = await reviewStarted();
-    const again = await store().openVisit(runId, "review", 2);
+    const again = await store().openVisit(runId, "review", 1, 1);
     const writes = Array.from({ length: 50 }, (unused, index) => records().append(index % 2 ? visitId : again.visit.id, [{ kind: "turn", body: {}, occurredAt: FIXED_NOW }]));
 
     await Promise.all(writes);

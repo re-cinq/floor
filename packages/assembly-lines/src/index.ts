@@ -15,6 +15,7 @@ export { definitionHash } from "./definition-hash.js";
 export { readAgentVerdict, requiredVerdict, type AgentVerdict } from "./agent-verdict.js";
 
 export { Refusal, enforce } from "./refusal.js";
+export { VisitAlreadyOpen } from "./visit-already-open.js";
 export { validateLine, type KnownDefinitions } from "./line-validation.js";
 export { gitArgNames } from "./line-args.js";
 export { nodeStartedBy, requireNode, startEventName } from "./start-events.js";
