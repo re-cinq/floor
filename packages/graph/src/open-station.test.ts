@@ -44,7 +44,29 @@ describe("an open station's border", () => {
 
     expect(animation).toBe("openMarch 0.8s linear infinite");
   });
+
+  it("stops the march under prefers-reduced-motion and keeps the 6 4 dashes still", () => {
+    expect({ animations: reducedMotionAnimations(), dasharray: openBoxDeclarations()["stroke-dasharray"] }).toEqual({
+      animations: ["none"],
+      dasharray: "6 4",
+    });
+  });
 });
+
+function reducedMotionAnimations(): string[] {
+  const animations: string[] = [];
+
+  stylesheet().walkAtRules("media", (media: AtRule) => {
+    if (!/prefers-reduced-motion:\s*reduce/.test(media.params)) return;
+    media.walkRules(OPEN_BOX, (rule: Rule) => {
+      rule.walkDecls("animation", (declaration: Declaration) => {
+        animations.push(declaration.value);
+      });
+    });
+  });
+
+  return animations;
+}
 
 function stylesheet() {
   return postcss.parse(readFileSync(fileURLToPath(new URL("./run-graph.module.css", import.meta.url)), "utf8"));
