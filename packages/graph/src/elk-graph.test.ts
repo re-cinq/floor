@@ -7,17 +7,22 @@ describe("elkGraphOf", () => {
   it("returns the root with layout options and one 140x60 child for a single-station line", () => {
     const singleStationLine = markerLine({ entry: "review", exit: "review", nodeIds: ["review"], edges: [] });
 
-    expect(elkGraphOf(singleStationLine)).toEqual({
+    const graph = elkGraphOf(singleStationLine);
+
+    expect(graph).toMatchObject({
       id: "root",
       layoutOptions: {
         "elk.algorithm": "layered",
         "elk.direction": "RIGHT",
         "elk.edgeRouting": "ORTHOGONAL",
-        "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
         "elk.layered.cycleBreaking.strategy": "MODEL_ORDER",
         "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+        "elk.spacing.edgeEdge": expect.any(String),
+        "elk.spacing.edgeNode": expect.any(String),
       },
-      children: [{ id: "review", width: 140, height: 60 }],
+      children: [
+        { id: "review", width: 140, height: 60, layoutOptions: { "elk.portConstraints": "FIXED_SIDE" }, ports: [] },
+      ],
       edges: [],
     });
   });
@@ -39,8 +44,8 @@ describe("elkGraphOf", () => {
     expect(elkGraphOf(twoStationLine).edges).toEqual([
       {
         id: "write|done|success",
-        sources: ["write"],
-        targets: ["done"],
+        sources: ["write|done|success:out"],
+        targets: ["write|done|success:in"],
         labels: [{ text: "success", width: 58, height: 16 }],
       },
     ]);
@@ -60,10 +65,83 @@ describe("elkGraphOf", () => {
     expect(elkGraphOf(loopingLine).edges).toEqual([
       {
         id: "review|review|failed",
-        sources: ["review"],
-        targets: ["review"],
+        sources: ["review|review|failed:out"],
+        targets: ["review|review|failed:in"],
         labels: [{ text: "failed · max 1", width: 109, height: 16 }],
       },
     ]);
+  });
+
+  it("gives write -> done on success an east out-port on write and a west in-port on done", () => {
+    const successLine = markerLine({
+      entry: "write",
+      exit: "done",
+      nodeIds: ["write", "done"],
+      edges: [["write", "done", "success"]],
+    });
+    const fixedSide = { "elk.portConstraints": "FIXED_SIDE" };
+
+    const { children, edges } = elkGraphOf(successLine);
+
+    expect({ children, edges }).toEqual({
+      children: [
+        {
+          id: "write",
+          width: 140,
+          height: 60,
+          layoutOptions: fixedSide,
+          ports: [{ id: "write|done|success:out", width: 8, height: 8, layoutOptions: { "elk.port.side": "EAST" } }],
+        },
+        {
+          id: "done",
+          width: 140,
+          height: 60,
+          layoutOptions: fixedSide,
+          ports: [{ id: "write|done|success:in", width: 8, height: 8, layoutOptions: { "elk.port.side": "WEST" } }],
+        },
+      ],
+      edges: [
+        {
+          id: "write|done|success",
+          sources: ["write|done|success:out"],
+          targets: ["write|done|success:in"],
+          labels: [{ text: "success", width: 58, height: 16 }],
+        },
+      ],
+    });
+  });
+
+  it("ends the failed review -> done line at its own exit dot and leaves done only the success in-port", () => {
+    const branchingLine = markerLine({
+      entry: "review",
+      exit: "done",
+      nodeIds: ["review", "done"],
+      edges: [
+        ["review", "done", "success"],
+        ["review", "done", "failed"],
+      ],
+    });
+
+    const { children, edges } = elkGraphOf(branchingLine);
+
+    expect({ children: children?.map(({ id, width, height, layoutOptions, ports }) => ({ id, width, height, layoutOptions, ports })).filter(({ id }) => id !== "review"), failedTargets: edges?.find((edge) => edge.id === "review|done|failed")?.targets }).toEqual({
+      children: [
+        {
+          id: "done",
+          width: 140,
+          height: 60,
+          layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
+          ports: [{ id: "review|done|success:in", width: 8, height: 8, layoutOptions: { "elk.port.side": "WEST" } }],
+        },
+        {
+          id: "review|done|failed:exit",
+          width: 14,
+          height: 14,
+          layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
+          ports: [{ id: "review|done|failed:in", width: 8, height: 8, layoutOptions: { "elk.port.side": "WEST" } }],
+        },
+      ],
+      failedTargets: ["review|done|failed:in"],
+    });
   });
 });

@@ -23,6 +23,22 @@ export function linesOverLabels(layout: ElkLayout): { edge: string; label: strin
   return layout.edges.flatMap((edge) => labelsCrossedBy(edge, layout.edges).map((labelled) => ({ edge: edgeKeyOf(edge), label: edgeKeyOf(labelled) })));
 }
 
+/** Lists each interior segment of an edge path, never the first or last, shorter than the minimum. */
+export function tinyTurns(layout: ElkLayout, minimum: number): { edge: string; length: number }[] {
+  return layout.edges.flatMap((edge) =>
+    segmentsOf(edge)
+      .slice(1, -1)
+      .map(lengthOf)
+      .filter((length) => length < minimum)
+      .map((length) => ({ edge: edgeKeyOf(edge), length })),
+  );
+}
+
+/** Paths are axis-aligned, so one of the two spans is always zero. */
+function lengthOf(segment: Box): number {
+  return segment.right - segment.left + (segment.bottom - segment.top);
+}
+
 /** The other edges whose label box the edge's path runs through; an edge never counts against its own label. */
 function labelsCrossedBy(edge: Edge, edges: Edge[]): Edge[] {
   const segments = segmentsOf(edge);

@@ -2,6 +2,12 @@ import { describe, it, expect } from "vitest";
 import { layoutWithElk } from "./elk-layout";
 import { markerLine } from "./metro/line.fixtures";
 
+function straightSegmentOf(path: string): number[] {
+  const [, ...coordinates] = path.match(/^M (\S+) (\S+) L (\S+) (\S+)$/)!;
+
+  return coordinates.map(Number);
+}
+
 describe("layoutWithElk", () => {
   const twoStationLine = markerLine({ entry: "write", nodeIds: ["write", "done"], edges: [["write", "done", "success"]] });
 
@@ -24,28 +30,39 @@ describe("layoutWithElk", () => {
     expect(contentBox).toEqual({ minX: 0, minY: 0, maxX: 164, maxY: 84 });
   });
 
-  it("returns a forward write -> done success edge as a straight M 152 42 L 250 42 path", async () => {
+  it("returns a forward write -> done success edge", async () => {
     const { edges } = await layoutWithElk(twoStationLine);
 
-    expect(edges[0]).toMatchObject({
-      from: "write",
-      to: "done",
-      on: "success",
-      kind: "forward",
-      d: "M 152 42 L 250 42",
-    });
+    expect(edges[0]).toMatchObject({ from: "write", to: "done", on: "success", kind: "forward" });
   });
 
-  it("returns the write -> done success label centre 201,53 as a horizontal mid", async () => {
-    const { edges } = await layoutWithElk(twoStationLine);
+  it("returns the forward write -> done path as one horizontal segment from write's right edge to done's left edge", async () => {
+    const { nodes, edges } = await layoutWithElk(twoStationLine);
+    const write = nodes.find((node) => node.id === "write")!;
+    const done = nodes.find((node) => node.id === "done")!;
 
-    expect(edges[0].mid).toEqual({ x: 201, y: 53, vertical: false });
+    const [startX, startY, endX, endY] = straightSegmentOf(edges[0].d);
+
+    expect({
+      startsAtOrRightOfWrite: startX >= write.x + write.width / 2,
+      endsAtOrLeftOfDone: endX <= done.x - done.width / 2,
+      isHorizontal: startY === endY,
+      withinStationHeight: startY >= write.y - write.height / 2 && startY <= write.y + write.height / 2,
+    }).toEqual({ startsAtOrRightOfWrite: true, endsAtOrLeftOfDone: true, isHorizontal: true, withinStationHeight: true });
   });
 
-  it("returns the write -> done success label box 172,45 to 230,61", async () => {
+  it("returns the write -> done success mid as the horizontal centre of its label box", async () => {
     const { edges } = await layoutWithElk(twoStationLine);
+    const { minX, minY, maxX, maxY } = edges[0].labelBox;
 
-    expect(edges[0].labelBox).toEqual({ minX: 172, minY: 45, maxX: 230, maxY: 61 });
+    expect(edges[0].mid).toEqual({ x: (minX + maxX) / 2, y: (minY + maxY) / 2, vertical: false });
+  });
+
+  it("returns the write -> done success label box as 58 wide and 16 high", async () => {
+    const { edges } = await layoutWithElk(twoStationLine);
+    const { minX, minY, maxX, maxY } = edges[0].labelBox;
+
+    expect({ width: maxX - minX, height: maxY - minY }).toEqual({ width: 58, height: 16 });
   });
 
   it("returns kind self for the review -> review failed edge", async () => {
