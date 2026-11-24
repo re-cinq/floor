@@ -168,6 +168,30 @@ describe("RunGraphView run overlay", () => {
     expect(widthOfMerged(waiting.container)).toBeGreaterThan(widthOfMerged(open.container));
   });
 
+  it("reads person with no waiting label or mark on merged once its visit closed in success", async () => {
+    const definition = markerLine({
+      kind: "human",
+      entry: "a",
+      nodeIds: ["a", "merged", "done"],
+      edges: [
+        ["a", "merged", "success"],
+        ["merged", "done", "success"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "success", open: false },
+        { nodeId: "merged", iteration: 1, outcome: "success", open: false },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} waiting={{ merged: "Waiting for the spec PR" }} />);
+    const card = container.querySelector('[data-node="merged"]');
+    const [, subtitle] = card?.querySelectorAll("text:not([data-badge] text)") ?? [];
+
+    expect({ subtitle: subtitle.textContent, waiting: card?.getAttribute("data-waiting") }).toEqual({ subtitle: "person", waiting: null });
+  });
+
   it("keeps a's last closed outcome failed while its second visit is open", async () => {
     const definition = markerLine({
       entry: "a",
