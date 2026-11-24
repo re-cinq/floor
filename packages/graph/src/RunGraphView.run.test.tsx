@@ -144,6 +144,30 @@ describe("RunGraphView run overlay", () => {
     }).toEqual({ subtitle: "person · Waiting for the spec PR", waiting: "true", open: null });
   });
 
+  it("widens merged's card when its waiting label Waiting for the spec PR is longer than open", async () => {
+    const definition = markerLine({
+      kind: "human",
+      entry: "a",
+      nodeIds: ["a", "merged", "done"],
+      edges: [
+        ["a", "merged", "success"],
+        ["merged", "done", "success"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "success", open: false },
+        { nodeId: "merged", iteration: 1, open: true },
+      ],
+    };
+    const widthOfMerged = (container: HTMLElement) => Number(container.querySelector('[data-node="merged"] rect')?.getAttribute("width"));
+
+    const open = await renderGraph(<RunGraphView definition={definition} run={run} />);
+    const waiting = await renderGraph(<RunGraphView definition={definition} run={run} waiting={{ merged: "Waiting for the spec PR" }} />);
+
+    expect(widthOfMerged(waiting.container)).toBeGreaterThan(widthOfMerged(open.container));
+  });
+
   it("keeps a's last closed outcome failed while its second visit is open", async () => {
     const definition = markerLine({
       entry: "a",
