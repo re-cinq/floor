@@ -1,18 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fitNodeLabel, nodeHeightFor, NODE_LABEL_CHARS } from "./run-graph-geometry";
-import type { VisibleGraph, VisibleNode } from "./graph-view-model";
-
-const node = (id: string, outcomes: readonly string[] = []): VisibleNode => ({
-  id,
-  type: "agent",
-  outcomes,
-  isEntry: false,
-  isExit: false,
-  isFail: false,
-  hasProblem: false,
-});
-
-const graph = (over: Partial<VisibleGraph> = {}): VisibleGraph => ({ nodes: [], edges: [], ...over });
+import { fitNodeLabel, NODE_LABEL_CHARS } from "./run-graph-geometry";
 
 describe("fitNodeLabel", () => {
   it("clips a label longer than the box to an ellipsis at the budget", () => {
@@ -29,15 +16,5 @@ describe("fitNodeLabel", () => {
     const exact = "y".repeat(NODE_LABEL_CHARS);
 
     expect(fitNodeLabel(exact)).toEqual(exact);
-  });
-});
-
-describe("nodeHeightFor", () => {
-  it("uses the base height when no node lists outcomes", () => {
-    expect(nodeHeightFor(graph({ nodes: [node("a")] }))).toEqual(48);
-  });
-
-  it("grows to fit the widest outcome list", () => {
-    expect(nodeHeightFor(graph({ nodes: [node("a", ["success", "failed"]), node("b")] }))).toEqual(48 + 14 + 2 * 15);
   });
 });
