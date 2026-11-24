@@ -37,4 +37,16 @@ describe("GraphEdge", () => {
 
     expect(Number(container.querySelector("[data-edge-label]")?.getAttribute("x"))).toBe(50 - countWidthOf(2) / 2);
   });
+
+  it("rotates the ×2 count by -90 degrees around its anchor on a vertical edge", () => {
+    const verticalEdge = { ...failedEdge, mid: { ...failedEdge.mid, vertical: true } };
+
+    const { container } = render(
+      <svg>
+        <GraphEdge edge={verticalEdge} model={undefined} emphasis={undefined} takenCount={2} />
+      </svg>,
+    );
+
+    expect(container.querySelector("[data-taken-count]")?.getAttribute("transform")).toBe("rotate(-90 77 10)");
+  });
 });
