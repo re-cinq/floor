@@ -3,6 +3,16 @@ import { visitedPartOf } from "./visited-part";
 import { markerLine } from "./line.fixtures";
 import { edgeKeyOf } from "./edge-key";
 
+const startToDoneLine = markerLine({
+  entry: "start",
+  exit: "done",
+  nodeIds: ["start", "a", "done"],
+  edges: [
+    ["start", "a", "always"],
+    ["a", "done", "success"],
+  ],
+});
+
 describe("visitedPartOf", () => {
   it("keeps the start entry and its taken line start|a|always when the run never visited start", () => {
     const definition = markerLine({
@@ -32,18 +42,17 @@ describe("visitedPartOf", () => {
   });
 
   it("sets exit to an empty string when the run never reached done", () => {
-    const definition = markerLine({
-      entry: "start",
-      exit: "done",
-      nodeIds: ["start", "a", "done"],
-      edges: [
-        ["start", "a", "always"],
-        ["a", "done", "success"],
-      ],
-    });
-
-    const { exit } = visitedPartOf(definition, [{ nodeId: "a", iteration: 1, outcome: "failed", open: false }]);
+    const { exit } = visitedPartOf(startToDoneLine, [{ nodeId: "a", iteration: 1, outcome: "failed", open: false }]);
 
     expect(exit).toEqual("");
+  });
+
+  it("keeps exit as done when the run reached done", () => {
+    const { exit } = visitedPartOf(startToDoneLine, [
+      { nodeId: "a", iteration: 1, outcome: "success", open: false },
+      { nodeId: "done", iteration: 1, outcome: "success", open: false },
+    ]);
+
+    expect(exit).toEqual("done");
   });
 });
