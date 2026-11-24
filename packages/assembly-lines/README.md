@@ -44,7 +44,7 @@ getNextTransition(
 | `validateLine`, `KnownDefinitions` | every problem a line body has: names, edges, reachability, arguments, outcomes, cycles, needs, fan-outs |
 | `gitArgNames`, `nodeStartedBy`, `requireNode`, `startEventName` | small readers of a line: its git arguments, and the event that starts a node |
 | `promptParameters`, `runParameters`, `WORKSPACE` | the values a prompt's `{placeholders}` are filled with |
-| `declaredParameters`, `needPathOf`, `RUN_PARAMETER_NAMES`, `BROKER_PARAMETER_NAMES` | the names those values have, worked out from a station's declaration instead of a brief |
+| `declaredParameters`, `needPathOf`, `RUN_PARAMETER_NAMES`, `BROKER_PARAMETER_NAMES` | the names those values have, worked out from a station's declaration instead of a brief. `floor-pipeline lint` and the tools that draw an assembly line share `declaredParameters`, so they name a prompt's parameters the same way |
 | `nodeEvents`, `CollectionLine`, `DISPATCH_EVENT`, `REPORTED_EVENT`, `RUN_SETTLED_EVENT` | the events that start a node, answer it and leave it |
 | `needCoverage`, `coverageContextOf`, `needMissesOf`, `EXEMPT_NEEDS` | how one need at one node is covered: seeded, filled on every path, sometimes empty (with one path), never filled, and the rest |
 | `placeholderPattern` | the `{name}` rule as a fresh `RegExp`, also at the browser-safe subpath `@re-cinq/floor-assembly-lines/placeholder-pattern`, which loads no Node module |
@@ -122,9 +122,11 @@ Source: `libs/assembly-lines/src/{transition,definition-hash}.ts` in the lore mo
 
 ## Not ported
 
-The line loader and schema (`loader.ts`, `assembly-line-schema.ts`, `assembly-line-validate.ts`) are not in this package. They belong to the line-authoring layer described in [docs/entities/assembly-line.md](../../docs/entities/assembly-line.md) (start events, `bind`, the `subject` argument mark), which has no counterpart in lore's schema.
+The line loader and schema (`loader.ts`, `assembly-line-schema.ts`, `assembly-line-validate.ts`) are not in this package. They belong to the line-authoring layer described in [the pipeline file specification](https://re-cinq.github.io/floor/specs/pipeline-file/) (start events, `bind`, the `subject` argument mark), which has no counterpart in lore's schema.
 
-That doc's "Validation at creation" is built in full except for the `git`-write review-gate check, which waits on a separate decision. The check is that a node whose station needs `git` `access: write` must have a review or human node on every path in, unless it is the first writer.
+Its rules of a line are built in full except for one.
+
+> **Not built yet.** The `git`-write review-gate check, which waits on a separate decision. The check is that a node whose station needs `git` `access: write` must have a review or human node on every path in, unless it is the first writer.
 
 ## Tests
 

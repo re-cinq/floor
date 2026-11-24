@@ -13,12 +13,7 @@ The pages in this folder are the design underneath it, and what the code's own c
 - [Install Floor and run your first line](tutorial.md) takes you from a Kubernetes cluster to a running agent line. The website has no page for this yet.
 - [Use](using.md) covers the CLI, the client, a service station of your own, and the HTTP API.
 
-## The entities
-
-1. [Station](entities/station.md): one unit of work, one function, three kinds
-2. [Agent definition](entities/agent-definition.md): model, prompt, timeout, tags, repo variants
-3. [Assembly line](entities/assembly-line.md): nodes and edges, with four of lore's lines converted
-4. [Assembly run](entities/assembly-run.md): a run and its visits, traced step by step
+The entity pages that were here are retired. What a station, an agent definition, an assembly line and an assembly run are is on the website's [concepts](https://re-cinq.github.io/floor/concepts/assembly-line/) and [specifications](https://re-cinq.github.io/floor/specs/pipeline-file/). The run traces are in [assembly_run_storage.md](assembly_run_storage.md#two-runs-traced), and lore's converted assembly lines are in the [lore-converter README](../packages/lore-converter/README.md#four-of-lores-assembly-lines-converted).
 
 ## The design
 

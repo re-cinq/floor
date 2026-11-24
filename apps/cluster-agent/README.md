@@ -1,6 +1,6 @@
 # @floor/cluster-agent
 
-The only process in one deployment that talks to that cluster's Kubernetes API. It claims `station_run.dispatch` and `station_run.abort` events from the Floor by tag. A dispatch becomes an Agent of the [ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) running a recipe (an AgentDefinition + Station) shared by every visit with the same settings. An abort deletes that Agent. See [docs/entities/station.md](../../docs/entities/station.md), "AgentStation, kind agent", and [docs/assembly_run_storage.md](../../docs/assembly_run_storage.md), "the agent kind runs on the ai-agent-subsystem, with no code of ours in the pod".
+The only process in one deployment that talks to that cluster's Kubernetes API. It claims `station_run.dispatch` and `station_run.abort` events from the Floor by tag. A dispatch becomes an Agent of the [ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) running a recipe (an AgentDefinition + Station) shared by every visit with the same settings. An abort deletes that Agent. See [docs/assembly_run_storage.md](../../docs/assembly_run_storage.md), "The agent kind runs on the ai-agent-subsystem, with no code of ours in the pod".
 
 ## Where this fits
 
@@ -23,7 +23,7 @@ Source: `apps/cluster-agent/src/{lib/k8s-errors,lib/poll-loop→libs/shared, out
 
 ## What is new, and the judgement calls in it
 
-`domain/agent-triple.ts` maps a visit's resolved needs onto the three subsystem custom resources, a recipe and an Agent. Every field traces to a sentence in `docs/entities/station.md`'s mapping table or the subsystem's own CRD reference (`ai-agent-subsystem/website/.../reference/crd-*.md`), with five exceptions.
+`domain/agent-triple.ts` maps a visit's resolved needs onto the three subsystem custom resources, a recipe and an Agent. Every field traces to a row of the mapping table in `docs/assembly_run_storage.md`, "The agent kind runs on the ai-agent-subsystem, with no code of ours in the pod", or the subsystem's own CRD reference (`ai-agent-subsystem/website/.../reference/crd-*.md`), with five exceptions.
 
 1. **A recipe per settings, an Agent per visit.** The AgentDefinition and Station hold only what the visit's settings decide: model, prompt, tools, skills, MCP servers, the model's secret, the definition's own env, image, pod resources, and its `timeoutMinutes` as the Station's deadline. The deadline is not the minutes the visit has left, which differ for every visit. Both are named `floor-<12 hex>` after a hash of that content. The settings are the agent definition's latest version merged with the run's repository variant, so a new version or a changed variant is a new recipe, and every visit that runs the same settings shares one. A recipe is created only when absent (a 409 is the one already there). What belongs to the visit rides on its Agent, `floor-<visitId>`, which ai-agent-subsystem v0.15.0 lays over the recipe: the repos to clone, the conversation, the sink and file uploads under the visit's token, and the git identity of a visit that writes (a variable the definition sets itself wins). The Agent is created labelled `agents.re-cinq.com/station` and `agents.re-cinq.com/agent-definition` with its recipe's name. Before v0.15.0 a whole triple was minted per visit, because a shared AgentDefinition would have been one visit stale on the branch or the conversation.
 2. **The conversation contract is the subsystem's own**, read from its source. It restores with `GET {source}/{id}` and saves with `POST {source}/{pin}`, and hands `pin` to the agent as its session id, which must be a uuid. So `source` is the floor's `/conversations`, `pin` is the visit id, and `id` is the id of the earlier visit being continued. A station that continues saves its first round too, or its second would have nothing to restore.
@@ -59,6 +59,8 @@ A `git` need gets no credential from this agent, read or write. The Agent it cre
 
 A pod is told what is true of every pod of its kind (`domain/pod-environment.ts`), so no agent definition has to say it. A visit with write access to a repository commits as `Floor Agent`, through git's own `GIT_AUTHOR_*` and `GIT_COMMITTER_*` variables. A Gemini pod trusts its workspace through `GEMINI_CLI_TRUST_WORKSPACE`, without which Gemini's CLI stops with nobody to ask. What the agent definition's `env` sets wins.
 
+An agent definition's `pod_resources` reaches this agent in the brief's settings as `podResources` and becomes the `resources` of the pod's `agent` container. When unset, the container carries none and the subsystem's default applies. A definition with no `model` gets no model secret, since the family is read from the model's name.
+
 ## Not ported
 
 Everything that watches Agent CRs for terminal status (`events/listeners/k8s-watch.ts`, `agent-reporting.ts`) has no counterpart. The plan's pods report through their own sink, so this agent never watches what it creates. Pod-log tailing is not ported either, because logs reach the Floor through the same sink.
@@ -67,7 +69,7 @@ Everything that watches Agent CRs for terminal status (`events/listeners/k8s-wat
 
 The agent registers with the floor under `FLOOR_CLUSTER_ID` every minute and offers `cluster:<id>` beside its tags. It registers its build (`FLOOR_BUILD_SHA`) and the agent subsystem's release and CLI pins, read from the `agent-subsystem-versions` ConfigMap in `FLOOR_SUBSYSTEM_NAMESPACE` (default: the agents namespace). `kube/subsystem-versions.ts` reads them, and gives null when it cannot, never a failed register.
 
-Its own `agent_definition.changed` events push the latest version's recipes ahead of any visit (`domain/pushed-recipe.ts`), labelled `floor.re-cinq.com/definition` and annotated with the version, the variant and the floor body. A recipe a visit made first is marked in place (a merge patch). The agent watches those recipes (`kube/recipe-watch.ts`) and posts what kube holds as `agent_definition.reported`, so a hand edit becomes the floor's newest version. The sweep keeps the newest pushed recipe of each agent definition and variant, though no Agent runs it yet. The Role grants `watch` and `patch` for it. See docs/entities/agent-definition.md, "Distribution and presence".
+Its own `agent_definition.changed` events push the latest version's recipes ahead of any visit (`domain/pushed-recipe.ts`), labelled `floor.re-cinq.com/definition` and annotated with the version, the variant and the floor body. A recipe a visit made first is marked in place (a merge patch). The agent watches those recipes (`kube/recipe-watch.ts`) and posts what kube holds as `agent_definition.reported`, so a hand edit becomes the floor's newest version. The sweep keeps the newest pushed recipe of each agent definition and variant, though no Agent runs it yet. The Role grants `watch` and `patch` for it. See docs/assembly_run_storage.md, "Distribution and presence".
 
 ## Tests
 

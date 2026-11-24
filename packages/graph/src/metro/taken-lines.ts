@@ -3,7 +3,7 @@ import type { AssemblyLineDefinition, DefinitionEdge } from "../assembly-line-de
 import { edgeKeyOf } from "./edge-key";
 import { outgoingEdgesOf } from "./node-edges";
 
-/** One station run, as `docs/entities/assembly-run.md` describes it. */
+/** One station run, as `docs/assembly_run_storage.md`, "The rows", describes it. */
 export interface Visit {
   nodeId: string;
   iteration: number;

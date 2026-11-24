@@ -106,9 +106,11 @@ A node with `fanout` produces a list, and the node `fanout.to` runs once for eac
 1. The list is the `value` named by `fanout.over`. It MUST be a JSON array of strings.
 2. An entry that is not a string is dropped. Text that is not a JSON array is an empty list.
 3. Each branch is a visit of the body with the entry as its `item` need. The body's station lists `item` among its `needs`, with kind `value`.
-4. The walk goes on from the body, by the body's own edges, when every branch has reported. The body's outcome is `success` when every branch reported `success`, and `failed` otherwise.
-5. A later need with `collect: <name>` is a JSON array of what each branch produced under that name, in the order of the list.
+4. The walk goes on from the body, by the body's own edges, when every branch has reported. The branches count as one visit of the body. Its outcome is `success` when every branch reported `success`, and `failed` otherwise, whatever else a branch reported. It is decided when all have reported, so a failed branch does not cancel the others.
+5. A later need with `collect: <name>` is a JSON array of what each branch of the latest round produced under that name, in the order of the list. A produced value is taken as it is, and a produced file as its text.
 6. An empty list runs no branch, and the walk goes on as if the body reported `success`.
+
+Keep entries small, such as names or ids, and let the body read what it needs from the bag by them.
 
 ## 7. Conversations
 

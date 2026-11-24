@@ -1,4 +1,4 @@
-// The clusters a floor drives (docs/entities/agent-definition.md, "Distribution and presence"): a cluster-agent registers on start and every minute after, and a reader asks which clusters hold an agent definition's latest version.
+// The clusters a floor drives (docs/assembly_run_storage.md, "Distribution and presence"): a cluster-agent registers on start and every minute after, and a reader asks which clusters hold an agent definition's latest version.
 import type { Request, ResponseToolkit, Server } from "@hapi/hapi";
 import { mergeAgentSettings, type AgentDefinitionBody } from "@floor/store";
 import { dispatchSettings, modelSecretKeyOf } from "../agent-config.js";

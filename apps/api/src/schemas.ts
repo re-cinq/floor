@@ -1,4 +1,4 @@
-// zod mirrors of packages/store's definition body types (docs/entities/*.md), for POST/PUT validation.
+// zod mirrors of packages/store's definition body types (the pipeline file and agent file specifications, website/src/content/docs/specs), for POST/PUT validation.
 import { z } from "zod";
 import { isValidCron, isValidTimezone } from "@floor/store";
 import { agentConfigSchema } from "@re-cinq/floor-pipeline/agent-config";
