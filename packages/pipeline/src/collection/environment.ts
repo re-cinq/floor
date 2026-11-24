@@ -6,6 +6,11 @@ export type Environment = Record<string, string | undefined>;
 
 const PLACEHOLDER = /\$\{([A-Z][A-Z0-9_]*)\}/g;
 
+/** The names a text asks for, each once, in the order they first appear. */
+export function placeholdersIn(text: string): string[] {
+  return [...new Set([...text.matchAll(PLACEHOLDER)].map((match) => match[1]))];
+}
+
 export function withEnvironment(yamlText: string, env: Environment): string {
   return yamlText.replace(PLACEHOLDER, (placeholder, name: string) => {
     const value = env[name];

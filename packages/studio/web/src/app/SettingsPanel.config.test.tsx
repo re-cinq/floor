@@ -64,7 +64,7 @@ describe("Inspector Settings panel config form", () => {
       image: "acme/agent:2",
       config: { mcp_servers: [{ name: "lore", transport: "http", url: "https://lore.example/mcp" }] },
     });
-    await userEvent.click(screen.getByRole("button", { name: "Add to mcp_servers" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add server" }));
     await userEvent.type(screen.getByRole("textbox", { name: "mcp_servers 2 name" }), "files");
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "mcp_servers 2 transport" }), "stdio");
     await userEvent.type(screen.getByRole("textbox", { name: "mcp_servers 2 command" }), "npx");
@@ -76,6 +76,26 @@ describe("Inspector Settings panel config form", () => {
           { name: "lore", transport: "http", url: "https://lore.example/mcp" },
           { name: "files", transport: "stdio", command: "npx" },
         ],
+      }),
+    );
+  });
+
+  it("saves config mcp_servers with only lore http when the Remove server button of files stdio npx is pressed", async () => {
+    const saved = await openReviewerSettings("MCP", {
+      image: "acme/agent:2",
+      config: {
+        mcp_servers: [
+          { name: "lore", transport: "http", url: "https://lore.example/mcp" },
+          { name: "files", transport: "stdio", command: "npx" },
+        ],
+      },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Remove server files" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() =>
+      expect(saved()?.config).toEqual({
+        mcp_servers: [{ name: "lore", transport: "http", url: "https://lore.example/mcp" }],
       }),
     );
   });
@@ -96,6 +116,19 @@ describe("Inspector Settings panel config form", () => {
       url: screen.queryByRole("textbox", { name: "mcp_servers 1 url" }) !== null,
       command: screen.queryByRole("textbox", { name: "mcp_servers 1 command" }) !== null,
     }).toEqual({ url: true, command: false });
+  });
+
+  it("captions the mcp_servers 1 url field with just url", async () => {
+    await openReviewerSettings("MCP", {
+      image: "acme/agent:2",
+      config: { mcp_servers: [{ name: "lore", transport: "http", url: "https://lore.example/mcp" }] },
+    });
+
+    const field = screen.getByRole("textbox", { name: "mcp_servers 1 url" });
+
+    expect({ label: Array.from((field as HTMLInputElement).labels ?? [], (label) => label.querySelector("span")?.textContent) }).toEqual({
+      label: ["url"],
+    });
   });
 
   it("shows chip env: LORE_MCP_URL instead of the url textbox for an mcp_servers url of ${LORE_MCP_URL}", async () => {

@@ -230,3 +230,33 @@
     padding: var(--space-6) var(--space-5);
   }
 }
+
+.environmentEntry {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.environmentName {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.environmentFiles,
+.environmentNote {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.environmentNote {
+  padding: var(--space-2) var(--space-4) 0;
+}
+
+.environmentEntry summary {
+  cursor: pointer;
+}
+
+.environmentEntry ul {
+  list-style: none;
+  padding: var(--space-1) 0 0 var(--space-4);
+}

@@ -2,6 +2,7 @@ import type { Property } from "./schema-property";
 
 export interface FieldProps {
   name: string;
+  caption?: string;
   value: unknown;
   help?: string;
   options?: string[];

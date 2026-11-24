@@ -59,6 +59,15 @@ describe("startStudio", () => {
     expect(await client.nextOfType("result")).toMatchObject({ id: "r1", result: { counts: { lines: 1, agents: 1, refused: 0, problems: 0 }, lines: [{ id: "flow" }] } });
   });
 
+  it("answers collection.read with environment LORE_AGENT_IMAGE used by flow/agents/worker.md, when its image is ${LORE_AGENT_IMAGE}", async () => {
+    const workerText = "---\nimage: ${LORE_AGENT_IMAGE}\ntimeout_minutes: 10\n---\nWork {ticket}.\n";
+    const { client } = await connectedTo([WORKER_COLLECTION[0], { path: "flow/agents/worker.md", text: workerText }]);
+
+    client.send({ id: "r1", type: "collection.read" });
+
+    expect(await client.nextOfType("result")).toMatchObject({ result: { environment: [{ name: "LORE_AGENT_IMAGE", files: ["flow/agents/worker.md"] }] } });
+  });
+
   it("names the collection's folder in the view it answers with", async () => {
     const { dir, client } = await connectedToWorkerCollection();
 

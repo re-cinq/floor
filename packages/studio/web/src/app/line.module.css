@@ -379,6 +379,51 @@
   font-size: var(--fs-xs);
 }
 
+/* A list of objects (mcp_servers): no frame, each item a block under a thin rule, its title and Remove on one row. */
+.inspector [role="tabpanel"] [data-cards] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.inspector [role="tabpanel"] [data-cards] > p {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.inspector [role="tabpanel"] [data-card] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.inspector [role="tabpanel"] [data-card-header] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector [role="tabpanel"] [data-card-header] h3 {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+
+.inspector [role="tabpanel"] [data-cards] button {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.inspector [role="tabpanel"] [data-card-header] button:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* A list entry and its Remove button share one row. */
 .inspector [role="tabpanel"] label div {
   display: flex;
@@ -402,6 +447,14 @@
   border-color: var(--text-muted);
   background: var(--bg);
   color: var(--text);
+}
+
+/* The env chip's explanation reads as a sentence, not a caption. */
+.inspector [role="tabpanel"] label code + span {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  letter-spacing: normal;
+  color: var(--text-muted);
 }
 
 /* A config field's help line, under its control. */

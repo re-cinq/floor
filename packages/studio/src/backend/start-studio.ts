@@ -13,6 +13,8 @@ import type { CollectionView } from "../view.js";
 import { collectionView } from "./collection-view.js";
 import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
 import { editedAgentText, textVersion, withOneNewline, type AgentEdit } from "./agent-file-text.js";
+import { environmentOf } from "./environment-usage.js";
+import { fixtureFilesIn } from "./fixture-files.js";
 import { answerFrame, type StudioContext } from "./requests.js";
 import { isSkillPath, skillNamesIn } from "./skill-names.js";
 import { watchCollection } from "./watcher.js";
@@ -46,8 +48,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   enforce((await stat(dir).catch(() => undefined))?.isDirectory(), `${dir} is not a directory`);
   const token = randomBytes(TOKEN_BYTES).toString("hex");
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
-  const folder = basename(resolve(dir));
-  const readCollection = async () => ({ ...collectionView((await collectionFilesIn(dir)).filter((file) => !isSkillPath(file.path)), hostKeys), folder, skills: await skillNamesIn(dir) });
+  const readCollection = () => collectionRead(dir, hostKeys);
 
   const writeAgent = async (file: string, edit: AgentEdit) => {
     const path = join(dir, file);
@@ -58,7 +59,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     await writeFile(path, text);
   };
 
-  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit) };
+  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir) };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {
@@ -77,6 +78,12 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     token,
     close: () => closed({ watcher, sockets, server }),
   };
+}
+
+async function collectionRead(dir: string, hostKeys: readonly string[]): Promise<CollectionView> {
+  const files = (await collectionFilesIn(dir)).filter((file) => !isSkillPath(file.path));
+
+  return { ...collectionView(files, hostKeys), folder: basename(resolve(dir)), skills: await skillNamesIn(dir), environment: environmentOf(files) };
 }
 
 async function writeExtraFile(path: string, { text, version }: { text: string; version: string }): Promise<void> {

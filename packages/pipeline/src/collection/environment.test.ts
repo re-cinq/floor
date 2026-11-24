@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { settingsWithEnvironment, withEnvironment } from "./environment.js";
+import { placeholdersIn, settingsWithEnvironment, withEnvironment } from "./environment.js";
 
 const ENVIRONMENT = { LORE_MCP_URL: "https://mcp.example/mcp", LORE_AGENT_IMAGE: "acme/agent:2" };
 
@@ -42,5 +42,14 @@ describe("settingsWithEnvironment", () => {
 
   it("throws naming the variable when a setting names one that is unset", () => {
     expect(() => settingsWithEnvironment({ image: "${LORE_AGENT_IMAGE}", prompt: null }, {})).toThrow(new Error("LORE_AGENT_IMAGE is not set, and a pipeline names it"));
+  });
+});
+
+describe("placeholdersIn", () => {
+  it.each([
+    ["image: ${LORE_AGENT_IMAGE}\nurl: ${LORE_MCP_URL}\nagain: ${LORE_AGENT_IMAGE}", ["LORE_AGENT_IMAGE", "LORE_MCP_URL"]],
+    ["${lower} $LORE_MCP_URL", []],
+  ])("lists the names in %j as %j", (text, names) => {
+    expect(placeholdersIn(text)).toEqual(names);
   });
 });

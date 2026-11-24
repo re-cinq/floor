@@ -10,6 +10,6 @@ export { attempt, type Attempt } from "./collection/refusal.js";
 export { applyCollection } from "./collection/apply.js";
 export { collectionFilesIn, lintCollectionDirectory, lintCommand, printCollectionLint, readCollectionDirectory, shippedCatalogIn, type LintCommand } from "./collection/lint-directory.js";
 export { agentFrontmatterSchema, readAgentFile, floorSettingsOf, type ParsedAgentFile, type AgentFileSettings, type ShippedAgents, type AgentPrompts } from "./collection/agent-file.js";
-export { withEnvironment, settingsWithEnvironment, type Environment } from "./collection/environment.js";
+export { placeholdersIn, withEnvironment, settingsWithEnvironment, type Environment } from "./collection/environment.js";
 export { PIPELINE_RULES, pipelineProblems, type PipelineProblem, type PipelineRule } from "./collection/lint-rules.js";
 export { agentFileOf, isCollectionFile, isReadPath, pipelineFolderOf } from "./collection/paths.js";

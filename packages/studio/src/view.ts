@@ -87,6 +87,8 @@ export interface CollectionView {
   folder?: string;
   /** The names of the `skills/*.md` files. Set by the backend, like `folder`. */
   skills?: string[];
+  /** The `${NAME}` placeholders the collection's line files and agent settings name, and the files that name each. Set by the backend, like `folder`. */
+  environment?: { name: string; files: string[] }[];
   lines: LineView[];
   agents: AgentView[];
   refused: RefusedFile[];

@@ -52,6 +52,18 @@ describe("App against the real backend", () => {
     expect(refused.textContent).toMatch(/^refused filesbroken\/assembly-line\.yaml\S.+/);
   });
 
+  it("lists LORE_AGENT_IMAGE under Environment with the file that uses it", async () => {
+    const workerAgent: CollectionFile = {
+      path: "flow/agents/worker.md",
+      text: "---\nimage: ${LORE_AGENT_IMAGE}\ntimeout_minutes: 10\n---\nWork {ticket}.\n",
+    };
+    await openPage([WORKER_COLLECTION[0], workerAgent]);
+
+    const environment = await screen.findByRole("region", { name: "Environment" });
+
+    expect(environment.textContent).toMatch(/LORE_AGENT_IMAGE.*flow\/agents\/worker\.md/);
+  });
+
   it("still lists the lines that can be read beside a refused file", async () => {
     await openPage([...WORKER_COLLECTION, BROKEN_LINE]);
 

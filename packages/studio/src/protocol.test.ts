@@ -21,7 +21,7 @@ describe("requestSchema", () => {
   });
 
   it("lists every request type there is", () => {
-    expect(REQUEST_TYPES).toEqual(["collection.read", "agent.write", "extra.write"]);
+    expect(REQUEST_TYPES).toEqual(["collection.read", "agent.write", "extra.write", "fixture.write", "fixture.read"]);
   });
 });
 

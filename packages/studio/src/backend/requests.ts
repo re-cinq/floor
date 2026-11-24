@@ -4,6 +4,7 @@ import { enforce } from "@re-cinq/floor-assembly-lines";
 import { z } from "zod";
 import type { CollectionView } from "../view.js";
 import type { AgentEdit } from "./agent-file-text.js";
+import { fixtureRead, fixtureWrite, type FixtureRead, type FixtureWrite } from "./fixture-requests.js";
 
 export interface StudioContext {
   readCollection(): Promise<CollectionView>;
@@ -11,9 +12,12 @@ export interface StudioContext {
   writeAgent(file: string, edit: AgentEdit): Promise<void>;
   /** Rewrites an `.extra.md` file at a collection-relative path, refused when it changed since it was read. */
   writeExtra(file: string, edit: { text: string; version: string }): Promise<void>;
+  /** The saved needs of a node's fixture; empty when none was saved. */
+  readFixture(line: string, node: string): Promise<Record<string, string>>;
+  writeFixture(line: string, node: string, needs: Record<string, string>): Promise<void>;
 }
 
-interface Handler<Asked extends Request> {
+export interface Handler<Asked extends Request> {
   type: Asked["type"];
   handle(context: StudioContext, request: Asked): Promise<ResultOf<Asked>>;
 }
@@ -67,7 +71,7 @@ type CollectionRead = Extract<Request, { type: "collection.read" }>;
 const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
 
 /** One handler for each request type: a test holds the list to `REQUEST_TYPES`. */
-export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite>)[] = [collectionRead, agentWrite, extraWrite];
+export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead];
 
 export async function answerFrame(text: string, context: StudioContext): Promise<ServerFrame> {
   const held = parsedJson(text);

@@ -3,6 +3,7 @@ import type { SchemePref } from "@/theme/scheme";
 import type { ConnectionState } from "@/socket/studio-connection";
 import ConnectionIndicator from "./ConnectionIndicator";
 import LineList from "./LineList";
+import EnvironmentList from "./EnvironmentList";
 import RefusedFiles from "./RefusedFiles";
 import ThemeSwitch from "./ThemeSwitch";
 import styles from "./shell.module.css";
@@ -26,6 +27,7 @@ export default function Sidebar({ collection, connection, selectedLineId, hrefOf
         <>
           {collection.folder && <p className={styles.folder}>{collection.folder}</p>}
           <LineList lines={collection.lines} selectedLineId={selectedLineId} hrefOf={hrefOf} />
+          <EnvironmentList entries={collection.environment ?? []} />
           <RefusedFiles files={collection.refused} />
         </>
       )}
