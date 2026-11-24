@@ -15,6 +15,10 @@ describe("nodeAriaLabel", () => {
     expect(nodeAriaLabel({ node: { ...plainNode, type: "marker", isExit: true }, isTerminal: true })).toBe("work, marker, the line ends here, terminal");
   });
 
+  it("ends with unreachable for an agent node no start leads to", () => {
+    expect(nodeAriaLabel({ node: plainNode, isTerminal: false, isUnreachable: true })).toEqual("work, agent, unreachable");
+  });
+
   it("names a human node human, whatever the family is drawn as", () => {
     expect(nodeAriaLabel({ node: { ...plainNode, type: "human" }, isTerminal: false })).toBe("work, human");
   });

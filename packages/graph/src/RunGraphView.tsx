@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { useElkLayout } from "./use-elk-layout";
 import type { ElkLayout, LaidOutEdge } from "./elk-layout";
+import { reachabilityOf } from "./metro/reachability";
 import { edgeKeyOf } from "./metro/edge-key";
 import { neighbourhoodOf, type Neighbourhood } from "./metro/neighbourhood";
 import { typeFamilyOf } from "./node-type-family";
@@ -61,6 +62,7 @@ interface GraphCanvasProps {
 /** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
 function GraphCanvas({ view, graph }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
+  const unreachable = useMemo(() => reachabilityOf(view.definition).unreachable, [view.definition]);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
   const elkLayout = useElkLayout(view.definition, NODE_SIZE);
   const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name), [elkLayout, graph, view.definition.name]);
@@ -79,6 +81,7 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               selectedNodeId={view.selectedNodeId}
               describedNode={describedNodeOf(tooltip)}
               lit={lit}
+              unreachable={unreachable}
               onHover={setHoveredId}
             />
           </GraphViewport>
@@ -150,6 +153,8 @@ interface GraphSvgProps {
   selectedNodeId: RunGraphViewProps["selectedNodeId"];
   /** What the hovered node touches; everything else dims. Null while nothing is hovered. */
   lit: Neighbourhood | null;
+  /** Stations no start leads to. */
+  unreachable: ReadonlySet<string>;
   onHover: (nodeId: string | null) => void;
 }
 
@@ -209,7 +214,7 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
 }
 
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
-function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, onHover }: GraphSvgProps) {
+function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, unreachable, onHover }: GraphSvgProps) {
   const { nodes } = laid.layout;
 
   return nodes.map((node) => {
@@ -229,6 +234,7 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, l
         height={NODE_HEIGHT}
         isTerminal={!laid.nodesWithOutgoing.has(node.id)}
         selected={node.id === selectedNodeId}
+        isUnreachable={unreachable.has(node.id)}
         toneByEdge={laid.toneByEdge}
         onSelect={onSelectNode}
         onHover={onHover}
