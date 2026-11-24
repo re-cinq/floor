@@ -34,4 +34,22 @@ describe("useElkLayout", () => {
 
     expect(result.current).toEqual(layoutOf("b"));
   });
+
+  it("passes the size and the layout options to the layout function", async () => {
+    const line = markerLine({ entry: "a", exit: "a", nodeIds: ["a"], edges: [] });
+    const calls: unknown[][] = [];
+
+    const recordingLayout = async (...args: unknown[]): Promise<ElkLayout> => {
+      calls.push(args);
+
+      return { nodes: [], edges: [], contentBox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
+    };
+
+    const size = { width: 10, height: 20 };
+    const options = { compactStops: true };
+
+    renderHook(() => useElkLayout(line, size, recordingLayout as never, options));
+
+    await waitFor(() => expect(calls).toEqual([[line, size, options]]));
+  });
 });
