@@ -1,9 +1,10 @@
 // Renders an assembly line — lays out the nodes/connectors from graph-view-model and hands drawing to its sibling files; every node also says its outcomes and badges as text, so meaning never rests on color alone.
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { useElkLayout } from "./use-elk-layout";
 import type { ElkLayout, LaidOutEdge } from "./elk-layout";
 import { edgeKeyOf } from "./metro/edge-key";
+import { neighbourhoodOf, type Neighbourhood } from "./metro/neighbourhood";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
@@ -59,11 +60,9 @@ interface GraphCanvasProps {
 /** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
 function GraphCanvas({ view, graph }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
+  const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
   const elkLayout = useElkLayout(view.definition, NODE_SIZE);
-  const laid = useMemo(
-    () => elkLayout && drawingOf(elkLayout, graph, view.definition.name),
-    [elkLayout, graph, view.definition.name],
-  );
+  const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name), [elkLayout, graph, view.definition.name]);
 
   return (
     <>
@@ -78,6 +77,8 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               onSelectNode={view.onSelectNode}
               selectedNodeId={view.selectedNodeId}
               describedNode={describedNodeOf(tooltip)}
+              lit={lit}
+              onHover={setHoveredId}
             />
           </GraphViewport>
         )}
@@ -85,6 +86,14 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
       <GraphTooltip {...tooltip} definition={view.definition} />
     </>
   );
+}
+
+/** The neighbourhood of the node under the pointer or the focus, or null while there is none. */
+function useHoverNeighbourhood(definition: RunGraphViewProps["definition"]) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const lit = useMemo(() => (hoveredId ? neighbourhoodOf(definition, hoveredId) : null), [hoveredId, definition]);
+
+  return { lit, setHoveredId };
 }
 
 function revealOf(laid: Drawing, selectedNodeId: string | null | undefined) {
@@ -138,6 +147,9 @@ interface GraphSvgProps {
   describedNode: DescribedNode | null;
   onSelectNode: RunGraphViewProps["onSelectNode"];
   selectedNodeId: RunGraphViewProps["selectedNodeId"];
+  /** What the hovered node touches; everything else dims. Null while nothing is hovered. */
+  lit: Neighbourhood | null;
+  onHover: (nodeId: string | null) => void;
 }
 
 /** The graph itself. A node nothing leaves is terminal, which the plain label renders differently. `role="img"` with a `<title>`: the drawing is one picture to a screen reader, the nodes inside it focusable buttons. */
@@ -167,11 +179,11 @@ function GraphSvg(props: GraphSvgProps) {
 }
 
 /** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ laid, selectedNodeId }: GraphSvgProps) {
+function GraphEdges({ laid, selectedNodeId, lit }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} />
+    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} />
   ));
 }
 
@@ -196,7 +208,7 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
 }
 
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
-function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit }: GraphSvgProps) {
+function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, onHover }: GraphSvgProps) {
   const { nodes } = laid.layout;
 
   return nodes.map((node) => {
@@ -216,6 +228,8 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit }:
         selected={node.id === selectedNodeId}
         toneByEdge={laid.toneByEdge}
         onSelect={onSelectNode}
+        onHover={onHover}
+        dimmed={!!lit && !lit.nodes.has(node.id)}
         describedBy={describedNode?.nodeId === node.id ? describedNode.tooltipId : undefined}
       />
     ) : null;

@@ -325,3 +325,8 @@
 .portIn {
   fill: var(--text-muted);
 }
+
+[data-dim="true"] {
+  opacity: 0.15;
+  transition: opacity 150ms;
+}
