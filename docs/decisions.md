@@ -669,6 +669,16 @@ and it spares a recipe younger than ten minutes.
   schemas by `packages/docs-reference`, from each field's `.describe()`.
   `npm run docs:check` fails when a page is behind the code.
 
+## The Claude Code plugin
+
+- The skills for writing a collection ship as one Claude Code plugin, `plugins/floor`, listed by the marketplace file `.claude-plugin/marketplace.json` in this repository. A collection's author works in their own repository, so skills under this one's `.claude/skills` would reach nobody who needs them. The plugin lives here, not in a repository of its own, so that a skill changes in the pull request that changes the format it describes.
+- The plugin manifest carries no `version`. Claude Code then takes the commit as the version, so a push to `main` is the update, and the release scripts know nothing of the plugin.
+- A skill edits the collection's files and never calls the floor's API. The files are what a person reviews and what `apply` puts; a skill that wrote to a floor would leave the two apart. Applying is one job of the `collection` skill, and only when asked.
+- A skill holds no copy of the format. It names the pages of the website it must read and fetches them before it writes, so a change to a specification reaches every installed skill without a new version of it. The cost is that a skill needs the network, and that the site describes `main` while a person's `floor-pipeline` may be older: every skill is told that lint decides.
+- `scripts/check-skill-links.mjs` fails when a skill names a page the website does not have. The website's own link check reads only the website.
+- `claude plugin validate .` checks the marketplace file and the plugin manifest. It is run by hand before a change to either: CI would have to install Claude Code to run it, and the lint job installs nothing from outside the lockfile. It warns that the plugin has no version, which is the choice above.
+- Starting and reading an assembly run from a skill is **not built yet**.
+
 ## Known and accepted, for now
 
 - An event that starts a line with no subject starts it twice if its ack is

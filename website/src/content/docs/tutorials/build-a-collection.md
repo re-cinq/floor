@@ -104,3 +104,5 @@ At the end, an empty folder is a [collection](/floor/concepts/collection/) with 
        with: { node-version: 22 }
      - run: npx @re-cinq/floor-pipeline lint .
    ```
+
+With Claude Code, [the floor skills](/floor/reference/skills/) do these steps for you.

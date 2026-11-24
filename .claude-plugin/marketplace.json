@@ -1,0 +1,12 @@
+{
+  "name": "floor",
+  "owner": { "name": "re:cinq" },
+  "description": "Skills for writing floor collections: assembly lines and the prompts of their agents.",
+  "plugins": [
+    {
+      "name": "floor",
+      "source": "./plugins/floor",
+      "description": "Create, edit and check the assembly lines and agent prompts of a floor collection."
+    }
+  ]
+}
