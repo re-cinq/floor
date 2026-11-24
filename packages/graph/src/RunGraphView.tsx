@@ -1,8 +1,11 @@
 // Renders an assembly line — lays out the nodes/connectors from graph-view-model and hands drawing to its sibling files; every node also says its outcomes and badges as text, so meaning never rests on color alone.
 import { useMemo, useState } from "react";
+import { useToggle } from "./use-toggle";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { useElkLayout } from "./use-elk-layout";
 import type { ElkLayout, LaidOutEdge } from "./elk-layout";
+import { drawingOf, type Drawing } from "./run-graph-drawing";
+import { mainPathOf, type MainPath } from "./metro/main-path";
 import { reachabilityOf } from "./metro/reachability";
 import { edgeKeyOf } from "./metro/edge-key";
 import { isPassThrough } from "./metro/pass-through";
@@ -23,7 +26,6 @@ import {
   NODE_HEIGHT,
   NODE_WIDTH,
   cardWidthOf,
-  fitView,
   revealBoxOf,
 } from "./run-graph-geometry";
 import styles from "./run-graph.module.css";
@@ -40,6 +42,8 @@ export interface RunGraphViewProps {
   coveredBelow?: number;
   /** Draws the pass-through stations as small stops rather than cards. */
   compactStops?: boolean;
+  /** Fades the stations and lines off the main line. */
+  mainPathOnly?: boolean;
 }
 
 // The graph: laid out by ELK, then fitted to the panel by the viewport. Until ELK resolves, the panel and legend show with an empty canvas.
@@ -68,16 +72,16 @@ interface GraphCanvasProps {
 /** The drawing in its viewport, and the tooltip of the node under the pointer or the focus (run-viz FR4.1h). */
 function GraphCanvas({ view, graph }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
-  const unreachable = useMemo(() => reachabilityOf(view.definition).unreachable, [view.definition]);
+  const { unreachable, mainPath, mainPathOnly, toggleMainPath } = useLineMarkings(view);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
-  const { elkLayout, stops } = useStopsLayout(view, graph);
+  const { elkLayout, stops, compactStops, toggleCompactStops } = useStopsLayout(view, graph);
   const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops), [elkLayout, graph, view.definition.name, stops]);
 
   return (
     <>
       <div className={styles.canvas} {...tooltip.handlers}>
         {laid && (
-          <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)} coveredBelow={view.coveredBelow}>
+          <GraphViewport drawing={laid.view} reveal={revealOf(laid, view.selectedNodeId)} coveredBelow={view.coveredBelow} mainPathOn={mainPathOnly} onToggleMainPath={toggleMainPath} compactStopsOn={compactStops} onToggleCompactStops={toggleCompactStops}>
             <GraphSvg
               laid={laid}
               graph={graph}
@@ -87,7 +91,7 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               selectedNodeId={view.selectedNodeId}
               describedNode={describedNodeOf(tooltip)}
               lit={lit}
-              unreachable={unreachable}
+              unreachable={unreachable} mainPath={mainPath}
               onHover={setHoveredId}
             />
           </GraphViewport>
@@ -98,12 +102,22 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
   );
 }
 
+/** The stations no start leads to, and the main line of the definition while `mainPathOnly` is set (else null). */
+function useLineMarkings({ definition, mainPathOnly: initialMainPathOnly }: RunGraphViewProps) {
+  const [mainPathOnly, toggleMainPath] = useToggle({ initiallyOn: initialMainPathOnly });
+  const unreachable = useMemo(() => reachabilityOf(definition).unreachable, [definition]);
+  const mainPath = useMemo(() => (mainPathOnly ? mainPathOf(definition) : null), [definition, mainPathOnly]);
+
+  return { unreachable, mainPath, mainPathOnly, toggleMainPath };
+}
+
 /** The layout, asked to compact its stops when `compactStops` is set, and the stations drawn as stops: the pass-through ones. */
-function useStopsLayout({ definition, compactStops }: RunGraphViewProps, graph: VisibleGraph) {
+function useStopsLayout({ definition, compactStops: initialCompactStops }: RunGraphViewProps, graph: VisibleGraph) {
+  const [compactStops, toggleCompactStops] = useToggle({ initiallyOn: initialCompactStops });
   const layoutOptions = useMemo(() => (compactStops ? { compactStops: true } : undefined), [compactStops]);
   const stops = useMemo(() => stopsOf({ definition, compactStops }, graph), [definition, compactStops, graph]);
 
-  return { elkLayout: useElkLayout(definition, NODE_SIZE, undefined, layoutOptions), stops };
+  return { elkLayout: useElkLayout(definition, NODE_SIZE, undefined, layoutOptions), stops, compactStops, toggleCompactStops };
 }
 
 function stopsOf({ definition, compactStops }: RunGraphViewProps, { nodes }: VisibleGraph): ReadonlySet<string> {
@@ -175,6 +189,8 @@ interface GraphSvgProps {
   selectedNodeId: RunGraphViewProps["selectedNodeId"];
   /** What the hovered node touches; everything else dims. Null while nothing is hovered. */
   lit: Neighbourhood | null;
+  /** The main line, when only it is drawn in full. */
+  mainPath: MainPath | null;
   /** Stations no start leads to. */
   unreachable: ReadonlySet<string>;
   onHover: (nodeId: string | null) => void;
@@ -207,19 +223,19 @@ function GraphSvg(props: GraphSvgProps) {
 }
 
 /** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, onSelectLine }: GraphSvgProps) {
+function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} onSelectLine={onSelectLine} />
+    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} />
   ));
 }
 
-function GraphEdgeLabels({ laid, selectedNodeId, selectedLineKey, lit, onSelectLine }: GraphSvgProps) {
+function GraphEdgeLabels({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} onSelectLine={onSelectLine} />
+    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} />
   ));
 }
 
@@ -236,7 +252,7 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
 }
 
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
-function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, unreachable, onHover }: GraphSvgProps) {
+function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, mainPath, unreachable, onHover }: GraphSvgProps) {
   const { nodes } = laid.layout;
 
   return nodes.map((node) => {
@@ -262,6 +278,7 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, l
         onSelect={onSelectNode}
         onHover={onHover}
         dimmed={!!lit && !lit.nodes.has(node.id)}
+        offPath={isOffPath(mainPath, "nodes", node.id)}
         describedBy={describedNode?.nodeId === node.id ? describedNode.tooltipId : undefined}
       />
     ) : null;
@@ -276,25 +293,6 @@ function markerOf(node: ElkLayout["nodes"][number], exit: string) {
   return node.id.endsWith(":stub") ? <DanglingStub key={node.id} node={node} /> : null;
 }
 
-type Drawing = ReturnType<typeof drawingOf>;
-
-/** Everything the drawing needs: ELK's layout, the viewport it fits, and the model lookups. */
-function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string, stops: ReadonlySet<string>) {
-  return {
-    layout,
-    stops,
-    view: fitView(layout.contentBox),
-    titleId: `graph-title-${name}`,
-    ...graphLookups(graph),
-  };
-}
-
-/** The lookups that let the drawing match a laid-out node or edge back to its model. A node with no outgoing edge is terminal, which is read from the EDGES rather than from the node, because a definition does not mark its own ends. */
-function graphLookups({ nodes, edges }: VisibleGraph) {
-  return {
-    nodeById: new Map(nodes.map((node) => [node.id, node])),
-    edgeByKey: new Map(edges.map((edge) => [edgeKeyOf(edge), edge])),
-    toneByEdge: new Map(edges.map((edge) => [edgeKeyOf(edge), edge.tone])),
-    nodesWithOutgoing: new Set(edges.map((edge) => edge.from)),
-  };
+function isOffPath(mainPath: MainPath | null, part: keyof MainPath, key: string) {
+  return !!mainPath && !mainPath[part].has(key);
 }
