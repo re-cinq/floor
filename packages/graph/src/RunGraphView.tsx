@@ -187,11 +187,11 @@ function GraphEdges({ laid, selectedNodeId, lit }: GraphSvgProps) {
   ));
 }
 
-function GraphEdgeLabels({ laid, selectedNodeId }: GraphSvgProps) {
+function GraphEdgeLabels({ laid, selectedNodeId, lit }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} />
+    <EdgeLabel key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} />
   ));
 }
 

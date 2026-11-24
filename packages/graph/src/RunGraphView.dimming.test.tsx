@@ -24,15 +24,17 @@ function sortedDimmed(container: HTMLElement) {
   const dimmed = [...container.querySelectorAll("[data-dim='true']")].map((element) => ({
     node: element.getAttribute("data-node"),
     edge: element.getAttribute("data-edge"),
+    label: element.getAttribute("data-edge-label"),
   }));
 
-  return dimmed.sort((left, right) => `${left.node}${left.edge}`.localeCompare(`${right.node}${right.edge}`));
+  return dimmed.sort((left, right) => `${left.node}${left.edge}${left.label}`.localeCompare(`${right.node}${right.edge}${right.label}`));
 }
 
 const outsideNeighbourhoodOfA = [
-  { node: null, edge: "x|y|success" },
-  { node: "x", edge: null },
-  { node: "y", edge: null },
+  { node: null, edge: null, label: "x|y|success" },
+  { node: null, edge: "x|y|success", label: null },
+  { node: "x", edge: null, label: null },
+  { node: "y", edge: null, label: null },
 ];
 
 describe("RunGraphView neighbourhood dimming", () => {
@@ -59,6 +61,18 @@ describe("RunGraphView neighbourhood dimming", () => {
     fireEvent.focus(nodeEl(container, "a"));
 
     expect(sortedDimmed(container)).toEqual(outsideNeighbourhoodOfA);
+  });
+
+  it("dims the x|y|success label but not the a|b|success label when the pointer enters a", async () => {
+    const { container } = await renderDimmingLine();
+
+    fireEvent.pointerEnter(nodeEl(container, "a"));
+
+    const dimOf = (key: string) => container.querySelector(`[data-edge-label="${key}"]`)?.getAttribute("data-dim");
+    expect({ outside: dimOf("x|y|success"), inside: dimOf("a|b|success") }).toEqual({
+      outside: "true",
+      inside: null,
+    });
   });
 
   it("dims nothing when a is focused and then blurred", async () => {

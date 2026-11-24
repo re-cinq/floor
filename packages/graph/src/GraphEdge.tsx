@@ -38,12 +38,13 @@ export default function GraphEdge({ edge, model, emphasis, dimmed }: GraphEdgePr
 }
 
 /** Drawn after the nodes, so a label in the narrow air between two columns is not hidden behind them. */
-export function EdgeLabel({ edge, model, emphasis }: GraphEdgeProps) {
+export function EdgeLabel({ edge, model, emphasis, dimmed }: GraphEdgeProps) {
   if (!model) return null;
 
   return (
     <text
       data-edge-label={edgeKeyOf(edge)}
+      data-dim={dimmed || undefined}
       className={classes(styles.edgeLabel, textFillClass(model.tone), emphasis === "other" ? styles.dim : undefined)}
       x={edge.mid.x}
       y={edge.mid.y}
