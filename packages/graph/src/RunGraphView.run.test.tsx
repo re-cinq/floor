@@ -115,6 +115,29 @@ describe("RunGraphView run overlay", () => {
     expect([...container.querySelectorAll("[data-open]")].map((element) => element.getAttribute("data-node"))).toEqual(["fix"]);
   });
 
+  it("keeps a's last closed outcome failed while its second visit is open", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "fix", "done"],
+      edges: [
+        ["a", "done", "success"],
+        ["a", "fix", "failed"],
+        ["fix", "a", "always"],
+      ],
+    });
+    const run = {
+      visits: [
+        { nodeId: "a", iteration: 1, outcome: "failed", open: false },
+        { nodeId: "fix", iteration: 1, outcome: "always", open: false },
+        { nodeId: "a", iteration: 2, open: true },
+      ],
+    };
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} />);
+
+    expect(container.querySelector('[data-node="a"]')?.getAttribute("data-outcome")).toBe("failed");
+  });
+
   it("widens a's card to fit its run-aware subtitle when a was visited many times", async () => {
     const definition = markerLine({
       kind: "agent",
