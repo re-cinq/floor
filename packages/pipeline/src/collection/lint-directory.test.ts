@@ -203,6 +203,13 @@ describe("lintCommand", () => {
     return { out, err, writers: { out: (line: string) => out.push(line), err: (line: string) => err.push(line) } };
   }
 
+  async function lintOf(files: Record<string, string>) {
+    const { out, writers } = outputs();
+    const code = await lintCommand({ directory: collectionOnDisk(files), hostKeys: [] }, USAGE, writers);
+
+    return { code, out };
+  }
+
   it("prints the usage to the error output and exits 2 when no directory is given", async () => {
     const { out, err, writers } = outputs();
 
@@ -222,12 +229,7 @@ describe("lintCommand", () => {
   });
 
   it("exits 1 for the same extension when no --shipped directory is given", async () => {
-    const directory = collectionOnDisk({ "code-review/agents/reviewer.extra.md": "Be careful." });
-    const { out, writers } = outputs();
-
-    const code = await lintCommand({ directory, hostKeys: [] }, USAGE, writers);
-
-    expect({ code, out }).toEqual({ code: 1, out: ["code-review/agents/reviewer.extra.md: an extension needs a shipped agent, and nothing ships reviewer"] });
+    expect(await lintOf({ "code-review/agents/reviewer.extra.md": "Be careful." })).toEqual({ code: 1, out: ["code-review/agents/reviewer.extra.md: an extension needs a shipped agent, and nothing ships reviewer"] });
   });
 
   it("reads a host key in the --shipped directory when it is named", async () => {
@@ -242,12 +244,8 @@ describe("lintCommand", () => {
 
   it("refuses optional on a produce as unknown-key and exits 1", async () => {
     const withOptional = PIPELINE_YAML.replace("    produces: []\n", "    produces:\n      - name: report\n        kind: file\n        path: report.md\n        optional: true\n");
-    const directory = collectionOnDisk({ "acme-flow/assembly-line.yaml": withOptional, "acme-flow/agents/acme-worker.md": NEW_AGENT });
-    const { out, writers } = outputs();
 
-    const code = await lintCommand({ directory, hostKeys: [] }, USAGE, writers);
-
-    expect({ code, out }).toEqual({ code: 1, out: ['acme-flow/assembly-line.yaml: stations.work.produces[0]: unknown key "optional"'] });
+    expect(await lintOf({ "acme-flow/assembly-line.yaml": withOptional, "acme-flow/agents/acme-worker.md": NEW_AGENT })).toEqual({ code: 1, out: ['acme-flow/assembly-line.yaml: stations.work.produces[0]: unknown key "optional"'] });
   });
 });
 
