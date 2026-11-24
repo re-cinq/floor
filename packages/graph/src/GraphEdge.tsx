@@ -19,17 +19,19 @@ export interface GraphEdgeProps {
   offPath?: boolean;
   /** The line the inspector shows. */
   selected?: boolean;
+  /** The line the keyboard cursor is on. */
+  chosen?: boolean;
   onSelectLine?: (key: string) => void;
   /** The connector a run took. */
   taken?: boolean;
 }
 
 export default function GraphEdge(props: GraphEdgeProps) {
-  const { edge, model, emphasis, dimmed, offPath, selected, onSelectLine, taken } = props;
+  const { edge, model, emphasis, dimmed, offPath, selected, chosen, onSelectLine, taken } = props;
   const tone = model?.tone ?? "neutral";
 
   return (
-    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} {...stateAttrsOf({ dimmed, offPath, selected })} data-taken={taken ? "true" : undefined} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
+    <g data-edge={edgeKeyOf(edge)} data-tone={tone} data-emphasis={emphasis} {...stateAttrsOf({ dimmed, offPath, selected, chosen })} data-taken={taken ? "true" : undefined} onClick={() => onSelectLine?.(edgeKeyOf(edge))}>
       <path data-hit className={styles.edgeHit} d={edge.d} />
       <path
         className={pathClassOf(edge, { tone, emphasis, taken })}
@@ -72,6 +74,6 @@ export function EdgeLabel({ edge, model, emphasis, dimmed, offPath, selected, on
 }
 
 /** The data attributes a line and its label share, each left off when false. */
-function stateAttrsOf({ dimmed, offPath, selected }: Pick<GraphEdgeProps, "dimmed" | "offPath" | "selected">) {
-  return { "data-dim": dimmed || undefined, "data-off-path": offPath || undefined, "data-selected": selected || undefined };
+function stateAttrsOf({ dimmed, offPath, selected, chosen }: Pick<GraphEdgeProps, "dimmed" | "offPath" | "selected" | "chosen">) {
+  return { "data-dim": dimmed || undefined, "data-off-path": offPath || undefined, "data-selected": selected || undefined, "data-chosen": chosen || undefined };
 }

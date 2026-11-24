@@ -1,5 +1,6 @@
 // One step in the graph: the box, its type mark, its badges, selection, and its title over its kind — the aria-label says the same in words.
 import type { KeyboardEvent } from "react";
+import type { KeyboardCursor } from "./use-keyboard-cursor";
 import type { LaidOutNode } from "./elk-layout";
 import type { ConnectorTone, VisibleNode } from "./graph-view-model";
 import NodeBadges from "./NodeBadges";
@@ -32,6 +33,8 @@ export interface GraphNodeProps {
   offPath?: boolean;
   /** The id of the tooltip shown for this node, while one is. */
   describedBy?: string;
+  /** The keyboard cursor: told when this node takes focus, and given its keys. */
+  keyboard?: Pick<KeyboardCursor, "onFocusNode" | "onKeyDown">;
   /** The tone of each out-port's line, by edge key; a port with no line draws neutral. */
   toneByEdge?: ReadonlyMap<string, ConnectorTone>;
 }
@@ -59,7 +62,7 @@ export default function GraphNode(props: GraphNodeProps) {
       {...neighbourhoodAttrs(node.id, props)}
       aria-label={nodeAriaLabel({ node: model, isTerminal, isUnreachable })}
       aria-describedby={props.describedBy}
-      {...interactionAttrs({ nodeId: node.id, onSelect, selected })}
+      {...interactionAttrs({ nodeId: node.id, onSelect, selected, keyboard: props.keyboard })}
     >
       <BODY node={node} family={family} height={height} isUnreachable={isUnreachable} />
       <NodeBadges badges={badgesOf(model)} rightEdge={node.x + node.width / 2} top={node.y - height / 2} />
@@ -152,12 +155,15 @@ function boxOf(node: GraphNodeProps["node"], height: number) {
 }
 
 /** Marks the node dimmed, and reports pointer and focus entering and leaving it so the graph can light its neighbourhood. */
-function neighbourhoodAttrs(nodeId: string, { dimmed, onHover }: GraphNodeProps) {
+function neighbourhoodAttrs(nodeId: string, { dimmed, onHover, keyboard }: GraphNodeProps) {
   return {
     "data-dim": dimmed || undefined,
     onPointerEnter: () => onHover?.(nodeId),
     onPointerLeave: () => onHover?.(null),
-    onFocus: () => onHover?.(nodeId),
+    onFocus: () => {
+      onHover?.(nodeId);
+      keyboard?.onFocusNode(nodeId);
+    },
     onBlur: () => onHover?.(null),
   };
 }
@@ -166,10 +172,11 @@ interface InteractionInput {
   nodeId: string;
   onSelect: GraphNodeProps["onSelect"];
   selected: boolean;
+  keyboard: GraphNodeProps["keyboard"];
 }
 
 /** How the group answers a click or a key, and whether it is the pressed one; a node with no handler claims neither. */
-function interactionAttrs({ nodeId, onSelect, selected }: InteractionInput) {
+function interactionAttrs({ nodeId, onSelect, selected, keyboard }: InteractionInput) {
   if (!onSelect) {
     return { role: "group" as const };
   }
@@ -179,7 +186,10 @@ function interactionAttrs({ nodeId, onSelect, selected }: InteractionInput) {
     "aria-pressed": selected,
     tabIndex: 0,
     onClick: () => onSelect(nodeId),
-    onKeyDown: selectOnActivationKey(nodeId, onSelect),
+    onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
+      keyboard?.onKeyDown(event);
+      selectOnActivationKey(nodeId, onSelect)(event);
+    },
   };
 }
 

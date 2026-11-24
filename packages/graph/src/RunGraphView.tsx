@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useToggle } from "./use-toggle";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import { useElkLayout } from "./use-elk-layout";
-import type { ElkLayout, LaidOutEdge } from "./elk-layout";
+import type { LaidOutEdge } from "./elk-layout";
 import { drawingOf, type Drawing } from "./run-graph-drawing";
 import { mainPathOf, type MainPath } from "./metro/main-path";
 import { reachabilityOf } from "./metro/reachability";
@@ -14,8 +14,8 @@ import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
 import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
-import DanglingStub from "./DanglingStub";
-import ExitDot from "./ExitDot";
+import { markerOf } from "./graph-markers";
+import { useKeyboardCursor, type KeyboardCursor } from "./use-keyboard-cursor";
 import GraphNode from "./GraphNode";
 import GraphViewport from "./GraphViewport";
 import { useNodeTooltip } from "./use-node-tooltip";
@@ -76,6 +76,7 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
   const { unreachable, mainPath, mainPathOnly, toggleMainPath } = useLineMarkings(view);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
+  const keyboard = useKeyboardCursor(view.definition);
   const { elkLayout, stops, compactStops, toggleCompactStops } = useStopsLayout(view, graph);
   const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops), [elkLayout, graph, view.definition.name, stops]);
 
@@ -92,9 +93,8 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               onSelectNode={view.onSelectNode} onSelectLine={view.onSelectLine} selectedLineKey={view.selectedLineKey}
               selectedNodeId={view.selectedNodeId} takenEdge={view.takenEdge}
               describedNode={describedNodeOf(tooltip)}
-              lit={lit}
+              lit={lit} onHover={setHoveredId} keyboard={keyboard}
               unreachable={unreachable} mainPath={mainPath}
-              onHover={setHoveredId}
             />
           </GraphViewport>
         )}
@@ -197,6 +197,7 @@ interface GraphSvgProps {
   unreachable: ReadonlySet<string>;
   onHover: (nodeId: string | null) => void;
   takenEdge: RunGraphViewProps["takenEdge"];
+  keyboard: KeyboardCursor;
 }
 
 /** The graph itself. A node nothing leaves is terminal, which the plain label renders differently. `role="img"` with a `<title>`: the drawing is one picture to a screen reader, the nodes inside it focusable buttons. */
@@ -226,11 +227,11 @@ function GraphSvg(props: GraphSvgProps) {
 }
 
 /** ELK lays out one path per outcome and the model has one edge per outcome: each laid-out edge draws its own path and label, matched to the model by `edgeKeyOf`. An edge with no model draws neutral rather than disappearing. */
-function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine, takenEdge }: GraphSvgProps) {
+function GraphEdges({ laid, selectedNodeId, selectedLineKey, lit, mainPath, onSelectLine, keyboard, takenEdge }: GraphSvgProps) {
   const { edges } = laid.layout;
 
   return edges.map((edge) => (
-    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} taken={isTaken(edge, takenEdge)} />
+    <GraphEdge key={edgeKeyOf(edge)} {...edgeProps(edge, laid, selectedNodeId)} chosen={edgeKeyOf(edge) === keyboard.chosenKey} dimmed={!!lit && !lit.edges.has(edgeKeyOf(edge))} selected={edgeKeyOf(edge) === selectedLineKey} offPath={isOffPath(mainPath, "edges", edgeKeyOf(edge))} onSelectLine={onSelectLine} taken={isTaken(edge, takenEdge)} />
   ));
 }
 
@@ -259,7 +260,7 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
 }
 
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
-function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, mainPath, unreachable, onHover }: GraphSvgProps) {
+function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, lit, mainPath, unreachable, onHover, keyboard }: GraphSvgProps) {
   const { nodes } = laid.layout;
 
   return nodes.map((node) => {
@@ -284,20 +285,13 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, l
         toneByEdge={laid.toneByEdge}
         onSelect={onSelectNode}
         onHover={onHover}
+        keyboard={keyboard}
         dimmed={!!lit && !lit.nodes.has(node.id)}
         offPath={isOffPath(mainPath, "nodes", node.id)}
         describedBy={describedNode?.nodeId === node.id ? describedNode.tooltipId : undefined}
       />
     ) : null;
   });
-}
-
-function markerOf(node: ElkLayout["nodes"][number], exit: string) {
-  if (node.id.endsWith(":exit")) {
-    return <ExitDot key={node.id} node={node} exit={exit} />;
-  }
-
-  return node.id.endsWith(":stub") ? <DanglingStub key={node.id} node={node} /> : null;
 }
 
 function isOffPath(mainPath: MainPath | null, part: keyof MainPath, key: string) {
