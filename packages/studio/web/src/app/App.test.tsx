@@ -167,6 +167,19 @@ describe("App line view", () => {
     });
   });
 
+  it("drops the edge from the address and the line inspector when a node is clicked while a line is selected", async () => {
+    const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&edge=work|done|success" });
+
+    await screen.findByRole("complementary", { name: "Line inspector" });
+    await userEvent.click(await screen.findByRole("button", { name: /^work, agent/ }));
+
+    await screen.findByRole("complementary", { name: "Node inspector" });
+    expect({
+      address: Object.fromEntries(new URLSearchParams(window.location.hash.slice(1))),
+      lineInspector: screen.queryByRole("complementary", { name: "Line inspector" }),
+    }).toEqual({ address: { socket: studio.url, token: studio.token, line: "flow", node: "work" }, lineInspector: null });
+  });
+
   it("puts edge=work|done|success and no node in the address when that line's hit path is clicked", async () => {
     const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work" });
 
