@@ -131,6 +131,12 @@ describe("pipelineProblems — how a retry and a conversation are bounded", () =
     expect(rules(bounded)).toEqual([]);
   });
 
+  it("reports nothing for an edge from work back to work carrying unattended_max", () => {
+    const unattended = SOUND.replace(SELF_EDGE, "    - from: work\n      to: work\n      on: failed\n      unattended_max: 2");
+
+    expect(rules(unattended)).toEqual([]);
+  });
+
   it("reports unresolvable-conversation-key naming unknown_arg for a station whose conversation_key is not a declared arg", () => {
     const keyed = SPEC_TICKETS_DECOMPOSE_REUSED.replace("    outcomes:", "    conversation: continue\n    conversation_key: unknown_arg\n    outcomes:");
 

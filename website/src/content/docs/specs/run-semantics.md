@@ -88,6 +88,8 @@ When a visit reports, what it produced goes into the bag and the floor picks one
 
 An edge with `iteration_max: N` can be taken N times in one run. When it is needed once more, the run ends with the outcome `iteration_max`. The walk does not go on to the fail node.
 
+An edge with `unattended_max: N` can be taken N times without a person acting. The count starts again when a `human` station reports, and when a node is started by hand. When the edge is needed once more, the run ends with the outcome `iteration_max` too, and its reason names the unattended budget. An edge MAY set both limits. The count of `iteration_max` starts again only when a node is started by hand.
+
 A node visited again opens a new visit. On an `agent` station, that visit is given [`{previous_error}` and `{previous_failures}`](/floor/specs/placeholders/#2-prompt-placeholders).
 
 ## 5. How a run ends
@@ -96,7 +98,7 @@ A node visited again opens a new visit. On an `agent` station, that visit is giv
 | --- | --- | --- |
 | Reaches the `exit` node | `success` | |
 | Reaches the `fail` node | `failed` | The visit that led there |
-| Needs an edge whose `iteration_max` is spent | `iteration_max` | The edge |
+| Needs an edge whose `iteration_max` or `unattended_max` is spent | `iteration_max` | The edge, and which of the two |
 | Has no edge for an outcome | `error` | `no edge from "X" for outcome "O"` |
 | Makes 200 visits with no person acting | `error` | `maxNodes (200) reached without hitting exit or a person acting` |
 

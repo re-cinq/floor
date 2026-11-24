@@ -17,7 +17,7 @@ describe("reference", () => {
   });
 
   it("spells an edge's fields as the file does", () => {
-    expect(Object.keys(tableAt(made.pipeline, ["line", "edges", "[]"]).properties ?? {})).toEqual(["from", "to", "on", "iteration_max"]);
+    expect(Object.keys(tableAt(made.pipeline, ["line", "edges", "[]"]).properties ?? {})).toEqual(["from", "to", "on", "iteration_max", "unattended_max"]);
   });
 
   it("puts the line's id first and requires it", () => {

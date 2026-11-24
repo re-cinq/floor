@@ -59,6 +59,8 @@ export interface LineEdge {
   to: string;
   on: string;
   iterationMax?: number;
+  /** How many times a run may take this edge without a person acting. */
+  unattendedMax?: number;
 }
 
 export interface LineBody {

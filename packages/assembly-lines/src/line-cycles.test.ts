@@ -40,7 +40,7 @@ describe("validateLine, cycle guard", () => {
   it("reports a self-loop with no iteration_max", () => {
     const known: KnownDefinitions = { stations: new Set(["worker"]), bodies: new Map([["worker", agent(["success", "failed"])]]) };
 
-    expect(validateLine(selfLoopLine(undefined), known)).toEqual([`cycle through "retry" has no iteration_max and no human node`]);
+    expect(validateLine(selfLoopLine(undefined), known)).toEqual([`cycle through "retry" has no iteration_max, no unattended_max and no human node`]);
   });
 
   it("accepts a self-loop guarded by iteration_max", () => {
@@ -49,10 +49,18 @@ describe("validateLine, cycle guard", () => {
     expect(validateLine(selfLoopLine(1), known)).toEqual([]);
   });
 
+  it("accepts a self-loop whose back-edge sets unattendedMax 2", () => {
+    const known: KnownDefinitions = { stations: new Set(["worker"]), bodies: new Map([["worker", agent(["success", "failed"])]]) };
+    const line = selfLoopLine(undefined);
+    line.edges[0] = { ...line.edges[0], unattendedMax: 2 };
+
+    expect(validateLine(line, known)).toEqual([]);
+  });
+
   it("reports a two-node cycle with no human node on it", () => {
     const known: KnownDefinitions = { stations: new Set(["worker"]), bodies: new Map([["worker", agent(["success", "changes_requested"])]]) };
 
-    expect(validateLine(twoNodeCycleLine("worker"), known)).toEqual([`cycle through "review", "reply" has no iteration_max and no human node`]);
+    expect(validateLine(twoNodeCycleLine("worker"), known)).toEqual([`cycle through "review", "reply" has no iteration_max, no unattended_max and no human node`]);
   });
 
   it("accepts a two-node cycle with a human node on it", () => {
@@ -66,7 +74,7 @@ describe("validateLine, cycle guard", () => {
 
   it("treats every node as non-human when bodies is absent, still flagging an unbudgeted cycle", () => {
     expect(validateLine(twoNodeCycleLine("worker"), { stations: new Set(["worker"]) })).toEqual([
-      `cycle through "review", "reply" has no iteration_max and no human node`,
+      `cycle through "review", "reply" has no iteration_max, no unattended_max and no human node`,
     ]);
   });
 });

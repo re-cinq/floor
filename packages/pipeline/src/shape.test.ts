@@ -56,8 +56,8 @@ function codeReview() {
   return pipelineOf(readPipelineFile(CODE_REVIEW));
 }
 
-function lineOf() {
-  const { line } = codeReview();
+function lineOf(text = CODE_REVIEW) {
+  const { line } = pipelineOf(readPipelineFile(text));
 
   return line!.body;
 }
@@ -71,6 +71,12 @@ function reviewerOf() {
 describe("pipelineOf", () => {
   it("spells an edge's budget as the floor does", () => {
     expect(lineOf().edges).toContainEqual({ from: "review", to: "review", on: "failed", iterationMax: 1 });
+  });
+
+  it("spells an edge's unattended budget as the floor does", () => {
+    const unattended = CODE_REVIEW.replace("iteration_max: 1", "unattended_max: 1");
+
+    expect(lineOf(unattended).edges).toContainEqual({ from: "review", to: "review", on: "failed", unattendedMax: 1 });
   });
 
   it("spells a station's fields as the floor does", () => {

@@ -107,7 +107,7 @@ This is the bottom of the stack, and the only part with no I/O at all. Given an 
 
 A walk ends in one of two places. At the line's `exit` it is `finish`. At its `fail` node, when it names one, it is `halt` with outcome `failed` and a reason naming the node whose edge led there. Neither terminal is ever launched. `isTerminalNode` is that rule for anyone else who needs it, and line validation asks it which nodes owe no outgoing edge.
 
-A transition is one of four: `launch` a node, `await` an open visit, `finish` at the exit, or `halt`. `halt` is every other way a walk ends: a spent budget (`iteration_max`), an `error`, or the line's own fail node (`failed`). `halt` was called `fail` until a line could name a fail node, and the word now means only the node. `endsRun` says whether a transition is one of the last two.
+A transition is one of four: `launch` a node, `await` an open visit, `finish` at the exit, or `halt`. `halt` is every other way a walk ends: a spent budget (`iteration_max`, whether the edge's `iterationMax` or its `unattendedMax` ran out), an `error`, or the line's own fail node (`failed`). `halt` was called `fail` until a line could name a fail node, and the word now means only the node. `endsRun` says whether a transition is one of the last two.
 
 See [the map](../../README.md) for how a decision here becomes work somewhere else.
 

@@ -18,7 +18,7 @@ An **assembly line** is a definition. It lists nodes, the edges between them, th
 | `args` | The arguments a start gives. Each becomes an item of the run's [bag](/floor/concepts/bag/) |
 | `start` | The [events](/floor/concepts/events/) that start a run, and how their payload fills the arguments |
 
-An edge's `on` is the outcome that takes it, or `always`. A line that loops must say how often, with `iteration_max` on the edge.
+An edge's `on` is the outcome that takes it, or `always`. A line that loops must say how often, with `iteration_max` on the edge. `unattended_max` is the same limit counted only since a person last acted.
 
 ```yaml
 line:

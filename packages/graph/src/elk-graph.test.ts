@@ -61,7 +61,11 @@ describe("elkGraphOf", () => {
     ]);
   });
 
-  it("returns a 109x16 'failed · max 1' label for review -> review on failed with iterationMax 1", () => {
+  it.each([
+    { width: 109, text: "failed · max 1", limitNames: "iterationMax 1", limits: { iterationMax: 1 } },
+    { width: 189, text: "failed · max 1 unattended", limitNames: "unattendedMax 1", limits: { unattendedMax: 1 } },
+    { width: 247, text: "failed · max 5 · max 1 unattended", limitNames: "iterationMax 5 and unattendedMax 1", limits: { iterationMax: 5, unattendedMax: 1 } },
+  ])("returns a $width x 16 '$text' label for review -> review on failed with $limitNames", ({ width, text, limits }) => {
     const loopingLine: AssemblyLineDefinition = {
       name: "loop",
       description: "One station looping on itself.",
@@ -69,7 +73,7 @@ describe("elkGraphOf", () => {
       entry: "review",
       exit: "review",
       nodes: [{ id: "review", type: "marker" }],
-      edges: [{ from: "review", to: "review", on: "failed", iterationMax: 1 }],
+      edges: [{ from: "review", to: "review", on: "failed", ...limits }],
     };
 
     expect(elkGraphOf(loopingLine).edges).toEqual([
@@ -77,7 +81,7 @@ describe("elkGraphOf", () => {
         id: "review|review|failed",
         sources: ["review|review|failed:out"],
         targets: ["review|review|failed:in"],
-        labels: [{ text: "failed · max 1", width: 109, height: 16 }],
+        labels: [{ text, width, height: 16 }],
       },
     ]);
   });

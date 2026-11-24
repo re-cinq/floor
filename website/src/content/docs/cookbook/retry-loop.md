@@ -83,4 +83,18 @@ End your reply with LORE_NODE_RESULT: success on its own line, or LORE_NODE_RESU
 3. A retry visit is given `{previous_error}` in the prompt. On the first visit it stays as written.
 4. When the run needs the edge a fourth time, it ends with the outcome `iteration_max`. It does not go to a fail node.
 
+## A limit a person restarts
+
+`unattended_max` counts only since a person last acted.
+
+```yaml
+edges:
+  - from: review
+    to: escalate
+    on: changes_requested
+    unattended_max: 1
+```
+
+The run takes this edge once after each report of a `human` station. A second take with no person in between ends it as `iteration_max`.
+
 See [The next node](/floor/specs/run-semantics/#4-the-next-node) and [Prompt placeholders](/floor/specs/placeholders/#2-prompt-placeholders).

@@ -4,7 +4,7 @@ import { fanoutChecks } from "./line-fanout.js";
 import { goingOutOf, reachableAvoiding, reachedFrom } from "./line-graph.js";
 import { needChecks } from "./line-needs.js";
 import { bareStationOf, hasStation, isPinned, resolvedStationOf } from "./line-stations.js";
-import type { LineBody, LineNode, StationBody } from "@re-cinq/floor-contracts";
+import type { LineBody, LineEdge, LineNode, StationBody } from "@re-cinq/floor-contracts";
 
 export interface KnownDefinitions {
   stations: Set<string>;
@@ -152,9 +152,9 @@ function outcomesMissingEdges(line: LineBody, node: LineNode & { station: string
   return missing.map((outcome) => `node "${node.id}" has no edge for outcome "${outcome}"`);
 }
 
-// A cycle is safe when something can stop it going round forever: a spent iteration_max, or a human deciding whether to send it round again. Everything else survives the prune below, and a node still reaching itself there is an unguarded cycle. Only a station node can be flagged as part of one — a marker does no work of its own to retry, though it still carries the walk through when it sits between two stations that do.
+// A cycle is safe when something can stop it going round forever: a spent iteration_max or unattended_max, or a human deciding whether to send it round again. Everything else survives the prune below, and a node still reaching itself there is an unguarded cycle. Only a station node can be flagged as part of one — a marker does no work of its own to retry, though it still carries the walk through when it sits between two stations that do.
 function cycleChecks(line: LineBody, known: KnownDefinitions): string[] {
-  const unbudgeted = goingOutOf(line.edges.filter((edge) => edge.iterationMax === undefined));
+  const unbudgeted = goingOutOf(line.edges.filter(isUnbudgeted));
   const guardNodes = line.nodes.filter((node) => isCycleGuard(node, known.bodies));
   const guards = new Set(guardNodes.map((node) => node.id));
   const stationNodes = line.nodes.filter((node) => hasStation(node) && !guards.has(node.id));
@@ -162,6 +162,10 @@ function cycleChecks(line: LineBody, known: KnownDefinitions): string[] {
   const groups = groupCyclicNodes(unbudgeted, guards, candidates);
 
   return groups.map(cycleMessage);
+}
+
+function isUnbudgeted(edge: LineEdge): boolean {
+  return edge.iterationMax === undefined && edge.unattendedMax === undefined;
 }
 
 function isCycleGuard(node: LineNode, bodies: ReadonlyMap<string, StationBody> | undefined): boolean {
@@ -195,5 +199,5 @@ function groupCyclicNodes(unbudgeted: Map<string, string[]>, guards: Set<string>
 function cycleMessage(members: string[]): string {
   const names = members.map((id) => `"${id}"`).join(", ");
 
-  return `cycle through ${names} has no iteration_max and no human node`;
+  return `cycle through ${names} has no iteration_max, no unattended_max and no human node`;
 }

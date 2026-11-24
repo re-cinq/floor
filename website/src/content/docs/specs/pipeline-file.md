@@ -126,6 +126,7 @@ An entry of `reports`:
 | `to` | string | yes | The node the edge enters. |
 | `on` | string | yes | The outcome that takes this edge, or `always` for any outcome. An edge on the exact outcome wins over `always`. |
 | `iteration_max` | integer above 0 | no | How many times one run may take this edge. A run that needs it once more halts. |
+| `unattended_max` | integer above 0 | no | How many times a run may take this edge without a person acting. The count starts again when a human station reports, or when a node is started by hand. A run that needs it once more halts. |
 
 <!-- /generated -->
 
@@ -145,7 +146,7 @@ The floor checks a line when it is put, against the stations it holds at that mo
 | A node's `station` MUST be a station the floor holds. | `node "X" names unknown station "S"` |
 | A node with `reports` MUST name a station. | `node "X" declares reports but names no station to wait at` |
 | Every outcome a station lists MUST have an edge, or the node an `always` edge. | `node "X" has no edge for outcome "O"` |
-| A cycle MUST contain an edge with `iteration_max` or a `human` station. | `cycle through "A", "B" has no iteration_max and no human node` |
+| A cycle MUST contain an edge with `iteration_max` or `unattended_max`, or a `human` station. | `cycle through "A", "B" has no iteration_max, no unattended_max and no human node` |
 | A key of `start.args` MUST be a declared argument. | `start.args names "X", which is not a declared argument` |
 | At most one argument is the subject. | `more than one argument is marked subject` |
 

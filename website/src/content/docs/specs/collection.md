@@ -91,7 +91,7 @@ A collection is stricter than a pipeline file on its own. `floor-pipeline lint` 
 | `dangling-edge` | Both ends of an edge MUST name a node. |
 | `dead-end` | A node other than the exit and the fail node MUST have an outgoing edge. |
 | `unreachable` | Every node MUST be reachable from the entry, or from a node that sets `start`. |
-| `unbounded-retry` | An edge from a node to itself MUST set `iteration_max`. |
+| `unbounded-retry` | An edge from a node to itself MUST set `iteration_max` or `unattended_max`. |
 | `unresolvable-conversation-key` | A station's `conversation_key` MUST be a declared argument. |
 
 ## 3. Environment variables

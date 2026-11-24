@@ -1,5 +1,10 @@
 import { foldFans, launchOf, relaunchMissing } from "./fanout.js";
-import { budgetOutcome, isTransition, isUnbudgetedForwardHop } from "./walk-budget.js";
+import {
+  budgetOutcome,
+  isTransition,
+  isUnbudgetedForwardHop,
+  restartUnattendedBudgets,
+} from "./walk-budget.js";
 
 // The walk kernel: a pure replay over persisted visits; ported from lore's transition.ts with two departures documented in README.md (dynamic outcomes, no failure classification).
 
@@ -8,6 +13,7 @@ export interface WalkEdge {
   to: string;
   on: string;
   iterationMax?: number;
+  unattendedMax?: number;
 }
 
 export type StationKind = "agent" | "service" | "human";
@@ -81,6 +87,7 @@ interface WalkState {
 
 export interface WalkAccounting {
   backEdgeCounts: Map<string, number>;
+  unattendedCounts: Map<string, number>;
   // A revisit must number past every prior row for that node (not just this edge's count) — two back-edges into the same target could otherwise collide.
   highestIteration: Map<string, number>;
   visited: Set<string>;
@@ -152,16 +159,20 @@ function unattendedVisits(
   assemblyLine: WalkGraph,
   visits: readonly NodeVisit[],
 ): number {
-  const human = new Set(
-    (assemblyLine.nodes ?? [])
-      .filter((node) => node.kind === "human")
-      .map((node) => node.id),
-  );
+  const human = humanNodeIds(assemblyLine);
 
   return (
     visits.length -
     1 -
     visits.findLastIndex((visit) => human.has(visit.nodeId) || Boolean(visit.requestedBy))
+  );
+}
+
+function humanNodeIds(assemblyLine: WalkGraph): Set<string> {
+  return new Set(
+    (assemblyLine.nodes ?? [])
+      .filter((node) => node.kind === "human")
+      .map((node) => node.id),
   );
 }
 
@@ -220,6 +231,7 @@ function freshWalk(
     state: { currentId: visits[0]?.nodeId ?? assemblyLine.entry, iteration: 1 },
     accounting: {
       backEdgeCounts: new Map(),
+      unattendedCounts: new Map(),
       highestIteration: new Map(),
       visited: new Set(),
     },
@@ -251,6 +263,11 @@ function applyVisit(
   accounting: WalkAccounting,
 ): Transition | null {
   recordVisit(visit, accounting);
+
+  if (humanNodeIds(assemblyLine).has(visit.nodeId)) {
+    restartUnattendedBudgets(accounting);
+  }
+
   const diverged = divergenceFailure(assemblyLine, visit, state);
 
   if (diverged) {

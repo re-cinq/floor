@@ -79,6 +79,7 @@ function lineEdgeOf(object: ObjectOf) {
     to: z.string().describe("The node the edge enters."),
     on: z.string().describe("The outcome that takes this edge, or `always` for any outcome. An edge on the exact outcome wins over `always`."),
     iterationMax: z.number().int().positive().describe("How many times one run may take this edge. A run that needs it once more halts.").optional(),
+    unattendedMax: z.number().int().positive().describe("How many times a run may take this edge without a person acting. The count starts again when a human station reports, or when a node is started by hand. A run that needs it once more halts.").optional(),
   });
 }
 

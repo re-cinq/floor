@@ -40,15 +40,22 @@ export const WORKER_COLLECTION: CollectionFile[] = [
   { path: "flow/agents/worker.md", text: agentMarkdown("Work {ticket}.") },
 ];
 
-export const LOOPING_COLLECTION: CollectionFile[] = [
-  {
-    path: "flow/assembly-line.yaml",
-    text: lineYaml("flow", "worker")
-      .replace("      on: success\n", "      on: success\n    - from: work\n      to: work\n      on: failed\n      iteration_max: 3\n")
-      .replace("      - success\n", "      - success\n      - failed\n"),
-  },
-  WORKER_COLLECTION[1],
-];
+export const LOOPING_COLLECTION: CollectionFile[] = retryingCollection("iteration_max: 3");
+
+export const UNATTENDED_COLLECTION: CollectionFile[] = retryingCollection("unattended_max: 2");
+
+/** The worker collection with a work -> work retry edge on failed, carrying the given limit line. */
+function retryingCollection(limitLine: string): CollectionFile[] {
+  return [
+    {
+      path: "flow/assembly-line.yaml",
+      text: lineYaml("flow", "worker")
+        .replace("      on: success\n", `      on: success\n    - from: work\n      to: work\n      on: failed\n      ${limitLine}\n`)
+        .replace("      - success\n", "      - success\n      - failed\n"),
+    },
+    WORKER_COLLECTION[1],
+  ];
+}
 
 export const TYPO_COLLECTION: CollectionFile[] = [WORKER_COLLECTION[0], { path: "flow/agents/worker.md", text: agentMarkdown("Work {ticket} and tell {typo}.") }];
 

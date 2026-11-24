@@ -143,3 +143,57 @@ describe("a visit a person opened by hand restarts the walk there", () => {
     expect(getNextTransition(reviewLoop, visits)).toEqual({ kind: "finish" });
   });
 });
+
+describe("an edge's unattended budget counts takes with no person acting", () => {
+  const reviewWithHuman: WalkGraph = {
+    name: "review-with-human",
+    entry: "work",
+    exit: "done",
+    nodes: [
+      { id: "work", kind: "agent" },
+      { id: "review", kind: "agent" },
+      { id: "human", kind: "human" },
+      { id: "done" },
+    ],
+    edges: [
+      { from: "work", to: "review", on: "success" },
+      { from: "review", to: "work", on: "changes_requested", unattendedMax: 1 },
+      { from: "review", to: "human", on: "success" },
+      { from: "human", to: "work", on: "changes_requested" },
+      { from: "human", to: "done", on: "success" },
+    ],
+  };
+
+  it("halts as iteration_max when review->work with unattendedMax 1 is taken twice with no person acting", () => {
+    const visits = [
+      visit("work", 1, "success"),
+      visit("review", 1, "changes_requested"),
+      visit("work", 2, "success"),
+      visit("review", 2, "changes_requested"),
+    ];
+
+    expect(getNextTransition(reviewWithHuman, visits)).toEqual({
+      kind: "halt",
+      outcome: "iteration_max",
+      reason: 'AssemblyLine review-with-human: node "review" failed — the review->work unattended budget (1) is spent',
+    });
+  });
+
+  it("launches work again when review->work with unattendedMax 1 is taken once before and once after human reports", () => {
+    const visits = [
+      visit("work", 1, "success"),
+      visit("review", 1, "changes_requested"),
+      visit("work", 2, "success"),
+      visit("review", 2, "success"),
+      visit("human", 2, "changes_requested"),
+      visit("work", 3, "success"),
+      visit("review", 3, "changes_requested"),
+    ];
+
+    expect(getNextTransition(reviewWithHuman, visits)).toEqual({
+      kind: "launch",
+      nodeId: "work",
+      iteration: 4,
+    });
+  });
+});

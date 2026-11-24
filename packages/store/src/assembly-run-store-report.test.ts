@@ -12,6 +12,11 @@ const FAIL_ROUTED_LINE: LineBody = {
   edges: REVIEW_LINE.edges.map((edge) => (edge.from === "review" && edge.on === "failed" ? { from: "review", to: "failed", on: "failed" } : edge)),
 };
 
+const UNATTENDED_RETRY_LINE: LineBody = {
+  ...REVIEW_LINE,
+  edges: REVIEW_LINE.edges.map((edge) => (edge.from === "review" && edge.on === "failed" ? { from: "review", to: "review", on: "failed", unattendedMax: 1 } : edge)),
+};
+
 describe("AssemblyRunStore.report", () => {
   async function reportSuccessThenVisit(visitId: string, times: number): Promise<Visit | null> {
     for (let attempt = 0; attempt < times; attempt++) {
@@ -19,6 +24,18 @@ describe("AssemblyRunStore.report", () => {
     }
 
     return store().visit(visitId);
+  }
+
+  async function reviewFailsTwiceThenRun(line?: LineBody) {
+    const { runId, visitId } = await openEntryVisit(line);
+
+    await store().report(visitId, { outcome: "failed", error: "boom" });
+    await store().openVisit(runId, "review", 2);
+    const secondVisit = (await store().visits(runId))[1]!;
+
+    await store().report(secondVisit.id, { outcome: "failed", error: "boom again" });
+
+    return store().get(runId);
   }
 
   it("writes the report on the visit", async () => {
@@ -123,16 +140,15 @@ describe("AssemblyRunStore.report", () => {
   });
 
   it("fails the run with iteration_max once the retry budget is spent", async () => {
-    const { runId, visitId } = await openEntryVisit();
-
-    await store().report(visitId, { outcome: "failed", error: "boom" });
-    await store().openVisit(runId, "review", 2);
-    const secondVisit = (await store().visits(runId))[1]!;
-
-    await store().report(secondVisit.id, { outcome: "failed", error: "boom again" });
-    const run = await store().get(runId);
+    const run = await reviewFailsTwiceThenRun();
 
     expect(run!.outcome).toBe("iteration_max");
+  });
+
+  it("fails the run with iteration_max naming the unattended budget once the retry edge's unattendedMax of 1 is spent", async () => {
+    const run = await reviewFailsTwiceThenRun(UNATTENDED_RETRY_LINE);
+
+    expect(run).toMatchObject({ outcome: "iteration_max", reason: expect.stringContaining("the review->review unattended budget (1) is spent") });
   });
 
   it("fails the run on purpose when failed is routed to the line's fail node", async () => {

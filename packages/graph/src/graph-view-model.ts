@@ -5,6 +5,7 @@ import type {
   DefinitionEdge,
   DefinitionNode,
 } from "./assembly-line-definition";
+import { limitTextsOf } from "./edge-limit-texts";
 
 export type ConnectorTone = "ok" | "warn" | "err" | "neutral";
 
@@ -97,8 +98,10 @@ function connectorsFor(
   }));
 }
 
-function hopLabel({ on, iterationMax }: DefinitionEdge): string {
-  return iterationMax === undefined ? on : `${on} (max ${iterationMax})`;
+function hopLabel(edge: DefinitionEdge): string {
+  const limits = limitTextsOf(edge);
+
+  return limits.length === 0 ? edge.on : `${edge.on} (${limits.join(", ")})`;
 }
 
 /** Outcome (or edge condition) to a connector/badge tone. */

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
-import { LOOPING_COLLECTION, TYPO_COLLECTION, WORKER_COLLECTION, lineYaml } from "../../../src/backend/collection-view.fixtures";
+import { LOOPING_COLLECTION, TYPO_COLLECTION, UNATTENDED_COLLECTION, WORKER_COLLECTION, lineYaml } from "../../../src/backend/collection-view.fixtures";
 import { collectionOnDisk } from "../../../src/backend/studio.fixtures";
 import { startStudio } from "../../../src/backend/start-studio";
 import App from "./App";
@@ -200,28 +200,33 @@ describe("App line view", () => {
   it("says Main path yes in the line inspector when the line is work|done|success", async () => {
     await openPage(WORKER_COLLECTION, { hash: "&line=flow&edge=work|done|success" });
 
-    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
-    const terms = Array.from(inspector.querySelectorAll("dt"), (term) => [term.textContent, term.nextElementSibling?.textContent]);
+    const rows = await inspectorRows();
 
-    expect(terms).toContainEqual(["Main path", "yes"]);
+    expect(rows).toContainEqual(["Main path", "yes"]);
   });
 
   it("says Main path no in the line inspector when the line is work|work|failed", async () => {
     await openPage(LOOPING_COLLECTION, { hash: "&line=flow&edge=work|work|failed" });
 
-    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
-    const terms = Array.from(inspector.querySelectorAll("dt"), (term) => [term.textContent, term.nextElementSibling?.textContent]);
+    const rows = await inspectorRows();
 
-    expect(terms).toContainEqual(["Main path", "no"]);
+    expect(rows).toContainEqual(["Main path", "no"]);
   });
 
   it("shows Iteration limit 3 in the line inspector when the line work|work|failed has iteration_max 3", async () => {
     await openPage(LOOPING_COLLECTION, { hash: "&line=flow&edge=work|work|failed" });
 
-    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
-    const terms = Array.from(inspector.querySelectorAll("dt"), (term) => [term.textContent, term.nextElementSibling?.textContent]);
+    const rows = await inspectorRows();
 
-    expect(terms).toContainEqual(["Iteration limit", "3"]);
+    expect(rows).toContainEqual(["Iteration limit", "3"]);
+  });
+
+  it("shows Unattended limit 2 in the line inspector when the line work|work|failed has unattended_max 2", async () => {
+    await openPage(UNATTENDED_COLLECTION, { hash: "&line=flow&edge=work|work|failed" });
+
+    const rows = await inspectorRows();
+
+    expect(rows).toContainEqual(["Unattended limit", "2"]);
   });
 
   it("shows no Iteration limit in the line inspector when the line work|done|success has none", async () => {
@@ -344,3 +349,9 @@ describe("App theme switch", () => {
     expect([document.documentElement.getAttribute("data-color-scheme"), (screen.getByRole("radio", { name: "dark" }) as HTMLInputElement).checked]).toEqual(["dark", true]);
   });
 });
+
+async function inspectorRows() {
+  const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
+
+  return Array.from(inspector.querySelectorAll("dt"), (term) => [term.textContent, term.nextElementSibling?.textContent]);
+}

@@ -174,11 +174,11 @@ function nodeProblems(
   ];
 }
 
-// A walk revisiting a node needs iteration_max to bound the loop.
+// A walk revisiting a node needs iteration_max or unattended_max to bound the loop.
 function unboundedRetries(checked: Checked): PipelineProblem[] {
   const { edges } = checked.line;
   const backEdges = edges.filter(
-    (edge) => edge.from === edge.to && edge.iteration_max === undefined,
+    (edge) => edge.from === edge.to && edge.iteration_max === undefined && edge.unattended_max === undefined,
   );
 
   return backEdges.map((edge) =>
@@ -186,7 +186,7 @@ function unboundedRetries(checked: Checked): PipelineProblem[] {
       checked,
       edge.from,
       "unbounded-retry",
-      `node "${edge.from}" has a back-edge to itself with no iteration_max; the walk would retry without bound`,
+      `node "${edge.from}" has a back-edge to itself with no iteration_max and no unattended_max; the walk would retry without bound`,
     ),
   );
 }
