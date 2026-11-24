@@ -2,7 +2,7 @@
 
 A local studio for a collection of assembly lines: the folder with one folder a line, each holding `assembly-line.yaml` and `agents/<agent>.md`. It reads the folder, draws nothing itself, and tells every client what the collection holds: each assembly line with its nodes, edges and problems, each agent with its settings and prompt, and each file it refused and why. A change to a file on disk reaches every client at once.
 
-This package is the backend, the protocol, the command that starts them, and the page that draws the lines (`web/`). It is not published to npm yet: run it from a checkout.
+This package is the backend, the protocol, the command that starts them, and the page that draws the lines (`web/`). It is published to npm, so `npx @re-cinq/floor-studio path/to/collection` starts it without a checkout.
 
 ## The three parts
 
