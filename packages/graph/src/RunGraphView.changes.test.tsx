@@ -108,6 +108,33 @@ describe("RunGraphView change marking", () => {
     );
   });
 
+  it("clears the offset of done on the next frame and keeps it marked moved", async () => {
+    const before = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
+    const after = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+      ],
+    });
+    const doneEl = () => container.querySelector("[data-node=\"done\"]") as HTMLElement;
+
+    const { container, rerender } = await renderGraph(<RunGraphView definition={before} />);
+    rerender(<RunGraphView definition={after} />);
+    await waitFor(() => {
+      if (!doneEl().style.transform) throw new Error("done not offset yet");
+    });
+    await waitFor(() => {
+      if (doneEl().style.transform) throw new Error("offset of done not cleared yet");
+    });
+
+    expect({ change: doneEl().getAttribute("data-change"), transform: doneEl().style.transform }).toEqual({
+      change: "moved",
+      transform: "",
+    });
+  });
+
   it("marks nothing as added on the first draw", async () => {
     const definition = markerLine({ entry: "a", nodeIds: ["a", "done"], edges: [["a", "done", "success"]] });
 

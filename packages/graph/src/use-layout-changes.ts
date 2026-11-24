@@ -1,5 +1,5 @@
 // The keys the latest layout added or moved over the one before it, kept until the layout changes again.
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElkLayout } from "./elk-layout";
 import { diffLayouts, offsetsOf, type NodeOffset } from "./metro/layout-diff";
 
@@ -20,9 +20,23 @@ export function useLayoutChanges(layout: ElkLayout | null): LayoutChanges {
     return { added: new Set(added), moved: new Set(moved), offsets: offsetsOf(previous.current, layout) };
   }, [layout]);
 
+  const [clearedChanges, setClearedChanges] = useState<LayoutChanges | null>(null);
+
   useEffect(() => {
     if (layout) previous.current = layout;
   }, [layout]);
 
-  return changes;
+  useEffect(() => {
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setClearedChanges(changes));
+    });
+    let inner = 0;
+
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [changes]);
+
+  return clearedChanges === changes ? { ...changes, offsets: NOTHING_CHANGED.offsets } : changes;
 }
