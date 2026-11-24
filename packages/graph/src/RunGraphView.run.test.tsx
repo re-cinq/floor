@@ -114,4 +114,18 @@ describe("RunGraphView run overlay", () => {
 
     expect([...container.querySelectorAll("[data-open]")].map((element) => element.getAttribute("data-node"))).toEqual(["fix"]);
   });
+
+  it("widens a's card to fit its run-aware subtitle when a was visited many times", async () => {
+    const definition = markerLine({
+      kind: "agent",
+      entry: "a",
+      nodeIds: ["a", "done"],
+      edges: [["a", "done", "success"]],
+    });
+    const visits = Array.from({ length: 1000 }, (unused, index) => ({ nodeId: "a", iteration: index + 1, outcome: "success", open: index === 999 }));
+
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={{ visits }} />);
+
+    expect(Number(container.querySelector('[data-node="a"] rect')?.getAttribute("width"))).toBeGreaterThan(216);
+  });
 });
