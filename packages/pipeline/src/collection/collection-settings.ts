@@ -18,7 +18,15 @@ export function collectionSettingsOf(text: string): CollectionSettings {
 
   enforce(Array.isArray(hostKeys) && hostKeys.every((key) => typeof key === "string"), `${COLLECTION_SETTINGS_FILE}: host_keys is a list of names`);
 
-  return { hostKeys, groups: (settings.get("groups") ?? []) as string[] };
+  const groups = settings.get("groups") ?? [];
+
+  enforce(isDistinctFolderNames(groups), `${COLLECTION_SETTINGS_FILE}: groups is a list of distinct folder names`);
+
+  return { hostKeys, groups };
+}
+
+function isDistinctFolderNames(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((name) => typeof name === "string" && !name.includes("/")) && new Set(value).size === value.length;
 }
 
 /** The settings in a directory's `floor-collection.yaml`; empty without the file. */

@@ -57,6 +57,20 @@ describe("startStudio", () => {
     expect(await client.nextOfType("result")).toMatchObject({ result: { counts: { agents: 1, refused: 0 } } });
   });
 
+  it("answers collection.read with the stock line and 0 refused when floor-collection.yaml lists groups ours then stock, both holding flow", async () => {
+    const [lineFile, agentFile] = WORKER_COLLECTION;
+    const { client } = await connectedTo([
+      { ...lineFile, path: "ours/flow/assembly-line.yaml" },
+      { ...lineFile, path: "stock/flow/assembly-line.yaml" },
+      { ...agentFile, path: "stock/flow/agents/worker.md" },
+      { path: "floor-collection.yaml", text: "groups: [ours, stock]\n" },
+    ]);
+
+    client.send({ id: "r1", type: "collection.read" });
+
+    expect(await client.nextOfType("result")).toMatchObject({ result: { lines: [{ id: "flow", file: "stock/flow/assembly-line.yaml" }], counts: { refused: 0 } } });
+  });
+
   it("names the collection's folder in the view it answers with", async () => {
     const { dir, client } = await connectedToWorkerCollection();
 

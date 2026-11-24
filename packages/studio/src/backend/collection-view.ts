@@ -21,9 +21,9 @@ interface Surroundings {
   files: readonly CollectionFile[];
 }
 
-export function collectionView(files: readonly CollectionFile[], hostKeys: readonly string[]): CollectionView {
-  const overlay = collectionOverlay({ files, shipped: NOTHING_SHIPPED, env: AS_WRITTEN, hostKeys });
-  const lineFiles = lineLayoutOf(files).read;
+export function collectionView(files: readonly CollectionFile[], hostKeys: readonly string[], groups: readonly string[] = []): CollectionView {
+  const overlay = collectionOverlay({ files, shipped: NOTHING_SHIPPED, env: AS_WRITTEN, hostKeys, groups });
+  const lineFiles = lineLayoutOf(files, groups).read;
   const reads = lineFiles.map((file) => attempt(file.path, () => readLine(file, file.folder, promptsOf(overlay.agents))));
   const read = reads.flatMap((result) => ("made" in result ? [result.made] : []));
   const surroundings: Surroundings = { lines: read.map(({ id, body }) => ({ id, body })), agents: overlay.agents, agentFiles: agentFilesByName(files), files };

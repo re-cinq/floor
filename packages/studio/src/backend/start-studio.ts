@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { basename, join, resolve } from "node:path";
 import type { Duplex } from "node:stream";
 import { enforce } from "@re-cinq/floor-assembly-lines";
-import { collectionFilesIn, hostKeysIn, readAgentFile } from "@re-cinq/floor-pipeline";
+import { collectionFilesIn, collectionSettingsIn, hostKeysIn, readAgentFile } from "@re-cinq/floor-pipeline";
 import { WebSocket, WebSocketServer } from "ws";
 import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
@@ -54,7 +54,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   const token = randomBytes(TOKEN_BYTES).toString("hex");
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const allHostKeys = async () => [...hostKeys, ...(await hostKeysIn(dir))];
-  const readCollection = async () => collectionRead(dir, await allHostKeys());
+  const readCollection = () => collectionRead(dir, hostKeys);
 
   const writeAgent = async (file: string, edit: AgentEdit) => {
     const path = join(dir, file);
@@ -89,8 +89,9 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
 
 async function collectionRead(dir: string, hostKeys: readonly string[]): Promise<CollectionView> {
   const files = (await collectionFilesIn(dir)).filter((file) => !isSkillPath(file.path));
+  const settings = await collectionSettingsIn(dir);
 
-  return { ...collectionView(files, hostKeys), folder: basename(resolve(dir)), skills: await skillNamesIn(dir), environment: environmentOf(files) };
+  return { ...collectionView(files, [...hostKeys, ...settings.hostKeys], settings.groups), folder: basename(resolve(dir)), skills: await skillNamesIn(dir), environment: environmentOf(files) };
 }
 
 async function writeExtraFile(path: string, { text, version }: { text: string; version: string }): Promise<void> {
