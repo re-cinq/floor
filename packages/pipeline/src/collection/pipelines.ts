@@ -59,7 +59,12 @@ function pipelineFilesOf(files: readonly CollectionFile[]): PipelineEntry[] {
 
       return place ? [{ ...file, ...place }] : [];
     })
-    .sort((left, right) => left.path.localeCompare(right.path));
+    .sort(byLineNameThenPath);
+}
+
+// By line name, not path, so a line moved into a group folder keeps its place in the order lines are put to the host; among files of one name, path order decides which is read.
+function byLineNameThenPath(left: PipelineEntry, right: PipelineEntry): number {
+  return left.folder.localeCompare(right.folder) || left.path.localeCompare(right.path);
 }
 
 function pipelineOfFile(file: PipelineEntry, { shipped, env }: CollectionOverlayInput, collectionAgents: ReadonlyMap<string, OverlayAgent>): Pipeline {
