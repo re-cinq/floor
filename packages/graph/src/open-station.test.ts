@@ -38,6 +38,12 @@ describe("an open station's border", () => {
 
     expect({ dasharray, offsets: keyframeOffsets(name) }).toEqual({ dasharray: "6 4", offsets: ["-10"] });
   });
+
+  it("marches at a constant pace, openMarch 0.8s linear infinite, so the dashes never stall at a cycle's end", () => {
+    const { animation } = openBoxDeclarations();
+
+    expect(animation).toBe("openMarch 0.8s linear infinite");
+  });
 });
 
 function stylesheet() {
