@@ -5,6 +5,8 @@ import { declaredIdsOf } from "./metro/declared-ids";
 import { edgeKeyOf } from "./metro/edge-key";
 import { mainPathOf } from "./metro/main-path";
 import { incomingEdgesOf, outgoingEdgesOf } from "./metro/node-edges";
+import { isPassThrough } from "./metro/pass-through";
+import { nodeTitle } from "./node-tooltip";
 import { typeFamilyOf } from "./node-type-family";
 
 const NODE_SIZE = { width: 140, height: 60 };
@@ -13,6 +15,11 @@ const MARKER_SIZE = { width: 22, height: NODE_SIZE.height };
 const PORT_SIZE = 8;
 const EXIT_DOT_SIZE = 14;
 const STUB_SIZE = 14;
+const STOP_HEIGHT = 46;
+const STOP_PORT_Y = 14;
+const STOP_MIN_WIDTH = 32;
+const STOP_CHAR_WIDTH = 6.8;
+const STOP_PADDING = 10;
 
 interface StubEnd {
   idSuffix: string;
@@ -51,14 +58,19 @@ export interface NodeSize {
   widthOf?: (nodeId: string) => number;
 }
 
-export function elkGraphOf(definition: AssemblyLineDefinition, size: NodeSize = NODE_SIZE): ElkNode {
+export interface ElkGraphOptions {
+  /** Draws each pass-through station as a small stop instead of a card. */
+  compactStops?: boolean;
+}
+
+export function elkGraphOf(definition: AssemblyLineDefinition, size: NodeSize = NODE_SIZE, options: ElkGraphOptions = {}): ElkNode {
   const exitDotEdges = exitDotEdgesOf(definition);
 
   return {
     id: "root",
     layoutOptions: LAYOUT_OPTIONS,
     children: [
-      ...definition.nodes.map((node) => ({
+      ...definition.nodes.map((node) => options.compactStops && isPassThrough(definition, node.id) ? stopOf(definition, node.id) : ({
         id: node.id,
         ...(typeFamilyOf(node.type) === "marker" ? MARKER_SIZE : { width: size.widthOf?.(node.id) ?? size.width, height: size.height }),
         layoutOptions: { "elk.portConstraints": "FIXED_SIDE" },
@@ -78,6 +90,23 @@ export function elkGraphOf(definition: AssemblyLineDefinition, size: NodeSize = 
       targets: [`${edgeKeyOf(edge)}:in`],
       labels: [edgeLabelOf(edge)],
     })),
+  };
+}
+
+function stopOf(definition: AssemblyLineDefinition, nodeId: string): ElkNode {
+  const width = Math.max(STOP_MIN_WIDTH, Math.ceil(nodeTitle(nodeId).length * STOP_CHAR_WIDTH + STOP_PADDING));
+  const [incoming] = incomingEdgesOf(definition, nodeId);
+  const [outgoing] = outgoingEdgesOf(definition, nodeId);
+
+  return {
+    id: nodeId,
+    width,
+    height: STOP_HEIGHT,
+    layoutOptions: { "elk.portConstraints": "FIXED_POS" },
+    ports: [
+      { id: `${edgeKeyOf(incoming)}:in`, x: 0, y: STOP_PORT_Y, width: 0, height: 0 },
+      { id: `${edgeKeyOf(outgoing)}:out`, x: width, y: STOP_PORT_Y, width: 0, height: 0 },
+    ],
   };
 }
 

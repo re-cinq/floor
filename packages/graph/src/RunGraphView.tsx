@@ -5,6 +5,7 @@ import { useElkLayout } from "./use-elk-layout";
 import type { ElkLayout, LaidOutEdge } from "./elk-layout";
 import { reachabilityOf } from "./metro/reachability";
 import { edgeKeyOf } from "./metro/edge-key";
+import { isPassThrough } from "./metro/pass-through";
 import { neighbourhoodOf, type Neighbourhood } from "./metro/neighbourhood";
 import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
@@ -34,6 +35,8 @@ export interface RunGraphViewProps {
   selectedNodeId?: string | null;
   /** Height at the bottom of the graph that the inspector covers. */
   coveredBelow?: number;
+  /** Draws the pass-through stations as small stops rather than cards. */
+  compactStops?: boolean;
 }
 
 // The graph: laid out by ELK, then fitted to the panel by the viewport. Until ELK resolves, the panel and legend show with an empty canvas.
@@ -64,8 +67,8 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
   const tooltip = useNodeTooltip();
   const unreachable = useMemo(() => reachabilityOf(view.definition).unreachable, [view.definition]);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
-  const elkLayout = useElkLayout(view.definition, NODE_SIZE);
-  const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name), [elkLayout, graph, view.definition.name]);
+  const { elkLayout, stops } = useStopsLayout(view, graph);
+  const laid = useMemo(() => elkLayout && drawingOf(elkLayout, graph, view.definition.name, stops), [elkLayout, graph, view.definition.name, stops]);
 
   return (
     <>
@@ -90,6 +93,20 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
       <GraphTooltip {...tooltip} definition={view.definition} />
     </>
   );
+}
+
+/** The layout, asked to compact its stops when `compactStops` is set, and the stations drawn as stops: the pass-through ones. */
+function useStopsLayout({ definition, compactStops }: RunGraphViewProps, graph: VisibleGraph) {
+  const layoutOptions = useMemo(() => (compactStops ? { compactStops: true } : undefined), [compactStops]);
+  const stops = useMemo(() => stopsOf({ definition, compactStops }, graph), [definition, compactStops, graph]);
+
+  return { elkLayout: useElkLayout(definition, NODE_SIZE, undefined, layoutOptions), stops };
+}
+
+function stopsOf({ definition, compactStops }: RunGraphViewProps, { nodes }: VisibleGraph): ReadonlySet<string> {
+  const nodeIds = nodes.map((node) => node.id);
+
+  return new Set(nodeIds.filter((nodeId) => compactStops && isPassThrough(definition, nodeId)));
 }
 
 /** The neighbourhood of the node under the pointer or the focus, or null while there is none. */
@@ -235,6 +252,7 @@ function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit, l
         isTerminal={!laid.nodesWithOutgoing.has(node.id)}
         selected={node.id === selectedNodeId}
         isUnreachable={unreachable.has(node.id)}
+        isStop={laid.stops.has(node.id)}
         toneByEdge={laid.toneByEdge}
         onSelect={onSelectNode}
         onHover={onHover}
@@ -256,9 +274,10 @@ function markerOf(node: ElkLayout["nodes"][number], exit: string) {
 type Drawing = ReturnType<typeof drawingOf>;
 
 /** Everything the drawing needs: ELK's layout, the viewport it fits, and the model lookups. */
-function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string) {
+function drawingOf(layout: ElkLayout, graph: VisibleGraph, name: string, stops: ReadonlySet<string>) {
   return {
     layout,
+    stops,
     view: fitView(layout.contentBox),
     titleId: `graph-title-${name}`,
     ...graphLookups(graph),

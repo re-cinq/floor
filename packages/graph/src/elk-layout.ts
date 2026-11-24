@@ -1,7 +1,7 @@
 // Runs ELK on a line's graph and maps the result into what the view draws.
 import ELK, { type ElkEdgeSection, type ElkLabel, type ElkNode, type ElkPort } from "elkjs/lib/elk.bundled.js";
 import type { AssemblyLineDefinition } from "./assembly-line-definition";
-import { elkGraphOf, type NodeSize } from "./elk-graph";
+import { elkGraphOf, type ElkGraphOptions, type NodeSize } from "./elk-graph";
 
 export type Box = { minX: number; minY: number; maxX: number; maxY: number };
 
@@ -30,8 +30,8 @@ export type LaidOutNode = ElkLayout["nodes"][number];
 export type LaidOutEdge = ElkLayout["edges"][number];
 
 /** Lays out a line with ELK: node centres, one SVG path and label centre per edge, and the canvas box. */
-export async function layoutWithElk(definition: AssemblyLineDefinition, size?: NodeSize): Promise<ElkLayout> {
-  const laidOut = await new ELK().layout(elkGraphOf(definition, size));
+export async function layoutWithElk(definition: AssemblyLineDefinition, size?: NodeSize, options?: ElkGraphOptions): Promise<ElkLayout> {
+  const laidOut = await new ELK().layout(elkGraphOf(definition, size, options));
   const nodes = nodesOf(laidOut);
 
   return {
