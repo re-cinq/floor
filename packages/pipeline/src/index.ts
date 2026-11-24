@@ -13,3 +13,4 @@ export { agentFrontmatterSchema, readAgentFile, floorSettingsOf, type ParsedAgen
 export { placeholdersIn, withEnvironment, settingsWithEnvironment, type Environment } from "./collection/environment.js";
 export { PIPELINE_RULES, pipelineProblems, type PipelineProblem, type PipelineRule } from "./collection/lint-rules.js";
 export { agentFileOf, isCollectionFile, isReadPath, pipelineFolderOf } from "./collection/paths.js";
+export { extendedPrompt } from "./collection/agents.js";

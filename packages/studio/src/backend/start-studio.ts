@@ -33,6 +33,8 @@ export interface StudioOptions {
   hostKeys: readonly string[];
   /** The Origin of each page that may open the socket. A client that sends none is let in with the token. */
   origins?: readonly string[];
+  /** Environment laid over the studio's own for each process a run starts. */
+  runEnv?: Record<string, string>;
 }
 
 export interface Studio {
@@ -61,7 +63,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     await writeFile(path, text);
   };
 
-  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir) };
+  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), runs: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)) };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {
@@ -79,7 +81,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     url: `ws://${LOOPBACK}:${(server.address() as AddressInfo).port}`,
     token,
     pageCount: () => sockets.clients.size,
-    close: () => closed({ watcher, sockets, server }),
+    close: () => closed({ watcher, sockets, server, runs: context.runs }),
   };
 }
 
@@ -125,8 +127,9 @@ async function pushCollection(sockets: WebSocketServer, readCollection: () => Pr
   sockets.clients.forEach((socket) => send(socket, frame));
 }
 
-async function closed({ watcher, sockets, server }: { watcher: { close(): void }; sockets: WebSocketServer; server: ReturnType<typeof createServer> }): Promise<void> {
+async function closed({ watcher, sockets, server, runs }: { watcher: { close(): void }; sockets: WebSocketServer; server: ReturnType<typeof createServer>; runs: StudioContext["runs"] }): Promise<void> {
   watcher.close();
+  runs.forEach((record) => record.process?.cancel());
   sockets.clients.forEach((socket) => socket.close(GOING_AWAY, "the studio is stopping"));
   await new Promise<void>((resolve) => sockets.close(() => resolve()));
   await new Promise<void>((resolve) => server.close(() => resolve()));

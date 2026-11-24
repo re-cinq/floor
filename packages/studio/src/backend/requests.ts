@@ -4,7 +4,12 @@ import { enforce } from "@re-cinq/floor-assembly-lines";
 import { z } from "zod";
 import type { CollectionView } from "../view.js";
 import type { AgentEdit } from "./agent-file-text.js";
-import { fixtureRead, fixtureWrite, type FixtureRead, type FixtureWrite } from "./fixture-requests.js";import { runPreviewHandler, type RunPreviewRequest } from "./run-preview-request.js";
+import { fixtureRead, fixtureWrite, type FixtureRead, type FixtureWrite } from "./fixture-requests.js";
+import { runPreviewHandler, type RunPreviewRequest } from "./run-preview-request.js";
+import { runCancelHandler, type RunCancelRequest } from "./run-cancel-request.js";
+import { runStartHandler, type RunStartRequest } from "./run-start-request.js";
+import { runReadHandler, type RunReadRequest } from "./run-read-request.js";
+import type { RunRecord } from "../run/run-records.js";
 
 export interface StudioContext {
   readCollection(): Promise<CollectionView>;
@@ -15,6 +20,12 @@ export interface StudioContext {
   /** The saved needs of a node's fixture; empty when none was saved. */
   readFixture(line: string, node: string): Promise<Record<string, string>>;
   writeFixture(line: string, node: string, needs: Record<string, string>): Promise<void>;
+  /** The record of each run started by `run.start`, by run id; kept after the run ends. */
+  runs: Map<string, RunRecord>;
+  /** Environment laid over the studio's own for each started process. */
+  runEnv?: Record<string, string>;
+  /** Sends a frame to every open socket. */
+  broadcast(frame: ServerFrame): void;
 }
 
 export interface Handler<Asked extends Request> {
@@ -71,7 +82,7 @@ type CollectionRead = Extract<Request, { type: "collection.read" }>;
 const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
 
 /** One handler for each request type: a test holds the list to `REQUEST_TYPES`. */
-export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead> | Handler<RunPreviewRequest>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead, runPreviewHandler];
+export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead> | Handler<RunPreviewRequest> | Handler<RunStartRequest> | Handler<RunCancelRequest> | Handler<RunReadRequest>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead, runPreviewHandler, runStartHandler, runCancelHandler, runReadHandler];
 
 export async function answerFrame(text: string, context: StudioContext): Promise<ServerFrame> {
   const held = parsedJson(text);

@@ -1,10 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { PROTOCOL_VERSION } from "../protocol.js";
+import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import { textVersion } from "./agent-file-text.js";
 import { agentMarkdown, lineYaml, WORKER_COLLECTION } from "./collection-view.fixtures.js";
-import { collectionOnDisk, openClient, refusalStatus } from "./studio.fixtures.js";
+import { collectionOnDisk, openClient, refusalStatus, type Client } from "./studio.fixtures.js";
 import { startStudio, type Studio } from "./start-studio.js";
 
 const PAGE = "http://127.0.0.1:4173";
@@ -31,6 +32,33 @@ async function connectedTo(files: typeof WORKER_COLLECTION) {
 
 const connectedToWorkerCollection = () => connectedTo(WORKER_COLLECTION);
 const connectedToExtraCollection = () => connectedTo([WORKER_COLLECTION[0], { path: "flow/agents/worker.extra.md", text: EXTRA_TEXT }]);
+
+async function framesUntilRunEnded(client: Client) {
+  const frames: ServerFrame[] = [await client.nextOfType("result")];
+
+  while (frames.at(-1)?.type !== "run.ended") frames.push(await client.next());
+
+  return frames;
+}
+
+async function withFakeClaude(script: string, body: (client: Client, folder: string) => Promise<void>) {
+  const scratch = mkdtempSync(join(tmpdir(), "floor-run-start-"));
+  const bin = join(scratch, "bin");
+
+  try {
+    mkdirSync(bin);
+    writeFileSync(join(bin, "claude"), script, { mode: 0o755 });
+    const studio = await startStudio({ dir: collectionOnDisk(WORKER_COLLECTION), port: 0, hostKeys: [], runEnv: { PATH: `${bin}:${process.env.PATH}` } });
+
+    running.push(studio);
+    const client = await openClient(studio.url, { token: studio.token });
+
+    await client.next();
+    await body(client, join(scratch, "folder"));
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
 
 afterEach(async () => {
   await Promise.all(running.splice(0).map((studio) => studio.close()));
@@ -140,9 +168,9 @@ describe("startStudio", () => {
     const { url, token } = await started();
     const client = await openClient(url, { token });
 
-    client.send({ id: "r3", type: "run.start" });
+    client.send({ id: "r3", type: "run.nope" });
 
-    expect(await client.nextOfType("refused")).toMatchObject({ id: "r3", reason: expect.stringContaining('unknown request type "run.start"') });
+    expect(await client.nextOfType("refused")).toMatchObject({ id: "r3", reason: expect.stringContaining('unknown request type "run.nope"') });
   });
 
   it("closes the socket with code 1009 when a frame is 4 MiB plus one byte", async () => {
@@ -319,6 +347,16 @@ describe("startStudio", () => {
     expect(answer).toMatchObject({ type: "result", result: { prompt: "Work ENG-1.", blockers: [] } });
   });
 
+  it("answers run.preview with the prompt Work ENG-1. joined to the extra text, for flow/work extended by worker.extra.md", async () => {
+    const { client } = await connectedTo([...WORKER_COLLECTION, { path: "flow/agents/worker.extra.md", text: EXTRA_TEXT }]);
+
+    await client.next();
+    client.send({ id: "p3", type: "run.preview", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder: "/tmp/run-1", permission: "acceptEdits" });
+    const answer = await client.next();
+
+    expect(answer).toMatchObject({ type: "result", result: { prompt: "Work ENG-1.\n\n\nAlso check the tests." } });
+  });
+
   it('answers run.preview with the blocker "plan": /no/such/plan.md is not on disk, for file need plan fixtured to /no/such/plan.md', async () => {
     const fileNeedLine = lineYaml("flow", "worker").replace("name: ticket\n        kind: value", "name: plan\n        kind: file\n        path: plan.md");
     const { client } = await connectedTo([{ path: "flow/assembly-line.yaml", text: fileNeedLine }, WORKER_COLLECTION[1]]);
@@ -329,6 +367,56 @@ describe("startStudio", () => {
 
     expect(answer).toMatchObject({ type: "result", result: { blockers: ['"plan": /no/such/plan.md is not on disk'] } });
   });
+
+  it("answers run.start with the run id, then claude's two stdout lines and exit code 0 for flow/work with ticket ENG-1", async () => {
+    await withFakeClaude(`#!/bin/sh\necho '{"type":"system"}'\necho '{"type":"result","result":"done"}'\n`, async (client, folder) => {
+      client.send({ id: "s1", type: "run.start", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder, permission: "acceptEdits" });
+      const frames = await framesUntilRunEnded(client);
+      const { result } = frames[0] as { result: { run: string } };
+      const { run } = result;
+
+      expect(frames).toMatchObject([
+        { type: "result", id: "s1", result: { run } },
+        { type: "run.output", run, line: { stream: "stdout", text: '{"type":"system"}' } },
+        { type: "run.output", run, line: { stream: "stdout", text: '{"type":"result","result":"done"}' } },
+        { type: "run.ended", run, exitCode: 0 },
+      ]);
+    });
+  });
+
+  it("answers run.read after 0 with both stdout lines and exit code 0 once the run has ended", async () => {
+    await withFakeClaude(`#!/bin/sh\necho '{"type":"system"}'\necho '{"type":"result","result":"done"}'\n`, async (client, folder) => {
+      client.send({ id: "s1", type: "run.start", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder, permission: "acceptEdits" });
+      const [started] = await framesUntilRunEnded(client);
+      const { run } = (started as unknown as { result: { run: string } }).result;
+
+      client.send({ id: "r1", type: "run.read", run, after: 0 });
+
+      expect(await client.nextOfType("result")).toMatchObject({
+        type: "result",
+        id: "r1",
+        result: {
+          lines: [
+            { stream: "stdout", text: '{"type":"system"}' },
+            { stream: "stdout", text: '{"type":"result","result":"done"}' },
+          ],
+          ended: { exitCode: 0 },
+        },
+      });
+    });
+  });
+
+  it("ends the run with exit code null when run.cancel stops a claude sleeping 30 seconds", async () => {
+    await withFakeClaude(`#!/bin/sh\necho started\nsleep 30\n`, async (client, folder) => {
+      client.send({ id: "s1", type: "run.start", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder, permission: "acceptEdits" });
+      const { run } = (await client.nextOfType("result") as unknown as { result: { run: string } }).result;
+
+      await client.nextOfType("run.output");
+      client.send({ id: "c1", type: "run.cancel", run });
+
+      expect(await client.nextOfType("run.ended")).toMatchObject({ type: "run.ended", run, exitCode: null });
+    });
+  }, 10_000);
 
   it("refuses to start on a directory that does not exist", async () => {
     await expect(startStudio({ dir: "/no/such/collection", port: 0, hostKeys: [] })).rejects.toThrow(new Error("/no/such/collection is not a directory"));

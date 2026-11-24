@@ -5,7 +5,7 @@ import { REQUEST_TYPES } from "../protocol.js";
 import { HANDLERS, answerFrame } from "./requests.js";
 
 const VIEW = collectionView(WORKER_COLLECTION, []);
-const CONTEXT = { readCollection: async () => VIEW, writeAgent: async () => undefined, writeExtra: async () => undefined, readFixture: async () => ({}), writeFixture: async () => undefined };
+const CONTEXT = { readCollection: async () => VIEW, writeAgent: async () => undefined, writeExtra: async () => undefined, readFixture: async () => ({}), writeFixture: async () => undefined, runs: new Map(), broadcast: () => undefined };
 
 describe("HANDLERS", () => {
   it("holds one handler for each request type of the protocol", () => {
@@ -23,7 +23,7 @@ describe("answerFrame", () => {
   });
 
   it("refuses an unknown request type, naming it, with the id it carried", async () => {
-    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.start" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.start"; known: collection.read, agent.write, extra.write, fixture.write, fixture.read, run.preview' });
+    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.nope" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.nope"; known: collection.read, agent.write, extra.write, fixture.write, fixture.read, run.preview, run.start, run.cancel, run.read' });
   });
 
   it("refuses a request that fails its schema, with the id it carried and the field named", async () => {

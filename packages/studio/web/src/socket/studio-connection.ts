@@ -159,7 +159,9 @@ export class StudioConnection {
     void this.readCollection();
   }
 
-  private answer(frame: Extract<ServerFrame, { type: "result" | "refused" }>): void {
+  // Run frames are for the Run tab, which does not listen yet.
+  private answer(frame: Exclude<ServerFrame, { type: "hello" | "collection" }>): void {
+    if (isRunFrame(frame)) return;
     if (frame.type === "result") return this.settle(frame.id)?.resolve(frame.result);
     if (frame.id === undefined) return this.unreadable(frame.reason);
     this.settle(frame.id)?.reject(new Error(frame.reason));
@@ -260,4 +262,10 @@ function firstIssue({ issues }: ZodError): string {
   const [issue] = issues;
 
   return issue.message;
+}
+
+type RunFrame = Extract<ServerFrame, { type: "run.output" | "run.ended" }>;
+
+function isRunFrame(frame: ServerFrame): frame is RunFrame {
+  return frame.type.startsWith("run.");
 }

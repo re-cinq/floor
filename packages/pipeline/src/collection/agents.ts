@@ -55,6 +55,11 @@ export function agentsOverlay(input: CollectionOverlayInput) {
   return { agents, refused };
 }
 
+/** A shipped agent's prompt with the collection's extension appended. */
+export function extendedPrompt(base: string, extra: string): string {
+  return `${base}\n\n${extra}`;
+}
+
 function agentFilesOf(files: readonly CollectionFile[]): AgentEntry[] {
   const agentFiles = [...files]
     .sort((left, right) => left.path.localeCompare(right.path))
@@ -79,7 +84,7 @@ function agentOf(file: AgentEntry, { shipped, env, hostKeys }: CollectionOverlay
 function extendedAgent(file: AgentEntry, base: AgentFileSettings | undefined, env: Environment): OverlayAgent {
   enforce(base, `an extension needs a shipped agent, and nothing ships ${file.agent}`);
 
-  return { source: "extended", settings: settingsWithEnvironment({ ...base, prompt: `${base.prompt}\n\n${file.text}` }, env) };
+  return { source: "extended", settings: settingsWithEnvironment({ ...base, prompt: extendedPrompt(base.prompt ?? "", file.text) }, env) };
 }
 
 function definedAgent(file: AgentEntry, base: AgentFileSettings | undefined, env: Environment, hostKeys: readonly string[] | undefined): OverlayAgent {

@@ -13,7 +13,7 @@ describe("requestSchema", () => {
   });
 
   it("refuses a request type nobody handles", () => {
-    expect(requestSchema.safeParse({ id: "r1", type: "run.start" }).success).toBe(false);
+    expect(requestSchema.safeParse({ id: "r1", type: "run.nope" }).success).toBe(false);
   });
 
   it("refuses a request that carries a field it does not define", () => {
@@ -21,7 +21,7 @@ describe("requestSchema", () => {
   });
 
   it("lists every request type there is", () => {
-    expect(REQUEST_TYPES).toEqual(["collection.read", "agent.write", "extra.write", "fixture.write", "fixture.read", "run.preview"]);
+    expect(REQUEST_TYPES).toEqual(["collection.read", "agent.write", "extra.write", "fixture.write", "fixture.read", "run.preview", "run.start", "run.cancel", "run.read"]);
   });
 });
 
