@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ElkLayout } from "./elk-layout";
-import { linesOverLabels, linesThroughStations } from "./layout-geometry";
+import { linesOverLabels, linesThroughStations, tinyTurns } from "./layout-geometry";
 
 type Station = ElkLayout["nodes"][number];
 type Edge = ElkLayout["edges"][number];
@@ -61,5 +61,25 @@ describe("linesOverLabels", () => {
     );
 
     expect(linesOverLabels(layout)).toEqual([]);
+  });
+});
+
+describe("tinyTurns", () => {
+  it("lists edge a|b|success with length 4 when its middle segment is 4 px under a minimum of 16", () => {
+    const layout = layoutOf(
+      [stationAt("a", 50), stationAt("b", 250)],
+      [edgeAt({ from: "a", to: "b", on: "success", d: "M 100 50 L 200 50 L 200 54 L 300 54", labelBox: labelBoxAt(50) })],
+    );
+
+    expect(tinyTurns(layout, 16)).toEqual([{ edge: "a|b|success", length: 4 }]);
+  });
+
+  it("returns [] for edge a|b|success whose 4 px first and last segments attach to station ports", () => {
+    const layout = layoutOf(
+      [stationAt("a", 50), stationAt("b", 150)],
+      [edgeAt({ from: "a", to: "b", on: "success", d: "M 100 50 L 104 50 L 104 150 L 108 150", labelBox: labelBoxAt(100) })],
+    );
+
+    expect(tinyTurns(layout, 16)).toEqual([]);
   });
 });
