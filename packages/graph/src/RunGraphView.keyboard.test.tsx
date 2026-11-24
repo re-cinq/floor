@@ -108,4 +108,22 @@ describe("RunGraphView keyboard path", () => {
 
     expect({ handled, chosen: chosenKeys(container) }).toEqual({ handled: false, chosen: [] });
   });
+
+  it("leaves ArrowDown unhandled and a|b|success chosen when the view has no onSelectNode", async () => {
+    const definition = markerLine({
+      entry: "a",
+      nodeIds: ["a", "b", "done", "fix"],
+      edges: [
+        ["a", "b", "success"],
+        ["b", "done", "success"],
+        ["a", "fix", "failed"],
+      ],
+    });
+    const { container } = await renderGraph(<RunGraphView definition={definition} />);
+
+    fireEvent.focus(nodeEl(container, "a"));
+    const handled = fireEvent.keyDown(nodeEl(container, "a"), { key: "ArrowDown" });
+
+    expect({ handled, chosen: chosenKeys(container) }).toEqual({ handled: true, chosen: ["a|b|success"] });
+  });
 });
