@@ -1,5 +1,6 @@
 import { useMemo, type ReactElement } from "react";
 import type { CollectionView, NodeView } from "@protocol";
+import { edgeKeyOf } from "@re-cinq/floor-graph";
 import { parseFragment, withSelection } from "@/socket/fragment";
 import type { StudioConnection, StudioSnapshot } from "@/socket/studio-connection";
 import { useStudio, type StudioAddress } from "@/socket/use-studio";
@@ -38,7 +39,7 @@ export default function App() {
         scheme={{ pref: scheme.pref, onChoose: scheme.choose }}
       />
       <main className={shell.main}>
-        {address ? screenFor(snapshot, { requestedLine: selection.line, inspector: { savePrompt, saveExtra, saveSettings, tabChoice: { tab: selection.tab, choose: (tab) => select({ line: lineId, node: resolved.node?.id, tab }) } }, resolved, onSelectNode: (node) => select(node ? { line: lineId, node, tab: selection.tab } : { line: lineId }) }) : <AddressNeeded />}
+        {address ? screenFor(snapshot, { requestedLine: selection.line, inspector: { savePrompt, saveExtra, saveSettings, tabChoice: { tab: selection.tab, choose: (tab) => select({ line: lineId, node: resolved.node?.id, tab }) } }, resolved, onSelectLine: (key) => select({ line: lineId, edge: key }), selectedLineKey: resolved.edge && edgeKeyOf(resolved.edge), onSelectNode: (node) => select(node ? { line: lineId, node, tab: selection.tab } : { line: lineId }) }) : <AddressNeeded />}
       </main>
     </div>
   );
@@ -84,6 +85,8 @@ interface Place {
   inspector: InspectorActions;
   resolved: ResolvedSelection;
   onSelectNode: (nodeId: string | undefined) => void;
+  onSelectLine: (key: string) => void;
+  selectedLineKey: string | undefined;
 }
 
 function screenFor(snapshot: StudioSnapshot, place: Place): ReactElement {
@@ -101,9 +104,9 @@ function unloadedScreen({ connection, readError }: StudioSnapshot): ReactElement
   return readError ? <Unreadable reason={readError} /> : <Connecting />;
 }
 
-function loadedScreen(collection: CollectionView, { requestedLine, inspector, resolved, onSelectNode }: Place): ReactElement {
+function loadedScreen(collection: CollectionView, { requestedLine, inspector, resolved, onSelectNode, onSelectLine, selectedLineKey }: Place): ReactElement {
   if (collection.lines.length === 0) return <EmptyCollection />;
-  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} inspector={{ ...inspector, skillNames: collection.skills }} onSelectNode={onSelectNode} />;
+  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} inspector={{ ...inspector, skillNames: collection.skills }} onSelectNode={onSelectNode} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} selectedLine={resolved.edge} />;
 
   return requestedLine ? <MissingLine lineId={requestedLine} /> : <ChooseLine collection={collection} />;
 }

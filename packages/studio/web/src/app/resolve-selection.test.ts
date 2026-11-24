@@ -34,4 +34,15 @@ describe("resolveSelection", () => {
   it("finds nothing before the collection has arrived", () => {
     expect(resolveSelection(null, { line: "flow", node: "work" })).toEqual({ line: undefined, node: undefined });
   });
+
+  it("finds the edge the review|done|failed key names, with no node selected", () => {
+    const reviewed = { ...lineOf("flow", ["review", "done"]), edges: [{ from: "review", to: "done", on: "passed" }, { from: "review", to: "done", on: "failed" }] };
+    const reviewedCollection = { ...collection, lines: [reviewed] };
+
+    expect(resolveSelection(reviewedCollection, { line: "flow", node: "review", edge: "review|done|failed" })).toEqual({
+      line: reviewed,
+      node: undefined,
+      edge: { from: "review", to: "done", on: "failed" },
+    });
+  });
 });
