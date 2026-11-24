@@ -61,7 +61,7 @@ npm publishes from this repository through Trusted Publishing: the workflow trad
 token for a credential that lives for minutes. A trusted publisher is registered on a package,
 and a package that was never published is not there to register it on. So `publish.yml`
 publishes a package with no version on the registry yet with a token instead, and every other
-package the usual way. Nothing is published by hand.
+package the usual way, in `scripts/publish-packages.sh`, which `scripts/publish-packages.test.mjs` covers. Nothing is published by hand.
 
 1. On npmjs.com, create a granular access token that can publish to the `@re-cinq` scope, with
    a short expiry.
