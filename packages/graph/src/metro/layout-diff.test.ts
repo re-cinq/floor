@@ -41,6 +41,13 @@ describe("diffLayouts", () => {
     expect(sortedDiff(before, after)).toEqual({ added: [], moved: ["a|b|success", "b"], removed: [] });
   });
 
+  it("lists node b as moved when only its y changes", () => {
+    const before: ElkLayout = { nodes: [nodeA, nodeB], edges: [], contentBox };
+    const after: ElkLayout = { nodes: [nodeA, { ...nodeB, y: 60 }], edges: [], contentBox };
+
+    expect(sortedDiff(before, after)).toEqual({ added: [], moved: ["b"], removed: [] });
+  });
+
   it("lists node b and edge a-b as removed when only before has them", () => {
     const before: ElkLayout = { nodes: [nodeA, nodeB], edges: [edgeAB], contentBox };
     const after: ElkLayout = { nodes: [nodeA], edges: [], contentBox };
