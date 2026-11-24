@@ -32,7 +32,7 @@ describe("RunGraphView run overlay", () => {
     });
     const run = { visits: [{ nodeId: "a", iteration: 1, outcome: "success", open: false }] };
 
-    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} />);
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} show="all" />);
 
     expect(takenByEdge(container)).toEqual([
       ["a|done|success", "true"],
@@ -59,7 +59,7 @@ describe("RunGraphView run overlay", () => {
       ],
     };
 
-    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} />);
+    const { container } = await renderGraph(<RunGraphView definition={definition} run={run} show="all" />);
 
     expect(marksByStation(container)).toEqual({
       a: [null, "success"],
