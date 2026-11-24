@@ -14,7 +14,11 @@ import GraphSvg, { type DescribedNode } from "./GraphSvg";
 import { useKeyboardCursor } from "./use-keyboard-cursor";
 import GraphViewport from "./GraphViewport";
 import { useLayoutChanges } from "./use-layout-changes";
-import { useTakenLines, type RunOverlay } from "./use-run-overlay";
+import {
+  useStationVisits,
+  useTakenLines,
+  type RunOverlay,
+} from "./use-run-overlay";
 import { edgeKeyOf } from "./metro/edge-key";
 import { useNodeTooltip } from "./use-node-tooltip";
 import NodeTooltip from "./NodeTooltip";
@@ -129,7 +133,7 @@ function drawnFrom(view: RunGraphViewProps) {
 
 /** Everything the canvas draws from: the laid-out drawing, the tooltip, the marks on its elements and the viewport's two toggles. */
 function useGraphCanvasState(view: RunGraphViewProps, graph: VisibleGraph) {
-  const { unreachable, mainPath, mainPathOnly, toggleMainPath, taken } =
+  const { unreachable, mainPath, mainPathOnly, toggleMainPath, taken, visits } =
     useLineMarkings(view);
   const { lit, setHoveredId } = useHoverNeighbourhood(view.definition);
   const keyboard = useKeyboardCursor(view.definition);
@@ -149,7 +153,7 @@ function useGraphCanvasState(view: RunGraphViewProps, graph: VisibleGraph) {
   return {
     laid,
     tooltip: useNodeTooltip(),
-    marks: { lit, mainPath, unreachable, keyboard, added, taken, takenEdgeKey: view.takenEdge && edgeKeyOf(view.takenEdge) },
+    marks: { lit, mainPath, unreachable, keyboard, added, taken, visits, takenEdgeKey: view.takenEdge && edgeKeyOf(view.takenEdge) },
     toggles,
     setHoveredId,
   };
@@ -179,6 +183,7 @@ function useLineMarkings({
     mainPathOnly,
     toggleMainPath,
     taken: useTakenLines(definition, run),
+    visits: useStationVisits(run),
   };
 }
 
