@@ -45,7 +45,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@re-cinq/floor-contracts": "*"
+    "@re-cinq/floor-contracts": "*",
+    "elkjs": "0.9.3"
   },
   "peerDependencies": {
     "react": ">=19",
