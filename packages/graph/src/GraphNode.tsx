@@ -8,7 +8,7 @@ import TypeGlyph, { FAMILY_CLASS } from "./TypeGlyph";
 import { badgesOf } from "./node-badges";
 import { nodeAriaLabel } from "./node-aria-label";
 import { typeFamilyOf } from "./node-type-family";
-import { NODE_WIDTH } from "./run-graph-geometry";
+import { NODE_WIDTH, fitNodeLabel } from "./run-graph-geometry";
 import { nodeTitle } from "./node-tooltip";
 import { classes, portFillClass } from "./run-graph-tone-classes";
 import styles from "./run-graph.module.css";
@@ -34,28 +34,59 @@ const NO_TONES: ReadonlyMap<string, ConnectorTone> = new Map();
 
 export default function GraphNode(props: GraphNodeProps) {
   const { node, model, height, isTerminal, selected = false, onSelect } = props;
-  const { top, leftEdge } = boxOf(node, height);
   const family = typeFamilyOf(model.type);
-  const title = nodeTitle(node.id);
+  const shape = family === "marker" ? "terminal" : "card";
+  const BODY = BODY_BY_SHAPE[shape];
 
   return (
     <g
       className={classes(styles.node, FAMILY_CLASS[family], selected ? styles.selected : undefined)}
       data-node={node.id}
       data-family={family}
+      data-shape={shape}
       data-selected={selected || undefined}
       aria-label={nodeAriaLabel({ node: model, isTerminal })}
       aria-describedby={props.describedBy}
       {...interactionAttrs({ nodeId: node.id, onSelect, selected })}
     >
-      <NodeBox leftEdge={leftEdge} top={top} height={height} />
-      <TypeGlyph family={family} cx={leftEdge + GLYPH_INSET} cy={top + GLYPH_INSET} />
-      <NodeTitle title={title} kind={family} centerX={node.x} centerY={node.y} />
-      <NodeBadges badges={badgesOf(model)} rightEdge={leftEdge + NODE_WIDTH} top={top} />
+      <BODY node={node} family={family} height={height} />
+      <NodeBadges badges={badgesOf(model)} rightEdge={node.x + NODE_WIDTH / 2} top={node.y - height / 2} />
       <NodePorts ports={node.ports} toneByEdge={props.toneByEdge ?? NO_TONES} />
     </g>
   );
 }
+
+interface NodeBodyProps {
+  node: LaidOutNode;
+  family: ReturnType<typeof typeFamilyOf>;
+  height: number;
+}
+
+function CardBody({ node, family, height }: NodeBodyProps) {
+  const { top, leftEdge } = boxOf(node, height);
+
+  return (
+    <>
+      <NodeBox leftEdge={leftEdge} top={top} height={height} />
+      <TypeGlyph family={family} cx={leftEdge + GLYPH_INSET} cy={top + GLYPH_INSET} />
+      <NodeTitle title={nodeTitle(node.id)} kind={family} centerX={node.x} centerY={node.y} />
+    </>
+  );
+}
+
+function TerminalBody({ node }: NodeBodyProps) {
+  return (
+    <>
+      <circle className={styles.terminalRing} cx={node.x} cy={node.y} r={11} />
+      <circle className={styles.terminalCore} cx={node.x} cy={node.y} r={5} />
+      <text className={styles.nodeId} x={node.x} y={node.y + 24} textAnchor="middle">
+        {fitNodeLabel(nodeTitle(node.id))}
+      </text>
+    </>
+  );
+}
+
+const BODY_BY_SHAPE = { card: CardBody, terminal: TerminalBody };
 
 function NodePorts({ ports, toneByEdge }: { ports: LaidOutNode["ports"]; toneByEdge: ReadonlyMap<string, ConnectorTone> }) {
   return ports.map((port) => {

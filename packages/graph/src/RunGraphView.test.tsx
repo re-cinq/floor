@@ -49,9 +49,22 @@ describe("RunGraphView", () => {
 
   it("draws every station card 60 tall, even review with three outcomes", async () => {
     const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
-    const boxHeights = [...container.querySelectorAll("[data-node]")].map((card) => card.querySelector("rect")?.getAttribute("height"));
+    const boxHeights = [...container.querySelectorAll("[data-shape='card']")].map((card) => card.querySelector("rect")?.getAttribute("height"));
 
-    expect(boxHeights).toEqual(["60", "60"]);
+    expect(boxHeights).toEqual(["60"]);
+  });
+
+  it("draws done, a marker, as a terminal dot with no card rect, and review, an agent, as a card", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    const shapeOf = (id: string) => ({
+      shape: nodeEl(container, id).getAttribute("data-shape"),
+      rects: [...nodeEl(container, id).querySelectorAll("rect")].filter((rect) => !rect.closest("[data-badge]")).length,
+    });
+
+    expect({ review: shapeOf("review"), done: shapeOf("done") }).toEqual({
+      review: { shape: "card", rects: 1 },
+      done: { shape: "terminal", rects: 0 },
+    });
   });
 
   it("draws review to done as three connectors keyed, toned and labelled by their outcome", async () => {

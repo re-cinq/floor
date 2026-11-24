@@ -302,6 +302,14 @@
 .exitCore {
   fill: var(--text);
 }
+.terminalRing {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.terminalCore {
+  fill: var(--text);
+}
 
 /* A port sits on the node's border in its line's colour; an in-port is grey. */
 .portOk {
