@@ -31,4 +31,18 @@ describe("GraphNode", () => {
 
     expect(container.querySelector("[data-change]")?.getAttribute("data-change")).toBe("added");
   });
+
+  it("hides a removed station from assistive technology", () => {
+    const node = { id: "a", x: 100, y: 30, width: 140, height: 60, ports: [] };
+    const model = { id: "a", type: "agent" as const, outcomes: ["success"], isEntry: true, isExit: false, isFail: false, hasProblem: false };
+
+    const { container } = render(
+      <svg>
+        <GraphNode node={node} model={model} height={60} isTerminal={false} toneByEdge={new Map()} removed />
+      </svg>,
+    );
+    const station = container.querySelector("[data-node='a']");
+
+    expect({ change: station?.getAttribute("data-change"), hidden: station?.getAttribute("aria-hidden") }).toEqual({ change: "removed", hidden: "true" });
+  });
 });

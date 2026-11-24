@@ -98,6 +98,9 @@ describe("RunGraphView visited-only drawing", () => {
     await waitFor(() => {
       if (container.querySelector('[data-edge="a|fix|failed"]')) throw new Error("edge to fix still drawn");
     });
+    await waitFor(() => {
+      if (container.querySelector('[data-node="fix"]')) throw new Error("fix still fading out");
+    });
 
     expect({ nodes: drawnIds(container, "data-node"), edges: drawnIds(container, "data-edge") }).toEqual({
       nodes: ["a", "done"],
@@ -129,6 +132,9 @@ describe("RunGraphView visited-only drawing", () => {
     fireEvent.click(within(container).getByRole("button", { name: "Whole line" }));
     await waitFor(() => {
       if (container.querySelector('[data-edge="a|fix|failed"]')) throw new Error("edge to fix still drawn");
+    });
+    await waitFor(() => {
+      if (container.querySelector('[data-node="fix"]')) throw new Error("fix still fading out");
     });
 
     expect({ nodes: drawnIds(container, "data-node"), edges: drawnIds(container, "data-edge") }).toEqual({
