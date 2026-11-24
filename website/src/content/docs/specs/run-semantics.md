@@ -13,9 +13,10 @@ An event starts a run of every line whose `start.on` lists the event's name and 
 
 1. Each argument is filled from the payload by its [start template](/floor/specs/placeholders/#1-start-templates).
 2. A start MUST give every argument the line declares. If not, the run does not start and the floor says `startItems.X: required by the line, as kind "K"`.
-3. The run's repository is the one its `git` argument names. With no `git` argument it is the payload's `repo` or `repository` field, and with neither the run has no repository.
-4. A line with a `git` argument MUST be started with a repository. The floor says `line "L" has a git argument, so a start must name its repo`.
-5. A run walks the version of the line it started with. A newer version changes later runs only.
+3. A start through `POST /assembly-lines/{id}/start` MAY give items the line does not declare as arguments, and they are kept in the run's bag. A start by event cannot: a `start.args` entry for a name the line does not declare is refused with `start maps "X", which the line does not declare as an argument`.
+4. The run's repository is the one its `git` argument names. With no `git` argument it is the payload's `repo` or `repository` field, and with neither the run has no repository.
+5. A line with a `git` argument MUST be started with a repository. The floor says `line "L" has a git argument, so a start must name its repo`.
+6. A run walks the version of the line it started with. A newer version changes later runs only.
 
 ### 1.1 The subject
 
@@ -34,6 +35,8 @@ An event names a run by `runId` in its payload, or by `subjectKey` and `repo`. A
 
 A report from an event needs a visit that is open at the node. With none, nothing happens.
 
+A start for a node that already has an open visit, sent with no iteration (a start by hand), returns that visit and opens nothing. The walk itself opens no visit while any visit of the run is open.
+
 ## 3. A visit
 
 When the walk reaches a node, a visit opens.
@@ -45,7 +48,7 @@ When the walk reaches a node, a visit opens.
 | A `service` station | A worker that claims `station:<id>` does the work and reports |
 | A `human` station | The visit waits for a report, or for an event one of the node's `reports` names |
 
-Each need of the station is filled from the run's bag when the visit opens, and stays as it was filled.
+Each need of the station is filled from the run's bag when the visit opens, and stays as it was filled. When a required need is not in the bag, the visit is refused with `node "N": missing required need(s) X`, no visit is recorded, and the run ends as `error` with that message as its reason.
 
 | Station | A visit's deadline |
 | --- | --- |
@@ -127,4 +130,4 @@ With none to resume, the agent starts a new conversation.
 
 A visit of an `agent` station runs the agent's settings as they are when the visit opens. When the run has a repository and the agent has a variant for it, the variant is laid over the settings by field, by key of `config` and by model of `prices`.
 
-The agent definition MUST exist when the visit opens. If not, the visit is refused with `no agent definition "X"`.
+The agent definition MUST exist when the visit opens. If not, the visit is refused with `no agent definition "X"`, and the run ends as `error` with that message as its reason.
