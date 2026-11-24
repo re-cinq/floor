@@ -165,6 +165,25 @@ describe("collectionView", () => {
     expect(collectionView(files, [])).toMatchObject({ lines: [{ file: "flow/assembly-line.yaml" }], refused: [{ path: "flow/pipeline.yaml", reason: expect.stringContaining("holds its line twice") }] });
   });
 
+  it("shows ours/flow and refuses stock/flow as already set when both group folders hold the line flow", () => {
+    const files = [{ ...FLOW_LINE, path: "ours/flow/assembly-line.yaml" }, { ...FLOW_LINE, path: "stock/flow/assembly-line.yaml" }, { ...WORKER_AGENT, path: "ours/flow/agents/worker.md" }];
+
+    expect(collectionView(files, [])).toMatchObject({ lines: [{ id: "flow", file: "ours/flow/assembly-line.yaml" }], refused: [{ path: "stock/flow/assembly-line.yaml", reason: "flow is already set by ours/flow/assembly-line.yaml" }] });
+  });
+
+
+  it("shows ours/flow/pipeline.yaml and refuses stock/flow/assembly-line.yaml as already set, hiding neither file", () => {
+    const files = [{ ...FLOW_LINE, path: "ours/flow/pipeline.yaml" }, { ...FLOW_LINE, path: "stock/flow/assembly-line.yaml" }];
+
+    expect(collectionView(files, [])).toMatchObject({ lines: [{ file: "ours/flow/pipeline.yaml" }], refused: [{ path: "stock/flow/assembly-line.yaml", reason: "flow is already set by ours/flow/pipeline.yaml" }] });
+  });
+
+  it("shows the line stock and refuses stock/flow/assembly-line.yaml below it as not in a group", () => {
+    const files = [{ path: "stock/assembly-line.yaml", text: lineYaml("stock", "worker") }, { ...FLOW_LINE, path: "stock/flow/assembly-line.yaml" }];
+
+    expect(collectionView(files, [])).toMatchObject({ lines: [{ id: "stock" }], refused: [{ path: "stock/flow/assembly-line.yaml", reason: "the folder stock holds a line, so it is not a group: move flow out of it" }] });
+  });
+
   it("keeps a line whose id is not its folder's name, with a folder-name problem", () => {
     const files = [{ path: "other/assembly-line.yaml", text: lineYaml("flow", "worker") }, { path: "other/agents/worker.md", text: agentMarkdown("Work {ticket}.") }];
 

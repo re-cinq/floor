@@ -75,13 +75,16 @@ describe("collectionOverlay with group folders", () => {
     ]);
   });
 
-  it("reads stock/code-review when ours/code-review is refused for holding the line sorting", () => {
+  it("reads no line and refuses both files when ours/code-review holds the line sorting and stock/code-review holds code-review", () => {
     expect(linesAndRefusalsOf({
       "ours/code-review/assembly-line.yaml": pipelineYaml("sorting", "reviewer"),
       "stock/code-review/assembly-line.yaml": pipelineYaml("code-review", "reviewer"),
     })).toEqual({
-      lines: ["code-review"],
-      refused: [{ path: "ours/code-review/assembly-line.yaml", reason: "the folder code-review must hold the pipeline of that name, and its line is sorting" }],
+      lines: [],
+      refused: [
+        { path: "ours/code-review/assembly-line.yaml", reason: "the folder code-review must hold the pipeline of that name, and its line is sorting" },
+        { path: "stock/code-review/assembly-line.yaml", reason: "code-review is already set by ours/code-review/assembly-line.yaml" },
+      ],
     });
   });
 
@@ -89,5 +92,14 @@ describe("collectionOverlay with group folders", () => {
     const overlay = overlayOf({ "ours/triage/agents/triager.md": TRIAGE_AGENT, "stock/triage/agents/triager.md": TRIAGE_AGENT });
 
     expect(overlay.refused).toEqual([{ path: "stock/triage/agents/triager.md", reason: "triager is already set by ours/triage/agents/triager.md" }]);
+  });
+
+  it("refuses stock/README.md and stock/code-review/notes.md as paths a collection does not read", () => {
+    const reason = "a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md";
+
+    expect(linesAndRefusalsOf({ "stock/README.md": "Notes.", "stock/code-review/notes.md": "Notes." }).refused).toEqual([
+      { path: "stock/code-review/notes.md", reason },
+      { path: "stock/README.md", reason },
+    ]);
   });
 });

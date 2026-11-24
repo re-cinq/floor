@@ -7,6 +7,7 @@ export { migrate, type Migrated, type MigrationFile } from "./migrate.js";
 export type { Floor } from "./floor.js";
 export { collectionOverlay, type CollectionFile, type CollectionOverlay, type CollectionOverlayInput, type OverlayAgent, type AgentSource, type ShippedCatalog, type Refusal } from "./collection/collection.js";
 export { attempt, type Attempt } from "./collection/refusal.js";
+export { lineLayoutOf, type LineFile, type LineLayout } from "./collection/line-layout.js";
 export { applyCollection } from "./collection/apply.js";
 export { collectionFilesIn, COLLECTION_SETTINGS_FILE, hostKeysIn, lintCollectionDirectory, lintCommand, printCollectionLint, readCollectionDirectory, shippedCatalogIn, type LintCommand } from "./collection/lint-directory.js";
 export { agentFrontmatterSchema, readAgentFile, floorSettingsOf, type ParsedAgentFile, type AgentFileSettings, type ShippedAgents, type AgentPrompts } from "./collection/agent-file.js";

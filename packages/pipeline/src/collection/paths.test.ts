@@ -90,6 +90,9 @@ describe("isCollectionFile", () => {
     ["code-review/image.png", false],
     ["skills/tdd-start.md", false],
     ["agent-skills/skills/tdd-loop/SKILL.md", false],
+    ["stock/code-review/notes.md", true],
+    ["stock/README.md", true],
+    ["skills/stock/code-review/assembly-line.yaml", false],
   ])("answers %s for the path %s", (path, expected) => {
     expect(isCollectionFile(path)).toEqual(expected);
   });

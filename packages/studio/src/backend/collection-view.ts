@@ -1,7 +1,7 @@
 // The studio's picture of a collection: every line with its nodes, every agent, and what was refused. Pure and tolerant: a collection with problems still has a view, and nothing a person wrote makes it throw.
 import { coverageContextOf, downstreamOf, needCoverage, nodeEvents, promptPlaceholders, type CollectionLine, type NeedContext } from "@re-cinq/floor-assembly-lines";
 import type { LineNode, StationBody } from "@re-cinq/floor-contracts";
-import { attempt, collectionOverlay, lineFolderPathOf, pipelineFolderOf, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type ShippedCatalog } from "@re-cinq/floor-pipeline";
+import { attempt, collectionOverlay, lineFolderPathOf, lineLayoutOf, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type LineFile, type ShippedCatalog } from "@re-cinq/floor-pipeline";
 import type { CollectionView, LineView, NodeView, RefusedFile } from "../view.js";
 import { textVersion } from "./agent-file-text.js";
 import { agentFilesByName, agentViews, type AgentFiles } from "./agent-views.js";
@@ -14,10 +14,6 @@ const AS_WRITTEN: Environment = new Proxy({}, { get: (...given) => `\${${String(
 /** Nothing is shipped: the studio shows the collection on its own. */
 const NOTHING_SHIPPED: ShippedCatalog = { pipelines: [], agents: new Map() };
 
-interface LineFile extends CollectionFile {
-  folder: string;
-}
-
 interface Surroundings {
   lines: CollectionLine[];
   agents: ReadonlyMap<string, OverlayAgent>;
@@ -27,7 +23,7 @@ interface Surroundings {
 
 export function collectionView(files: readonly CollectionFile[], hostKeys: readonly string[]): CollectionView {
   const overlay = collectionOverlay({ files, shipped: NOTHING_SHIPPED, env: AS_WRITTEN, hostKeys });
-  const lineFiles = lineFilesOf(files);
+  const lineFiles = lineLayoutOf(files).read;
   const reads = lineFiles.map((file) => attempt(file.path, () => readLine(file, file.folder, promptsOf(overlay.agents))));
   const read = reads.flatMap((result) => ("made" in result ? [result.made] : []));
   const surroundings: Surroundings = { lines: read.map(({ id, body }) => ({ id, body })), agents: overlay.agents, agentFiles: agentFilesByName(files), files };
@@ -36,18 +32,6 @@ export function collectionView(files: readonly CollectionFile[], hostKeys: reado
   const refused = refusedOf(overlay, { lineFiles, failures: [...reads, ...views] });
 
   return { lines, agents: agentViews(overlay.agents, surroundings.agentFiles, lines), refused, counts: countsOf(lines, overlay, refused) };
-}
-
-/** The line files that are read: a folder's former `pipeline.yaml` beside its `assembly-line.yaml` is the overlay's to refuse. */
-function lineFilesOf(files: readonly CollectionFile[]): LineFile[] {
-  const named = files.flatMap((file) => {
-    const folder = pipelineFolderOf(file.path);
-
-    return folder ? [{ ...file, folder }] : [];
-  });
-  const foldersWithCurrentName = new Set(named.filter((file) => file.path.endsWith("/assembly-line.yaml")).map((file) => file.folder));
-
-  return named.filter((file) => file.path.endsWith("/assembly-line.yaml") || !foldersWithCurrentName.has(file.folder)).sort((left, right) => left.path.localeCompare(right.path));
 }
 
 function promptsOf(agents: ReadonlyMap<string, OverlayAgent>): AgentPrompts {
