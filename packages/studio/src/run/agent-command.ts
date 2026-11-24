@@ -21,11 +21,12 @@ const permissionFlags: PermissionFlags = {
   bypass: ["--dangerously-skip-permissions"],
 };
 
+/** `--setting-sources project`: the person's own settings and hooks stay out of the run, as in the pod, while their login still works (`--bare` would drop it). */
 function claudeCommand({ settings, prompt, permission }: AgentCommandInput): string[] {
   const disallowedTools = settings.disallowedTools ?? [];
   const maxTurns = settings.maxTurns && settings.maxTurns > 0 ? String(settings.maxTurns) : undefined;
 
-  return ["claude", "--print", "--verbose", "--output-format", "stream-json", ...optionalFlag("--model", settings.model), ...permissionFlags[permission], ...disallowedTools.flatMap((tool) => ["--disallowedTools", tool]), ...optionalFlag("--max-turns", maxTurns), "--", prompt];
+  return ["claude", "--print", "--verbose", "--output-format", "stream-json", "--setting-sources", "project", ...optionalFlag("--model", settings.model), ...permissionFlags[permission], ...disallowedTools.flatMap((tool) => ["--disallowedTools", tool]), ...optionalFlag("--max-turns", maxTurns), "--", prompt];
 }
 
 function optionalFlag(flag: string, value: string | undefined): string[] {

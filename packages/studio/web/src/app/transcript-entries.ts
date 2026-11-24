@@ -12,8 +12,19 @@ const MS_PER_SECOND = 1000;
 const COST_DIGITS = 4;
 const SUMMARY_KEYS = ["file_path", "command", "pattern", "path", "url"];
 
+const FINAL_ANSWER_POINTER: TranscriptEntry = { kind: "tool", text: "Final answer, shown under Answer" };
+
+/** The final answer the result event repeats is shown once, under Answer: its spoken copy here becomes a pointer to it. */
 export function transcriptEntries(lines: readonly RunOutput[]): TranscriptEntry[] {
-  return lines.flatMap(entriesOfLine);
+  const finals = new Set(lines.flatMap((line) => finalTextOf(line.text)));
+
+  return lines.flatMap(entriesOfLine).map((entry) => (entry.kind === "said" && finals.has(entry.text) ? FINAL_ANSWER_POINTER : entry));
+}
+
+function finalTextOf(text: string): string[] {
+  const event = parsedEvent(text);
+
+  return event?.type === "result" && typeof event.result === "string" ? [event.result] : [];
 }
 
 function entriesOfLine(line: RunOutput): TranscriptEntry[] {

@@ -43,4 +43,15 @@ describe("transcriptEntries", () => {
       { kind: "raw", text: "plain words" },
     ]);
   });
+
+  it("shows the agent's final words, which the result event repeats, as a pointer to the Answer", () => {
+    const final = 'Here.\n{"status":"complete"}';
+
+    expect(transcriptEntries([said("Reading."), said(final), out({ type: "result", result: final, num_turns: 2, duration_ms: 1000, total_cost_usd: 0.01 })])).toEqual([
+      { kind: "said", text: "Reading." },
+      { kind: "tool", text: "Final answer, shown under Answer" },
+      { kind: "result", text: "2 turns, 1.0 s, $0.0100" },
+    ]);
+  });
 });
+
