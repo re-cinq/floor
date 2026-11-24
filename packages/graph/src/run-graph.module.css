@@ -296,6 +296,16 @@ text[data-selected="true"] {
   stroke-linejoin: round;
 }
 
+/* How many times the run took a line, beside its label. */
+.takenCount {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold, 700);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
 /* A tag on a node's top edge: a word in a pill, its colour a second signal. */
 .badge rect {
   fill: var(--bg-surface);
