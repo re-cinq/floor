@@ -293,3 +293,12 @@
 .badge-problem text {
   fill: var(--text-on-accent);
 }
+
+.exitRing {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+.exitCore {
+  fill: var(--text);
+}

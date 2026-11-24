@@ -279,4 +279,17 @@ describe("RunGraphView station tooltip", () => {
 
     expect(drawn.sort()).toEqual(defined.sort());
   });
+
+  it("draws one exit dot for each off-main-path line into done in code review", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+    const dotKeys = [...container.querySelectorAll("[data-exit-dot]")].map((dot) => dot.getAttribute("data-exit-dot"));
+
+    expect(dotKeys.sort()).toEqual(["review|done|changes_requested", "review|done|failed"]);
+  });
+
+  it("names the failed exit dot of code review with the title ends the run at done", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={codeReviewDefinition} />);
+
+    expect(container.querySelector("[data-exit-dot='review|done|failed'] title")?.textContent).toEqual("ends the run at done");
+  });
 });

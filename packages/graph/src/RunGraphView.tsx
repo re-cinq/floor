@@ -8,6 +8,7 @@ import { typeFamilyOf } from "./node-type-family";
 import { deriveVisibleGraph, type VisibleGraph } from "./graph-view-model";
 import ArrowMarkerDefs from "./ArrowMarkerDefs";
 import GraphEdge, { EdgeLabel, type EdgeEmphasis } from "./GraphEdge";
+import ExitDot from "./ExitDot";
 import GraphNode from "./GraphNode";
 import GraphViewport from "./GraphViewport";
 import { useNodeTooltip } from "./use-node-tooltip";
@@ -72,6 +73,7 @@ function GraphCanvas({ view, graph }: GraphCanvasProps) {
               laid={laid}
               graph={graph}
               name={view.definition.name}
+              exit={view.definition.exit}
               onSelectNode={view.onSelectNode}
               selectedNodeId={view.selectedNodeId}
               describedNode={describedNodeOf(tooltip)}
@@ -130,6 +132,7 @@ interface GraphSvgProps {
   laid: Drawing;
   graph: VisibleGraph;
   name: string;
+  exit: string;
   /** The node whose tooltip is up, which points at it through aria-describedby. */
   describedNode: DescribedNode | null;
   onSelectNode: RunGraphViewProps["onSelectNode"];
@@ -192,11 +195,15 @@ function emphasisOf(from: string, selectedNodeId: string | null | undefined): Ed
 }
 
 /** Every node in the layout. A node nothing leaves is terminal — the end of a line should read as an end rather than as a step still waiting for a successor. */
-function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode }: GraphSvgProps) {
+function GraphNodes({ laid, onSelectNode, selectedNodeId, describedNode, exit }: GraphSvgProps) {
   const { nodes } = laid.layout;
 
   return nodes.map((node) => {
-    const model = laid.nodeById.get(node.id); // an exit dot (`:exit`) has no model, so it draws nothing until its own slice
+    const model = laid.nodeById.get(node.id);
+
+    if (node.id.endsWith(":exit")) {
+      return <ExitDot key={node.id} node={node} exit={exit} />;
+    }
 
     return model ? (
       <GraphNode
