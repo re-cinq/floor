@@ -26,17 +26,19 @@ export function useLayoutChanges(layout: ElkLayout | null): LayoutChanges {
     if (layout) previous.current = layout;
   }, [layout]);
 
-  useEffect(() => {
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setClearedChanges(changes));
-    });
-    let inner = 0;
-
-    return () => {
-      cancelAnimationFrame(outer);
-      cancelAnimationFrame(inner);
-    };
-  }, [changes]);
+  useEffect(() => afterNextPaint(() => setClearedChanges(changes)), [changes]);
 
   return clearedChanges === changes ? { ...changes, offsets: NOTHING_CHANGED.offsets } : changes;
+}
+
+function afterNextPaint(callback: () => void): () => void {
+  let inner = 0;
+  const outer = requestAnimationFrame(() => {
+    inner = requestAnimationFrame(callback);
+  });
+
+  return () => {
+    cancelAnimationFrame(outer);
+    cancelAnimationFrame(inner);
+  };
 }
