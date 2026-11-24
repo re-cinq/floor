@@ -1,7 +1,7 @@
 // The studio's picture of a collection: every line with its nodes, every agent, and what was refused. Pure and tolerant: a collection with problems still has a view, and nothing a person wrote makes it throw.
 import { coverageContextOf, downstreamOf, needCoverage, nodeEvents, promptPlaceholders, type CollectionLine, type NeedContext } from "@re-cinq/floor-assembly-lines";
 import type { LineNode, StationBody } from "@re-cinq/floor-contracts";
-import { attempt, collectionOverlay, pipelineFolderOf, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type ShippedCatalog } from "@re-cinq/floor-pipeline";
+import { attempt, collectionOverlay, lineFolderPathOf, pipelineFolderOf, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type ShippedCatalog } from "@re-cinq/floor-pipeline";
 import type { CollectionView, LineView, NodeView, RefusedFile } from "../view.js";
 import { textVersion } from "./agent-file-text.js";
 import { agentFilesByName, agentViews, type AgentFiles } from "./agent-views.js";
@@ -85,7 +85,7 @@ function nodeViewOf(node: LineNode, line: ReadLine, surroundings: Surroundings, 
 }
 
 function extraOf(agentName: string | undefined, line: ReadLine, files: readonly CollectionFile[]): Pick<NodeView, "extra"> {
-  const file = `${pipelineFolderOf(line.file)}/agents/${agentName}.extra.md`;
+  const file = `${lineFolderPathOf(line.file)}/agents/${agentName}.extra.md`;
   const text = agentName === undefined ? undefined : files.find((candidate) => candidate.path === file)?.text;
 
   return text === undefined ? {} : { extra: { file, text, version: textVersion(text) } };

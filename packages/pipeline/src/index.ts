@@ -12,5 +12,5 @@ export { collectionFilesIn, COLLECTION_SETTINGS_FILE, hostKeysIn, lintCollection
 export { agentFrontmatterSchema, readAgentFile, floorSettingsOf, type ParsedAgentFile, type AgentFileSettings, type ShippedAgents, type AgentPrompts } from "./collection/agent-file.js";
 export { placeholdersIn, withEnvironment, settingsWithEnvironment, type Environment } from "./collection/environment.js";
 export { PIPELINE_RULES, pipelineProblems, type PipelineProblem, type PipelineRule } from "./collection/lint-rules.js";
-export { agentFileOf, isCollectionFile, isReadPath, pipelineFolderOf } from "./collection/paths.js";
+export { agentFileOf, isCollectionFile, isReadPath, lineFolderPathOf, pipelineFolderOf } from "./collection/paths.js";
 export { extendedPrompt } from "./collection/agents.js";
