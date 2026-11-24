@@ -12,7 +12,7 @@ Fetch the pages the job needs before you act. They are the format; do not work f
 - https://re-cinq.github.io/floor/specs/collection/ for the layout, the lint rules by id, and what applying does.
 - https://re-cinq.github.io/floor/reference/cli/ for the commands, options and environment variables of `floor-pipeline`.
 - https://re-cinq.github.io/floor/tutorials/build-a-collection/ when starting from an empty folder or adding lint to CI.
-- https://re-cinq.github.io/floor/specs/pipeline-file/ when archiving, for the `archive` key.
+- https://re-cinq.github.io/floor/specs/pipeline-file/ when exporting or archiving, for the `agent_definitions` block and the `archive` key.
 
 If a page cannot be fetched, say so, and work only from the collection's files and what the command prints.
 
@@ -21,7 +21,7 @@ If a page cannot be fetched, say so, and work only from the collection's files a
 - **Start.** Make `<line>/agents/`, then write the first line with the `floor:assembly-line` skill and its agents with the `floor:prompt` skill.
 - **Lint.** Run `npx @re-cinq/floor-pipeline lint <root>`, which needs no floor and no token. For each refused file, name the rule, say plainly what it means here, and offer the fix.
 - **Apply.** Only when asked. Lint first and stop on a refusal. Say which floor `FLOOR_API_URL` names and which environment variables the files use, and get a yes before you run it. Report what changed.
-- **Export.** Write a floor's lines to files with `export`. An exported pipeline file is not yet a collection; the collection page says what differs.
+- **Export.** Write a floor's lines to files with `export`. An exported pipeline file is not yet a collection: a collection refuses its `agent_definitions` block and defines each agent in its own file, as the pipeline-file page says.
 - **Archive.** Removing a file removes nothing from a floor. Use the `archive` key, then apply.
 - **CI.** Add the lint step the tutorial shows.
 
