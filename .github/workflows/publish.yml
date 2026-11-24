@@ -16,8 +16,9 @@ name: Publish
 # NPM_BOOTSTRAP_TOKEN secret, from this same workflow. Once its publisher is registered, the
 # secret is deleted (docs/releasing.md).
 #
-# The npm publish is direct: a version is installable the moment it is published, and a version
-# published to npm is there for good. The brake is in front of the tag, not behind it — the
+# The npm publish is staged: a version reaches the registry but is installable only once a
+# maintainer approves it with 2FA (docs/releasing.md), and a version published to npm is there
+# for good. The brake is in front of the tag, not behind it — the
 # tagged commit must be on main, and main takes a pull request.
 on:
   push:
@@ -168,11 +169,11 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
-      # Trusted publishing needs npm >= 11.5.1; Node 22 ships an older npm. Pinned to the 11
-      # line and not `latest`: this is the job holding id-token: write, and `latest` lets a
-      # major nobody here has run decide how it behaves.
-      - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@^11.5.1
+      # Trusted publishing needs npm >= 11.5.1 and `npm stage` >= 11.15.0; Node 22 ships an older
+      # npm. Pinned, as re-lint's publish.yml is, and not `latest`: this is the job holding
+      # id-token: write, and `latest` lets a version nobody here has run decide how it behaves.
+      - name: Upgrade npm for OIDC trusted publishing and staging
+        run: npm install -g npm@11.19.1
 
       - name: Set the version from the release tag
         env:
@@ -189,7 +190,11 @@ jobs:
       - name: Pack lists carry the packages and nothing else
         run: node scripts/check-pack-list.mjs $(./scripts/release-version.sh --list)
 
-      - name: Publish the versions to npm
+      # Staged, not direct, as re-lint does: the versions reach the registry but are not
+      # installable until a maintainer approves each one with 2FA (docs/releasing.md). A direct
+      # publish with the bootstrap token is refused with EOTP, and nothing this job holds can
+      # make a version installable on its own.
+      - name: Stage the versions on npm
         env:
           VERSION: ${{ needs.release-tag.outputs.version }}
           # Only a package with no version on the registry yet uses it; every other one publishes through OIDC.
@@ -198,7 +203,9 @@ jobs:
           set -o pipefail
           bash scripts/publish-packages.sh $(./scripts/release-version.sh --list)
           {
-            echo "## Published to npm"
+            echo "## Staged on npm: a maintainer must approve each version before it is installable"
+            echo
+            echo "npmjs.com, each package, Versions tab, Approve (2FA); or npm stage list, then npm stage approve <id>."
             echo
             echo '```'
             cat publish.log
