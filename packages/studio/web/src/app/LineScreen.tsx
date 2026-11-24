@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
+import type { LineEdge } from "@re-cinq/floor-contracts";
 import type { LineView, NodeView } from "@protocol";
 import { graphOf } from "@/graph/graph-of";
-import { RunGraphView } from "@re-cinq/floor-graph";
+import { RunGraphView, edgeKeyOf, mainPathOf } from "@re-cinq/floor-graph";
 import Inspector, { type InspectorActions } from "./Inspector";
 import LineHeader from "./LineHeader";
+import LineInspector from "./LineInspector";
 import ProblemsList from "./ProblemsList";
 import { useCoveredBelow } from "./use-covered-below";
 import styles from "./line.module.css";
@@ -13,10 +15,14 @@ export interface LineScreenProps {
   node: NodeView | undefined;
   inspector?: InspectorActions;
   onSelectNode: (nodeId: string | undefined) => void;
+  onSelectLine?: (key: string) => void;
+  selectedLineKey?: string;
+  selectedLine?: LineEdge;
 }
 
-export default function LineScreen({ line, node, inspector, onSelectNode }: LineScreenProps) {
+export default function LineScreen({ line, node, inspector, onSelectNode, onSelectLine, selectedLineKey, selectedLine }: LineScreenProps) {
   const definition = useMemo(() => graphOf(line), [line]);
+  const mainPathEdges = useMemo(() => mainPathOf(definition).edges, [definition]);
   const screenRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<HTMLDivElement>(null);
   const coveredBelow = useCoveredBelow(screenRef, graphRef, node);
@@ -34,10 +40,11 @@ export default function LineScreen({ line, node, inspector, onSelectNode }: Line
       <div className={styles.primary}>
         <LineHeader line={line} />
         <div ref={graphRef} className={styles.graph}>
-          <RunGraphView definition={definition} selectedNodeId={node?.id} coveredBelow={coveredBelow} onSelectNode={onSelectNode} />
+          <RunGraphView definition={definition} selectedNodeId={node?.id} coveredBelow={coveredBelow} onSelectNode={onSelectNode} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} />
         </div>
         <ProblemsList problems={line.problems} onSelectNode={onSelectNode} />
       </div>
+      {selectedLine && <LineInspector line={selectedLine} onMainPath={mainPathEdges.has(edgeKeyOf(selectedLine))} />}
       {node && <Inspector node={node} actions={inspector} onClose={() => onSelectNode(undefined)} />}
     </div>
   );

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
-import { TYPO_COLLECTION, WORKER_COLLECTION, lineYaml } from "../../../src/backend/collection-view.fixtures";
+import { LOOPING_COLLECTION, TYPO_COLLECTION, WORKER_COLLECTION, lineYaml } from "../../../src/backend/collection-view.fixtures";
 import { collectionOnDisk } from "../../../src/backend/studio.fixtures";
 import { startStudio } from "../../../src/backend/start-studio";
 import App from "./App";
@@ -165,6 +165,50 @@ describe("App line view", () => {
       inspected: expect.stringContaining("nodework" + "station work"),
       address: { socket: studio.url, token: studio.token, line: "flow", node: "work" },
     });
+  });
+
+  it("puts edge=work|done|success and no node in the address when that line's hit path is clicked", async () => {
+    const { studio } = await openPage(WORKER_COLLECTION, { hash: "&line=flow&node=work" });
+
+    await screen.findByRole("img", { name: "Assembly line graph: flow" });
+    await userEvent.click(document.querySelector("[data-edge='work|done|success'] [data-hit]") as Element);
+
+    expect(Object.fromEntries(new URLSearchParams(window.location.hash.slice(1)))).toEqual({ socket: studio.url, token: studio.token, line: "flow", edge: "work|done|success" });
+  });
+
+  it("names the event success and the stations work and done in the line inspector when the address names edge=work|done|success", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&edge=work|done|success" });
+
+    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
+
+    expect(inspector.textContent).toMatch(/work.*success.*done/);
+  });
+
+  it("says Main path yes in the line inspector when the line is work|done|success", async () => {
+    await openPage(WORKER_COLLECTION, { hash: "&line=flow&edge=work|done|success" });
+
+    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
+    const terms = Array.from(inspector.querySelectorAll("dt"), (term) => [term.textContent, term.nextElementSibling?.textContent]);
+
+    expect(terms).toContainEqual(["Main path", "yes"]);
+  });
+
+  it("says Main path no in the line inspector when the line is work|work|failed", async () => {
+    await openPage(LOOPING_COLLECTION, { hash: "&line=flow&edge=work|work|failed" });
+
+    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
+    const terms = Array.from(inspector.querySelectorAll("dt"), (term) => [term.textContent, term.nextElementSibling?.textContent]);
+
+    expect(terms).toContainEqual(["Main path", "no"]);
+  });
+
+  it("shows Iteration limit 3 in the line inspector when the line work|work|failed has iteration_max 3", async () => {
+    await openPage(LOOPING_COLLECTION, { hash: "&line=flow&edge=work|work|failed" });
+
+    const inspector = await screen.findByRole("complementary", { name: "Line inspector" });
+    const terms = Array.from(inspector.querySelectorAll("dt"), (term) => [term.textContent, term.nextElementSibling?.textContent]);
+
+    expect(terms).toContainEqual(["Iteration limit", "3"]);
   });
 
   it("keeps the place on a reload: the node in the address is selected", async () => {

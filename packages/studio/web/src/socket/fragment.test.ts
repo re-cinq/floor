@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseFragment, withSelection } from "./fragment";
+import { parseFragment, withExactSelection, withSelection } from "./fragment";
 
 const SOCKET = "ws://127.0.0.1:4100";
 
@@ -41,5 +41,13 @@ describe("withSelection", () => {
 
   it("keeps ids with characters a fragment must encode", () => {
     expect(parseFragment(withSelection(launch, { line: "a&b=c", node: "d e" }))).toMatchObject({ line: "a&b=c", node: "d e" });
+  });
+});
+
+describe("withExactSelection", () => {
+  it("keeps the edge key review|done|failed of a selected line", () => {
+    const { line, node, edge, tab } = parseFragment(withExactSelection("#token=abc", { line: "code-review", edge: "review|done|failed" }));
+
+    expect({ line, node, edge, tab }).toEqual({ line: "code-review", node: undefined, edge: "review|done|failed", tab: undefined });
   });
 });

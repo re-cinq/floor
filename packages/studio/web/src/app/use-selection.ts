@@ -22,7 +22,7 @@ export function useSelection(): [Selection, (next: Selection) => void] {
 }
 
 function selectionInAddress(): Selection {
-  const { line, node, tab } = parseFragment(window.location.hash);
+  const { line, node, edge, tab } = parseFragment(window.location.hash);
 
-  return { line, node, tab };
+  return { line, node, edge, tab };
 }
