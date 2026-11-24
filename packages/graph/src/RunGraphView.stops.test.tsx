@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
+import type { AssemblyLineDefinition } from "./assembly-line-definition";
 import RunGraphView from "./RunGraphView";
 import { implementationDefinition } from "./definition.fixtures";
 import { nodeTitle } from "./node-tooltip";
@@ -46,5 +47,19 @@ describe("RunGraphView with compactStops", () => {
     const push = nodeEl(container, "push");
 
     expect([...push.querySelectorAll("path")].filter((glyph) => !glyph.closest("[data-badge]"))).toHaveLength(1);
+  });
+
+  it("keeps the problem badge on the push stop", async () => {
+    const flagged: AssemblyLineDefinition = {
+      ...implementationDefinition,
+      nodes: implementationDefinition.nodes.map((node) => (node.id === "push" ? { ...node, hasProblem: true } : node)),
+    };
+    const { container } = await renderGraph(<RunGraphView definition={flagged} compactStops />);
+    const push = nodeEl(container, "push");
+
+    expect({
+      shape: push.getAttribute("data-shape"),
+      badges: [...push.querySelectorAll("[data-badge] text")].map((word) => word.textContent),
+    }).toEqual({ shape: "stop", badges: ["problem"] });
   });
 });
