@@ -40,4 +40,11 @@ describe("RunGraphView with compactStops", () => {
       ports: push.querySelectorAll("[data-port]").length > 0,
     }).toEqual({ label: true, selected: "true", ports: true });
   });
+
+  it("draws one family glyph inside the push stop", async () => {
+    const { container } = await renderGraph(<RunGraphView definition={implementationDefinition} compactStops />);
+    const push = nodeEl(container, "push");
+
+    expect([...push.querySelectorAll("path")].filter((glyph) => !glyph.closest("[data-badge]"))).toHaveLength(1);
+  });
 });
