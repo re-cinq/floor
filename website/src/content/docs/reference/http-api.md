@@ -144,4 +144,4 @@ It answers `201`, or `200` with `"joined": true` when a run on that subject was 
 | --- | --- | --- |
 | `GET /healthz`, `GET /readyz` | Answers while up, and while the database is reachable | anyone |
 | `GET /version` | The build, the schema version, whether this replica runs the loop, and what each cluster runs | anyone |
-| `GET /metrics` | Prometheus metrics | anyone |
+| `GET /metrics` | Prometheus metrics, listed in [Metrics](/floor/reference/metrics/) | anyone |
