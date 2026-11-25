@@ -1,24 +1,9 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { pipelineYaml } from "./collection.fixtures.js";
+import { collectionOnDisk, NEW_AGENT } from "./collection-directory.fixtures.js";
 import { hostKeysIn, lintCollectionDirectory, lintCommand, printCollectionLint, readCollectionDirectory, shippedCatalogIn } from "./lint-directory.js";
 
 const PIPELINE_YAML = pipelineYaml("acme-flow", "acme-worker");
-
-const NEW_AGENT = "---\nimage: acme/agent:2\ntimeout_minutes: 10\n---\nWork the ticket.\n";
-
-function collectionOnDisk(files: Record<string, string>): string {
-  const root = mkdtempSync(join(tmpdir(), "collection-lint-"));
-
-  for (const [path, text] of Object.entries(files)) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    writeFileSync(join(root, path), text);
-  }
-
-  return root;
-}
 
 function collected() {
   const lines: string[] = [];
@@ -290,3 +275,4 @@ describe("readCollectionDirectory with floor-collection.yaml", () => {
     expect(await readCollectionDirectory(root, { hostKeys: [], env: {} })).toMatchObject({ refused: [] });
   });
 });
+

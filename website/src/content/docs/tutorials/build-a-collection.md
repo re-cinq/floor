@@ -95,7 +95,7 @@ At the end, an empty folder is a [collection](/floor/concepts/collection/) with 
      assembly-lines/summarize-issue: as it was
    ```
 
-8. Check it in CI with a step in `.github/workflows/lint.yml`.
+8. Check it in CI with a step in `.github/workflows/lint.yml`. To also draw what each pull request changes, use [the pull request workflow](/floor/tutorials/check-a-pack-on-every-pull-request/) instead.
 
    ```yaml
    steps:

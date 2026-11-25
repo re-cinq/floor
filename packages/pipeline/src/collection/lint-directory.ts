@@ -3,6 +3,8 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { agentsOverlay, type ShippedCatalog } from "./agents.js";
 import { collectionOverlay, type CollectionOverlay } from "./collection.js";
+import { changeReportOf } from "./change-report.js";
+import { changedLines } from "./changed-lines.js";
 import { collectionSettingsIn } from "./collection-settings.js";
 export { COLLECTION_SETTINGS_FILE, hostKeysIn } from "./collection-settings.js";
 import { enforce } from "./enforce.js";
@@ -43,10 +45,18 @@ export interface LintCommand {
   hostKeys: readonly string[];
   /** A directory in the layout of a collection, holding what the host ships. */
   shippedDirectory?: string;
+  /** A directory holding the collection to compare with: lint's lines go to err and out holds only the change report. */
+  graphAgainstDirectory?: string;
+}
+
+/** Where the lint command prints: out for what a caller reads, err for what a person reads. */
+export interface LintOutput {
+  out: (line: string) => void;
+  err: (line: string) => void;
 }
 
 /** The `lint` command: the exit code is 0 clean, 1 refused, 2 when the call is wrong. */
-export async function lintCommand(given: LintCommand, usage: string, output: { out: (line: string) => void; err: (line: string) => void }): Promise<number> {
+export async function lintCommand(given: LintCommand, usage: string, output: LintOutput): Promise<number> {
   if (!given.directory) {
     output.err(usage);
 
@@ -55,13 +65,33 @@ export async function lintCommand(given: LintCommand, usage: string, output: { o
 
   const shipped = given.shippedDirectory ? await shippedCatalogIn(given.shippedDirectory, given.hostKeys) : undefined;
 
-  return printCollectionLint(given.directory, given.hostKeys, output.out, shipped);
+  if (!given.graphAgainstDirectory) return printCollectionLint(given.directory, given.hostKeys, output.out, shipped);
+
+  const head = await lintCollectionDirectory(given.directory, given.hostKeys, shipped);
+  const code = printLintOf(head, output.err);
+
+  if (code !== 0) return code;
+
+  printChangeReport(head, await lintCollectionDirectory(given.graphAgainstDirectory, given.hostKeys, shipped), output);
+
+  return code;
+}
+
+/** Prints what a graph-against run adds to the head's lint: the change report, or why there is none. */
+function printChangeReport(head: CollectionOverlay, base: CollectionOverlay, output: LintOutput): void {
+  if (base.refused.length > 0) return output.err("no change report: the collection to compare with is refused");
+
+  const report = changeReportOf(changedLines(base.pipelines, head.pipelines));
+
+  if (report) output.out(report);
 }
 
 /** Prints the refused files and answers the exit code: 0 clean, 1 refused. */
 export async function printCollectionLint(root: string, hostKeys: readonly string[], print: (line: string) => void, shipped: ShippedCatalog = NOTHING_SHIPPED): Promise<number> {
-  const { refused, counts } = await lintCollectionDirectory(root, hostKeys, shipped);
+  return printLintOf(await lintCollectionDirectory(root, hostKeys, shipped), print);
+}
 
+function printLintOf({ refused, counts }: CollectionOverlay, print: (line: string) => void): number {
   for (const { path, reason } of refused) print(`${path}: ${reason}`);
   if (refused.length > 0) return 1;
   print(`collection ok: ${counts.agents} agents, ${counts.pipelines} pipelines, ${counts.extensions} extensions`);
