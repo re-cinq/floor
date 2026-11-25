@@ -118,6 +118,8 @@ write-note/assembly-line.yaml: no arg carries subject: true, so the floor cannot
 
 Lint needs no floor and no environment variables.
 
+`--graph-against <dir>` compares the collection with the one in `<dir>`. Standard output then holds only a markdown comment that draws each assembly line whose body differs, as two mermaid graphs, the line before with its removed and changed nodes and edges marked and the line after with its added and changed ones marked (a new line has only the second, a deleted line only the first), and nothing when no line differs. Lint's own lines go to standard error. A refused collection prints no comment, and neither does one compared with a refused collection. The comment stays under 65,000 characters: lines are drawn in order while they fit, and the rest are named in a note, cut with `and N more` when even the names do not fit. [The pull request workflow](/floor/tutorials/check-a-pack-on-every-pull-request/) posts it.
+
 ## 5. Applying a collection
 
 ```sh

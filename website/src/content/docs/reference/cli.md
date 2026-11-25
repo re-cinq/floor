@@ -29,6 +29,7 @@ sidebar:
 | `--all` | `export` | Every line |
 | `--wait-ready <seconds>` | Every command but `lint` | First waits for `/readyz` to answer 200, and fails if it does not in time |
 | `--host-key <name>` | `lint`, `apply` | Names a settings key the host owns, beside the `host_keys` of the collection's `floor-collection.yaml`. Repeat it |
+| `--graph-against <dir>` | `lint` | Prints to standard output a markdown comment that draws each assembly line that differs from the collection in `<dir>`, as a mermaid graph of the line before and another of the line after, and prints nothing when none does. Lint's own lines then go to standard error. See [the pull request workflow](/floor/tutorials/check-a-pack-on-every-pull-request/) |
 
 `lint` and `apply` also read `groups` from `floor-collection.yaml`. There is no flag for it.
 

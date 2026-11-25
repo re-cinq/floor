@@ -141,6 +141,14 @@ floor-pipeline lint collection/ --shipped shipped/ --host-key execution_mode
 
 A refused file prints one line and the exit code is 1. A call with no directory prints the usage and the exit code is 2.
 
+`--graph-against <base-dir>` draws what a pull request changes. Standard output holds only a markdown comment with two mermaid graphs of each assembly line that differs from the collection in `<base-dir>`, the line before with its removed and changed nodes and edges marked and the line after with its added and changed ones marked, and nothing when no line differs. Lint's own lines go to standard error. A refused collection prints no comment, and neither does one compared with a refused collection. The comment stays under 65,000 characters, which GitHub's limit of 65,536 allows: lines are drawn in order while they fit, and the rest are named in a note, cut with `and N more` when even the names do not fit.
+
+```
+floor-pipeline lint head/ --graph-against base/ > report.md
+```
+
+The [pull request workflow](https://re-cinq.github.io/floor/tutorials/check-a-pack-on-every-pull-request/) posts it as one comment and updates that comment on every push.
+
 ```
 code-review/assembly-line.yml: a collection does not read this path: a line folder holds assembly-line.yaml, agents/<agent>.md and agents/<agent>.extra.md
 ```
