@@ -89,6 +89,7 @@ Two api pods serve, and one holds the lease that runs the event loop. `runsLoop`
 | `agentNetworkPolicy.enabled` | Limit what an agent pod reaches to DNS, port 443 and the api | `true` |
 | `agentNetworkPolicy.extraEgress` | More places a pod may reach, as NetworkPolicy egress rules | `[]` |
 | `apiNetworkPolicy.enabled` | Limit who reaches the api. List your ingress namespace in `allowedNamespaces` | `false` |
+| `api.serviceMonitor.enabled` | Add a ServiceMonitor so the Prometheus operator scrapes the api. See [Metrics](/floor/reference/metrics/) | `false` |
 
 ## Seed assembly lines
 

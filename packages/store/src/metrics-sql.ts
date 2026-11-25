@@ -1,4 +1,4 @@
-// The numbers behind GET /metrics (docs/api_sketch.md, "Metrics"): every one a fresh query on every scrape, never a per-process counter. A histogram is `count(*) where seconds <= bound` per bucket, cumulative for as long as the rows stay.
+// The numbers behind GET /metrics (website/src/content/docs/reference/metrics.md): every one a fresh query on every scrape, never a per-process counter. A histogram is `count(*) where seconds <= bound` per bucket, cumulative for as long as the rows stay.
 
 import { costSeries, missingCostByLine, type CostSeriesRow, type MissingCostCount } from "./costs.js";
 import type { Queryable } from "./rows.js";

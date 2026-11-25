@@ -1,4 +1,4 @@
-// GET /metrics (docs/api_sketch.md, "Metrics"): unauthenticated, for Prometheus to scrape. Every number comes from a fresh query against the shared tables, never a per-process counter — two api replicas would each only see their own traffic.
+// GET /metrics (website/src/content/docs/reference/metrics.md): unauthenticated, for Prometheus to scrape. Every number comes from a fresh query against the shared tables, never a per-process counter — two api replicas would each only see their own traffic.
 import type { Server } from "@hapi/hapi";
 import type { CostSeriesRow, CountSeries, HistogramSeries, MetricLabels, OutcomeCount, RunMetrics } from "@floor/store";
 import type { Deps } from "../deps.js";
@@ -100,7 +100,7 @@ function gaugeLines(name: string, help: string, value: number): string {
   return `# HELP ${name} ${help}\n# TYPE ${name} gauge\n${name} ${value}\n`;
 }
 
-// A gauge snapshot of a total, not a monotonic counter: computed fresh from assembly_runs on every scrape, so it can drop as well as rise (docs/api_sketch.md, "Metrics").
+// A gauge snapshot of a total, not a monotonic counter: computed fresh from assembly_runs on every scrape, so it can drop as well as rise (website/src/content/docs/reference/metrics.md).
 function settledRunLines(counts: OutcomeCount[]): string {
   const samples = counts.map((count) => ({ labels: { outcome: count.outcome }, value: count.count }));
 

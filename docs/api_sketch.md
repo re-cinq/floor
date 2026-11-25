@@ -41,26 +41,7 @@ GET    /version                          // build sha, schema version, whether t
 GET    /metrics                          // unauthenticated, like /healthz; Prometheus text exposition (`text/plain; version=0.0.4`), scraped by Prometheus
 ```
 
-Every number is a fresh query against `assembly_runs`, `station_runs` or `events`, never a per-process counter. Two api replicas would each see only their own traffic, and the tables are the shared source of truth.
-
-- `floor_runs_open` counts `assembly_runs` with no `finished_at` yet.
-- `floor_runs_settled_total{outcome="..."}` counts settled runs grouped by outcome, as of this scrape. It is a gauge snapshot of a total, not a monotonic counter.
-- `floor_visits_open` counts `station_runs` with no `report` yet.
-- `floor_visits_overdue` counts open visits past their `deadline`.
-- `floor_events_queue_depth` counts events not yet acked, dead, or dropped (the `events_claimable` condition).
-- `floor_events_dead_total` counts events with a `dead_at`.
-- `floor_loop_holds_lease` is 1 if this replica runs the floor's loop, else 0.
-- `floor_runs_started_total{line_id,repo}` counts every run ever started. `floor_runs_settled_by_line_total{line_id,outcome}` counts the settled ones per assembly line.
-- `floor_run_duration_seconds{line_id,outcome}` is a histogram of `finished_at - created_at` over settled runs.
-- `floor_visits_started_total{line_id,node_id,kind,repo}` counts visits ever opened, by the station's kind (`agent`, `service`, `human`, or `none` for a marker node) and the run's repository.
-- `floor_visits_total{line_id,node_id,outcome,kind,repo}` counts finished visits.
-- `floor_visit_duration_seconds{line_id,node_id,outcome}` is a histogram of `finished_at - opened_at`.
-- `floor_visit_retries_total{line_id,node_id}` counts visits with `iteration > 1`.
-- `floor_cost_usd_total{line_id,node_id,model,repo}` and `floor_tokens_total{line_id,node_id,model,repo,kind}` are the `llm_call` rollup of `GET /costs`, grouped four ways. `kind` is `in`, `cache_read` for the part of `in` read from the cache, or `out`.
-- `floor_visits_missing_cost{line_id}` counts agent visits that made model calls and stated no price for them.
-- `floor_events_claim_latency_seconds` is a histogram of `claimed_at - not_before` over acked events.
-
-A histogram here is `count(*) where seconds <= le` per bucket, computed by the same scrape-time query. It is cumulative for as long as the rows stay, so a prune of old runs reads as a counter reset to Prometheus. The totals are declared gauges for the same reason.
+The metrics, their labels and how to read them are on the website, in [Metrics](https://re-cinq.github.io/floor/reference/metrics/) (source: `website/src/content/docs/reference/metrics.md`).
 
 ## Assembly lines - blueprints for assembly runs
 
