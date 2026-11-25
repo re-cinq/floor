@@ -43,7 +43,17 @@ describe("POST /station-runs/:id/git-credential", () => {
   it("asks the provider with the git credential token, for the clone url and the access the need declares", async () => {
     await ask();
 
-    expect(provider.asked.at(-1)).toEqual({ authorization: `Bearer ${GIT_CREDENTIAL_TOKEN}`, repoUrl: "https://github.com/re-cinq/floor", access: "write" });
+    expect(provider.asked.at(-1)).toMatchObject({ authorization: `Bearer ${GIT_CREDENTIAL_TOKEN}`, repoUrl: "https://github.com/re-cinq/floor", access: "write" });
+  });
+
+  it("names the asking visit and its run to the provider", async () => {
+    const visitId = await fixDispatched({ deps: deps(), loop: loop() }, "github.com/re-cinq/floor");
+    const headers = { authorization: `Bearer ${mintVisitToken(visitId, DEADLINE, VISIT_TOKEN_SECRET)}` };
+    const brief = await deps().briefs.briefFor(visitId, "http://floor.test");
+
+    await injectJson(server(), { method: "POST", url: `/station-runs/${visitId}/git-credential`, headers, payload: { repo: "re-cinq/floor" } });
+
+    expect(provider.asked.at(-1)).toMatchObject({ visitId, runId: brief?.visit.runId });
   });
 
   it("never shows the provider the floor's service token", async () => {

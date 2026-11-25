@@ -31,15 +31,21 @@ async function gitCredential(deps: Deps, asking: Asking, toolkit: ResponseToolki
   const { gitCredentialUrl: url, gitCredentialToken: token } = deps.config;
 
   if (!url || !token) return unconfigured(toolkit, "this floor has no git credential provider configured, so it has no credential to give");
-  const need = await neededBy(deps, asking, toolkit);
+  const needed = await neededBy(deps, asking, toolkit);
 
-  if (!("kind" in need)) return need;
-  const credential = await askProvider({ url, token }, need);
+  if (!("need" in needed)) return needed;
+  const { need, runId } = needed;
+  const credential = await askProvider({ url, token }, need, { runId, visitId: asking.visitId });
 
   return credential ?? badGateway(toolkit, `the git credential provider gave no credential for "${need.repoUrl}"`);
 }
 
-async function neededBy(deps: Deps, asking: Asking, toolkit: ResponseToolkit): Promise<GitNeed | Refused> {
+interface Needed {
+  need: GitNeed;
+  runId: string;
+}
+
+async function neededBy(deps: Deps, asking: Asking, toolkit: ResponseToolkit): Promise<Needed | Refused> {
   const body = parseBody(asked, asking.body);
 
   if (!body.success) return badRequest(toolkit, "the request names no repository", body.errors);
@@ -48,5 +54,7 @@ async function neededBy(deps: Deps, asking: Asking, toolkit: ResponseToolkit): P
   if (!found) return notFound(toolkit, `no station run "${asking.visitId}"`);
   if (found.visit.report) return conflict(toolkit, `station run "${asking.visitId}" is already done`);
 
-  return gitNeedFor(found.needs, body.value.repo) ?? forbidden(toolkit, `station run "${asking.visitId}" was given no repository "${body.value.repo}"`);
+  const need = gitNeedFor(found.needs, body.value.repo);
+
+  return need ? { need, runId: found.visit.runId } : forbidden(toolkit, `station run "${asking.visitId}" was given no repository "${body.value.repo}"`);
 }

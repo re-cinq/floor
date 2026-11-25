@@ -10,6 +10,8 @@ export interface AskedOfProvider {
   authorization: string;
   repoUrl: string;
   access: string;
+  runId?: string;
+  visitId?: string;
 }
 
 export interface FakeGitProvider {
@@ -43,7 +45,7 @@ async function askedIn(request: IncomingMessage): Promise<AskedOfProvider> {
   const chunks: Buffer[] = [];
 
   for await (const chunk of request) chunks.push(chunk as Buffer);
-  const body = JSON.parse(Buffer.concat(chunks).toString()) as { repoUrl: string; access: string };
+  const body = JSON.parse(Buffer.concat(chunks).toString()) as Omit<AskedOfProvider, "authorization">;
 
-  return { authorization: request.headers.authorization ?? "", repoUrl: body.repoUrl, access: body.access };
+  return { authorization: request.headers.authorization ?? "", ...body };
 }
