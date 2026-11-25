@@ -11,6 +11,7 @@ import { importPipeline, type Put } from "./import.js";
 import { migrate } from "./migrate.js";
 import { applyCollection } from "./collection/apply.js";
 import { lintCommand, readCollectionDirectory } from "./collection/lint-directory.js";
+import { lintCommandGiven } from "./lint-command-given.js";
 import { waitUntilReady } from "./ready.js";
 import { fileOf, pipelineOf } from "./shape.js";
 
@@ -29,11 +30,14 @@ const USAGE = `floor-pipeline <what to do> --floor <url>      with FLOOR_SERVICE
                              Needs no floor and no token. A key the host owns is named with --host-key <name>,
                              as often as needed. The agents and lines the host ships are a directory in the
                              same layout, named with --shipped <dir>. Exits 2 when no directory is given
+                             --graph-against <base-dir> prints to stdout the change report, as markdown with
+                             mermaid graphs, of the assembly lines that differ from <base-dir>;
+                             lint's own lines then go to stderr
 
   --wait-ready <seconds>     first waits up to that long for the floor's /readyz to answer 200,
                              for a job that starts with the floor`;
 
-const OPTIONS = { floor: { type: "string" }, out: { type: "string" }, dir: { type: "string" }, all: { type: "boolean" }, "wait-ready": { type: "string" }, "host-key": { type: "string", multiple: true }, shipped: { type: "string" } } as const;
+const OPTIONS = { floor: { type: "string" }, out: { type: "string" }, dir: { type: "string" }, all: { type: "boolean" }, "wait-ready": { type: "string" }, "host-key": { type: "string", multiple: true }, shipped: { type: "string" }, "graph-against": { type: "string" } } as const;
 
 type Given = ReturnType<typeof given>;
 
@@ -115,9 +119,7 @@ async function applied(floor: Floor, told: Given): Promise<void> {
 }
 
 async function linted(told: Given): Promise<void> {
-  const [, directory] = told.positionals;
-
-  process.exitCode = await lintCommand({ directory, hostKeys: told.values["host-key"] ?? [], shippedDirectory: told.values.shipped }, USAGE, { out: console.log, err: console.error });
+  process.exitCode = await lintCommand(lintCommandGiven(told.positionals, told.values), USAGE, { out: console.log, err: console.error });
 }
 
 function said(file: string, put: Put[]): void {
