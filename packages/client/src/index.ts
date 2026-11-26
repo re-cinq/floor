@@ -1,4 +1,12 @@
-// The floor, typed. One client for a service, one for a single visit, and a watch over the live socket.
+// eslint-disable-next-line re-lint/max-comment-lines -- Published as the client SDK introduction.
+/**
+ * Use the Client SDK to connect a service or executor to Floor. A service starts
+ * [assembly runs](/floor/concepts/assembly-run/), reads their [bags](/floor/concepts/bag/),
+ * and follows changes over a live connection. An executor uses a visit token to work
+ * on the single visit assigned to it.
+ *
+ * @packageDocumentation
+ */
 export { createFloorClient } from "./client.js";
 export { createVisitClient } from "./visit.js";
 export { serviceToken, visitToken } from "./tokens.js";

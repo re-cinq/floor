@@ -1,0 +1,6 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "allowImportingTsExtensions": true, "noEmit": true },
+  "files": ["../../.generated/released-client/node_modules/@re-cinq/floor-client/dist/index.d.ts"],
+  "include": ["../../.generated/released-client/*.mts"]
+}
