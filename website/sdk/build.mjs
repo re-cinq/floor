@@ -4,8 +4,9 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { installRelease, pageTokens } from "./release.mjs";
 
+const defaultTestFile = "examples.test.mjs";
 const website = path.resolve(import.meta.dirname, "..");
-export async function buildSdk({ name, tutorial, examples, fixtures = [], testFile = "examples.test.mjs", testExamples }) {
+export async function buildSdk({ name, tutorial, examples, fixtures = [], testFile = defaultTestFile, testExamples }) {
   const templates = path.join(import.meta.dirname, name);
   const sandbox = path.join(website, ".generated", "released-" + name);
   const sdk = "@re-cinq/floor-" + name;
@@ -18,14 +19,12 @@ export async function buildSdk({ name, tutorial, examples, fixtures = [], testFi
     const file = path.join(sandbox, example);
     await copyFile(path.resolve(website, "../examples/code", name, example), file);
     const source = await readFile(file, "utf8");
-    const language = path.extname(example).slice(1).replace(/^mts$/, "ts");
-    tokens[example] = `\`\`\`${language}\n${source.trimEnd()}\n\`\`\``;
+    tokens[example] = exampleFence(example, source);
   }
   await copyFile(path.join(templates, testFile), path.join(sandbox, testFile));
   const execute = (command, args, cwd) => execFileSync(command, args, { cwd, stdio: "inherit" });
   execute(path.join(website, "node_modules/.bin/tsc"), ["--project", `sdk/${name}/tsconfig.json`, "--noEmit"], website);
-  if (testExamples) await testExamples(website);
-  else execute(process.execPath, ["--test", "--test-timeout=10000", testFile], sandbox);
+  await runExampleTests({ sandbox, testFile, testExamples });
   execute(path.join(website, "node_modules/.bin/typedoc"), ["--options", `sdk/${name}/typedoc.json`], website);
 
   async function render(templateName, destination, appendix = "") {
@@ -43,4 +42,14 @@ export async function buildSdk({ name, tutorial, examples, fixtures = [], testFi
 export async function renderSdkPages({ name, tutorial, reference }, render) {
   await render("page.md", `sdk/${name}.md`, "\n" + reference);
   if (tutorial) await render("tutorial.md", `tutorials/${tutorial}.md`);
+}
+
+export function exampleFence(example, source) {
+  const language = path.extname(example).slice(1).replace(/^mts$/, "ts");
+  return `\`\`\`${language}\n${source.trimEnd()}\n\`\`\``;
+}
+
+export async function runExampleTests({ sandbox, testFile = defaultTestFile, testExamples }) {
+  if (testExamples) return testExamples(website);
+  execFileSync(process.execPath, ["--test", "--test-timeout=10000", testFile], { cwd: sandbox, stdio: "inherit" });
 }
