@@ -1,3 +1,6 @@
+# Run this script while the hello worker is listening to check the whole pipeline.
+# It starts a run for Ada, waits for it to settle, and prints the greeting from the run’s bag.
+
 set -euo pipefail
 
 floor() {

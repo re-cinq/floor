@@ -16,6 +16,7 @@ const LANGUAGES = new Map([
   ["mjs", "js"],
   ["sh", "bash"],
   ["ts", "ts"],
+  ["mts", "ts"],
 ]);
 
 export function regionOf(name: string, sources: Sources): string {
