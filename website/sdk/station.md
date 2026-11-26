@@ -9,7 +9,7 @@ description: Build a worker that handles visits and reports results to Floor.
 
 Follow [Build a Hello World station](/floor/tutorials/hello-world-station/) for the matching pipeline and commands to see the greeting. Install {{package}} and set `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` in the worker’s environment.
 
-{{worker.mjs}}
+{{worker.mts}}
 
 The worker keeps polling. When the `hello` station receives `name: "Ada"`, it returns `greeting: "Hello, Ada!"` with outcome `success`. [View example test]({{test}})
 
@@ -17,7 +17,7 @@ The worker keeps polling. When the `hello` station receives `name: "Ada"`, it re
 
 For a station with a file input named `note` and a file output named `copy`, read the input bytes and pass them to `produce`. The SDK records the stored file in the visit report.
 
-{{file-worker.mjs}}
+{{file-worker.mts}}
 
 [View example test]({{test}})
 
@@ -25,7 +25,7 @@ For a station with a file input named `note` and a file output named `copy`, rea
 
 Pass `start: false` when another process controls polling. Calling `once()` processes one batch and returns the number of events claimed.
 
-{{poll.mjs}}
+{{poll.mts}}
 
 [View example test]({{test}})
 

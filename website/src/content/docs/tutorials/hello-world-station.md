@@ -3,7 +3,7 @@ title: Build a Hello World station
 description: Run a Node.js worker that turns the name Ada into a greeting and inspect the result on Floor.
 ---
 
-You’ll build a worker that takes a name from a visit and puts a greeting in the run’s [bag](/floor/concepts/bag/). You need Node.js 22 or newer, Bash, curl, jq, and a running Floor. For a local server, follow [Start Floor](/floor/tutorials/first-run/#1-start-floor).
+You’ll build a worker that takes a name from a visit and puts a greeting in the run’s [bag](/floor/concepts/bag/). You need Node.js 22.18 or newer, Bash, curl, jq, and a running Floor. For a local server, follow [Start Floor](/floor/tutorials/first-run/#1-start-floor).
 
 ## Install the SDK and CLI
 
@@ -49,17 +49,19 @@ line:
 
 ## Start the worker
 
-Save this as `worker.mjs` in the same directory.
+Save this as `worker.mts` in the same directory.
 
-<!-- generated:example:code/hello/worker.mjs -->
+<!-- generated:example:code/hello/worker.mts -->
 
-````js title="hello/worker.mjs"
-import { defineStation } from "@re-cinq/floor-station";
+````ts title="hello/worker.mts"
+import { defineStation, type Handle } from "@re-cinq/floor-station";
 
-export const station = defineStation("hello", async ({ needs }) => ({
+const greet: Handle = async ({ needs }) => ({
   outcome: "success",
   produced: { greeting: `Hello, ${needs.name}!` },
-}));
+});
+
+export const station = defineStation("hello", greet);
 ````
 
 <!-- /generated -->
@@ -68,7 +70,7 @@ In the first terminal, import the pipeline and start the worker. Leave it runnin
 
 ```sh
 npx floor-pipeline import hello.yaml
-node worker.mjs
+node worker.mts
 ```
 
 ## Run it and read the greeting
