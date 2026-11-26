@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stableVersion, packageIntro } from "../release.mjs";
-import { fillTemplate } from "./template.mjs";
+import { fillTemplate } from "../template.mjs";
 
 test("an unknown template token names the missing substitution", () => {
-  assert.throws(() => fillTemplate("{{missing}}", {}), /Unknown client page token: missing/);
+  assert.throws(() => fillTemplate("{{missing}}", {}), /Unknown SDK page token: missing/);
 });
 
 test("a prerelease cannot label the stable SDK documentation", () => {

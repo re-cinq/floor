@@ -1,0 +1,16 @@
+{
+  "extends": "../../typedoc.json",
+  "entryPoints": [
+    "../../.generated/released-pipeline/node_modules/@re-cinq/floor-pipeline/dist/index.d.ts"
+  ],
+  "tsconfig": "./tsconfig.json",
+  "out": "../../.generated/pipeline",
+  "intentionallyNotExported": [
+    "agent-file.d.ts:Frontmatter",
+    "paths.d.ts:LineFilePlace",
+    "shape.d.ts:Spelling",
+    "shape.d.ts:Named",
+    "shape.d.ts:Archive",
+    "lint-directory.d.ts:LintOutput"
+  ]
+}

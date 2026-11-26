@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "files": [
+    "../../.generated/released-pipeline/node_modules/@re-cinq/floor-pipeline/dist/index.d.ts"
+  ],
+  "include": [
+    "../../.generated/released-pipeline/*.mts"
+  ]
+}

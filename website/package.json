@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "postsdk:generate": "node sdk/client/build.mjs",
+    "postsdk:generate": "node sdk/client/build.mjs && node sdk/pipeline/build.mjs",
     "sdk:generate": "node sdk/station-page.mjs",
     "prebuild": "npm run sdk:generate",
     "predev": "npm run sdk:generate",
