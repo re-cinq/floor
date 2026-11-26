@@ -1,10 +1,16 @@
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { readFile } from "node:fs/promises";
+import { defineStation } from "@re-cinq/floor-station";
+import { importPipeline, pipelineOf, readPipelineFile } from "@re-cinq/floor-pipeline";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createFloorClient, serviceToken, type LiveFrame } from "@re-cinq/floor-client";
 import { SERVICE_TOKEN, setupTestServer } from "./test-server.js";
 import { workStarted } from "./test-fixtures.js";
 import { FIXED_NOW } from "./live/live-fixtures.js";
 
-const { server, deps } = setupTestServer();
+const { server, deps, loop } = setupTestServer();
 
 const TURN = { kind: "turn" as const, body: { said: "looking" }, occurredAt: FIXED_NOW };
 
@@ -80,5 +86,32 @@ describe("the published client against a floor that is really listening", () => 
     const watch = client().runs.watch("11111111-2222-3333-4444-555555555555");
 
     expect(await watch.ended).toMatchObject({ reason: "refused", code: 4404 });
+  });
+});
+
+describe("the client tutorial", () => {
+  it("prints Hello, Ada! after the hello-world line settles", async () => {
+    const url = `http://localhost:${server().info.port}`;
+    const yaml = await readFile(new URL("../../../examples/code/hello/hello.yaml", import.meta.url), "utf8");
+
+    await importPipeline({ url, token: SERVICE_TOKEN }, pipelineOf(readPipelineFile(yaml)));
+    const station = defineStation("hello", async ({ needs }) => ({
+      outcome: "success",
+      produced: { greeting: `Hello, ${needs.name}!` },
+    }), { floorUrl: url, token: SERVICE_TOKEN, idleMs: 20 });
+    loop().start();
+
+    try {
+      const tutorial = fileURLToPath(new URL("../../../examples/code/client/hello.mts", import.meta.url));
+      const { stdout } = await promisify(execFile)(process.execPath, [tutorial], {
+        env: { ...process.env, FLOOR_API_URL: url, FLOOR_SERVICE_TOKEN: SERVICE_TOKEN },
+        timeout: 15000,
+      });
+
+      expect(stdout.trim()).toBe("Hello, Ada!");
+    } finally {
+      await station.stop();
+      await loop().stop();
+    }
   });
 });

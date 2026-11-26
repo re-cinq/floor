@@ -69,7 +69,7 @@ export default tseslint.config(
 
   // Two overrides on top of the preset, both matching lore's own eslint.config.mjs.
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ["**/*.{ts,tsx,mts}"],
     rules: {
       // The pure replay in transition.ts needs a state and an accounting object alongside its visit and graph.
       "max-params": ["error", { max: 4 }],

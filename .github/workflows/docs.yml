@@ -6,6 +6,7 @@ on:
     paths:
       - 'website/**'
       - 'examples/code/hello/**'
+      - 'examples/code/client/**'
       - 'packages/station/**'
       - 'packages/client/**'
       - 'packages/contracts/**'

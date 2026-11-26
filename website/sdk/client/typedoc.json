@@ -1,0 +1,13 @@
+{
+  "extends": "../../typedoc.json",
+  "entryPoints": [
+    "../../.generated/released-client/node_modules/@re-cinq/floor-client/dist/index.d.ts"
+  ],
+  "tsconfig": "./tsconfig.json",
+  "out": "../../.generated/client",
+  "intentionallyNotExported": [
+    "live.d.ts:REFUSALS",
+    "live.d.ts:LiveReachable",
+    "live.d.ts:Closed"
+  ]
+}
