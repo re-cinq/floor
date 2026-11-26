@@ -1,0 +1,20 @@
+stations:
+  hello:
+    kind: service
+    outcomes: [success, failed]
+    needs: [{ name: name, kind: value }]
+    produces: [{ name: greeting, kind: value }]
+line:
+  id: hello-world
+  entry: greet
+  exit: done
+  fail: broken
+  args:
+    name: { kind: value, subject: true }
+  nodes:
+    - { id: greet, station: hello }
+    - { id: done }
+    - { id: broken }
+  edges:
+    - { from: greet, to: done, on: success }
+    - { from: greet, to: broken, on: failed }

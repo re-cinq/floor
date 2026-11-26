@@ -1,3 +1,6 @@
+import { execFile, spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { beforeAll, describe, expect, it } from "vitest";
 import { defineStation, type Brief, type Handle } from "@re-cinq/floor-station";
 import type { LineBody, StationBody } from "@floor/store";
@@ -218,5 +221,30 @@ describe("defineStation, left to run", () => {
     await loop().stop();
 
     expect(outcome).toBe("success");
+  });
+});
+
+
+describe("Hello World station tutorial", () => {
+  it("prints Hello, Ada! from the settled run's bag", async () => {
+    const cwd = fileURLToPath(new URL("../../../examples/code/hello/", import.meta.url));
+    const env = { ...process.env, FLOOR_API_URL: floorUrl, FLOOR_SERVICE_TOKEN: SERVICE_TOKEN };
+    const execute = promisify(execFile);
+    const cli = fileURLToPath(new URL("../../../packages/pipeline/dist/cli.js", import.meta.url));
+
+    await execute(process.execPath, [cli, "import", "hello.yaml"], { cwd, env });
+    loop().start();
+    const worker = spawn(process.execPath, ["worker.mjs"], { cwd, env });
+    const exited = new Promise((resolve) => worker.once("close", resolve));
+
+    try {
+      const { stdout } = await execute("bash", ["run.sh"], { cwd, env, timeout: 15000 });
+
+      expect(stdout.trim()).toBe("Hello, Ada!");
+    } finally {
+      worker.kill();
+      await exited;
+      await loop().stop();
+    }
   });
 });

@@ -12,4 +12,4 @@ npm run docs:build
 
 Link between pages with absolute paths that include the base, such as `/floor/concepts/assembly-line/`, because the link validator accepts that form.
 
-The website build generates the Station SDK reference from its public entry point. The example in `defineStation` includes the named region in its unit test. Run `npm test -w @re-cinq/floor-station` to exercise it.
+The website build resolves the Station SDK’s npm latest version, tests the example workers against that exact package, and generates the API tables from its shipped declarations. The package introduction comes from the current SDK source. The daily Pages build picks up newly approved npm releases. Run `npm run sdk:generate --prefix website` to exercise this locally.

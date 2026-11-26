@@ -14,6 +14,7 @@ const LANGUAGES = new Map([
   ["md", "markdown"],
   ["json", "json"],
   ["mjs", "js"],
+  ["sh", "bash"],
   ["ts", "ts"],
 ]);
 

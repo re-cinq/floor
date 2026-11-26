@@ -1,9 +1,36 @@
 ---
 title: Station SDK
-description: Define a service station, handle a visit, and return its report with @re-cinq/floor-station.
+description: Build a worker that handles visits and reports results to Floor.
 ---
 
-Install the SDK with `npm install @re-cinq/floor-station` and import
-`{ defineStation }` from `"@re-cinq/floor-station"`.
-Set `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` in the worker environment.
-See [Write a custom station](/floor/tutorials/custom-station/) for the pipeline and worker setup.
+{{intro}}
+
+## Write your first station
+
+Follow [Build a Hello World station](/floor/tutorials/hello-world-station/) for the matching pipeline and commands to see the greeting. Install {{package}} and set `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` in the worker’s environment.
+
+{{worker.mjs}}
+
+The worker keeps polling. When the `hello` station receives `name: "Ada"`, it returns `greeting: "Hello, Ada!"` with outcome `success`. [View example test]({{test}})
+
+## Read and produce a file
+
+For a station with a file input named `note` and a file output named `copy`, read the input bytes and pass them to `produce`. The SDK records the stored file in the visit report.
+
+{{file-worker.mjs}}
+
+[View example test]({{test}})
+
+## Poll one batch
+
+Pass `start: false` when another process controls polling. Calling `once()` processes one batch and returns the number of events claimed.
+
+{{poll.mjs}}
+
+[View example test]({{test}})
+
+If a handler throws, the SDK reports a failed visit. If it cannot post the report, it returns the dispatch to the queue for retry. Account for repeated visits when a handler creates an external resource.
+
+## API reference
+
+Generated from the declarations published in {{package}}.
