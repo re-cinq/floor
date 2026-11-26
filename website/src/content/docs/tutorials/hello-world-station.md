@@ -31,6 +31,9 @@ Save this as `hello.yaml`. The line sends a visit to the station named `hello`. 
 <!-- generated:example:code/hello/hello.yaml -->
 
 ````yaml title="hello/hello.yaml"
+# Import this pipeline so Floor knows which worker to dispatch and how to route its report.
+# Each run gives the hello station a name and follows its success or failure edge.
+
 stations:
   hello:
     kind: service
@@ -62,6 +65,9 @@ Save this as `worker.mts` in the same directory.
 <!-- generated:example:code/hello/worker.mts -->
 
 ````ts title="hello/worker.mts"
+// Run this worker alongside the hello-world pipeline to handle incoming visits.
+// When a run supplies the name Ada, the worker sends "Hello, Ada!" back to Floor.
+
 import { defineStation, type Handle } from "@re-cinq/floor-station";
 
 // Each visit supplies the name from the pipeline. Floor puts the returned greeting in the run’s bag.
@@ -90,6 +96,9 @@ In the second terminal, save the following as `run.sh` and run `bash run.sh`. It
 <!-- generated:example:code/hello/run.sh -->
 
 ````bash title="hello/run.sh"
+# Run this script while the hello worker is listening to check the whole pipeline.
+# It starts a run for Ada, waits for it to settle, and prints the greeting from the run’s bag.
+
 set -euo pipefail
 
 floor() {

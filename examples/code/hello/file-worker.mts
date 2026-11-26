@@ -1,3 +1,6 @@
+// Use this worker when a pipeline passes a file between stations. It copies the
+// bytes from the "note" input to the "copy" output so the next station can read them.
+
 import { defineStation, type Handle } from "@re-cinq/floor-station";
 
 const copyNote: Handle = async (_brief, tools) => {

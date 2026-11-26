@@ -1,3 +1,6 @@
+// Run this worker alongside the hello-world pipeline to handle incoming visits.
+// When a run supplies the name Ada, the worker sends "Hello, Ada!" back to Floor.
+
 import { defineStation, type Handle } from "@re-cinq/floor-station";
 
 // Each visit supplies the name from the pipeline. Floor puts the returned greeting in the run’s bag.
