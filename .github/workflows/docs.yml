@@ -8,6 +8,8 @@ on:
       - 'examples/code/hello/**'
       - 'examples/code/client/**'
       - 'examples/code/contracts/**'
+      - 'packages/assembly-lines/**'
+      - 'examples/code/assembly-lines/**'
       - 'packages/graph/**'
       - 'examples/code/graph/**'
       - 'packages/station/**'

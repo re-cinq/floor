@@ -15,6 +15,8 @@ Select **Greet** to read the station description. Turn on **Show completed run**
 
 [Build this graph in React](/floor/tutorials/hello-world-graph/) or [view the example’s browser tests]({{test}}).
 
+To calculate the next step from a visit history, see [Validate and replay a Hello World line](/floor/tutorials/replay-hello-world/).
+
 ## Component inputs
 
 | Input | What to pass |

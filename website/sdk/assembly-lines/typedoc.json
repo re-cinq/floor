@@ -1,0 +1,12 @@
+{
+  "extends": "../../typedoc.json",
+  "entryPoints": [
+    "../../.generated/released-assembly-lines/node_modules/@re-cinq/floor-assembly-lines/dist/index.d.ts"
+  ],
+  "tsconfig": "./tsconfig.json",
+  "out": "../../.generated/assembly-lines",
+  "intentionallyNotExported": [
+    "agent-verdict.d.ts:Spoke",
+    "transition.d.ts:EndingTransition"
+  ]
+}

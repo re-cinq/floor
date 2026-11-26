@@ -30,3 +30,5 @@ src/content/docs/sdk/contracts.md
 src/content/docs/sdk/graph.md
 src/content/docs/tutorials/hello-world-graph.md
 public/demos/hello-world-graph/
+src/content/docs/sdk/assembly-lines.md
+src/content/docs/tutorials/replay-hello-world.md
