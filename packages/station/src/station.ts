@@ -6,6 +6,17 @@ import { workVisit } from "./visit.js";
 const DEFAULT_IDLE_MS = 2000;
 const DEFAULT_CLAIM_LIMIT = 1;
 
+// eslint-disable-next-line re-lint/max-comment-lines -- TypeDoc publishes this API contract and test example.
+/**
+ * Claims visits for the named station and posts the report returned by its handler.
+ * Set `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` before starting the worker.
+ * The loop starts immediately unless you pass `start: false` to poll manually.
+ *
+ * @example
+ * Process one batch with a station that turns its text input into an uppercase value.
+ *
+ * {@includeCode ./station.test.ts#shout-station}
+ */
 export function defineStation(name: string, handle: Handle, options: StationOptions = {}): RunningStation {
   const station = new Station(name, handle, options);
 

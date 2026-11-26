@@ -212,6 +212,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # A broken internal link fails this build, through starlight-links-validator.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build SDK dependencies and test the station example
+        run: |
+          npm ci --ignore-scripts
+          npm run build -w @re-cinq/floor-contracts
+          npm run build -w @re-cinq/floor-client
+          npm test -w @re-cinq/floor-station
       - name: Build with Astro
         uses: withastro/action@b7d53628f8b666036b0238aadb0b984a2a489f26 # v6
         with:

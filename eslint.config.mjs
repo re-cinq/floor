@@ -142,6 +142,11 @@ export default tseslint.config(
     language: "markdown/gfm",
     rules: { "re-lint/no-dead-md-links": "error" },
   },
+  {
+    files: ["packages/station/src/station.test.ts"],
+    rules: { "re-lint/max-comment-lines": ["error", { max: 1 }] }, // TypeDoc reads the named example region.
+  },
+
 );
 
 // Opt-in rules left off: no-cross-layer-import (no layers.yaml), the models/enforce/api-error trio (no such module yet), no-forbidden-imports (nothing forbidden yet), the UI-only rules (no UI here), and the spec-link rules (docs/ is a plan, not a specs/adrs tree).

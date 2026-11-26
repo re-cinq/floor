@@ -36,6 +36,7 @@ export default defineConfig({
 				{ label: 'Tutorials', items: [{ autogenerate: { directory: 'tutorials' } }] },
 				{ label: 'Cookbook', items: [{ autogenerate: { directory: 'cookbook' } }] },
 				{ label: 'Specifications', items: [{ autogenerate: { directory: 'specs' } }] },
+				{ label: 'SDKs', items: [{ autogenerate: { directory: 'sdk' } }] },
 				{ label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
 			],
 		}),
