@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "files": [
+    "../../.generated/released-assembly-lines/node_modules/@re-cinq/floor-assembly-lines/dist/index.d.ts"
+  ],
+  "include": [
+    "../../.generated/released-assembly-lines/*.mts"
+  ]
+}

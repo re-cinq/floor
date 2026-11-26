@@ -1,3 +1,12 @@
+// eslint-disable-next-line re-lint/max-comment-lines -- Published as the Assembly Lines SDK introduction.
+/**
+ * Use the Assembly Lines SDK to check an [assembly line](/floor/concepts/assembly-line/)
+ * before importing it and to replay the routing decisions of an [assembly run](/floor/concepts/assembly-run/).
+ * Its functions work on definitions and visits in memory. Use the [Pipeline SDK](/floor/sdk/pipeline/)
+ * to read YAML or send definitions to Floor.
+ *
+ * @packageDocumentation
+ */
 export {
   endsRun,
   getNextTransition,
