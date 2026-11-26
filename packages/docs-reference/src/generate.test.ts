@@ -24,6 +24,10 @@ describe("regionOf", () => {
     expect([regionOf("example:code/relay/relay.mjs", sources), regionOf("example:code/station/worker.ts", sources)].map((fenced) => fenced.split(" ")[0])).toEqual(["````js", "````ts"]);
   });
 
+  it("fences hello/worker.mts as TypeScript", () => {
+    expect(regionOf("example:code/hello/worker.mts", sources)).toContain('````ts title="hello/worker.mts"');
+  });
+
   it("refuses a table it does not have", () => {
     expect(() => regionOf("fields:nope", sources)).toThrow(/^no field table is named "nope": pipeline, line, /);
   });

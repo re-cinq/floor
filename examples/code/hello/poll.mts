@@ -1,5 +1,4 @@
-// Use this version of the hello worker when a scheduler decides when work runs.
-// Each invocation polls once, handles any visits it claims, and exits.
+// Use this worker for scheduled jobs: each invocation claims one batch of hello visits, greets each name, and exits.
 
 import { defineStation, type Handle } from "@re-cinq/floor-station";
 
