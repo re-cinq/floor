@@ -6,7 +6,7 @@ sidebar:
   order: 4
 ---
 
-You will end with a worker of your own that floor hands work to, written once with the station SDK and understood once as plain HTTP. Set `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` first.
+For a first worker, start with [Build a Hello World station](/floor/tutorials/hello-world-station/). Here you will end with a worker of your own that floor hands work to, written once with the station SDK and understood once as plain HTTP. Set `FLOOR_API_URL` and `FLOOR_SERVICE_TOKEN` first.
 
 ## 1. Define the station
 

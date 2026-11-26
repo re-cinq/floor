@@ -5,12 +5,15 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'examples/code/hello/**'
       - 'packages/station/**'
       - 'packages/client/**'
       - 'packages/contracts/**'
       - 'package-lock.json'
       - 'tsconfig.base.json'
       - '.github/workflows/docs.yml'
+  schedule:
+    - cron: '27 5 * * *'
   workflow_dispatch:
 
 permissions:

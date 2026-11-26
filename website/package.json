@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "sdk:generate": "typedoc && node sdk/station-page.mjs",
+    "sdk:generate": "node sdk/station-page.mjs",
     "prebuild": "npm run sdk:generate",
     "predev": "npm run sdk:generate",
     "prestart": "npm run sdk:generate"

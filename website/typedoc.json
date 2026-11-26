@@ -3,9 +3,9 @@
     "typedoc-plugin-markdown"
   ],
   "entryPoints": [
-    "../packages/station/src/index.ts"
+    ".generated/released-station/node_modules/@re-cinq/floor-station/dist/index.d.ts"
   ],
-  "tsconfig": "../packages/station/tsconfig.build.json",
+  "tsconfig": "sdk/tsconfig.json",
   "out": ".generated/station",
   "router": "module",
   "entryFileName": "api.md",
