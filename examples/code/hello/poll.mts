@@ -2,7 +2,7 @@
 
 import { defineStation, type Handle } from "@re-cinq/floor-station";
 
-// Each visit supplies the name from the pipeline. Floor puts the returned greeting in the run’s bag.
+// { needs } extracts the named inputs from the visit brief; needs.name is the name to greet. https://re-cinq.github.io/floor/sdk/station/#brief
 const greet: Handle = async ({ needs }) => ({
   outcome: "success",
   produced: { greeting: `Hello, ${needs.name}!` },
