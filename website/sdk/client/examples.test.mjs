@@ -62,27 +62,61 @@ test("reporting Hello, Ada! binds the outcome to visit-7", async () => {
   }]]);
 });
 
-test("the tutorial starts a run and prints Hello, Ada! from the settled bag", async (context) => {
+function tutorialFloor(context, outcome, bag) {
   context.mock.method(globalThis, "fetch", async (url, request) => {
     assert.equal(request.headers.authorization, "Bearer tutorial-token");
     if (url === "http://floor.test/assembly-lines/hello-world/start") return Response.json({ run: { id: "tutorial" }, joined: false });
     assert.equal(url, "http://floor.test/assembly-runs/tutorial");
-    return Response.json({ bag: { greeting: { kind: "value", ref: "Hello, Ada!" } } });
+    return Response.json({ bag });
   });
   class TutorialSocket extends EventTarget {
     constructor(url) {
       super();
       assert.equal(url, "ws://floor.test/assembly-runs/tutorial/live?after=0");
       queueMicrotask(() => this.dispatchEvent(new MessageEvent("message", {
-        data: JSON.stringify({ type: "run_settled", seq: 1, run: { outcome: "success" } }),
+        data: JSON.stringify({ type: "run_settled", seq: 1, run: { outcome } }),
       })));
     }
     close() {}
   }
   context.mock.property(globalThis, "WebSocket", TutorialSocket);
-  const output = context.mock.method(console, "log", () => {});
+
   process.env.FLOOR_API_URL = "http://floor.test";
   process.env.FLOOR_SERVICE_TOKEN = "tutorial-token";
+}
+
+test("the tutorial starts a run and prints Hello, Ada! from the settled bag", async (context) => {
+  tutorialFloor(context, "success", { greeting: { kind: "value", ref: "Hello, Ada!" } });
+  const output = context.mock.method(console, "log", () => {});
   await import("./hello.mts");
   assert.deepEqual(output.mock.calls.map(call => call.arguments), [["Hello, Ada!"]]);
+});
+
+test("a refused watch rejects with the reason it ended", async () => {
+  const socketFn = () => ({
+    onFrame() {},
+    onClosed(receive) { queueMicrotask(() => receive({ code: 4401, reason: "invalid token" })); },
+    close() {},
+  });
+  await assert.rejects(watchOutcome({ ...access, socketFn }, "run-1"), /Watch ended before settlement: refused/);
+});
+
+for (const variable of ["FLOOR_API_URL", "FLOOR_SERVICE_TOKEN"]) {
+  test(`the tutorial refuses to start without ${variable}`, async context => {
+    tutorialFloor(context, "success", {});
+    const previous = process.env[variable];
+    delete process.env[variable];
+    context.after(() => { process.env[variable] = previous; });
+    await assert.rejects(import(`./hello.mts?missing=${variable}`), /Set FLOOR_API_URL and FLOOR_SERVICE_TOKEN/);
+  });
+}
+
+test("a failed run identifies its outcome", async context => {
+  tutorialFloor(context, "failed", {});
+  await assert.rejects(import("./hello.mts?failed"), /Run tutorial settled with outcome failed/);
+});
+
+test("a successful run with an empty bag identifies the missing greeting", async context => {
+  tutorialFloor(context, "success", {});
+  await assert.rejects(import("./hello.mts?empty"), /Run tutorial has no greeting value/);
 });

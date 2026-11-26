@@ -1,3 +1,4 @@
+import { fillTemplate } from "./template.mjs";
 import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -6,6 +7,7 @@ import { installRelease, pageTokens } from "../release.mjs";
 const website = path.resolve(import.meta.dirname, "../..");
 const sandbox = path.join(website, ".generated/released-client");
 const sdk = "@re-cinq/floor-client";
+execFileSync(process.execPath, ["--test", "sdk/client/build.test.mjs"], { cwd: website, stdio: "inherit" });
 const version = await installRelease(sdk, sandbox);
 const tokens = await pageTokens("client", sdk, version, "website/sdk/client/examples.test.mjs");
 const examples = ["start.mts", "watch-run.mts", "watch-floor.mts", "visit.mts", "hello.mts"];
@@ -23,10 +25,7 @@ execute(path.join(website, "node_modules/.bin/typedoc"), ["--options", "sdk/clie
 
 async function render(templateName, destination, appendix = "") {
   const template = await readFile(path.join(import.meta.dirname, templateName), "utf8");
-  const page = template.replace(/{{([^}]+)}}/g, (_, key) => {
-    if (!Object.hasOwn(tokens, key)) throw new Error(`Unknown client page token: ${key}`);
-    return tokens[key];
-  });
+  const page = fillTemplate(template, tokens);
   const file = path.join(website, "src/content/docs", destination);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, page.trimEnd() + "\n" + appendix);
