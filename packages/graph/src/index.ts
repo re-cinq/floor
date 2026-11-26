@@ -1,3 +1,11 @@
+// eslint-disable-next-line re-lint/max-comment-lines -- Published as the Graph SDK introduction.
+/**
+ * Use the Graph SDK to display an [assembly line](/floor/concepts/assembly-line/) in a React application.
+ * Give the view the line’s nodes and edges to explore every route. Add visits from an
+ * [assembly run](/floor/concepts/assembly-run/) to show where it went.
+ *
+ * @packageDocumentation
+ */
 export { default as RunGraphView } from "./RunGraphView";
 export type { RunGraphViewProps } from "./RunGraphView";
 export type { AssemblyLineDefinition, DefinitionEdge, DefinitionNode, DefinitionNodeKind } from "./assembly-line-definition";

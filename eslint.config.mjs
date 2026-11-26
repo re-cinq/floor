@@ -16,7 +16,7 @@ const FIRST_PARTY = { firstPartyScopes: ["@floor", "@re-cinq"] };
 export default tseslint.config(
   {
     // examples/code/**/*.ts is a reader's file, outside every workspace: no tsconfig covers it.
-    ignores: ["website/**", "examples/code/**/*.ts", "**/dist/**", "**/node_modules/**", "**/coverage/**", ".backup-2026-09-27/**"],
+    ignores: ["website/**", "examples/code/**/*.{ts,tsx}", "**/dist/**", "**/node_modules/**", "**/coverage/**", ".backup-2026-09-27/**"],
   },
 
   // Type-aware TypeScript across every workspace package.

@@ -1,0 +1,29 @@
+/* Give the bundled graph styles a viewport and the theme colors for the Hello World line. */
+.hello-graph {
+  display: flex;
+  flex-direction: column;
+  height: 28rem;
+  gap: 0.75rem;
+  font: 1rem system-ui, sans-serif;
+  color: #18232e;
+  --bg: white;
+  --bg-surface: white;
+  --bg-elevated: white;
+  --bg-hover: #eef3f7;
+  --text: #18232e;
+  --text-muted: #475767;
+  --heading-color: #18232e;
+  --border: #acb8c4;
+  --accent: #005cab;
+  --chart-section: #185c9d;
+  --chart-neutral: #4e5d68;
+  --success: #147042;
+  --danger: #ae302b;
+  --fs-sm: 14px;
+  --fs-xs: 12px;
+  --fs-2xs: 11px;
+  --space-2: 0.4rem;
+  --space-3: 0.6rem;
+  --space-5: 1rem;
+  --radius: 4px;
+}

@@ -131,3 +131,5 @@ Hello, Ada!
 ```
 
 Press Ctrl+C in the worker terminal when you’re finished. See the [Station SDK reference](/floor/sdk/station/) for the handler types and file tools, or [Write a custom station](/floor/tutorials/custom-station/#3-the-same-in-plain-http) for the underlying HTTP requests.
+
+To see the route the greeting took, follow [Render your first assembly line in React](/floor/tutorials/hello-world-graph/).

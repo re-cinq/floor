@@ -1,0 +1,13 @@
+{
+  "extends": "../../typedoc.json",
+  "entryPoints": [
+    "../../.generated/released-graph/node_modules/@re-cinq/floor-graph/dist/index.d.ts"
+  ],
+  "tsconfig": "./tsconfig.json",
+  "out": "../../.generated/graph",
+  "intentionallyNotExported": [
+    "use-run-overlay.d.ts:RunOverlay",
+    "graph-view-model.d.ts:ConnectorTone",
+    "main-path.d.ts:MainPath"
+  ]
+}
