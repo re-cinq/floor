@@ -88,6 +88,8 @@ npx floor-pipeline import hello.yaml
 node worker.mts
 ```
 
+To back up the definitions you just installed, follow [Import and export a pipeline](/floor/tutorials/pipeline-round-trip/).
+
 ## Run it and read the greeting
 
 In the second terminal, save the following as `run.sh` and run `bash run.sh`. It starts a run with the name Ada and waits for the worker’s report.

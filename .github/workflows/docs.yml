@@ -8,6 +8,8 @@ on:
       - 'examples/code/hello/**'
       - 'examples/code/client/**'
       - 'packages/station/**'
+      - 'packages/pipeline/**'
+      - 'examples/code/pipeline/**'
       - 'packages/client/**'
       - 'packages/contracts/**'
       - 'package-lock.json'

@@ -1,3 +1,9 @@
+import { execFile } from "node:child_process";
+import { copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { beforeAll, describe, expect, it } from "vitest";
 import { exportPipeline, fileOf, importPipeline, migrate, pipelineOf, readPipelineFile, writePipelineFile, type Floor } from "@re-cinq/floor-pipeline";
 import type { AgentDefinitionBody, LineBody, StationBody } from "@floor/store";
@@ -231,5 +237,31 @@ describe("PUT /migrations/:name", () => {
     const response = await told(SHA, { authorization: `Bearer ${token}` });
 
     expect(response.statusCode).toBe(403);
+  });
+});
+
+describe("pipeline CLI tutorial", () => {
+  it("reimports hello and hello-world as they were after exporting hello-world", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "pipeline-tutorial-"));
+    const cli = fileURLToPath(new URL("../../../packages/pipeline/dist/cli.js", import.meta.url));
+    const env = { ...process.env, FLOOR_API_URL: floor.url, FLOOR_SERVICE_TOKEN: floor.token };
+    const command = (...args: string[]) => promisify(execFile)(process.execPath, [cli, ...args], { cwd, env });
+
+    try {
+      await copyFile(new URL("../../../examples/code/hello/hello.yaml", import.meta.url), join(cwd, "hello.yaml"));
+      const initial = await command("import", "hello.yaml");
+
+      await command("export", "hello-world", "--out", "hello-export.yaml");
+      const exported = readPipelineFile(await readFile(join(cwd, "hello-export.yaml"), "utf8"));
+      const repeated = await command("import", "hello-export.yaml");
+
+      expect({ exported, initial: initial.stdout.trim(), repeated: repeated.stdout.trim() }).toMatchObject({
+        exported: { line: { id: "hello-world" }, stations: { hello: { produces: [{ name: "greeting", kind: "value" }] } } },
+        initial: "hello.yaml:\n  stations/hello: changed\n  assembly-lines/hello-world: changed",
+        repeated: "hello-export.yaml:\n  stations/hello: as it was\n  assembly-lines/hello-world: as it was",
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 });

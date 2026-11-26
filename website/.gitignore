@@ -24,3 +24,5 @@ pnpm-debug.log*
 src/content/docs/sdk/station.md
 src/content/docs/sdk/client.md
 src/content/docs/tutorials/hello-world-client.md
+src/content/docs/sdk/pipeline.md
+src/content/docs/tutorials/pipeline-round-trip.md

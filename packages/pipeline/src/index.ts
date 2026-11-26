@@ -1,3 +1,12 @@
+// eslint-disable-next-line re-lint/max-comment-lines -- Published as the Pipeline SDK introduction.
+/**
+ * Use the Pipeline SDK to move an [assembly line](/floor/concepts/assembly-line/) and the
+ * definitions it depends on between a [YAML file](/floor/specs/pipeline-file/) and Floor.
+ * Use the CLI to import and export files from a shell. Use the TypeScript library when your
+ * program needs to inspect a pipeline or act on the definitions that changed.
+ *
+ * @packageDocumentation
+ */
 export { pipelineFileSchema, readPipelineFile, writePipelineFile, type PipelineFile } from "./file.js";
 export { agentConfigSchema, type AgentConfig } from "./agent-config-schema.js";
 export { FILE_SPELLING, fileOf, pipelineOf, type Pipeline } from "./shape.js";
