@@ -1,0 +1,23 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowArbitraryExtensions": true,
+    "types": [
+      "vite/client",
+      "node",
+      "react"
+    ]
+  },
+  "files": [
+    "../../.generated/released-graph/node_modules/@re-cinq/floor-graph/dist/index.d.ts"
+  ],
+  "include": [
+    "../../.generated/released-graph/*.ts",
+    "../../.generated/released-graph/*.tsx"
+  ]
+}

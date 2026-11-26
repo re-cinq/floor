@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "postsdk:generate": "node sdk/client/build.mjs && node sdk/pipeline/build.mjs && node sdk/contracts/build.mjs",
+    "postsdk:generate": "node sdk/client/build.mjs && node sdk/pipeline/build.mjs && node sdk/contracts/build.mjs && node sdk/graph/build.mjs",
     "sdk:generate": "node sdk/station-page.mjs",
     "prebuild": "npm run sdk:generate",
     "predev": "npm run sdk:generate",
@@ -25,8 +25,15 @@
     "starlight-llms-txt": "^0.10.0"
   },
   "devDependencies": {
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "@vitest/browser-playwright": "^5.0.2",
+    "playwright": "^1.65.1",
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.14.1",
-    "typescript": "~6.0.0"
+    "typescript": "~6.0.0",
+    "vite": "^7.3.8",
+    "vitest": "^5.0.2",
+    "vitest-browser-react": "^2.3.0"
   }
 }
