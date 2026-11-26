@@ -1,3 +1,6 @@
+# Import this pipeline so Floor knows which worker to dispatch and how to route its report.
+# Each run gives the hello station a name and follows its success or failure edge.
+
 stations:
   hello:
     kind: service

@@ -8,11 +8,12 @@ const repository = path.dirname(website);
 const sandbox = path.join(website, ".generated/released-station");
 const sdk = "@re-cinq/floor-station";
 const version = await installRelease(sdk, sandbox);
-const examples = ["worker.mjs", "file-worker.mjs", "poll.mjs"];
+const examples = ["worker.mts", "file-worker.mts", "poll.mts"];
 for (const name of examples) {
   await copyFile(path.join(repository, "examples/code/hello", name), path.join(sandbox, name));
 }
 await copyFile(path.join(import.meta.dirname, "examples.test.mjs"), path.join(sandbox, "examples.test.mjs"));
+execFileSync(path.join(website, "node_modules/.bin/tsc"), ["--project", "sdk/tsconfig.json", "--noEmit"], { cwd: website, stdio: "inherit" });
 execFileSync(process.execPath, ["--test", "--test-timeout=10000", "examples.test.mjs"], { cwd: sandbox, stdio: "inherit" });
 
 execFileSync(path.join(website, "node_modules/.bin/typedoc"), [], { cwd: website, stdio: "inherit" });
@@ -20,7 +21,7 @@ execFileSync(path.join(website, "node_modules/.bin/typedoc"), [], { cwd: website
 const tokens = await pageTokens("station", sdk, version, "website/sdk/examples.test.mjs");
 for (const name of examples) {
   const contents = await readFile(path.join(sandbox, name), "utf8");
-  tokens[name] = `\`\`\`js\n${contents.trimEnd()}\n\`\`\``;
+  tokens[name] = `\`\`\`ts\n${contents.trimEnd()}\n\`\`\``;
 }
 const template = await readFile(path.join(import.meta.dirname, "station.md"), "utf8");
 const page = template.replace(/{{([^}]+)}}/g, (_, key) => {

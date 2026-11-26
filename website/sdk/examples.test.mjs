@@ -40,20 +40,20 @@ const greeting = { outcome: "success", produced: { greeting: "Hello, Ada!" } };
 
 test("the continuous hello worker reports Hello, Ada!", async (context) => {
   const { report } = visit(context, "hello", nameInput);
-  const { station } = await import("./worker.mjs");
+  const { station } = await import("./worker.mts");
   context.after(() => station.stop());
   assert.deepEqual(await report, greeting);
 });
 
 test("one poll reports Hello, Ada! and exits", async (context) => {
   const { report } = visit(context, "hello", nameInput);
-  await import("./poll.mjs");
+  await import("./poll.mts");
   assert.deepEqual(await report, greeting);
 });
 
 test("copy-note stores the input bytes and reports the stored file", async (context) => {
   const { report, stored } = visit(context, "copy-note", [{ kind: "file", name: "note", url: "http://floor.test/blobs/original" }]);
-  const { station } = await import("./file-worker.mjs");
+  const { station } = await import("./file-worker.mts");
   context.after(() => station.stop());
   assert.deepEqual(await report, { outcome: "success", produced: { copy: "copy-hash" } });
   assert.deepEqual(stored, ["Hello, Ada!"]);

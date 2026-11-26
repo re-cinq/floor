@@ -3,7 +3,7 @@ title: Build a Hello World station
 description: Run a Node.js worker that turns the name Ada into a greeting and inspect the result on Floor.
 ---
 
-You’ll build a worker that takes a name from a visit and puts a greeting in the run’s [bag](/floor/concepts/bag/). You need Node.js 22 or newer, Bash, curl, jq, and a running Floor. For a local server, follow [Start Floor](/floor/tutorials/first-run/#1-start-floor).
+You’ll build a worker that takes a name from a visit and puts a greeting in the run’s [bag](/floor/concepts/bag/). You need Node.js 22.18 or newer, Bash, curl, jq, and a running Floor. For a local server, follow [Start Floor](/floor/tutorials/first-run/#1-start-floor).
 
 ## Install the SDK and CLI
 
@@ -16,6 +16,14 @@ export FLOOR_API_URL=http://localhost:8180
 export FLOOR_SERVICE_TOKEN=floor-dev-token
 ```
 
+We recommend adding Floor’s ESLint rules as a development dependency for TypeScript stations:
+
+```sh
+npm install --save-dev @re-cinq/eslint-plugin-re-lint eslint typescript-eslint
+```
+
+Enable the recommended preset in your ESLint configuration using the [plugin setup guide](https://www.npmjs.com/package/@re-cinq/eslint-plugin-re-lint).
+
 ## Define the pipeline
 
 Save this as `hello.yaml`. The line sends a visit to the station named `hello`. Its handler receives the `name` input and returns the `greeting` output with outcome `success`.
@@ -23,6 +31,9 @@ Save this as `hello.yaml`. The line sends a visit to the station named `hello`. 
 <!-- generated:example:code/hello/hello.yaml -->
 
 ````yaml title="hello/hello.yaml"
+# Import this pipeline so Floor knows which worker to dispatch and how to route its report.
+# Each run gives the hello station a name and follows its success or failure edge.
+
 stations:
   hello:
     kind: service
@@ -49,17 +60,23 @@ line:
 
 ## Start the worker
 
-Save this as `worker.mjs` in the same directory.
+Save this as `worker.mts` in the same directory.
 
-<!-- generated:example:code/hello/worker.mjs -->
+<!-- generated:example:code/hello/worker.mts -->
 
-````js title="hello/worker.mjs"
-import { defineStation } from "@re-cinq/floor-station";
+````ts title="hello/worker.mts"
+// Run this worker alongside the hello-world pipeline to greet each name it receives, such as "Hello, Ada!".
 
-export const station = defineStation("hello", async ({ needs }) => ({
+import { defineStation, type Handle } from "@re-cinq/floor-station";
+
+// { needs } extracts the named inputs from the visit brief; needs.name is the name to greet. https://re-cinq.github.io/floor/sdk/station/#brief
+const greet: Handle = async ({ needs }) => ({
   outcome: "success",
   produced: { greeting: `Hello, ${needs.name}!` },
-}));
+});
+
+// Start polling for visits assigned to the station named "hello" in the pipeline.
+export const station = defineStation("hello", greet);
 ````
 
 <!-- /generated -->
@@ -68,7 +85,7 @@ In the first terminal, import the pipeline and start the worker. Leave it runnin
 
 ```sh
 npx floor-pipeline import hello.yaml
-node worker.mjs
+node worker.mts
 ```
 
 ## Run it and read the greeting
@@ -78,6 +95,9 @@ In the second terminal, save the following as `run.sh` and run `bash run.sh`. It
 <!-- generated:example:code/hello/run.sh -->
 
 ````bash title="hello/run.sh"
+# Run this script while the hello worker is listening to check the whole pipeline.
+# It starts a run for Ada, waits for it to settle, and prints the greeting from the run’s bag.
+
 set -euo pipefail
 
 floor() {

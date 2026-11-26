@@ -234,7 +234,7 @@ describe("Hello World station tutorial", () => {
 
     await execute(process.execPath, [cli, "import", "hello.yaml"], { cwd, env });
     loop().start();
-    const worker = spawn(process.execPath, ["worker.mjs"], { cwd, env });
+    const worker = spawn(process.execPath, ["worker.mts"], { cwd, env });
     const exited = new Promise((resolve) => worker.once("close", resolve));
 
     try {

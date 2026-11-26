@@ -1,4 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
-  "files": ["../.generated/released-station/node_modules/@re-cinq/floor-station/dist/index.d.ts"]
+  "files": ["../.generated/released-station/node_modules/@re-cinq/floor-station/dist/index.d.ts"],
+  "include": ["../.generated/released-station/*.mts"]
 }
