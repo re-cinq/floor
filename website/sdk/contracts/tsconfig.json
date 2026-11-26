@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "files": [
+    "../../.generated/released-contracts/node_modules/@re-cinq/floor-contracts/dist/index.d.ts"
+  ],
+  "include": [
+    "../../.generated/released-contracts/*.mts"
+  ]
+}

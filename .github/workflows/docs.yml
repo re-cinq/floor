@@ -7,6 +7,7 @@ on:
       - 'website/**'
       - 'examples/code/hello/**'
       - 'examples/code/client/**'
+      - 'examples/code/contracts/**'
       - 'packages/station/**'
       - 'packages/pipeline/**'
       - 'examples/code/pipeline/**'

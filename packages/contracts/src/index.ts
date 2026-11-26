@@ -1,4 +1,12 @@
-// The floor's wire, as types. No runtime: everything here compiles away.
+// eslint-disable-next-line re-lint/max-comment-lines -- Published as the contracts reference introduction.
+/**
+ * Floor contracts describe the data exchanged by its [HTTP API](/floor/reference/http-api/)
+ * and live connections. Use them to type your own integrations, from a visit report to a
+ * notification about an [assembly run](/floor/concepts/assembly-run/). The package exports
+ * TypeScript types only. The [Client SDK](/floor/sdk/client/) provides the HTTP and socket operations.
+ *
+ * @packageDocumentation
+ */
 export type {
   AgentDefinitionBody,
   AgentSettings,

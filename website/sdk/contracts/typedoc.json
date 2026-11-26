@@ -1,0 +1,12 @@
+{
+  "extends": "../../typedoc.json",
+  "entryPoints": [
+    "../../.generated/released-contracts/node_modules/@re-cinq/floor-contracts/dist/index.d.ts"
+  ],
+  "tsconfig": "./tsconfig.json",
+  "out": "../../.generated/contracts",
+  "intentionallyNotExported": [
+    "wire.d.ts:ClaimedFields",
+    "wire.d.ts:SecretRef"
+  ]
+}
