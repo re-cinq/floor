@@ -1,0 +1,28 @@
+{
+  "plugin": [
+    "typedoc-plugin-markdown"
+  ],
+  "entryPoints": [
+    "../packages/station/src/index.ts"
+  ],
+  "tsconfig": "../packages/station/tsconfig.build.json",
+  "out": ".generated/station",
+  "router": "module",
+  "entryFileName": "api.md",
+  "readme": "none",
+  "hidePageTitle": true,
+  "hideBreadcrumbs": true,
+  "disableSources": true,
+  "jsDocCompatibility": {
+    "exampleTag": false
+  },
+  "treatWarningsAsErrors": true,
+  "hidePageHeader": true,
+  "groupOrder": [
+    "Functions",
+    "Type Aliases",
+    "Interfaces"
+  ],
+  "parametersFormat": "table",
+  "interfacePropertiesFormat": "table"
+}
