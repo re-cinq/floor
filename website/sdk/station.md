@@ -13,6 +13,8 @@ Follow [Build a Hello World station](/floor/tutorials/hello-world-station/) for 
 
 The worker keeps polling. When the `hello` station receives `name: "Ada"`, it returns `greeting: "Hello, Ada!"` with outcome `success`. [View example test]({{test}})
 
+For TypeScript stations, we recommend adding `@re-cinq/eslint-plugin-re-lint` as a development dependency. See the [tutorial setup](/floor/tutorials/hello-world-station/#install-the-sdk-and-cli).
+
 ## Read and produce a file
 
 For a station with a file input named `note` and a file output named `copy`, read the input bytes and pass them to `produce`. The SDK records the stored file in the visit report.

@@ -16,6 +16,14 @@ export FLOOR_API_URL=http://localhost:8180
 export FLOOR_SERVICE_TOKEN=floor-dev-token
 ```
 
+We recommend adding Floor’s ESLint rules as a development dependency for TypeScript stations:
+
+```sh
+npm install --save-dev @re-cinq/eslint-plugin-re-lint eslint typescript-eslint
+```
+
+Enable the recommended preset in your ESLint configuration using the [plugin setup guide](https://www.npmjs.com/package/@re-cinq/eslint-plugin-re-lint).
+
 ## Define the pipeline
 
 Save this as `hello.yaml`. The line sends a visit to the station named `hello`. Its handler receives the `name` input and returns the `greeting` output with outcome `success`.
