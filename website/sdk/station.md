@@ -35,6 +35,8 @@ Pass `start: false` when another process controls polling. Calling `once()` proc
 
 If a handler throws, the SDK reports a failed visit. If it cannot post the report, it returns the dispatch to the queue for retry. Account for repeated visits when a handler creates an external resource.
 
+For the report posted to Floor, see the [wire report type](/floor/sdk/contracts/#report).
+
 ## API reference
 
 Generated from the declarations published in {{package}}.

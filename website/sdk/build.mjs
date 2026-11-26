@@ -36,5 +36,5 @@ export async function buildSdk({ name, tutorial, examples, fixtures = [] }) {
 
   const reference = await readFile(path.join(website, ".generated", name, "api.md"), "utf8");
   await render("page.md", `sdk/${name}.md`, "\n" + reference);
-  await render("tutorial.md", `tutorials/${tutorial}.md`);
+  if (tutorial) await render("tutorial.md", `tutorials/${tutorial}.md`);
 }

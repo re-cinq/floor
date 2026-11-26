@@ -35,4 +35,6 @@ If the executor calls `visit.gitCredential(repo)`, handle its three outcomes exp
 
 [View the example tests]({{test}}). For TypeScript projects we recommend adding [our ESLint rules](https://www.npmjs.com/package/@re-cinq/eslint-plugin-re-lint) as a development dependency.
 
+For the data carried by HTTP responses and live frames, see the [Floor contracts](/floor/sdk/contracts/).
+
 ## API reference
