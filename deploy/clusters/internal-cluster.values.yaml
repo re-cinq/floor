@@ -16,6 +16,8 @@ api:
   baseUrl: http://floor-api.floor.svc.cluster.local:8080
   existingSecret: floor-api
   gitCredentialUrl: http://lore-api.lore-api.svc.cluster.local:3000/api/floor/git-credential
+  # The Ed25519 key gateway tokens are signed with, under `gatewaySigningKey`.
+  gatewayKeysSecret: { name: floor-api }
 
 postgres:
   existingSecret: floor-postgres
