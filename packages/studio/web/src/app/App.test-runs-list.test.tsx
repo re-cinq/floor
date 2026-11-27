@@ -2,11 +2,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import userEvent from "@testing-library/user-event";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
+import { WORKER_COLLECTION } from "../../../src/backend/collection-view.fixtures";
+import { REVIEW_LOOP_COLLECTION } from "../../../src/backend/test-run.fixtures";
 import { WRITES_DRAFT } from "../../../src/backend/test-run-session.fixtures";
 import { closeStudios, reloadPage } from "./app-page.fixtures";
-import { findWaitingReview, secondClientOf, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
+import { findWaitingReview, pageCatchesUp, secondClientOf, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
 
 const configHome = mkdtempSync(join(tmpdir(), "floor-config-home-"));
 
@@ -63,5 +66,38 @@ describe("App line screen, test runs list", () => {
         connection.close();
       }
     });
+  }, 20_000);
+
+  it("opens the run screen of review-loop when its row is clicked", async () => {
+    vi.stubEnv("XDG_CONFIG_HOME", configHome);
+
+    await withScratchWorkspace(WRITES_DRAFT, async (workspace) => {
+      const { runsList, run } = await showRunsListOfWaitingRun(workspace);
+
+      await userEvent.click(within(runsList).getByRole("button"));
+
+      const heading = await screen.findByRole("heading", { name: "review-loop test run" });
+
+      expect({ test: new URLSearchParams(window.location.hash.slice(1)).get("test"), heading: Boolean(heading) }).toEqual({ test: run, heading: true });
+    });
+  }, 20_000);
+
+  it("shows no test runs on the flow line when only review-loop has a run", async () => {
+    vi.stubEnv("XDG_CONFIG_HOME", configHome);
+
+    await withScratchWorkspace(
+      WRITES_DRAFT,
+      async (workspace) => {
+        await showRunsListOfWaitingRun(workspace);
+        const hash = new URLSearchParams(window.location.hash.slice(1));
+        hash.set("line", "flow");
+        window.location.hash = hash.toString();
+        reloadPage();
+        await pageCatchesUp();
+
+        expect(screen.queryByRole("list", { name: "Test runs" })).toBeNull();
+      },
+      [...REVIEW_LOOP_COLLECTION, ...WORKER_COLLECTION],
+    );
   }, 20_000);
 });
