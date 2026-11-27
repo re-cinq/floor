@@ -46,6 +46,8 @@ export type TestStartFields = Omit<TestStartRequest, "id" | "type">;
 export type TestStartResult = ResultOf<TestStartRequest>;
 type TestLastRequest = Extract<Request, { type: "test.last" }>;
 export type LastTest = NonNullable<ResultOf<TestLastRequest>>;
+type TestListRequest = Extract<Request, { type: "test.list" }>;
+export type TestRunListings = ResultOf<TestListRequest>;
 type TestReportRequest = Extract<Request, { type: "test.report" }>;
 export type TestReportFields = Omit<TestReportRequest, "id" | "type">;
 type TestEventRequest = Extract<Request, { type: "test.event" }>;
@@ -147,6 +149,11 @@ export class StudioConnection {
   /** Asks which workspace and inputs a line was last tested with. */
   lastTest(line: string): Promise<LastTest | null> {
     return this.request("test.last", { line }) as Promise<LastTest | null>;
+  }
+
+  /** Asks for every test run the studio knows, newest first. */
+  listTests(): Promise<TestRunListings> {
+    return this.request("test.list") as Promise<TestRunListings>;
   }
 
   /** Reports a waiting visit of a test run on a person's behalf. */

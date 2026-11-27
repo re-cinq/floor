@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactElement } from "react";
 import type { CollectionView, LineView, NodeView } from "@protocol";
 import { edgeKeyOf } from "@re-cinq/floor-graph";
 import { parseFragment, withSelection } from "@/socket/fragment";
-import type { StudioConnection, StudioSnapshot } from "@/socket/studio-connection";
+import type { StudioConnection, StudioSnapshot, TestRunListings } from "@/socket/studio-connection";
 import { useStudio, type StudioAddress } from "@/socket/use-studio";
 import { useColorScheme } from "@/theme/use-color-scheme";
 import LineScreen from "./LineScreen";
@@ -18,6 +18,7 @@ import type { TestStartControls } from "./use-test-start";
 import type { TestRunControls } from "./use-test-run";
 import Sidebar from "./Sidebar";
 import { useSelection } from "./use-selection";
+import { useTestRuns } from "./use-test-runs";
 import shell from "./shell.module.css";
 
 const NO_STUDIO: StudioSnapshot = { connection: { status: "closed", reason: "this page has no address for the studio", retrying: false }, collection: null, readError: null };
@@ -30,6 +31,7 @@ export default function App() {
   const resolved = resolveSelection(snapshot.collection, selection);
   const lineId = resolved.line?.id;
   const test = useTestControls(connection, lineId, select);
+  const testRuns = useTestRuns(connection, lineId);
   const nodeRuns = useNodeRuns(connection, { selection, select, resolved });
   const scheme = useColorScheme();
 
@@ -43,7 +45,7 @@ export default function App() {
         scheme={{ pref: scheme.pref, onChoose: scheme.choose }}
       />
       <main className={shell.main}>
-        {address ? screenFor(snapshot, placeOf({ connection, selection, select, resolved, nodeRuns, test })) : <AddressNeeded />}
+        {address ? screenFor(snapshot, placeOf({ connection, selection, select, resolved, nodeRuns, test, testRuns })) : <AddressNeeded />}
       </main>
     </div>
   );
@@ -56,9 +58,10 @@ interface PlaceInput {
   resolved: ResolvedSelection;
   nodeRuns: ReturnType<typeof useNodeRuns>;
   test: ReturnType<typeof useTestControls>;
+  testRuns: TestRunListings;
 }
 
-function placeOf({ connection, selection, select, resolved, nodeRuns, test }: PlaceInput): Place {
+function placeOf({ connection, selection, select, resolved, nodeRuns, test, testRuns }: PlaceInput): Place {
   const line = resolved.line?.id;
 
   return {
@@ -70,6 +73,8 @@ function placeOf({ connection, selection, select, resolved, nodeRuns, test }: Pl
     testRun: test.runControls,
     onTestStarted: test.onStarted,
     onTestLocally: () => select({ line, test: "new" }),
+    testRuns,
+    onOpenTestRun: (run) => select({ line, test: run }),
     testing: selection.test,
     onSelectLine: (key) => select({ line, edge: key }),
     selectedLineKey: resolved.edge && edgeKeyOf(resolved.edge),
@@ -77,7 +82,7 @@ function placeOf({ connection, selection, select, resolved, nodeRuns, test }: Pl
   };
 }
 
-function inspectorActions({ connection, selection, select, resolved, nodeRuns }: Omit<PlaceInput, "test">): InspectorActions {
+function inspectorActions({ connection, selection, select, resolved, nodeRuns }: Omit<PlaceInput, "test" | "testRuns">): InspectorActions {
   const line = resolved.line?.id;
   const node = resolved.node;
 
@@ -226,6 +231,8 @@ interface Place {
   onSelectNode: (nodeId: string | undefined) => void;
   onSelectLine: (key: string) => void;
   onTestLocally: () => void;
+  testRuns: TestRunListings;
+  onOpenTestRun: (run: string) => void;
   onTestStarted: (run: string) => void;
   testing: string | undefined;
   selectedLineKey: string | undefined;
@@ -246,10 +253,10 @@ function unloadedScreen({ connection, readError }: StudioSnapshot): ReactElement
   return readError ? <Unreadable reason={readError} /> : <Connecting />;
 }
 
-function loadedScreen(collection: CollectionView, { requestedLine, inspector, resolved, takenEdge, onSelectNode, onSelectLine, onTestLocally, onTestStarted, testStart, testRun, testing, selectedLineKey }: Place): ReactElement {
+function loadedScreen(collection: CollectionView, { requestedLine, inspector, resolved, takenEdge, onSelectNode, onSelectLine, onTestLocally, testRuns, onOpenTestRun, onTestStarted, testStart, testRun, testing, selectedLineKey }: Place): ReactElement {
   if (collection.lines.length === 0) return <EmptyCollection />;
   if (resolved.line && testing) return testScreen(resolved.line, testing, { controls: testStart, runControls: testRun, onStarted: onTestStarted });
-  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} takenEdge={takenEdge} inspector={{ ...inspector, skillNames: collection.skills }} onSelectNode={onSelectNode} onTestLocally={onTestLocally} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} selectedLine={resolved.edge} />;
+  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} takenEdge={takenEdge} inspector={{ ...inspector, skillNames: collection.skills }} onSelectNode={onSelectNode} onTestLocally={onTestLocally} testRuns={testRuns} onOpenTestRun={onOpenTestRun} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} selectedLine={resolved.edge} />;
 
   return requestedLine ? <MissingLine lineId={requestedLine} /> : <ChooseLine collection={collection} />;
 }
