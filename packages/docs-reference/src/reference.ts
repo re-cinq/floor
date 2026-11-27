@@ -81,6 +81,7 @@ export const TABLES: Record<string, Table> = {
   config: ["agent", "config"],
   "mcp-server": ["agent", "config", "mcp_servers", "[]"],
   "secret-ref": ["agent", "config", "mcp_servers", "[]", "headers", "[]"],
+  "gateway-token": ["agent", "config", "mcp_servers", "[]", "visit_token"],
   "pod-resources": ["agent", "config", "pod_resources"],
   "resource-quantities": ["agent", "config", "pod_resources", "requests"],
 };

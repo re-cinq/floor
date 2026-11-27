@@ -83,12 +83,28 @@ An entry of `mcp_servers`:
 | `args` | list of string | no | `stdio` only. The command's arguments. |
 | `url` | URL | no | `http` and `sse` only, and required there. The server's address. |
 | `headers_secret` | string | no | The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holding one whole header line, such as `Authorization: Bearer <token>`. |
+| `visit_token` | object | no | `http` and `sse` only, and never beside `headers_secret`. The floor signs a token for each visit, naming the visit, its run and its repository, for the pod to present to the server as `Authorization: Bearer <token>`. The server verifies it with the keys the floor publishes at `/.well-known/jwks.json`. |
 | `headers` | list of object | no | `http` and `sse` only. Headers sent to the server, each taking its value from a key in `agent-secrets`. |
 | `env` | list of object | no | `stdio` only. Environment variables of the server's process, each taking its value from a key in `agent-secrets`. |
 
 <!-- /generated -->
 
 A `stdio` server MUST have a `command`, and any other a `url`. The floor says `a stdio server needs a command, any other a url`.
+
+A server's `visit_token`:
+
+<!-- generated:fields:gateway-token -->
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `audience` | string | yes | Who the token is for: the name the server expects to be called by, which it checks. |
+| `scopes` | list of string | yes | What the token may do at the server, in the server's own words. |
+
+<!-- /generated -->
+
+A server MUST NOT have both `visit_token` and `headers_secret`. The floor says `visit_token and headers_secret each set the server's authorization: give one`. A `stdio` server MUST NOT have a `visit_token`. The floor says `visit_token is for an http or sse server`. A floor with no signing key refuses to brief a visit whose definition has one, see [Gateway tokens](/floor/reference/http-api/#gateway-tokens).
+
+> **Not built yet.** The cluster agent does not hand the token to the pod, so a server with `visit_token` is called with no `Authorization` header.
 
 An entry of `headers` or of a server's `env`:
 

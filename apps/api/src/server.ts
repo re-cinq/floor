@@ -5,6 +5,7 @@ import { registerLiveSocket } from "./live/live-socket.js";
 import { registerProblemResponses } from "./problem.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerMetricsRoutes } from "./routes/metrics.js";
+import { registerWellKnownRoutes } from "./routes/well-known.js";
 import { registerClusterRoutes } from "./routes/clusters.js";
 import { registerDefinitionRoutes } from "./routes/definitions.js";
 import { registerRunRoutes } from "./routes/runs.js";
@@ -40,6 +41,7 @@ export async function buildServer(deps: Deps, holdsLease: () => boolean): Promis
   registerAuth(server, { serviceToken: deps.config.serviceToken, visitTokenSecret: deps.config.visitTokenSecret, now: deps.now });
   registerProblemResponses(server);
   registerHealthRoutes(server, { databaseProbe: deps.databaseProbe, holdsLease, clusters: deps.clusters });
+  registerWellKnownRoutes(server, deps.config.gatewayKeys);
   registerMetricsRoutes(server, deps, { holdsLease });
   registerSkillRoutes(server);
   for (const register of ROUTES) register(server, deps);

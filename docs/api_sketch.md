@@ -6,7 +6,7 @@ Vocabulary from lore ADR-024: Factory ⊃ Floor ⊃ AssemblyLine ⊃ Station ⊃
 
 - **The floor holds no provider client.** No Kubernetes, no GitHub, no chat. It owns the queue, the store and this API. Everything that touches a provider is a station.
 - **The floor never calls out.** Every worker, cluster agent or service, pulls its work from the queue. There is no outbound HTTP from the floor.
-- **Auth.** Services present a bearer token. Humans present a session, which carries the repos they may act on. A station presents the visit token minted when its station run opened. That token is scoped to the visit and expires at its deadline. It is good for reading the visit's brief and its needs' blobs, writing its produces' blobs, its records and its report, and trading for a git credential when a need declares write access. A human session on the visit's repo satisfies the same check for a human visit. *Human sessions are not built yet, so a person acts through the service token.*
+- **Auth.** Services present a bearer token. Humans present a session, which carries the repos they may act on. A station presents the visit token minted when its station run opened. That token is scoped to the visit and expires at its deadline. It is good for reading the visit's brief and its needs' blobs, writing its produces' blobs, its records and its report, and trading for a git credential when a need declares write access. A human session on the visit's repo satisfies the same check for a human visit. *Human sessions are not built yet, so a person acts through the service token.* A gateway token (see "Gateway tokens") is for a service outside the floor. The floor's own routes answer it 401.
 - **A route is a service's alone unless it says otherwise.** A visit token is held by an agent in a pod, so it reaches ten routes and no more. They are its brief, its sink, its git credential, its records, its conversation, and blobs, all under `/station-runs/:id`, `/conversations/:id` and `/blobs`, and `POST /events` for its own report. Every other route answers it 403, and a route added later is closed to it without being told to be.
 - **Errors.** RFC 9457 problem details, `application/problem+json`. A refused write returns 409 and names the resource holding it in `detail`.
 - **Pagination.** Every list takes `limit` (default 50, max 200) and an opaque `cursor`, a string to hand back unchanged. The run list is ordered newest first on `(created_at, id)` and its cursor holds both, so a page never repeats or skips a run. A cursor the floor did not return is 400. Lists marked "filter required" return 400 without one. *This is built for runs, records and the events feed. The other lists return everything.*
@@ -34,6 +34,35 @@ GET    /version                          // build sha, schema version, whether t
 ```
 
 `schemaVersion` is the number of the store's migrations. `clusters` lists every cluster seen within `CLUSTER_LIVE_MINUTES` (5). `build` is its cluster agent's own build sha, and `subsystem` is what its `agent-subsystem-versions` ConfigMap says. Either is null for a cluster agent that does not send it, and `subsystem` is null when the agent cannot read that ConfigMap.
+
+## Gateway tokens
+
+```
+GET    /.well-known/jwks.json            // unauthenticated. { keys: [...] }: the signing key's public part, then the retired ones. `Cache-Control: public, max-age=300`
+```
+
+An agent's MCP server may be a service that wants to know which visit is calling. An agent definition says so on the server's entry, `visit_token: { audience, scopes }`, in place of `headers_secret`. The floor then signs one token for each visit and each such server and puts it in the visit's brief, `serverTokens` by the server's name. The service verifies it with the key set above and shares no secret with the floor.
+
+The token is a JWT in compact form, signed with Ed25519. Its header is `{ "alg": "EdDSA", "typ": "JWT", "kid": … }`, where `kid` is the RFC 7638 thumbprint of the key that signed it. Its claims are these and no others:
+
+| claim | value |
+|---|---|
+| `iss` | the floor's address as `FLOOR_BASE_URL` says it |
+| `aud` | the audience the agent definition names for the server |
+| `sub` | the visit's id |
+| `run` | the id of the visit's run |
+| `repo` | the run's repository, `host/owner/name`, in lower case |
+| `scope` | the scopes the agent definition gives the server, joined by single spaces |
+| `iat` | when the floor signed it, in seconds |
+| `exp` | the visit's deadline, in seconds |
+
+The floor signs nothing that would live more than 24 hours, nothing for a run that names no `host/owner/name` repository, and nothing without a key: each refuses the brief with 409, so the visit's pod never starts.
+
+**Keys.** `FLOOR_GATEWAY_SIGNING_KEY` is an Ed25519 private key as PKCS#8 PEM. `FLOOR_GATEWAY_RETIRED_KEYS` is a JSON array of public JWKs (`kty: "OKP"`, `crv: "Ed25519"`, `x`), the keys the floor signed with before. Both are optional. A floor with neither serves an empty key set and starts, and refuses only the visit that asks for a token. The floor does not start with a signing key that is not Ed25519, or a retired entry that is not a public Ed25519 JWK or carries its private member `d`. The key set never holds a private member.
+
+**Rotation.** Set a new signing key, add the old key's public JWK to the retired keys, and restart the api. Tokens the old key signed verify until they expire. Remove a retired key once the longest visit deadline has passed since it stopped signing: 24 hours covers every token the floor can sign.
+
+*The cluster agent does not hand a gateway token to the pod yet: the brief carries it and nothing reads it.*
 
 ## Metrics
 
@@ -154,7 +183,8 @@ GET    /station-runs                     // run required; node, station, open an
 GET    /station-runs/:id                 // the visit + outcome + worker + deadline + openedAt/finishedAt, and `cost`: what its agent counted and
                                          // what that cost, model by model; null for a visit nothing was counted for
 GET    /station-runs/:id/brief           // for the executor: the visit's `runId`, `lineId` and `nodeId`, each need with its kind, path
-                                         // and access, the resolved settings, and a freshly minted visit token. 409 once the visit is done
+                                         // and access, the resolved settings, a freshly minted visit token, and `serverTokens` for the MCP servers
+                                         // that ask for a gateway token. 409 once the visit is done
 POST   /station-runs/:id/git-credential  // { repo: "owner/name" }, visit token -> { username, password } for a repository
                                          // the visit has a git need for, read or write as the need declares. 403 for
                                          // any other repository, 501 on a floor with no provider, 502 when it refuses.

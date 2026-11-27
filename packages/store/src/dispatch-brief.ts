@@ -15,6 +15,8 @@ export type DispatchConversation = { mode: "new"; save: boolean } | { mode: "con
 export interface DispatchBrief {
   visit: Visit;
   lineId: string;
+  /** The run's repository, `host/owner/name`; null for a run that names none. */
+  repo: string | null;
   station: StationBody;
   settings: AgentSettings | null;
   needs: DispatchNeed[];
@@ -92,7 +94,7 @@ export class DispatchBriefs {
     const [bind, bag, conversation] = await Promise.all([this.bindOf(visit, run), this.deps.runs.bagOf(run), this.conversationOf(visit, station.body)]);
     const needs = dispatchNeeds({ station: station.body, bind, bag, frozen: visit.brief.needs, baseUrl });
 
-    return { visit, lineId: run.lineId, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation };
+    return { visit, lineId: run.lineId, repo: run.repo, station: station.body, settings: visit.agentSettings, needs, produces: station.body.produces, conversation };
   }
 
   private async bindOf(visit: Visit, run: Run): Promise<Record<string, string> | undefined> {

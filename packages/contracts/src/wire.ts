@@ -48,10 +48,18 @@ export interface McpServerSettings {
   args?: string[];
   url?: string;
   headersSecret?: string;
+  /** http and sse: the floor signs a gateway token for each visit and the pod presents it to this server, in place of a header kept in a secret. Never beside `headersSecret`. */
+  visitToken?: GatewayTokenSettings;
   /** http and sse: headers whose values the pod reads from the cluster's agent-secrets, by key. */
   headers?: SecretRef[];
   /** stdio: env vars of the server process, valued the same way. */
   env?: SecretRef[];
+}
+
+/** Who a gateway token is for, and what it may do there. Both are the server's own words: the floor signs them and reads neither. */
+export interface GatewayTokenSettings {
+  audience: string;
+  scopes: string[];
 }
 
 export interface SecretRef {
@@ -98,6 +106,8 @@ export interface VisitBrief {
   produces: ProduceSpec[];
   conversation: BriefConversation;
   modelSecretKey?: string;
+  /** One gateway token for each MCP server whose settings carry `visitToken`, by the server's name. Absent when none asks. */
+  serverTokens?: Record<string, string>;
 }
 
 interface ClaimedFields {
