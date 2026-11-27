@@ -11,7 +11,7 @@ export type StartTest = (fields: Omit<TestStartFields, "line">) => Promise<TestS
 export interface TestStartControls {
   preview: PreviewTest;
   start: StartTest;
-  listFolder: (path: string) => Promise<FolderListing>;
+  listFolder: (path?: string) => Promise<FolderListing>;
 }
 
 export function useTestPreview(controls: TestStartControls | undefined, entered: TestPreviewFields["entered"]) {

@@ -22,7 +22,7 @@ export default function WorkspaceField({ controls, workspace, onChange }: Props)
       <LabelledTextField label="Workspace folder" value={workspace} onChange={onChange} />
       <button type="button" onClick={() => setBrowsing(true)}>Browse</button>
       {browsing && controls && (
-        <PathPicker startDir={workspace || "/"} list={(path) => controls.listFolder(path)} onChoose={choose} onClose={() => setBrowsing(false)} />
+        <PathPicker startDir={workspace || undefined} list={(path) => controls.listFolder(path)} onChoose={choose} onClose={() => setBrowsing(false)} />
       )}
     </>
   );

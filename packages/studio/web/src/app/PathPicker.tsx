@@ -4,8 +4,8 @@ import styles from "./path-picker.module.css";
 import type { FolderListing } from "@/socket/studio-connection";
 
 interface Props {
-  startDir: string;
-  list: (path: string) => Promise<FolderListing>;
+  startDir?: string;
+  list: (path?: string) => Promise<FolderListing>;
   onChoose: (path: string) => void;
   onClose: () => void;
 }
@@ -32,7 +32,7 @@ export default function PathPicker({ startDir, list, onChoose, onClose }: Props)
 function useFolderListing(list: Props["list"]) {
   const [listing, setListing] = useState<FolderListing>();
   const [refusal, setRefusal] = useState<string>();
-  const browse = (path: string) =>
+  const browse = (path?: string) =>
     void list(path).then(
       (listed) => {
         setRefusal(undefined);

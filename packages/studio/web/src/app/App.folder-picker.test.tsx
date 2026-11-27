@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -8,6 +8,7 @@ import { closeStudios } from "./app-page.fixtures";
 import { openStartScreen, withScratchFolder } from "./test-run-page.fixtures";
 
 afterEach(closeStudios);
+afterEach(() => vi.unstubAllEnvs());
 
 describe("App test locally Choose a folder dialog", () => {
   it("puts <scratch>/runs in the Workspace folder box when runs is picked from the listing of <scratch>, which holds alpha and runs", async () => {
@@ -96,12 +97,20 @@ describe("App test locally Choose a folder dialog", () => {
     });
   });
 
-  it("puts / in the Workspace folder box when Browse is clicked with the box empty and the listing is used", async () => {
-    await openStartScreen();
+  it("puts <scratch> in the Workspace folder box and lists projects when Browse is clicked with the box empty and HOME is <scratch>", async () => {
+    await withScratchFolder(async (scratch) => {
+      mkdirSync(join(scratch, "projects"));
+      vi.stubEnv("HOME", scratch);
+      await openStartScreen();
+      const box = (await screen.findByRole("textbox", { name: "Workspace folder" })) as HTMLInputElement;
 
-    await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Use this folder" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+      const listing = await screen.findByRole("region", { name: "Folders" });
+      await within(listing).findByRole("button", { name: "projects" });
+      const folders = within(listing).getAllByRole("button").map((button) => button.textContent);
+      await userEvent.click(await screen.findByRole("button", { name: "Use this folder" }));
 
-    expect(((await screen.findByRole("textbox", { name: "Workspace folder" })) as HTMLInputElement).value).toBe("/");
+      expect({ folders, chosen: box.value }).toEqual({ folders: ["projects"], chosen: scratch });
+    });
   });
 });
