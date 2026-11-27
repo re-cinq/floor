@@ -1,4 +1,5 @@
 // Process configuration, read once at startup from the environment.
+import { loadGatewayKeys, type GatewayKeys } from "./gateway-keys.js";
 
 export interface Config {
   port: number;
@@ -14,6 +15,8 @@ export interface Config {
   gitCredentialUrl?: string;
   /** What the floor presents to that provider; never the service token, which opens the whole floor. */
   gitCredentialToken?: string;
+  /** The key a gateway token is signed with and the public keys the floor publishes (FLOOR_GATEWAY_SIGNING_KEY, FLOOR_GATEWAY_RETIRED_KEYS). Both absent: no gateway token is signed, and a visit whose agent definition asks for one is refused. */
+  gatewayKeys: GatewayKeys;
   /** Absent: the live channel's own limits (live/live-socket.ts). */
   live?: Partial<LiveLimits>;
 }
@@ -48,6 +51,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     reapMs: numberOf(env.FLOOR_REAP_MS, DEFAULT_REAP_MS),
     gitCredentialUrl,
     gitCredentialToken: gitCredentialUrl ? enforceEnv(env, "FLOOR_GIT_CREDENTIAL_TOKEN") : undefined,
+    gatewayKeys: loadGatewayKeys(env),
   };
 }
 
