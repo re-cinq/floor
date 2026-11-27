@@ -13,10 +13,11 @@ export interface SidebarProps {
   connection: ConnectionState;
   selectedLineId: string | undefined;
   hrefOf: (lineId: string) => string;
+  inProgress: Record<string, number>;
   scheme: { pref: SchemePref; onChoose: (pref: SchemePref) => void };
 }
 
-export default function Sidebar({ collection, connection, selectedLineId, hrefOf, scheme }: SidebarProps) {
+export default function Sidebar({ collection, connection, selectedLineId, hrefOf, inProgress, scheme }: SidebarProps) {
   return (
     <aside className={styles.sidebar} aria-label="Collection">
       <div className={styles.brand}>
@@ -26,7 +27,7 @@ export default function Sidebar({ collection, connection, selectedLineId, hrefOf
       {collection && (
         <>
           {collection.folder && <p className={styles.folder}>{collection.folder}</p>}
-          <LineList lines={collection.lines} selectedLineId={selectedLineId} hrefOf={hrefOf} />
+          <LineList lines={collection.lines} selectedLineId={selectedLineId} hrefOf={hrefOf} inProgress={inProgress} />
           <EnvironmentList entries={collection.environment ?? []} />
           <RefusedFiles files={collection.refused} />
         </>

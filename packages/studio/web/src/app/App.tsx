@@ -18,6 +18,7 @@ import type { TestStartControls } from "./use-test-start";
 import type { TestRunControls } from "./use-test-run";
 import Sidebar from "./Sidebar";
 import { useSelection } from "./use-selection";
+import { inProgressCounts } from "./in-progress-counts";
 import { useTestRuns } from "./use-test-runs";
 import shell from "./shell.module.css";
 
@@ -31,7 +32,8 @@ export default function App() {
   const resolved = resolveSelection(snapshot.collection, selection);
   const lineId = resolved.line?.id;
   const test = useTestControls(connection, lineId, select);
-  const testRuns = useTestRuns(connection, lineId);
+  const allTestRuns = useTestRuns(connection);
+  const testRuns = allTestRuns.filter((listing) => listing.line === lineId);
   const nodeRuns = useNodeRuns(connection, { selection, select, resolved });
   const scheme = useColorScheme();
 
@@ -41,6 +43,7 @@ export default function App() {
         collection={snapshot.collection}
         connection={snapshot.connection}
         selectedLineId={lineId}
+        inProgress={inProgressCounts(allTestRuns)}
         hrefOf={(next) => withSelection(window.location.hash, { line: next })}
         scheme={{ pref: scheme.pref, onChoose: scheme.choose }}
       />

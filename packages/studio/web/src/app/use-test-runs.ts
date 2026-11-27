@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { StudioConnection, TestRunListings } from "@/socket/studio-connection";
 
-/** The test runs of the selected line, read when the line opens and again whenever one of its runs changes. */
-export function useTestRuns(connection: StudioConnection | undefined, line: string | undefined): TestRunListings {
+/** Every test run, read on connect and again whenever any run changes. */
+export function useTestRuns(connection: StudioConnection | undefined): TestRunListings {
   const [listings, setListings] = useState<TestRunListings>([]);
 
   useEffect(() => {
@@ -13,15 +13,17 @@ export function useTestRuns(connection: StudioConnection | undefined, line: stri
       connection?.listTests().then((all) => request === latest && setListings(all), () => undefined);
     };
 
-    const unfollow = connection?.onTestChanged((frame) => frame.state.lineId === line && refresh());
+    const unfollow = connection?.onTestChanged(refresh);
+    const unwatch = connection?.onOpened(refresh);
 
     refresh();
 
     return () => {
       latest = -1;
       unfollow?.();
+      unwatch?.();
     };
-  }, [connection, line]);
+  }, [connection]);
 
-  return listings.filter((listing) => listing.line === line);
+  return listings;
 }

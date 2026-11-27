@@ -6,9 +6,11 @@ export interface LineListProps {
   selectedLineId: string | undefined;
   /** The address that selects a line, `socket` and `token` kept. */
   hrefOf: (lineId: string) => string;
+  /** Test runs still going, per line. */
+  inProgress: Record<string, number>;
 }
 
-export default function LineList({ lines, selectedLineId, hrefOf }: LineListProps) {
+export default function LineList({ lines, selectedLineId, hrefOf, inProgress }: LineListProps) {
   return (
     <nav aria-label="Assembly lines" className={styles.section}>
       <h2 className={styles.sectionTitle}>assembly lines</h2>
@@ -21,6 +23,11 @@ export default function LineList({ lines, selectedLineId, hrefOf }: LineListProp
               {line.problems.length > 0 && (
                 <span className={`count-pill ${styles.problemCount}`} aria-label={`${line.problems.length} problems`}>
                   {line.problems.length}
+                </span>
+              )}
+              {inProgress[line.id] > 0 && (
+                <span className={`count-pill ${styles.testRunCount}`} aria-label={`${inProgress[line.id]} test run${inProgress[line.id] === 1 ? "" : "s"} in progress`}>
+                  {inProgress[line.id]}
                 </span>
               )}
             </a>
