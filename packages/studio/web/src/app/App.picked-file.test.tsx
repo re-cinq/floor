@@ -171,4 +171,25 @@ describe("App test locally with a picked file", () => {
       );
     });
   });
+
+  it("offers no Use this file when notes.md was picked in home and the drafts subfolder is opened", async () => {
+    await withScratchFolder(async (home) => {
+      writeFileSync(join(home, "notes.md"), "Marked up on disk.");
+      mkdirSync(join(home, "drafts"));
+      writeFileSync(join(home, "drafts", "outline.md"), "Outline.");
+      vi.stubEnv("HOME", home);
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          const dialog = await openChooseAFile(workspace);
+          await userEvent.click(await within(dialog).findByRole("button", { name: "notes.md" }));
+          await userEvent.click(within(dialog).getByRole("button", { name: "drafts" }));
+          await within(dialog).findByRole("button", { name: "outline.md" });
+
+          expect({ useThisFile: within(dialog).queryByRole("button", { name: "Use this file" }) }).toEqual({ useThisFile: null });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    });
+  });
 });

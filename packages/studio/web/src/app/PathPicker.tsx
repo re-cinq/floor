@@ -21,7 +21,7 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
   const [file, setFile] = useState<string>();
   const [maskIndex, setMaskIndex] = useState(0);
   const { listing, refusal, browse } = useFolderListing(list);
-  const shownFile = fileUnderMask(file, [...masks, ALL_FILES][maskIndex]!);
+  const shownFile = offeredFile(file, listing, [...masks, ALL_FILES][maskIndex]!);
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -38,8 +38,10 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
   );
 }
 
-function fileUnderMask(file: string | undefined, mask: FileMask): string | undefined {
-  return file && matchesMask(file, mask.patterns) ? file : undefined;
+function offeredFile(file: string | undefined, listing: FolderListing | undefined, mask: FileMask): string | undefined {
+  const isShown = file && listing?.files.includes(file) && matchesMask(file, mask.patterns);
+
+  return isShown ? file : undefined;
 }
 
 function useFolderListing(list: Props["list"]) {
