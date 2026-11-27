@@ -56,6 +56,10 @@ The token is a JWT in compact form, signed with Ed25519. Its header is `{ "alg":
 | `iat` | when the floor signed it, in seconds |
 | `exp` | the visit's deadline, in seconds |
 
+**Delivery.** The cluster agent writes each token into `agent-secrets`, the Secret that holds the visit's own token, as `Bearer <token>` under the key `visit-<visitId>-gateway-token.<server name>`, and names that key as the server's `headers_secret` in the visit's recipe. The pod sends it as the server's `Authorization` header, so the pod image needs no change. The token is in no other place: not in the `Agent`, not in a parameter. A server that asks for a token the brief does not carry fails the dispatch before anything is written, naming the server, and so do two servers whose names give one key. The keys go when the visit's abort is claimed.
+
+**Lifetime.** A token is not renewed. Its `exp` is the visit's deadline, and the floor ends a visit at its deadline. A node that runs again is a new visit, with its own id, its own brief and so its own token, which names that visit as `sub`. A dispatch delivered twice for one visit is briefed twice, and the second brief's tokens replace the first's in the Secret.
+
 The floor signs nothing that would live more than 24 hours, nothing for a run that names no `host/owner/name` repository, and nothing without a key: each refuses the brief with 409, so the visit's pod never starts.
 
 **Keys.** `FLOOR_GATEWAY_SIGNING_KEY` is an Ed25519 private key as PKCS#8 PEM. `FLOOR_GATEWAY_RETIRED_KEYS` is a JSON array of public JWKs (`kty: "OKP"`, `crv: "Ed25519"`, `x`), the keys the floor signed with before. Both are optional. A floor with neither serves an empty key set and starts, and refuses only the visit that asks for a token. The floor does not start with a signing key that is not Ed25519, or a retired entry that is not a public Ed25519 JWK or carries its private member `d`. The key set never holds a private member.

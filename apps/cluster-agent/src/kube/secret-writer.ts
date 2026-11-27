@@ -1,4 +1,4 @@
-// Adds or removes one key in a Kubernetes Secret without disturbing its other keys; ported from lore's KubeSecretKeyWriter. See ../../README.md.
+// Adds or removes one key in a Kubernetes Secret, or replaces the keys under one prefix, without disturbing its other keys; ported from lore's KubeSecretKeyWriter. See ../../README.md.
 
 import { isConflict } from "../lib/k8s-errors.js";
 import { agentsNamespace, coreApi } from "./clients.js";
@@ -8,6 +8,8 @@ const MAX_CONFLICT_RETRIES = 4;
 export interface SecretKeyWriter {
   setKey(secret: string, key: string, value: string): Promise<void>;
   deleteKey(secret: string, key: string): Promise<void>;
+  /** In one write: removes every key that starts with `prefix`, then sets `entries`. With no entries it only removes. */
+  replaceKeys(secret: string, prefix: string, entries: Record<string, string>): Promise<void>;
 }
 
 /** The two Secret calls the writer makes; `metadata` carries `resourceVersion`, which is how the apiserver decides the optimistic-concurrency race. */
@@ -47,6 +49,13 @@ export class KubeSecretKeyWriter implements SecretKeyWriter {
   deleteKey(secret: string, key: string): Promise<void> {
     return this.mutate(secret, (entries) => {
       delete entries[key];
+    });
+  }
+
+  replaceKeys(secret: string, prefix: string, entries: Record<string, string>): Promise<void> {
+    return this.mutate(secret, (held) => {
+      for (const key of Object.keys(held).filter((name) => name.startsWith(prefix))) delete held[key];
+      for (const [key, value] of Object.entries(entries)) held[key] = Buffer.from(value, "utf8").toString("base64");
     });
   }
 

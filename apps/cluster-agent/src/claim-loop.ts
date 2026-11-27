@@ -9,6 +9,7 @@ import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js
 import { modelSecretKeyFor, type KeyByFamily } from "./domain/model-secret.js";
 import { describeClaimTick, dueForLivenessLog } from "./domain/liveness.js";
 import { heldBody, pushedRecipes } from "./domain/pushed-recipe.js";
+import { gatewayTokenKeyPrefix, gatewayTokenKeys } from "./domain/gateway-token-keys.js";
 
 export interface ClaimLoopDeps {
   floor: FloorClient;
@@ -233,13 +234,17 @@ async function dispatch(
 
   if (!brief.settings) throw new Error(`station run "${visitId}" dispatched an agent with no settings, so there is no image to run`);
   const settings = brief.settings;
+  // Before anything is written: a server that asks for a gateway token the brief does not carry fails the dispatch here, with no secret key and no pod.
+  const gatewayTokens = gatewayTokenKeys({ visitId, servers: settings.mcpServers, serverTokens: brief.serverTokens });
 
   await deps.secrets.setKey(secretName, tokenSecretKey(visitId), authorizationHeader(brief.token));
+  await writeGatewayTokens(deps, secretName, { visitId, entries: gatewayTokens.entries });
   const triple = buildAgentTriple({
     ...brief,
     visitId,
     tokenSecretKey: tokenSecretKey(visitId),
     visitToken: brief.token,
+    gatewayTokenKeys: gatewayTokens.keyOf,
     modelSecretKey: brief.modelSecretKey ?? modelSecretKeyFor(settings.model, deps.modelSecretKeys),
     secretName,
     settings,
@@ -248,6 +253,13 @@ async function dispatch(
   await deps.resources.apply(triple);
 
   return { kind: "dispatched", visitId };
+}
+
+// Replaced whole, so a dispatch delivered again holds the tokens of its newest brief and none of an earlier one. A visit no server of which asks costs the Secret no write.
+async function writeGatewayTokens(deps: ClaimLoopDeps, secretName: string, tokens: { visitId: string; entries: Record<string, string> }): Promise<void> {
+  if (Object.keys(tokens.entries).length === 0) return;
+
+  await deps.secrets.replaceKeys(secretName, gatewayTokenKeyPrefix(tokens.visitId), tokens.entries);
 }
 
 async function abort(
@@ -259,6 +271,7 @@ async function abort(
 
   await deps.resources.delete(`floor-${visitId}`);
   await secrets.deleteKey(secretName, tokenSecretKey(visitId)).catch(() => undefined);
+  await secrets.replaceKeys(secretName, gatewayTokenKeyPrefix(visitId), {}).catch(() => undefined);
 
   return { kind: "aborted", visitId };
 }

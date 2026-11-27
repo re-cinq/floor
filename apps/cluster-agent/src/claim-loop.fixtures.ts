@@ -66,6 +66,7 @@ export function fakeSecrets(overrides: Partial<SecretKeyWriter> = {}): SecretKey
   return {
     setKey: vi.fn(() => Promise.resolve()),
     deleteKey: vi.fn(() => Promise.resolve()),
+    replaceKeys: vi.fn(() => Promise.resolve()),
     ...overrides,
   };
 }

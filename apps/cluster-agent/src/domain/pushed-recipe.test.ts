@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentDefinitionBody, AgentRecipes } from "@re-cinq/floor-contracts";
-import { buildRecipe } from "./agent-triple.js";
+import { buildRecipe, type Recipe } from "./agent-triple.js";
 import { modelSecretKeyFor } from "./model-secret.js";
 import { BODY_ANNOTATION, DEFINITION_LABEL, HASH_ANNOTATION, VARIANT_ANNOTATION, heldBody, pushedRecipes, type HeldRecipe } from "./pushed-recipe.js";
 
@@ -38,6 +38,15 @@ describe("pushedRecipes", () => {
     const names = pushedRecipes(RECIPES, {}).map((recipe) => recipe.name);
 
     expect(names).toEqual(RECIPES.recipes.map((recipe) => buildRecipe({ settings: recipe.settings, floorBaseUrl: "http://floor", modelSecretKey: modelSecretKeyFor(recipe.settings.model) }).name));
+  });
+
+  it("names, for a server that asks for a gateway token, a key no visit writes, so a pod of the pushed recipe never calls it with no token", () => {
+    const search = { name: "search", transport: "http" as const, url: "http://search.test/mcp", visitToken: { audience: "search", scopes: ["context:read"] } };
+    const settings = { ...BODY.settings, mcpServers: [search] };
+    const [{ agentDefinition }] = pushedRecipes({ ...RECIPES, recipes: [{ variant: null, settings }] }, {}) as [Recipe];
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.mcp_servers).toEqual([{ name: "search", transport: "http", url: "http://search.test/mcp", headers_secret: "no-visit-gateway-token.search" }]);
   });
 
   it("labels the otto variant's AgentDefinition with reviewer and annotates its version, variant and body", () => {
