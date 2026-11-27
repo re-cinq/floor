@@ -6,7 +6,7 @@ import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { WRITES_DRAFT } from "../../../src/backend/test-run-session.fixtures";
 import { closeStudios } from "./app-page.fixtures";
-import { findWaitingReview, openedFolders, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
+import { alertGone, findWaitingReview, openedFolders, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
 
 afterEach(closeStudios);
 
@@ -37,7 +37,9 @@ describe("App test locally refusals", () => {
 
       await userEvent.click(await screen.findByRole("button", { name: "Open run folder" }));
 
-      expect({ alert: screen.queryByRole("alert"), opened: await openedFolders(opened) }).toEqual({ alert: null, opened: [runFolder] });
+      const folders = await openedFolders(opened);
+
+      expect({ alert: await alertGone(), opened: folders }).toEqual({ alert: null, opened: [runFolder] });
     });
   });
 });

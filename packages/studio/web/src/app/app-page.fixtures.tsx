@@ -13,7 +13,7 @@ export async function closeStudios(): Promise<void> {
   window.location.hash = "";
 }
 
-interface OpenedPage {
+export interface OpenedPage {
   dir: string;
   studio: Studio;
 }
