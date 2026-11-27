@@ -125,7 +125,7 @@ The tab has a field for each need:
 
 Folder is where the run happens. Permission is `acceptEdits` or `bypass`, as in the pod.
 
-Preview shows the rendered prompt, the command and the blockers. A blocker is a required need with no value, a source path that does not exist, a model the studio cannot run, or a need or produce whose declared `path` would land outside the picked folder (`../outside/plan.md`; a name that only begins with two dots, such as `..notes/plan.md`, stays inside and is allowed). A run with blockers is refused before the folder is created, and nothing is saved.
+Preview shows the rendered prompt, the command and the blockers. A blocker is a required need with no value, a source path that does not exist, a model the studio cannot run, a picked folder that is not an absolute path, or a need or produce whose declared `path` would land outside the picked folder (`../outside/plan.md`; a name that only begins with two dots, such as `..notes/plan.md`, stays inside and is allowed). A run with blockers is refused before the folder is created, and nothing is saved.
 
 Run starts it and Cancel stops it. The transcript streams in as what the agent said, each tool it called (`› Read tests.json`), each refusal in red, and the run's turns, time and cost. Raw shows the lines as `claude` printed them.
 

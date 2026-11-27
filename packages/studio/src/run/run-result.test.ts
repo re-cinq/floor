@@ -43,4 +43,14 @@ describe("runResult", () => {
 
     expect((await endingOfWork(result, station)).producedValues).toEqual({ summary: "three fixes" });
   });
+
+  it("ends with only outcome success, no produced files and the edge to done, leaving error and producedValues out, when the agent states no values", async () => {
+    const station = { ...agentStation, outcomes: ["success", "failed"], needs: [], produces: [{ name: "summary", kind: "value" as const }] };
+
+    await expect(endingOfWork("Fixed.\nLORE_NODE_RESULT: success", station)).resolves.toEqual({
+      outcome: "success",
+      produced: [],
+      edge: { from: "work", to: "done", on: "success" },
+    });
+  });
 });
