@@ -45,6 +45,10 @@ export function runPreview({ station, prompt, settings, fixture, folder, permiss
   return { prompt: rendered, command, copies, links, env: agentEnvOf(settings), blockers: [...missing.map((name) => `"${name}" has no value`), ...outsideFolderBlockers(station, folder), ...unrunnable, ...relativeFolderBlockers(folder)] };
 }
 
+export function blockerReasonOf({ blockers }: RunPreview): string {
+  return blockers.join("; ");
+}
+
 function agentEnvOf({ config }: StationSettings): Record<string, string> {
   return config?.env ?? {};
 }

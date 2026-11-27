@@ -4,6 +4,7 @@ import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { StationBody } from "@re-cinq/floor-contracts";
 import { enforce } from "@re-cinq/floor-assembly-lines";
+import { enforceAbsolute } from "./test-run-folder.js";
 import { leavesFolder } from "../run/run-preview.js";
 import type { SuppliedFile } from "../test-run/stand-in-report.js";
 
@@ -13,15 +14,15 @@ export function enforcePickedFilesOnDisk(files: Readonly<Record<string, Supplied
 
     const { picked } = file;
 
+    enforceAbsolute(picked, `${name}: the picked file`);
     enforce(statSync(picked, { throwIfNoEntry: false })?.isFile() === true, `${name}: the picked file ${picked} is not on disk`);
   }
 }
 
 export function suppliedTargets(station: StationBody, files: Readonly<Record<string, SuppliedFile>>, outputsFolder: string): Record<string, string> {
+  const { produces } = station;
   const targets = Object.keys(files).map((name) => {
-    const declared = station.produces.find((output) => output.name === name);
-
-    const path = declared?.path as string;
+    const path = produces.find((output) => output.name === name)?.path ?? name;
 
     enforce(!leavesFolder(outputsFolder, path), `"${name}": ${path} leaves the visit's outputs folder`);
 

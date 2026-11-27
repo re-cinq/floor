@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { enforce } from "@re-cinq/floor-assembly-lines";
 import { prepareWorkspace } from "../run/prepare-workspace.js";
+import { blockerReasonOf } from "../run/run-preview.js";
 import { runProcess } from "../run/run-process.js";
 import { appendLine, endRecord, type RunEnding, type RunRecord } from "../run/run-records.js";
 import { runResult } from "../run/run-result.js";
@@ -20,7 +21,7 @@ interface AgentRunTarget {
 }
 
 export async function startAgentRun(context: StudioContext, { preview, station, line }: PreviewedNode, { node, folder }: AgentRunTarget): Promise<AgentRun> {
-  enforce(preview.blockers.length === 0, preview.blockers.join("; "));
+  enforce(preview.blockers.length === 0, blockerReasonOf(preview));
   await mkdir(folder, { recursive: true });
   await prepareWorkspace(preview);
   const run = randomUUID();

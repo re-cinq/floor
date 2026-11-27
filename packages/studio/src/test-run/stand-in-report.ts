@@ -35,10 +35,14 @@ function enforceStationHasOutcome(node: LineNode, station: StationBody, outcome:
 function enforceRequiredFieldsEntered(line: TestLine, nodeId: string, answer: StandInAnswer): void {
   for (const field of outcomeFieldsOf(line, nodeId, answer.outcome)) {
     enforce(
-      !field.required || enteredValue(answer.produced, field.name) !== undefined,
+      !field.required || isEntered(answer, field.name),
       `${field.name} is required when ${nodeId} reports ${answer.outcome}`,
     );
   }
+}
+
+function isEntered(answer: StandInAnswer, name: string): boolean {
+  return enteredValue(answer.produced, name) !== undefined || Object.hasOwn(answer.files ?? {}, name);
 }
 
 function enforceSuppliedFilesAreDeclared(node: LineNode, station: StationBody, answer: StandInAnswer): void {
