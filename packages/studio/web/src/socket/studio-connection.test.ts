@@ -183,18 +183,22 @@ describe("StudioConnection against the real backend", () => {
 });
 
 describe("StudioConnection against a server that speaks the protocol by hand", () => {
-  it("reconnects after a drop, reads the collection again and tells an onOpened listener once", async () => {
+  it("reconnects after a drop, reads the collection again and tells a kept onOpened listener once and an unsubscribed one never", async () => {
     const view = collectionView(WORKER_COLLECTION, []);
     const served = await protocolServer(replyingToReads(() => ({ type: "result", result: view })));
     const connection = await connectedThenDropped(served);
-    let opened = 0;
+    let kept = 0;
+    let removed = 0;
 
-    connection.onOpened(() => (opened += 1));
+    connection.onOpened(() => (kept += 1));
+    const unsubscribe = connection.onOpened(() => (removed += 1));
+
+    unsubscribe();
     await reaches(connection, ({ connection: state }) => state.status === "closed");
     await reaches(connection, ({ connection: state }) => state.status === "open");
     await reaches(connection, () => served.reads() === 2);
 
-    expect({ reads: served.reads(), opened }).toEqual({ reads: 2, opened: 1 });
+    expect({ reads: served.reads(), kept, removed }).toEqual({ reads: 2, kept: 1, removed: 0 });
   });
 
   it("keeps the collection flow, reaches no run listener and stays open when a test.changed frame comes before each answer", async () => {
