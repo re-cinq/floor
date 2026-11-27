@@ -10,12 +10,17 @@ sidebar:
 
 A line folder may sit in a [group folder](/floor/specs/collection/#1-layout). The page follows `groups` in `floor-collection.yaml`, draws the lines the collection reads and lists every refused file with its reason.
 
-It is not on npm yet. Run it from a floor checkout:
+## How do I open my collection in Studio?
 
+From the collection folder, run:
+
+```sh
+npx @re-cinq/floor-studio .
 ```
-npm install && npm run build
-node packages/studio/dist/cli.js path/to/collection
-```
+
+The dot means the current directory. From another directory, replace it with the path to your collection folder. Choose the folder containing your assembly lines.
+
+Studio opens your collection in the browser. If the browser stays closed, open the full URL printed in the terminal. Keep the command running while you use Studio, then press Ctrl+C to stop it.
 
 ## Options
 
