@@ -34,6 +34,10 @@ async function dispatchScenario(brief: VisitBrief): Promise<DispatchScenario> {
   return { floor, secrets, resources, applied };
 }
 
+function callsOf(spied: unknown): unknown[][] {
+  return (spied as { mock: { calls: unknown[][] } }).mock.calls;
+}
+
 const writeGitNeed = {
   name: "workspace", kind: "git" as const, path: "repo", repoUrl: "https://github.com/a/b.git", ref: "main", access: "write" as const,
 };
@@ -69,6 +73,56 @@ describe("runClaimLoop: dispatch", () => {
     const scenario = await dispatchScenario({ ...dispatchBrief, needs: [writeGitNeed] });
 
     expect(scenario.secrets.setKey).toHaveBeenCalledTimes(1);
+  });
+
+  const search = { name: "search", transport: "http" as const, url: "http://search.test/mcp", visitToken: { audience: "search", scopes: ["context:read"] } };
+  const lore = { ...search, name: "lore", url: "http://lore.test/mcp" };
+
+  function asking(servers: (typeof search)[], serverTokens?: Record<string, string>): VisitBrief {
+    return { ...dispatchBrief, settings: { prompt: "hi", image: "img:1", mcpServers: servers }, serverTokens };
+  }
+
+  it("writes each server's gateway token under its own key as a bearer value, in place of whatever those keys held, beside the visit token", async () => {
+    const scenario = await dispatchScenario(asking([search, lore], { search: "jwt-search", lore: "jwt-lore" }));
+
+    expect({ visitToken: callsOf(scenario.secrets.setKey), gatewayTokens: callsOf(scenario.secrets.replaceKeys) }).toEqual({
+      visitToken: [["agent-secrets", "visit-v1-token", "Authorization: Bearer visit-token-abc"]],
+      gatewayTokens: [["agent-secrets", "visit-v1-gateway-token.", { "visit-v1-gateway-token.search": "Bearer jwt-search", "visit-v1-gateway-token.lore": "Bearer jwt-lore" }]],
+    });
+  });
+
+  it("writes nothing beside the visit token for a brief with no server tokens", async () => {
+    const scenario = await dispatchScenario(dispatchBrief);
+
+    expect({ set: callsOf(scenario.secrets.setKey).length, replaced: callsOf(scenario.secrets.replaceKeys) }).toEqual({ set: 1, replaced: [] });
+  });
+
+  it("opens the server with the key its gateway token was written under", async () => {
+    const scenario = await dispatchScenario(asking([search], { search: "jwt-search" }));
+
+    expect(scenario.applied).toMatchObject([{ agentDefinition: { spec: { resources: { mcp_servers: [{ name: "search", headers_secret: "visit-v1-gateway-token.search" }] } } } }]);
+  });
+
+  it("fails the dispatch of a server that asks for a token the brief does not carry, naming the server", async () => {
+    const scenario = await dispatchScenario(asking([search]));
+
+    expect(scenario.floor.fail).toHaveBeenCalledWith("e1", 'MCP server "search" asks for a gateway token, and the brief of station run "v1" carries none for it, so no pod is started');
+  });
+
+  it("creates nothing in the cluster and writes no secret key for it", async () => {
+    const scenario = await dispatchScenario(asking([search]));
+
+    expect({ applied: scenario.applied, set: callsOf(scenario.secrets.setKey), replaced: callsOf(scenario.secrets.replaceKeys), acked: callsOf(scenario.floor.ack) }).toEqual({ applied: [], set: [], replaced: [], acked: [] });
+  });
+
+  it("fails the dispatch of two servers whose tokens would share a key, and creates nothing", async () => {
+    const scenario = await dispatchScenario(asking([{ ...search, name: "my search" }, { ...search, name: "my_search" }], { "my search": "jwt-1", my_search: "jwt-2" }));
+
+    expect({ failed: callsOf(scenario.floor.fail), applied: scenario.applied, replaced: callsOf(scenario.secrets.replaceKeys) }).toEqual({
+      failed: [["e1", 'MCP servers "my search" and "my_search" both ask for a gateway token, and their names are too alike to keep the two tokens apart: rename one']],
+      applied: [],
+      replaced: [],
+    });
   });
 
   async function dispatchThrowsScenario(): Promise<FakeFloor> {
@@ -150,6 +204,12 @@ describe("runClaimLoop: abort", () => {
     const scenario = await abortScenario();
 
     expect(scenario.secrets.deleteKey).toHaveBeenCalledWith("agent-secrets", tokenSecretKey("v1"));
+  });
+
+  it("deletes every gateway token key of the visit", async () => {
+    const scenario = await abortScenario();
+
+    expect(scenario.secrets.replaceKeys).toHaveBeenCalledWith("agent-secrets", "visit-v1-gateway-token.", {});
   });
 
   it("acks the claimed event", async () => {

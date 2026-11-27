@@ -297,6 +297,7 @@ The floor names a model, and the cluster agent owns the secret for it, in its ow
 **What the subsystem requires, learned by running it.**
 
 - A header secret holds a header, `Authorization: Bearer <token>`, not a token. A value with no colon is dropped without a word.
+- An MCP server's `headers_secret` is read another way: its whole value is sent as the value of the `Authorization` header. So a gateway token's key holds `Bearer <token>`.
 - The agent is started with a settings file fetched from `skills_source`. With none the agent dies at once, so the floor serves one.
 - The conversation is saved under an id the agent takes as its session id, which must be a uuid. So it is the visit's id, and `sessionRef` on the report stays what it was, the hash of the archive.
 - A pod has nobody to answer a permission prompt, so without `bypass` every tool is refused.

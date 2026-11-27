@@ -52,6 +52,18 @@ if helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" | grep -qF F
   fail "FLOOR_GIT_CREDENTIAL_TOKEN is set though no provider was given"
 fi
 
+say "the api reads its gateway keys from the Secret it was given, and never from a value"
+gateway_render="$(helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" --set api.gatewayKeysSecret.name=floor-gateway-keys)"
+grep -A4 'name: FLOOR_GATEWAY_SIGNING_KEY' <<<"${gateway_render}" | grep -qF 'key: gatewaySigningKey' \
+  || fail "FLOOR_GATEWAY_SIGNING_KEY is not read from the gateway keys Secret"
+grep -A5 'name: FLOOR_GATEWAY_RETIRED_KEYS' <<<"${gateway_render}" | grep -qF 'optional: true' \
+  || fail "FLOOR_GATEWAY_RETIRED_KEYS is not an optional key of the gateway keys Secret"
+
+say "the api carries no gateway keys by default"
+if helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" | grep -qF FLOOR_GATEWAY_; then
+  fail "a gateway key variable is set though no Secret was given"
+fi
+
 assert_refusal() {
   local name="$1"
   local expected="$2"

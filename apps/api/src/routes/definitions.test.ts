@@ -298,6 +298,39 @@ describe("POST /agent-definitions", () => {
     expect(response.result.errors).toEqual(["settings.config.mcp_servers.0: a stdio server needs a command, any other a url"]);
   });
 
+  const GATEWAY_TOKEN = { audience: "search", scopes: ["context:read", "memory:write"] };
+
+  it.each(["http", "sse"])("takes an %s MCP server the floor signs a gateway token for", async (transport) => {
+    const response = await putWithConfig({ mcp_servers: [{ name: "search", transport, url: "http://search.test/mcp", visit_token: GATEWAY_TOKEN }] });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("refuses an MCP server with both a gateway token and a header secret", async () => {
+    const response = await putWithConfig({ mcp_servers: [{ name: "search", transport: "http", url: "http://search.test/mcp", visit_token: GATEWAY_TOKEN, headers_secret: "search-auth" }] });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({ statusCode: 400, errors: ["settings.config.mcp_servers.0: visit_token and headers_secret each set the server's authorization: give one"] });
+  });
+
+  it("refuses a gateway token for an MCP server the pod starts as a process", async () => {
+    const response = await putWithConfig({ mcp_servers: [{ name: "files", transport: "stdio", command: "npx", visit_token: GATEWAY_TOKEN }] });
+
+    expect({ statusCode: response.statusCode, errors: response.result.errors }).toEqual({ statusCode: 400, errors: ["settings.config.mcp_servers.0: visit_token is for an http or sse server"] });
+  });
+
+  it.each([
+    ["an empty audience", { audience: "", scopes: ["context:read"] }, "visit_token.audience"],
+    ["no audience", { scopes: ["context:read"] }, "visit_token.audience"],
+    ["a scope with a space in it", { audience: "search", scopes: ["context:read memory:write"] }, "visit_token.scopes.0"],
+    ["an empty scope", { audience: "search", scopes: [""] }, "visit_token.scopes.0"],
+    ["no scopes", { audience: "search" }, "visit_token.scopes"],
+    ["a key it does not know", { ...GATEWAY_TOKEN, subject: "someone" }, "visit_token"],
+  ])("refuses a gateway token with %s, naming it", async (described, token, where) => {
+    const response = await putWithConfig({ mcp_servers: [{ name: "search", transport: "http", url: "http://search.test/mcp", visit_token: token }] });
+
+    expect(response).toMatchObject({ statusCode: 400, result: { errors: [expect.stringContaining(`settings.config.mcp_servers.0.${where}`)] } });
+  });
+
   it("refuses a permission mode the subsystem does not have", async () => {
     const response = await putWithConfig({ permission_mode: "yolo" });
 

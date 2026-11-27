@@ -1,7 +1,7 @@
 export const TRANSPORT_FIELDS: Record<string, string[]> = {
   stdio: ["command", "args", "env"],
-  http: ["url", "headers_secret", "headers"],
-  sse: ["url", "headers_secret", "headers"],
+  http: ["url", "headers_secret", "visit_token", "headers"],
+  sse: ["url", "headers_secret", "visit_token", "headers"],
 };
 
 /** Keys every card shows, plus the ones its transport lists; a card with no transport shows only the former. */

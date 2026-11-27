@@ -111,3 +111,40 @@ describe("KubeSecretKeyWriter.deleteKey", () => {
     expect(sent).toEqual({ keep: "a2VlcA==" });
   });
 });
+
+describe("KubeSecretKeyWriter.replaceKeys", () => {
+  async function replaced(held: Record<string, string>, entries: Record<string, string>): Promise<{ sent: Record<string, string> | undefined; writes: number }> {
+    let sent: Record<string, string> | undefined;
+    let writes = 0;
+    const core = fakeCore({
+      readNamespacedSecret: () => Promise.resolve({ data: { ...held } }),
+      replaceNamespacedSecret: (args) => {
+        sent = args.body.data;
+        writes += 1;
+
+        return Promise.resolve({});
+      },
+    });
+
+    await new KubeSecretKeyWriter("floor-agents", () => core).replaceKeys("agent-secrets", "visit-v1-gateway-token.", entries);
+
+    return { sent, writes };
+  }
+
+  const HELD = { "visit-v1-token": "a2VlcA==", "visit-v2-gateway-token.search": "a2VlcA==", "visit-v1-gateway-token.search": "b2xk", "visit-v1-gateway-token.gone": "b2xk" };
+
+  it("sets the new entries base64-encoded and drops every other key under the prefix, in one write that leaves the rest untouched", async () => {
+    const outcome = await replaced(HELD, { "visit-v1-gateway-token.search": "Bearer jwt-new" });
+
+    expect(outcome).toEqual({
+      sent: { "visit-v1-token": "a2VlcA==", "visit-v2-gateway-token.search": "a2VlcA==", "visit-v1-gateway-token.search": Buffer.from("Bearer jwt-new", "utf8").toString("base64") },
+      writes: 1,
+    });
+  });
+
+  it("only removes the keys under the prefix when given no entries", async () => {
+    const outcome = await replaced(HELD, {});
+
+    expect(outcome.sent).toEqual({ "visit-v1-token": "a2VlcA==", "visit-v2-gateway-token.search": "a2VlcA==" });
+  });
+});

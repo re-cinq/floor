@@ -57,6 +57,16 @@ api:
   gitCredentialSecret:
     name: ""
     key: gitCredentialToken
+  # FLOOR_GATEWAY_SIGNING_KEY and FLOOR_GATEWAY_RETIRED_KEYS — the keys behind the gateway token,
+  # which the api signs for a visit whose agent definition gives an MCP server a `visit_token`.
+  # `name` is a Secret you keep; empty means the api signs none and refuses such a visit.
+  # `signingKey` is the key of that Secret holding an Ed25519 private key as PKCS#8 PEM.
+  # `retiredKeys` is the key holding a JSON array of the public JWKs the api signed with
+  # before; the Secret may leave it out. Never put a key in a values file.
+  gatewayKeysSecret:
+    name: ""
+    signingKey: gatewaySigningKey
+    retiredKeys: gatewayRetiredKeys
 
 clusterAgent:
   enabled: true

@@ -4,6 +4,7 @@ import type { Server, ServerInjectOptions } from "@hapi/hapi";
 import { openTestPool, testDatabaseUrl, type PgPool } from "@floor/store";
 import type { Config } from "./config.js";
 import { buildDeps, type Deps } from "./deps.js";
+import { loadGatewayKeys } from "./gateway-keys.js";
 import { buildLoop, type FloorLoop } from "./engine/loop.js";
 import { buildServer } from "./server.js";
 
@@ -24,6 +25,7 @@ const TEST_CONFIG: Config = {
   pollMs: 10,
   sweepMs: 0,
   reapMs: 0,
+  gatewayKeys: loadGatewayKeys({}),
 };
 
 export interface TestServer {

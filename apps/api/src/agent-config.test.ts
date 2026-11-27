@@ -16,6 +16,12 @@ describe("dispatchSettings", () => {
     expect(dispatchSettings({ ...SETTINGS, config: { mcp_servers: [files] } }).mcpServers).toEqual([files]);
   });
 
+  it("carries what an http server's gateway token is for under the wire's name", () => {
+    const search = { name: "search", transport: "http", url: "http://search.test/mcp", visit_token: { audience: "search", scopes: ["context:read"] } };
+
+    expect(dispatchSettings({ ...SETTINGS, config: { mcp_servers: [search] } }).mcpServers).toEqual([{ name: "search", transport: "http", url: "http://search.test/mcp", visitToken: { audience: "search", scopes: ["context:read"] } }]);
+  });
+
   it("refuses a header with no secret key, naming it", () => {
     const search = { name: "search", transport: "http", url: "http://search.test/mcp", headers: [{ name: "X-API-Key" }] };
 
