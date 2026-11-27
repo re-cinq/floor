@@ -125,19 +125,19 @@ The tab has a field for each need:
 
 Folder is where the run happens. Permission is `acceptEdits` or `bypass`, as in the pod.
 
-Preview shows the rendered prompt, the command and the blockers. A blocker is a required need with no value, a source path that does not exist, or a model the studio cannot run. A run with blockers is refused.
+Preview shows the rendered prompt, the command and the blockers. A blocker is a required need with no value, a source path that does not exist, a model the studio cannot run, or a need or produce whose declared `path` would land outside the picked folder (`../outside/plan.md`; a name that only begins with two dots, such as `..notes/plan.md`, stays inside and is allowed). A run with blockers is refused before the folder is created, and nothing is saved.
 
 Run starts it and Cancel stops it. The transcript streams in as what the agent said, each tool it called (`› Read tests.json`), each refusal in red, and the run's turns, time and cost. Raw shows the lines as `claude` printed them.
 
 When the run ends the tab shows the agent's final answer under Answer. Its words are text, and any JSON object in it is laid out field by field, each list item a numbered block, with the `LORE_NODE_RESULT` line left out. Below it, each under its label:
 
 - the outcome, which is the agent's verdict read from its final result
-- the exit code, none when cancelled
+- the exit code, none when cancelled or when the agent's program could not be started, in which case the reason is shown (`could not start claude: spawn claude ENOENT`)
 - each produce as found or missing. A produce `from: output` is found when the agent gave a final answer
 - the edge taken, which is also lit on the graph
 - the events raised next
 
-Two things match the pod. The run gets the agent's `config.env` over the studio's own environment, so `CLAUDE_CODE_DISABLE_CLAUDE_MDS` and the like apply. And `/workspace`, as the pod spells the working folder, is replaced by the picked folder in the prompt's text and in the `<name>_path` parameters.
+Two things match the pod. The run gets the agent's `config.env` over the studio's own environment, so `CLAUDE_CODE_DISABLE_CLAUDE_MDS` and the like apply. And `/workspace`, as the pod spells the working folder, is replaced by the picked folder in the prompt's text and in the `<name>_path` parameters. The folder goes in as written: a folder whose own path has a `workspace` segment, a `$` or a `{name}` is not rewritten again.
 
 The need values are saved in `.floor-studio/fixtures/<line>/<node>.json` and each run in `.floor-studio/runs/<id>.json`, both in the collection folder. They are keyed by the line's name, so they do not move when a line folder moves into a group folder. The store folder gets a `.gitignore` of `*` on its first write. The run's id is kept in the page's fragment (`&run=<id>`), so after a reload the tab reads the transcript again with `run.read`, also for a run still going. Closing the studio cancels its runs.
 
@@ -161,6 +161,8 @@ await studio.close();
 
 `startStudio` resolves to `{ url, token, close }`. `url` has the real port and not the token. `close()` closes the sockets, the server and the watcher. `startStudio` rejects when `dir` is not a directory.
 
+Three functions of the backend's source are what a caller that runs more than one station builds on. `readCollectionView(dir, hostKeys)` reads the view of any collection folder, not only the one the studio was started in. `previewOf(collection, request)` works out a node's run against a view it is handed, and `previewFor(context, request)` does the same against the studio's own folder. `startAgentRun(context, previewed, { node, folder })` runs the agent and resolves to `{ run, ended }`, where `ended` is a promise of the same ending the `run.ended` frame carries. `run.start` is `previewFor` followed by `startAgentRun`, so a station runs through one piece of code whoever starts it.
+
 ## The protocol
 
 Every frame is JSON in one WebSocket message. A request carries an `id` the client chooses and is answered by one `result` or `refused` frame with that `id`. The backend also pushes frames nobody asked for.
@@ -181,7 +183,7 @@ Every frame is JSON in one WebSocket message. A request carries an `id` the clie
 | backend to client | `{ id?, type: "refused", reason }` | A frame that is not JSON, fails its schema or has an unknown `type`, or a request that failed. The `id` is there when one could be read. Also pushed unasked, without an `id`, when a re-read after a change on disk fails, such as the folder being deleted. The socket stays open |
 | backend to client | `{ type: "collection", collection }` | A file the collection reads changed on disk, whoever changed it. The whole view is sent again |
 | backend to client | `{ type: "run.output", run, line: { stream, text } }` | One line a run wrote, on `stdout` or `stderr`, sent to every socket |
-| backend to client | `{ type: "run.ended", run, exitCode, outcome?, produced?, edge? }` | A run ended. `exitCode` is `null` when it was cancelled, and then the rest is absent. Otherwise `outcome` is the agent's verdict, `produced` lists each file produce as `{ name, found }`, and `edge` is the `{ from, to, on }` the outcome takes (none from a terminal node) |
+| backend to client | `{ type: "run.ended", run, exitCode, error?, outcome?, costUsd?, durationMs?, produced?, edge? }` | A run ended. `exitCode` is `null` when it was cancelled, and then the rest is absent. It is also `null` when the agent's program could not be started, and then `error` says why. Otherwise `outcome` is the agent's verdict, `produced` lists each file produce as `{ name, found }`, and `edge` is the `{ from, to, on }` the outcome takes (none from a terminal node). `costUsd` and `durationMs` are what the agent's final `result` line states as `total_cost_usd` and `duration_ms`. Each is absent unless the agent stated it as a finite number of zero or more, so an unstated cost is never read as zero |
 
 A new request type is one schema in `src/protocol.ts` and one handler in the table in `src/backend/requests.ts`.
 

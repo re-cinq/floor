@@ -3,7 +3,7 @@ import { enforce } from "@re-cinq/floor-assembly-lines";
 import { extendedPrompt } from "@re-cinq/floor-pipeline";
 import type { Request } from "../protocol.js";
 import type { StationBody } from "@re-cinq/floor-contracts";
-import type { LineView, NodeView } from "../view.js";
+import type { CollectionView, LineView, NodeView } from "../view.js";
 import { runPreview, type RunPreview, type StationSettings } from "../run/run-preview.js";
 import { nodeOf } from "./fixture-requests.js";
 import type { Handler, StudioContext } from "./requests.js";
@@ -22,13 +22,16 @@ export interface PreviewedNode {
   line: LineView;
 }
 
-export async function previewFor(context: StudioContext, { line, node, fixture, folder, permission }: Omit<RunPreviewRequest, "id" | "type">): Promise<PreviewedNode> {
-  const collection = await context.readCollection();
+export async function previewFor(context: StudioContext, request: Omit<RunPreviewRequest, "id" | "type">): Promise<PreviewedNode> {
+  return previewOf(await context.readCollection(), request);
+}
+
+export async function previewOf(collection: CollectionView, { line, node, fixture, folder, permission }: Omit<RunPreviewRequest, "id" | "type">): Promise<PreviewedNode> {
   const found = nodeOf(collection, line, node);
 
   enforce(found?.kind, `line ${line} has no node ${node}`);
-  const { kind, outcomes, needs, produces, agentDefinition, agent } = found;
-  const station = { kind, outcomes, needs, produces, agentDefinition };
+  const { kind, outcomes, needs, produces, agentDefinition, resultRequired, agent } = found;
+  const station = { kind, outcomes, needs, produces, agentDefinition, resultRequired };
   const preview = runPreview({ station, prompt: promptOf(found).trimEnd(), settings: (agent?.settings ?? {}) as StationSettings, fixture, folder, permission });
   const absent = await absentSourceBlockers([...preview.copies, ...preview.links]);
 

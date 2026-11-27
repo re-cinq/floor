@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { LineArgSpec, LineEdge, LineStart, StationKind } from "@re-cinq/floor-contracts";
 import type { NodeEvents, PromptPlaceholders } from "@re-cinq/floor-assembly-lines";
 import type { RunLine } from "./run/run-process.js";
+import type { RunEnding } from "./run/run-records.js";
 import type { RunPreview } from "./run/run-preview.js";
 import type { CollectionView, NodeNeed, NodeProduce } from "./view.js";
 
@@ -40,7 +41,7 @@ export type RequestKind = Request["type"];
 export const REQUEST_TYPES: RequestKind[] = requestSchema.options.map(({ shape }) => shape.type.value);
 
 /** What a request is answered with, in a `result` frame. */
-export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" | "extra.write" } ? { written: string } : Asked extends { type: "fixture.write" } ? { written: string } : Asked extends { type: "fixture.read" } ? { needs: Record<string, string> } : Asked extends { type: "run.preview" } ? RunPreview : Asked extends { type: "run.start" } ? { run: string } : Asked extends { type: "run.cancel" } ? { cancelled: string } : Asked extends { type: "run.read" } ? { lines: RunLine[]; ended?: { exitCode: number | null } } : never;
+export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" | "extra.write" } ? { written: string } : Asked extends { type: "fixture.write" } ? { written: string } : Asked extends { type: "fixture.read" } ? { needs: Record<string, string> } : Asked extends { type: "run.preview" } ? RunPreview : Asked extends { type: "run.start" } ? { run: string } : Asked extends { type: "run.cancel" } ? { cancelled: string } : Asked extends { type: "run.read" } ? { lines: RunLine[]; ended?: RunEnding } : never;
 
 // Strict down to a node's agent; events, placeholders, needs, produces, edges, args, start and kind come from other packages and are only checked to be objects where required.
 const presentObject = <Shape>() => z.custom<Shape>((value) => typeof value === "object" && value !== null);
@@ -57,6 +58,7 @@ const nodeViewSchema = z.looseObject({
   needs: z.array(presentObject<NodeNeed>()),
   produces: z.array(presentObject<NodeProduce>()),
   agentDefinition: z.string().optional(),
+  resultRequired: z.boolean().optional(),
   events: presentObject<NodeEvents>(),
   agent: nodeAgentSchema.optional(),
   placeholders: z.custom<PromptPlaceholders>().optional(),
@@ -106,7 +108,11 @@ export const collectionFrame = z.strictObject({ type: z.literal("collection"), c
 export const runOutputFrame = z.strictObject({ type: z.literal("run.output"), run: z.string(), line: z.strictObject({ stream: z.enum(["stdout", "stderr"]), text: z.string() }) });
 export const runEndedFrame = z.strictObject({ type: z.literal("run.ended"), run: z.string(),
   exitCode: z.number().nullable(),
+  error: z.string().optional(),
   outcome: z.string().optional(),
+  costUsd: z.number().optional(),
+  durationMs: z.number().optional(),
+  producedValues: z.record(z.string(), z.string()).optional(),
   produced: z.array(z.strictObject({ name: z.string(), found: z.boolean() })).optional(),
   edge: z.strictObject({ from: z.string(), to: z.string(), on: z.string(), iterationMax: z.number().optional(), unattendedMax: z.number().optional() }).optional(),
 });

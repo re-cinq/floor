@@ -39,6 +39,8 @@ export interface NodeView {
   needs: NodeNeed[];
   produces: NodeProduce[];
   agentDefinition?: string;
+  /** Set when the station fails a run whose agent ends with no result marker. */
+  resultRequired?: boolean;
   events: NodeEvents;
   /** Present for an agent station whose agent a file of the collection defines. */
   agent?: NodeAgent;

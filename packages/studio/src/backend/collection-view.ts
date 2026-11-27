@@ -1,7 +1,7 @@
 // The studio's picture of a collection: every line with its nodes, every agent, and what was refused. Pure and tolerant: a collection with problems still has a view, and nothing a person wrote makes it throw.
 import { coverageContextOf, downstreamOf, needCoverage, nodeEvents, promptPlaceholders, type CollectionLine, type NeedContext } from "@re-cinq/floor-assembly-lines";
 import type { LineNode, StationBody } from "@re-cinq/floor-contracts";
-import { attempt, collectionOverlay, lineFolderPathOf, lineLayoutOf, withoutReplacedFiles, type AgentPrompts, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type LineFile, type ShippedCatalog } from "@re-cinq/floor-pipeline";
+import { attempt, collectionOverlay, lineFolderPathOf, lineLayoutOf, withoutReplacedFiles, type AgentPrompts, type Attempt, type CollectionFile, type CollectionOverlay, type Environment, type OverlayAgent, type LineFile, type ShippedCatalog } from "@re-cinq/floor-pipeline";
 import type { CollectionView, LineView, NodeView, RefusedFile } from "../view.js";
 import { textVersion } from "./agent-file-text.js";
 import { agentFilesByName, agentViews, type AgentFiles } from "./agent-views.js";
@@ -21,18 +21,39 @@ interface Surroundings {
   files: readonly CollectionFile[];
 }
 
+interface Reading {
+  readFiles: readonly CollectionFile[];
+  overlay: CollectionOverlay;
+  lineFiles: readonly LineFile[];
+  reads: Attempt<ReadLine>[];
+}
+
 export function collectionView(files: readonly CollectionFile[], hostKeys: readonly string[], groups: readonly string[] = []): CollectionView {
+  const { readFiles, overlay, lineFiles, reads } = readingOf(files, hostKeys, groups);
+  const read = madeOf(reads);
+  const surroundings: Surroundings = { lines: read.map(({ id, body }) => ({ id, body })), agents: overlay.agents, agentFiles: agentFilesByName(readFiles), files: readFiles };
+  const views = read.map((line) => attempt(line.file, () => lineViewOf(line, surroundings)));
+  const lines = madeOf(views);
+  const refused = refusedOf(overlay, { lineFiles, failures: [...reads, ...views] });
+
+  return { lines, agents: agentViews(overlay.agents, surroundings.agentFiles, lines), refused, counts: countsOf(lines, overlay, refused) };
+}
+
+export function readLinesOf(files: readonly CollectionFile[], hostKeys: readonly string[], groups: readonly string[]): ReadLine[] {
+  return madeOf(readingOf(files, hostKeys, groups).reads);
+}
+
+function readingOf(files: readonly CollectionFile[], hostKeys: readonly string[], groups: readonly string[]): Reading {
   const readFiles = withoutReplacedFiles(files, groups);
   const overlay = collectionOverlay({ files: readFiles, shipped: NOTHING_SHIPPED, env: AS_WRITTEN, hostKeys, groups });
   const lineFiles = lineLayoutOf(readFiles).read;
   const reads = lineFiles.map((file) => attempt(file.path, () => readLine(file, file.folder, promptsOf(overlay.agents))));
-  const read = reads.flatMap((result) => ("made" in result ? [result.made] : []));
-  const surroundings: Surroundings = { lines: read.map(({ id, body }) => ({ id, body })), agents: overlay.agents, agentFiles: agentFilesByName(readFiles), files: readFiles };
-  const views = read.map((line) => attempt(line.file, () => lineViewOf(line, surroundings)));
-  const lines = views.flatMap((result) => ("made" in result ? [result.made] : []));
-  const refused = refusedOf(overlay, { lineFiles, failures: [...reads, ...views] });
 
-  return { lines, agents: agentViews(overlay.agents, surroundings.agentFiles, lines), refused, counts: countsOf(lines, overlay, refused) };
+  return { readFiles, overlay, lineFiles, reads };
+}
+
+function madeOf<Made>(results: readonly Attempt<Made>[]): Made[] {
+  return results.flatMap((result) => ("made" in result ? [result.made] : []));
 }
 
 function promptsOf(agents: ReadonlyMap<string, OverlayAgent>): AgentPrompts {
@@ -76,11 +97,11 @@ function extraOf(agentName: string | undefined, line: ReadLine, files: readonly 
   return text === undefined ? {} : { extra: { file, text, version: textVersion(text) } };
 }
 
-function stationFacts(station: StationBody | undefined, { node, line, needContext }: { node: LineNode; line: ReadLine; needContext: NeedContext }): Pick<NodeView, "kind" | "description" | "outcomes" | "needs" | "produces" | "agentDefinition"> {
-  const { kind, description, agentDefinition, outcomes = [], needs = [], produces = [] } = station ?? {};
+function stationFacts(station: StationBody | undefined, { node, line, needContext }: { node: LineNode; line: ReadLine; needContext: NeedContext }): Pick<NodeView, "kind" | "description" | "outcomes" | "needs" | "produces" | "agentDefinition" | "resultRequired"> {
+  const { kind, description, agentDefinition, resultRequired, outcomes = [], needs = [], produces = [] } = station ?? {};
 
   return {
-    ...present({ kind, description, agentDefinition }),
+    ...present({ kind, description, agentDefinition, resultRequired }),
     outcomes,
     needs: needs.map((need) => ({ ...need, coverage: needCoverage(node, need, needContext) })),
     produces: produces.map((produce) => ({ ...produce, readBy: readersOf(produce.name, node, line) })),
