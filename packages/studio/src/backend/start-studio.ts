@@ -12,6 +12,7 @@ import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
 import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
 import { editedAgentText, textVersion, withOneNewline, type AgentEdit } from "./agent-file-text.js";
+import { openOnDesktop } from "../shell/open-browser.js";
 import { fixtureFilesIn } from "./fixture-files.js";
 import { runFilesIn } from "./run-files.js";
 import { answerFrame, type StudioContext } from "./requests.js";
@@ -63,7 +64,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     await writeFile(path, text);
   };
 
-  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), ...runFilesIn(dir), runs: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)) };
+  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), ...runFilesIn(dir), runs: new Map(), collectionDir: dir, testRuns: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)), openFolder: openOnDesktop };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {

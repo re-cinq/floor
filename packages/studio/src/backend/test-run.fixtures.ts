@@ -94,8 +94,19 @@ export const ANNOTATING_REVIEWER_COLLECTION: readonly CollectionFile[] = [
   { path: "review-loop/agents/draft-writer.md", text: DRAFT_WRITER_AGENT },
 ];
 
+const ANNOTATED_NEED_ANCHOR = "        optional: true\n        fresh: true\n";
+
+/** The annotating review-loop collection whose draft-writer also needs the file annotated. */
+export const REQUIRED_ANNOTATION_COLLECTION: readonly CollectionFile[] = ANNOTATING_REVIEWER_COLLECTION.map((file) => ({
+  ...file,
+  text: file.text.replace(ANNOTATED_NEED_ANCHOR, `${ANNOTATED_NEED_ANCHOR}      - name: annotated\n        kind: file\n        optional: true\n        fresh: true\n`),
+}));
+
 /** The annotating review-loop collection with annotated declared at ../../escape.md. */
 export const ESCAPING_REVIEWER_COLLECTION: readonly CollectionFile[] = ANNOTATING_REVIEWER_COLLECTION.map((file) => ({ ...file, text: file.text.replace("path: annotated.md", "path: ../../escape.md") }));
+
+/** The annotating review-loop collection whose annotated declares no path. */
+export const PATHLESS_ANNOTATING_COLLECTION: readonly CollectionFile[] = ANNOTATING_REVIEWER_COLLECTION.map((file) => ({ ...file, text: file.text.replace("        path: annotated.md\n", "") }));
 
 const REVIEW_NODE ="    - id: review\n      station: reviewer\n";
 
@@ -104,3 +115,12 @@ export const PINNED_REVIEWER_COLLECTION: readonly CollectionFile[] = [
   { path: "review-loop/assembly-line.yaml", text: REVIEW_LOOP_LINE.replace(REVIEW_NODE, "    - id: review\n      station: reviewer@abc123\n") },
   { path: "review-loop/agents/draft-writer.md", text: DRAFT_WRITER_AGENT },
 ];
+
+/** The review-loop collection whose node review is also answered by the event review.answered with decision approved. */
+export const EVENT_REVIEW_COLLECTION: readonly CollectionFile[] = [
+  { path: "review-loop/assembly-line.yaml", text: REVIEW_LOOP_LINE.replace(REVIEW_NODE, `${REVIEW_NODE}      reports:\n        - on: review.answered\n          when:\n            decision: approved\n          outcome: approved\n`) },
+  { path: "review-loop/agents/draft-writer.md", text: DRAFT_WRITER_AGENT },
+];
+
+/** The review-loop collection whose draft-writer produces draft at ../../escape.md. */
+export const ESCAPING_WRITER_COLLECTION: readonly CollectionFile[] = REVIEW_LOOP_COLLECTION.map((file) => ({ ...file, text: file.text.replace("path: draft.md", "path: ../../escape.md") }));

@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ANNOTATING_REVIEWER_COLLECTION, ESCAPING_REVIEWER_COLLECTION } from "./test-run.fixtures.js";
+import { ANNOTATING_REVIEWER_COLLECTION, ESCAPING_REVIEWER_COLLECTION, PATHLESS_ANNOTATING_COLLECTION, REQUIRED_ANNOTATION_COLLECTION } from "./test-run.fixtures.js";
 import { endOf, refusalOf, RUN_FOLDER, startReviewLoopOnTides, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
 
 describe("report", () => {
@@ -27,6 +27,28 @@ describe("report", () => {
             ["002-review-1", null],
           ],
           outputsFolder: false,
+        });
+      },
+      ANNOTATING_REVIEWER_COLLECTION,
+    );
+  }, 10_000);
+
+  it("refuses annotated picked as the relative path package.json and leaves 002-review-1 open", async () => {
+    await withTestRunSetup(
+      WRITES_DRAFT,
+      async (setup) => {
+        const answer = { outcome: "approved", produced: {}, files: { annotated: { picked: "package.json" } } };
+        const session = await startReviewLoopOnTides(setup);
+
+        await session.idle();
+
+        expect(await refusalOf(session, "002-review-1", answer)).toEqual({
+          visits: [
+            ["001-write-1", "success"],
+            ["002-review-1", null],
+          ],
+          status: "waiting",
+          refusal: 'annotated: the picked file must be an absolute path, and "package.json" is not',
         });
       },
       ANNOTATING_REVIEWER_COLLECTION,
@@ -64,26 +86,31 @@ describe("report", () => {
 describe("supplied files", () => {
   const TYPOS_NOTE = "Two typos in line 3.\n";
 
+  const pickedFromWorkspace = {
+    how: "picked from the workspace",
+    supply: (workspace: string) => {
+      const original = join(workspace, "notes.md");
+
+      writeFileSync(original, TYPOS_NOTE);
+
+      return { picked: original };
+    },
+    afterReport: (workspace: string) => writeFileSync(join(workspace, "notes.md"), "changed afterwards\n"),
+  };
+  const pasted = {
+    how: "pasted",
+    supply: () => ({ pasted: TYPOS_NOTE }),
+    afterReport: () => undefined,
+  };
+
   it.each([
-    {
-      how: "picked from the workspace",
-      supply: (workspace: string) => {
-        const original = join(workspace, "notes.md");
-
-        writeFileSync(original, TYPOS_NOTE);
-
-        return { picked: original };
-      },
-      afterReport: (workspace: string) => writeFileSync(join(workspace, "notes.md"), "changed afterwards\n"),
-    },
-    {
-      how: "pasted",
-      supply: () => ({ pasted: TYPOS_NOTE }),
-      afterReport: () => undefined,
-    },
+    { ...pickedFromWorkspace, files: ANNOTATING_REVIEWER_COLLECTION, outputName: "annotated.md" },
+    { ...pasted, files: ANNOTATING_REVIEWER_COLLECTION, outputName: "annotated.md" },
+    { ...pickedFromWorkspace, how: "picked from the workspace with no declared path", files: PATHLESS_ANNOTATING_COLLECTION, outputName: "annotated" },
+    { ...pasted, how: "pasted with no declared path", files: PATHLESS_ANNOTATING_COLLECTION, outputName: "annotated" },
   ])(
-    "writes annotated $how into 002-review-1/outputs/annotated.md and reports that copy",
-    async ({ supply, afterReport }) => {
+    "writes annotated $how into 002-review-1/outputs/$outputName and reports that copy",
+    async ({ supply, afterReport, files, outputName }) => {
       await withTestRunSetup(
         WRITES_DRAFT,
         async (setup) => {
@@ -95,7 +122,7 @@ describe("supplied files", () => {
 
           const visitsFolder = join(setup.workspace, RUN_FOLDER, "visits");
           const draft = join(visitsFolder, "001-write-1", "outputs", "draft.md");
-          const annotated = join(visitsFolder, "002-review-1", "outputs", "annotated.md");
+          const annotated = join(visitsFolder, "002-review-1", "outputs", outputName);
 
           expect({ ending: endOf(session), annotatedText: readFileSync(annotated, "utf8") }).toEqual({
             ending: {
@@ -109,7 +136,7 @@ describe("supplied files", () => {
             annotatedText: TYPOS_NOTE,
           });
         },
-        ANNOTATING_REVIEWER_COLLECTION,
+        files,
       );
     },
     10_000,
@@ -137,6 +164,68 @@ describe("supplied files", () => {
         });
       },
       ESCAPING_REVIEWER_COLLECTION,
+    );
+  }, 10_000);
+
+  it("refuses the answer with the copy's ENOENT and leaves 002-review-1 open when the picked notes.md vanishes before it is copied", async () => {
+    await withTestRunSetup(
+      WRITES_DRAFT,
+      async (setup) => {
+        const session = await startReviewLoopOnTides(setup);
+
+        await session.idle();
+
+        const notes = join(setup.workspace, "notes.md");
+
+        writeFileSync(notes, TYPOS_NOTE);
+
+        const reporting = session.report("002-review-1", { outcome: "approved", produced: {}, files: { annotated: { picked: notes } } });
+
+        rmSync(notes);
+
+        const refusal = await reporting.then(
+          () => "reported",
+          (thrown: Error) => thrown.message,
+        );
+        const { status, visits } = session.state();
+        const annotated = join(setup.workspace, RUN_FOLDER, "visits", "002-review-1", "outputs", "annotated.md");
+
+        expect({ refusal, status, visits: visits.map(({ id, report }) => [id, report?.outcome ?? null]), annotatedWritten: existsSync(annotated) }).toMatchObject({
+          refusal: expect.stringMatching(/^ENOENT: no such file or directory, copyfile '.*notes\.md'/),
+          status: "waiting",
+          visits: [
+            ["001-write-1", "success"],
+            ["002-review-1", null],
+          ],
+          annotatedWritten: false,
+        });
+      },
+      ANNOTATING_REVIEWER_COLLECTION,
+    );
+  }, 10_000);
+
+  it("accepts changes_requested with annotated supplied as pasted text, although write requires it, and runs 003-write-2", async () => {
+    await withTestRunSetup(
+      WRITES_DRAFT,
+      async (setup) => {
+        const session = await startReviewLoopOnTides(setup);
+
+        await session.idle();
+
+        const answer = { outcome: "changes_requested", produced: { review_feedback: "Shorter." }, files: { annotated: { pasted: TYPOS_NOTE } } };
+
+        expect(await refusalOf(session, "002-review-1", answer)).toEqual({
+          refusal: "reported",
+          status: "waiting",
+          visits: [
+            ["001-write-1", "success"],
+            ["002-review-1", "changes_requested"],
+            ["003-write-2", "success"],
+            ["004-review-2", null],
+          ],
+        });
+      },
+      REQUIRED_ANNOTATION_COLLECTION,
     );
   }, 10_000);
 });

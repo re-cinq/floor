@@ -182,9 +182,10 @@ export function fakeClaudeScratch(prefix: string, script: string): { scratch: st
 export async function withFakeClaude(
   script: string,
   body: (client: Client, folder: string, restart: () => Promise<Client>) => Promise<void>,
+  files: readonly CollectionFile[] = WORKER_COLLECTION,
 ): Promise<void> {
   const { scratch, runEnv } = fakeClaudeScratch("floor-run-start-", script);
-  const dir = collectionOnDisk(WORKER_COLLECTION);
+  const dir = collectionOnDisk(files);
 
   async function connectToNewStudio(): Promise<{ studio: Studio; client: Client }> {
     const studio = await startedStudio({ dir, runEnv });

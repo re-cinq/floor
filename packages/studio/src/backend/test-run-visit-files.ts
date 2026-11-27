@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RunLine } from "../run/run-process.js";
 import type { VisitRecord } from "../test-run/visit-record.js";
+import { jsonFileText } from "./test-run-folder.js";
 
 export function visitFolderOf(runFolder: string, visitId: string): string {
   return join(runFolder, "visits", visitId);
@@ -13,11 +14,11 @@ export function outputsFolderOf(runFolder: string, visitId: string): string {
 }
 
 export function writeVisitRecord(runFolder: string, record: VisitRecord): Promise<void> {
-  return writeVisitFile(runFolder, record.id, "visit.json", `${JSON.stringify(record, null, 2)}\n`);
+  return writeVisitFile(runFolder, record.id, "visit.json", jsonFileText(record));
 }
 
 export function writeVisitInputs(runFolder: string, visitId: string, needs: Readonly<Record<string, string>>): Promise<void> {
-  return writeVisitFile(runFolder, visitId, "inputs.json", `${JSON.stringify(needs, null, 2)}\n`);
+  return writeVisitFile(runFolder, visitId, "inputs.json", jsonFileText(needs));
 }
 
 export function writeVisitPrompt(runFolder: string, visitId: string, prompt: string): Promise<void> {

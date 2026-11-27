@@ -52,12 +52,14 @@ export interface RecordingContext {
   context: StudioContext;
   frames: ServerFrame[];
   transcripts: Map<string, RunTranscript>;
+  opened: string[];
 }
 
-/** A StudioContext of real parts over the collection in `dir`, keeping every frame and transcript it is given. */
+/** A StudioContext of real parts over the collection in `dir`, keeping every frame and transcript it is given and every folder it is asked to open. */
 export function contextOver(dir: string, runEnv: StudioContext["runEnv"]): RecordingContext {
   const frames: ServerFrame[] = [];
   const transcripts = new Map<string, RunTranscript>();
+  const opened: string[] = [];
   const context: StudioContext = {
     readCollection: () => readCollectionView(dir, []),
     writeAgent: NOT_USED,
@@ -67,9 +69,12 @@ export function contextOver(dir: string, runEnv: StudioContext["runEnv"]): Recor
     readRun: async (run) => transcripts.get(run),
     writeRun: async (run, { lines, ended }) => void transcripts.set(run, { lines: [...lines], ...(ended && { ended }) }),
     runs: new Map(),
+    collectionDir: dir,
+    testRuns: new Map(),
     runEnv,
     broadcast: (frame) => void frames.push(frame),
+    openFolder: (path) => void opened.push(path),
   };
 
-  return { context, frames, transcripts };
+  return { context, frames, transcripts, opened };
 }

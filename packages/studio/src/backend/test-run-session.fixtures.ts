@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { vi } from "vitest";
 import { join } from "node:path";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
@@ -14,7 +14,11 @@ const RESULT_LINE = { type: "result", result: "Done.\nLORE_NODE_RESULT: success"
 
 /** A fake claude that leaves 'A draft about tides.' in draft.md and states success, 0.0421 dollars and 8400 ms. */
 export const WRITES_DRAFT = `#!/bin/sh\nprintf 'A draft about tides.\\n' > draft.md\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
-/** A fake claude that leaves its own arguments, the prompt among them, in draft.md and states success. */
+/** A fake claude that leaves 'A draft about tides.' in draft.md, makes its visit folder read-only and states success. */
+export const LOCKS_ITS_VISIT_FOLDER = `#!/bin/sh\nprintf 'A draft about tides.\\n' > draft.md\nchmod a-w ..\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
+/** A fake claude that writes secret.txt in the run folder, links draft.md to it and states success. */
+export const LINKS_ITS_DRAFT = `#!/bin/sh\nprintf 'secret\\n' > ../../../secret.txt\nln -s ../../../secret.txt draft.md\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
+/** A fake claude that leaves its own arguments,the prompt among them, in draft.md and states success. */
 export const WRITES_ITS_PROMPT = `#!/bin/sh\nprintf '%s' "$*" > draft.md\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
 /** A fake claude that says one line, then sleeps 5 s before it would write survived.txt. */
 export const SLEEPS_THEN_WRITES = `#!/bin/sh\nprintf '%s\\n' '{"type":"system","subtype":"init"}'\nsleep 5\nprintf 'still here\\n' > survived.txt\n`;
@@ -29,6 +33,7 @@ export interface TestRunSetup {
   collectionDir: string;
   workspace: string;
   frames: ServerFrame[];
+  opened: string[];
 }
 
 /** A StudioContext of real parts whose `claude` on PATH is `script`, the review-loop collection on disk and an empty workspace; all removed after `body`. */
@@ -36,12 +41,12 @@ export async function withTestRunSetup(script: string, body: (setup: TestRunSetu
   const { scratch, runEnv } = fakeClaudeScratch("floor-test-run-", script);
   const collectionDir = collectionOnDisk(files);
   const workspace = join(scratch, "workspace");
-  const { context, frames } = contextOver(collectionDir, runEnv);
+  const { context, frames, opened } = contextOver(collectionDir, runEnv);
 
   mkdirSync(workspace);
 
   try {
-    await body({ context, collectionDir, workspace, frames });
+    await body({ context, collectionDir, workspace, frames, opened });
   } finally {
     rmSync(scratch, { recursive: true, force: true });
     rmSync(collectionDir, { recursive: true, force: true });
@@ -96,4 +101,20 @@ export function endOf(session: TestRunSession) {
   const { status, ending, visits } = session.state();
 
   return { status, ending, visits: visits.map(({ id, report }) => [id, report]) };
+}
+
+/** "idle" once the session idles, or the message it rejected with. */
+export function idleOrMessage(session: TestRunSession): Promise<string> {
+  return session.idle().then(
+    () => "idle",
+    (error: Error) => error.message,
+  );
+}
+
+/** The parsed lines of a JSON-lines file. */
+export function jsonLinesIn(path: string): unknown[] {
+  return readFileSync(path, "utf8")
+    .split("\n")
+    .filter((line) => line !== "")
+    .map((line) => JSON.parse(line) as unknown);
 }

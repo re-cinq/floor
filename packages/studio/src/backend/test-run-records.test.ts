@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { approveAfter90Seconds, RUN_FOLDER, startReviewLoopOnTides, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
+import { approveAfter90Seconds, jsonLinesIn, RUN_FOLDER, startReviewLoopOnTides, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
 
 describe("timeline", () => {
   it("lists run_started, both visits opened and reported, and run_settled finished 90 seconds later, for review-loop approved at 14:14:00", async () => {
@@ -121,13 +121,31 @@ describe("visit inputs", () => {
   }, 10_000);
 });
 
+describe("run summary", () => {
+  it("summarises review-loop in run.json as settled finished, 2 visits taking 90000 ms and costing $0.0421 in all", async () => {
+    await withTestRunSetup(WRITES_DRAFT, async (setup) => {
+      await approveAfter90Seconds(setup);
+
+      const summary = jsonIn(join(setup.workspace, RUN_FOLDER, "run.json"));
+
+      expect(summary).toEqual({
+        line: "review-loop",
+        startedAt: "2026-11-27T14:12:30.000Z",
+        startItems: { topic: { kind: "value", ref: "tides", by: "start" } },
+        status: "settled",
+        ending: { outcome: "finished" },
+        totals: {
+          run: { visits: 2, durationMs: 90000, costUsd: 0.0421, costUnstated: 0 },
+          nodes: [
+            { nodeId: "write", visits: 1, durationMs: 0, costUsd: 0.0421, costUnstated: 0 },
+            { nodeId: "review", visits: 1, durationMs: 90000, costUsd: 0, costUnstated: 0 },
+          ],
+        },
+      });
+    });
+  }, 10_000);
+});
+
 function jsonIn(path: string): unknown {
   return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function jsonLinesIn(path: string): unknown[] {
-  return readFileSync(path, "utf8")
-    .split("\n")
-    .filter((line) => line !== "")
-    .map((line) => JSON.parse(line) as unknown);
 }

@@ -143,25 +143,28 @@ The need values are saved in `.floor-studio/fixtures/<line>/<node>.json` and eac
 
 ### Testing a whole line
 
-The backend can run a whole assembly line on your machine as a test run (`startTestRun` in `src/backend/test-run-session.ts`). The page and the protocol requests for it are not wired yet.
+The backend can run a whole assembly line on your machine as a test run (`startTestRun` in `src/backend/test-run-session.ts`), through the `test.*` and `folder.*` requests in the protocol. The page does not use them yet.
 
 A test run reads the line as saved on disk. It is refused before anything is written when an argument or line file has no value, or when the line cannot run locally: it fails validation, a node pins a station (`reviewer@abc123`), or a node fans out. One message lists every reason.
 
-The floor's routing kernel decides each next step. An agent station runs with the same code as the Run tab. Any other station waits for a person, who answers with an outcome, values, and a file for each file output, picked from disk or pasted. The answer is refused, and the visit stays open, when the outcome is not the station's, a required field is empty, a picked file is not on disk, a file is for an output that is not a file output, or the output's path leaves the visit's `outputs/` folder. A visit answers once. Cancel stops the running agent and settles the run as `cancelled`.
+The floor's routing kernel decides each next step. An agent station runs with the same code as the Run tab. Any other station waits for a person, who answers with an outcome, values, and a file for each file output, picked from disk or pasted. The answer is refused, and the visit stays open, when the outcome is not the station's, a required field is neither entered nor supplied as a file, a picked file is not an absolute path or not on disk, a file is for an output that is not a file output, or the output's path leaves the visit's `outputs/` folder. A picked file that cannot be copied after the checks (it vanished, say) refuses the answer with the copy's error and leaves the visit open, so the person can answer again. A visit answers once, and a settled run takes no answers or events. An external event answers each waiting visit whose node `reports` match it, and is recorded in the timeline whether it answered anything or not. Cancel stops the running agent, or ends the wait for a person, and settles the run as `cancelled`. Test runs live as long as the studio: they are not resumed after a restart.
+
+A run never hangs on a failure. An agent that cannot be started (any blocker the Run tab would show) fails its visit with the blocker as the reason, and so does an agent that leaves a declared output as a link instead of a file it wrote: nothing is copied. Any other error while the run steps, a failed disk write for one, settles the run with outcome `error` and the error's message.
 
 The run is recorded in a new folder inside the workspace folder you give, named after the line and the start time in UTC:
 
 ```
 review-loop-20261127-141230/
   definitions/        the collection as it was when the run started; the run reads only this copy
-  timeline.jsonl      run_started, visit_opened, visit_reported, run_settled, each with its time
+  run.json            line, start time, start items, status, ending, and time and cost per node and in all; rewritten on every change
+  timeline.jsonl      run_started, visit_opened, visit_reported, event_received, run_settled, each with its time
   visits/
     001-write-1/
       inputs.json     what the station received, written when the visit opens
       prompt.md       the rendered prompt (agent visits)
       transcript.jsonl
       work/           the agent's working folder
-      outputs/        a copy of each file output, so a later visit never overwrites it
+      outputs/        a copy of each file output, so a later visit never overwrites it; a file a person supplies goes at the output's declared path, or under the output's name when it declares none
       visit.json      mode (local or simulated), opened, reported, durationMs, the agent's own time and cost, outcome, next node
 ```
 
@@ -205,9 +208,18 @@ Every frame is JSON in one WebSocket message. A request carries an `id` the clie
 | client to backend | `{ id, type: "run.start", line, node, fixture, folder, permission }` | Start a run of an agent node. Refused when the preview has blockers. The result is `{ run }`, the run's id |
 | client to backend | `{ id, type: "run.cancel", run }` | Stop a running run. Refused when none runs under that id. The result is `{ cancelled: run }` |
 | client to backend | `{ id, type: "run.read", run, after }` | The transcript of a run from line number `after` on, running or ended, also after a restart. The result is `{ lines, ended? }` |
+| client to backend | `{ id, type: "test.preview", line, entered }` | What starting a test run of the line would take. The result is `{ asked, missing, blockers, startItems, definitions }`: each argument and line file asked for with its kind, the ones without a value, why the line cannot run locally, the start items, and the collection files a start would copy |
+| client to backend | `{ id, type: "test.start", line, workspace, entered, permission }` | Start a test run of the line as saved on disk, in a new folder inside `workspace`. Refused, with nothing written, for the reasons the preview lists, a workspace that is relative or not a folder, or a run folder that already exists. The result is `{ run, folder }` |
+| client to backend | `{ id, type: "test.report", run, visit, outcome, produced, files? }` | Answer for a waiting visit, as the person standing in for its station. `files` maps each file output to `{ picked: <path> }` or `{ pasted: <text> }`. The result is `{ reported: visit }` once the run has stepped on |
+| client to backend | `{ id, type: "test.event", run, event, payload }` | Send an external event. It answers each waiting visit whose node `reports` match it, as the floor does, and is recorded either way. The result is `{ answered }`, the visit ids |
+| client to backend | `{ id, type: "test.read", run }` | The run's state. The result is the same `state` that `test.changed` carries |
+| client to backend | `{ id, type: "test.cancel", run }` | Stop the run's agent, if one runs, and settle the run as `cancelled`. The result is `{ cancelled: run }`, sent once it has settled |
+| client to backend | `{ id, type: "folder.list", path }` | The names in a folder, for the page's picker: `{ path, parent, folders, files }`, each sorted. `parent` is `null` at the root. File contents are never read. Refused when `path` is relative or not a folder. A link to a folder is listed under `files` |
+| client to backend | `{ id, type: "folder.open", path }` | Open a test run's folder, or a folder inside one, in the desktop's file manager. Only an existing folder whose real path, links resolved, lies inside a test run's folder is opened: a file, a missing path, a path that climbs out with `..`, and a link pointing out of the run are refused. The result is `{ opened: path }` |
 | backend to client | `{ id, type: "result", result }` | The answer to a request. For `collection.read`, `result` is the collection view |
 | backend to client | `{ id?, type: "refused", reason }` | A frame that is not JSON, fails its schema or has an unknown `type`, or a request that failed. The `id` is there when one could be read. Also pushed unasked, without an `id`, when a re-read after a change on disk fails, such as the folder being deleted. The socket stays open |
 | backend to client | `{ type: "collection", collection }` | A file the collection reads changed on disk, whoever changed it. The whole view is sent again |
+| backend to client | `{ type: "test.changed", run, state }` | A test run changed: a visit opened or reported, an event came in, or the run settled. `state` is `{ folder, lineId, status, ending?, visits }`, with `status` one of `running`, `waiting` and `settled`. A request naming a run the studio does not have is refused with `there is no test run <id>` |
 | backend to client | `{ type: "run.output", run, line: { stream, text } }` | One line a run wrote, on `stdout` or `stderr`, sent to every socket |
 | backend to client | `{ type: "run.ended", run, exitCode, error?, outcome?, costUsd?, durationMs?, produced?, edge? }` | A run ended. `exitCode` is `null` when it was cancelled, and then the rest is absent. It is also `null` when the agent's program could not be started, and then `error` says why. Otherwise `outcome` is the agent's verdict, `produced` lists each file produce as `{ name, found }`, and `edge` is the `{ from, to, on }` the outcome takes (none from a terminal node). `costUsd` and `durationMs` are what the agent's final `result` line states as `total_cost_usd` and `duration_ms`. Each is absent unless the agent stated it as a finite number of zero or more, so an unstated cost is never read as zero |
 
