@@ -1,5 +1,6 @@
 import { ALL_FILES, matchesMask, type FileMask } from "./file-mask";
 import { childPath } from "./folder-path";
+import { entriesMatching } from "./path-completion";
 import { FileIcon, FolderIcon } from "./icons";
 import styles from "./path-picker.module.css";
 import type { FolderListing } from "@/socket/studio-connection";
@@ -10,20 +11,21 @@ interface Props {
   pickFile: ((file: string) => void) | undefined;
   pickedPath: string | undefined;
   mask: FileMask;
+  filter: string;
 }
 
-export default function PathPickerList({ listing, browse, pickFile, pickedPath, mask }: Props) {
+export default function PathPickerList({ listing, browse, pickFile, pickedPath, mask, filter }: Props) {
   return (
     <div className={styles.list}>
       <section aria-label="Folders">
-        {listing?.folders.map((folder) => (
-          <button key={folder} type="button" className={styles.row} onClick={() => browse(childPath(listing.path, folder))}>
+        {entriesMatching(listing?.folders ?? [], filter).map((folder) => (
+          <button key={folder} type="button" className={styles.row} onClick={() => browse(childPath(listing!.path, folder))}>
             <FolderIcon />
             {folder}
           </button>
         ))}
       </section>
-      {pickFile && <Files listing={listing} pick={pickFile} pickedPath={pickedPath} mask={mask} />}
+      {pickFile && <Files listing={listing} pick={pickFile} pickedPath={pickedPath} mask={mask} filter={filter} />}
     </div>
   );
 }
@@ -33,10 +35,11 @@ interface FilesProps {
   pick: (file: string) => void;
   pickedPath: string | undefined;
   mask: FileMask;
+  filter: string;
 }
 
-function Files({ listing, pick, pickedPath, mask }: FilesProps) {
-  const shown = (listing?.files ?? []).filter((file) => matchesMask(file, mask.patterns));
+function Files({ listing, pick, pickedPath, mask, filter }: FilesProps) {
+  const shown = entriesMatching((listing?.files ?? []).filter((file) => matchesMask(file, mask.patterns)), filter);
   const isPicked = (file: string) => !!listing && childPath(listing.path, file) === pickedPath;
 
   return (

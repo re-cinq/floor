@@ -62,11 +62,6 @@
   overflow-wrap: anywhere;
 }
 
-.pathBar code {
-  padding: 0;
-  background: none;
-}
-
 .refusal {
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--border);

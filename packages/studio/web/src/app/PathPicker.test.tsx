@@ -34,4 +34,23 @@ describe("PathPicker", () => {
     const folders = within(screen.getByRole("region", { name: "Folders" })).getAllByRole("button");
     expect(folders.map((folder) => folder.textContent)).toEqual(["inside-fast"]);
   });
+
+  it.each([
+    { label: "nothing", typed: "", shown: { folders: ["alpha", "Beta"], files: ["notes.md", "bravo.txt"] } },
+    { label: "b", typed: "b", shown: { folders: ["Beta"], files: ["bravo.txt"] } },
+  ])("lists $shown.folders and $shown.files when $label is typed after /w/", async ({ typed, shown }) => {
+    const { calls, list } = controlledList();
+    render(<PathPicker mode="file" startDir="/w" list={list} onChoose={() => undefined} onClose={() => undefined} />);
+    await act(async () =>
+      calls[0]!.resolve({ path: "/w", parent: "/", folders: ["alpha", "Beta", ".cache"], files: ["notes.md", "bravo.txt"] }),
+    );
+
+    await userEvent.type(await screen.findByRole("textbox", { name: "Path" }), `{End}${typed}`);
+
+    const namesIn = (section: string) =>
+      within(screen.getByRole("region", { name: section }))
+        .getAllByRole("button")
+        .map((row) => row.textContent);
+    expect({ folders: namesIn("Folders"), files: namesIn("Files") }).toEqual(shown);
+  });
 });

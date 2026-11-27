@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ALL_FILES, matchesMask, type FileMask } from "./file-mask";
 import { childPath } from "./folder-path";
+import { splitTyped } from "./path-completion";
 import { UpIcon } from "./icons";
 import PathPickerList, { MaskSelect } from "./PathPickerList";
 import styles from "./path-picker.module.css";
@@ -23,6 +24,7 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
   const [pickedPath, setPickedPath] = useState<string>();
   const [maskIndex, setMaskIndex] = useState(0);
   const { listing, refusal, browse } = useFolderListing(list);
+  const [typed, setTyped] = useState("");
   const titleId = useId();
   const mask = [...masks, ALL_FILES][maskIndex]!;
   const offeredFile = offeredPath(pickedPath, listing, mask);
@@ -32,14 +34,18 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
     browse(startDir);
   }, []);
 
+  useEffect(() => {
+    if (listing) setTyped(listing.path.endsWith("/") ? listing.path : `${listing.path}/`);
+  }, [listing]);
+
   const pickFile = mode === "file" && listing ? (name: string) => setPickedPath(childPath(listing.path, name)) : undefined;
 
   return (
     <dialog ref={dialogRef} aria-labelledby={titleId} className={styles.dialog} onCancel={onClose}>
       <h2 id={titleId} className={styles.title}>Choose a {mode}</h2>
-      <Toolbar listing={listing} browse={browse} />
+      <Toolbar listing={listing} browse={browse} typed={typed} onType={setTyped} />
       {refusal && <p role="alert" className={styles.refusal}>{refusal}</p>}
-      <PathPickerList listing={listing} browse={browse} pickFile={pickFile} pickedPath={offeredFile} mask={mask} />
+      <PathPickerList listing={listing} browse={browse} pickFile={pickFile} pickedPath={offeredFile} mask={mask} filter={splitTyped(typed).filter} />
       <Footer mode={mode} masks={masks} maskIndex={maskIndex} chooseMask={setMaskIndex} onClose={onClose}>
         {listing && <Choice mode={mode} path={listing.path} filePath={offeredFile} onChoose={onChoose} />}
       </Footer>
@@ -47,13 +53,20 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
   );
 }
 
-function Toolbar({ listing, browse }: { listing: FolderListing | undefined; browse: (path: string) => void }) {
+interface ToolbarProps {
+  listing: FolderListing | undefined;
+  browse: (path: string) => void;
+  typed: string;
+  onType: (typed: string) => void;
+}
+
+function Toolbar({ listing, browse, typed, onType }: ToolbarProps) {
   const parent = listing?.parent;
 
   return (
     <div className={styles.toolbar}>
       {parent && <button type="button" className={styles.up} aria-label="Up" onClick={() => browse(parent)}><UpIcon /></button>}
-      <div className={styles.pathBar}>{listing && <code>{listing.path}</code>}</div>
+      <input type="text" aria-label="Path" className={styles.pathBar} value={typed} onChange={(event) => onType(event.target.value)} />
     </div>
   );
 }

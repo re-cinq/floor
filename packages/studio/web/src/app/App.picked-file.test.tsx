@@ -184,7 +184,7 @@ describe("App test locally with a picked file", () => {
           const dialog = await openChooseAFile(workspace);
           await userEvent.click(await within(dialog).findByRole("button", { name: "notes.md" }));
           await userEvent.click(within(dialog).getByRole("button", { name: "drafts" }));
-          await within(dialog).findByText(join(home, "drafts"));
+          await within(dialog).findByDisplayValue(`${join(home, "drafts")}/`);
 
           expect({ useThisFile: within(dialog).queryByRole("button", { name: "Use this file" }) }).toEqual({ useThisFile: null });
         },
