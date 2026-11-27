@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { REQUIRED_ANNOTATION_COLLECTION } from "../../../src/backend/test-run.fixtures";
@@ -12,11 +12,12 @@ import { cellsOf, findWaitingReview, startReviewLoop, withScratchWorkspace } fro
 
 afterEach(closeStudios);
 
-async function requestChangesPickingFile(workspace: string, pickedPath: string): Promise<void> {
+async function requestChangesPickingFile(workspace: string, pickedPath: string, pastedText = ""): Promise<void> {
   await startReviewLoop(workspace);
   await findWaitingReview();
 
   await userEvent.type(await screen.findByRole("textbox", { name: "review_feedback" }), "Shorter.");
+  if (pastedText) await userEvent.type(await screen.findByRole("textbox", { name: "annotated (paste)" }), pastedText);
   await userEvent.type(await screen.findByRole("textbox", { name: "annotated (file on disk)" }), pickedPath);
   await userEvent.click(await screen.findByRole("button", { name: "changes_requested" }));
 }
@@ -56,6 +57,33 @@ describe("App test locally with a picked file", () => {
           expect({ review: review.slice(0, 2), annotated: readFileSync(savedPath, "utf8") }).toEqual({
             review: ["002-review-1", "review"],
             annotated: "Marked up on disk.",
+          });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    } finally {
+      rmSync(pickedFolder, { recursive: true, force: true });
+    }
+  });
+
+  it("says 'annotated: paste its contents or give a file on disk, not both' and writes no outputs when annotated is pasted and picked", async () => {
+    const pickedFolder = mkdtempSync(join(tmpdir(), "picked-"));
+
+    try {
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          const pickedPath = join(pickedFolder, "annotated.md");
+          writeFileSync(pickedPath, "Marked up on disk.");
+          await requestChangesPickingFile(workspace, pickedPath, "Marked up.");
+
+          const alert = (await screen.findByRole("alert")).textContent;
+          const row = cellsOf(await findWaitingReview());
+          const [runFolder] = readdirSync(workspace);
+          expect({ alert, row, outputs: existsSync(join(workspace, runFolder, "visits", "002-review-1", "outputs")) }).toEqual({
+            alert: "annotated: paste its contents or give a file on disk, not both",
+            row: ["002-review-1", "review", "waiting", "", "not stated", "Open"],
+            outputs: false,
           });
         },
         REQUIRED_ANNOTATION_COLLECTION,
