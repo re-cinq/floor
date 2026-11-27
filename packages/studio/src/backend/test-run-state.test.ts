@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { standInActionsOf } from "../test-run/stand-in-actions.js";
 import { reviewLoopLine } from "../test-run/test-run.fixtures.js";
 import {
+  settleReviewLoopApproved,
   startReviewLoopOnTides,
   withTestRunSetup,
   WRITES_DRAFT,
@@ -17,6 +18,14 @@ describe("state", () => {
       expect(session.state().actions).toEqual({
         "002-review-1": standInActionsOf(reviewLoopLine, "review"),
       });
+    });
+  }, 10_000);
+
+  it("offers no actions once 002-review-1 has reported approved", async () => {
+    await withTestRunSetup(WRITES_DRAFT, async (setup) => {
+      const session = await settleReviewLoopApproved(setup);
+
+      expect(session.state().actions).toEqual({});
     });
   }, 10_000);
 });

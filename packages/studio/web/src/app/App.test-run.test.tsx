@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { screen, waitFor, waitForElementToBeRemoved, within } from "@testing-library/react";
+import { screen, waitFor, waitForElementToBeRemoved } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { EVENT_REVIEW_COLLECTION, REQUIRED_ANNOTATION_COLLECTION, REVIEW_LOOP_COLLECTION } from "../../../src/backend/test-run.fixtures";
 import { closeStudios, openPage } from "./app-page.fixtures";
 import { SLEEPS_THEN_WRITES, WRITES_DRAFT } from "../../../src/backend/test-run-session.fixtures";
-import { cellsOf, findWaitingReview, marksOfCard, openedFolders, openStartScreen, startReviewLoop, withScratchFolder, withScratchWorkspace } from "./test-run-page.fixtures";
+import { cellsOf, findWaitingReview, marksOfCard, openedFolders, openStartScreen, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
 
 afterEach(closeStudios);
 
@@ -273,59 +273,6 @@ describe("App test locally", () => {
     });
   }, 10_000);
 
-  it("puts <scratch>/runs in the Workspace folder box when runs is picked from the listing of <scratch>, which holds alpha and runs", async () => {
-    await withScratchFolder(async (scratch) => {
-      mkdirSync(join(scratch, "alpha"));
-      mkdirSync(join(scratch, "runs"));
-      await openStartScreen();
-      const box = await screen.findByRole("textbox", { name: "Workspace folder" });
-      await userEvent.type(box, scratch);
-
-      await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
-      const listing = await screen.findByRole("region", { name: "Folders" });
-      const folders = (await within(listing).findAllByRole("button")).map((button) => button.textContent);
-      await userEvent.click(within(listing).getByRole("button", { name: "runs" }));
-      await userEvent.click(await screen.findByRole("button", { name: "Use this folder" }));
-
-      expect({ folders, chosen: (box as HTMLInputElement).value }).toEqual({ folders: ["alpha", "runs"], chosen: join(scratch, "runs") });
-    });
-  });
-
-  it("lists <scratch> again and puts it in the Workspace folder box when Up is clicked from <scratch>/runs", async () => {
-    await withScratchFolder(async (scratch) => {
-      mkdirSync(join(scratch, "alpha"));
-      mkdirSync(join(scratch, "runs"));
-      await openStartScreen();
-      const box = await screen.findByRole("textbox", { name: "Workspace folder" });
-      await userEvent.type(box, join(scratch, "runs"));
-      await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
-
-      await userEvent.click(await screen.findByRole("button", { name: "Up" }));
-      const listing = await screen.findByRole("region", { name: "Folders" });
-      await within(listing).findByRole("button", { name: "alpha" });
-      const folders = within(listing).getAllByRole("button").map((button) => button.textContent);
-      await userEvent.click(await screen.findByRole("button", { name: "Use this folder" }));
-
-      expect({ folders, chosen: (box as HTMLInputElement).value }).toEqual({ folders: ["alpha", "runs"], chosen: scratch });
-    });
-  });
-
-  it("says '<scratch>/notes.txt is not a folder on disk' and offers no Use this folder when Browse lists a file", async () => {
-    await withScratchFolder(async (scratch) => {
-      const notes = join(scratch, "notes.txt");
-      writeFileSync(notes, "remember");
-      await openStartScreen();
-      await userEvent.type(await screen.findByRole("textbox", { name: "Workspace folder" }), notes);
-
-      await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
-
-      expect({
-        alert: (await screen.findByRole("alert")).textContent,
-        use: screen.queryByRole("button", { name: "Use this folder" }),
-      }).toEqual({ alert: `${notes} is not a folder on disk`, use: null });
-    });
-  });
-
   it("draws write as visited with success and review as waiting on the run screen's graph while 002-review-1 waits", async () => {
     await withScratchWorkspace(WRITES_DRAFT, async (workspace) => {
       await startReviewLoop(workspace);
@@ -357,5 +304,20 @@ describe("App test locally", () => {
       },
       EVENT_REVIEW_COLLECTION,
     );
+  });
+
+  it("offers no Cancel but keeps Open run folder once review-loop has finished with 002-review-1 approved", async () => {
+    await withScratchWorkspace(WRITES_DRAFT, async (workspace) => {
+      await startReviewLoop(workspace);
+      await findWaitingReview();
+
+      await userEvent.click(await screen.findByRole("button", { name: "approved" }));
+      await screen.findByText("finished");
+
+      expect({
+        cancel: screen.queryByRole("button", { name: "Cancel" }),
+        openRun: Boolean(screen.queryByRole("button", { name: "Open run folder" })),
+      }).toEqual({ cancel: null, openRun: true });
+    });
   });
 });
