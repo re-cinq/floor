@@ -13,9 +13,10 @@ interface Props {
   listFolder: ListFolder | undefined;
   startDir?: string;
   masks?: FileMask[];
+  error?: string;
 }
 
-export default function PathField({ label, browseLabel, mode, value, onChange, listFolder, startDir, masks }: Props) {
+export default function PathField({ label, browseLabel, mode, value, onChange, listFolder, startDir, masks, error }: Props) {
   const [browsing, setBrowsing] = useState(false);
 
   const choose = (path: string) => {
@@ -25,7 +26,7 @@ export default function PathField({ label, browseLabel, mode, value, onChange, l
 
   return (
     <>
-      <LabelledTextField label={label} value={value} onChange={onChange} addon={listFolder && <BrowseButton label={browseLabel} onClick={() => setBrowsing(true)} />} />
+      <LabelledTextField label={label} error={error} value={value} onChange={onChange} addon={listFolder && <BrowseButton label={browseLabel} onClick={() => setBrowsing(true)} />} />
       {browsing && listFolder && <PathPicker mode={mode} startDir={startDir} masks={masks} list={listFolder} onChoose={choose} onClose={() => setBrowsing(false)} />}
     </>
   );

@@ -53,3 +53,15 @@
 .group button:hover {
   background: var(--bg-hover);
 }
+
+.invalid input,
+.invalid input:hover {
+  border-color: var(--danger);
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  letter-spacing: normal;
+}

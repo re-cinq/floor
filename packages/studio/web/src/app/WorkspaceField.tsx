@@ -5,10 +5,11 @@ interface Props {
   controls: TestStartControls | undefined;
   workspace: string;
   onChange: (folder: string) => void;
+  error?: string;
 }
 
-export default function WorkspaceField({ controls, workspace, onChange }: Props) {
+export default function WorkspaceField({ controls, workspace, onChange, error }: Props) {
   return (
-    <PathField label="Workspace folder" browseLabel="Browse" mode="folder" value={workspace} onChange={onChange} listFolder={controls && ((path) => controls.listFolder(path))} startDir={workspace || undefined} />
+    <PathField label="Workspace folder" browseLabel="Browse" mode="folder" error={error} value={workspace} onChange={onChange} listFolder={controls && ((path) => controls.listFolder(path))} startDir={workspace || undefined} />
   );
 }

@@ -22,13 +22,9 @@ export default function TestStartScreen({ line, controls, onStarted }: Props) {
     <div className={`${styles.screen} ${styles.testStart}`}>
       <h1>Test {line.id} locally</h1>
       {preview?.asked.map(({ name }) => (
-        <LabelledTextField key={name} label={name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} />
+        <LabelledTextField key={name} label={name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} error={missing.includes(name) ? `${name} is missing` : undefined} />
       ))}
-      {missing.map((name) => (
-        <p key={name}>{name} is missing</p>
-      ))}
-      <WorkspaceField controls={controls} workspace={workspace} onChange={setWorkspace} />
-      {!workspace && <p>Choose a workspace folder</p>}
+      <WorkspaceField controls={controls} workspace={workspace} onChange={setWorkspace} error={workspace ? undefined : "Choose a workspace folder"} />
       {refusal && <p role="alert">{refusal}</p>}
       <button type="button" onClick={start} disabled={missing.length > 0 || !workspace}>Start</button>
     </div>

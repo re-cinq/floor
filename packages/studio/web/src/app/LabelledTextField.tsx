@@ -6,28 +6,32 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   addon?: ReactNode;
+  error?: string;
 }
 
-export default function LabelledTextField({ label, value, onChange, addon }: Props) {
+export default function LabelledTextField({ label, value, onChange, addon, error }: Props) {
   const inputId = useId();
-  const input = <input id={inputId} type="text" value={value} onChange={(event) => onChange(event.target.value)} />;
-
-  if (!addon) {
-    return (
-      <label className={styles.field}>
-        {label}
-        {input}
-      </label>
-    );
-  }
+  const errorId = useId();
+  const input = (
+    <input id={inputId} type="text" value={value} aria-invalid={error ? "true" : undefined} aria-describedby={error ? errorId : undefined} onChange={(event) => onChange(event.target.value)} />
+  );
 
   return (
-    <div className={styles.field}>
+    <div className={`${styles.field} ${error ? styles.invalid : ""}`}>
       <label htmlFor={inputId}>{label}</label>
-      <div className={styles.group}>
-        {input}
-        {addon}
-      </div>
+      {addon ? (
+        <div className={styles.group}>
+          {input}
+          {addon}
+        </div>
+      ) : (
+        input
+      )}
+      {error && (
+        <p id={errorId} className={styles.error}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
