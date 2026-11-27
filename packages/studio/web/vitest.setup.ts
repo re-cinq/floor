@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { configure } from "@testing-library/react";
 import { WebSocket } from "ws";
 import "../../graph/vitest.setup";
@@ -18,3 +21,6 @@ if (typeof HTMLDialogElement !== "undefined" && !Reflect.has(HTMLDialogElement.p
     this.setAttribute("open", "");
   };
 }
+
+// A test run remembers its start values under XDG_CONFIG_HOME; no test may write into the real home config.
+process.env.XDG_CONFIG_HOME = mkdtempSync(join(tmpdir(), "floor-studio-config-"));
