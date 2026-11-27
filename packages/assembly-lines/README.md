@@ -1,11 +1,12 @@
 # @re-cinq/floor-assembly-lines
 
-The rules of a floor's assembly line, as pure functions with no I/O and no database. It holds four things:
+The rules of a floor's assembly line, as pure functions with no I/O and no database. It holds five things:
 
 - the walk kernel, which says which edge a run takes next and when it ends
 - the checks an assembly line must pass before a floor stores it
 - the parameters a prompt is given
 - the answers a tool that draws a line needs: which events start and leave each node, and what each `{placeholder}` of a prompt is filled with
+- the state of a run worked out from its visits: its bag, the bag item each need of a station resolves to, and which waiting node an event from outside answers
 
 The floor's store, its cluster agent and the tools that read a line before it reaches a floor all use these, so they cannot disagree.
 
@@ -39,6 +40,11 @@ getNextTransition(
 | export | what it does |
 |---|---|
 | `getNextTransition`, `selectEdge`, `endsRun`, `isTerminalNode`, `visitsSinceHandRun` | the walk kernel: replay the visits of a run and say what happens next |
+| `walkGraphOf` | the walk kernel's graph of a line body, given the kind of each station it names |
+| `bagOf`, `ProducingVisit` | the bag of a run: its start items folded with what each visit produced, in visit order, later wins. A produced name takes the kind its station declares, else `value` |
+| `needItemsOf`, `visitIdsSincePersonActed`, `NeedItems` | the bag item each declared need resolves to, through `bind` when the names differ, and the needs left missing. An optional need is never missing; a `fresh` need whose item predates a person's last act is, and `visitIdsSincePersonActed` gives the visits that count as since then. The caller flattens the items: a floor to `/blobs/<hash>`, a local run to a path |
+| `matchesWhen`, `startsOn`, `answersOf`, `Payload`, `Answer` | what an event from outside means to a line: whether it starts it, and which waiting node it answers, with which outcome |
+| `previousErrorNeed`, `previousFailuresNeed` | what a retried station is told of earlier failures, as `previous_error` and `previous_failures` |
 | `definitionHash` | the content hash of a versioned definition |
 | `readAgentVerdict` | reads an agent's verdict from what it reported |
 | `validateLine`, `KnownDefinitions` | every problem a line body has: names, edges, reachability, arguments, outcomes, cycles, needs, fan-outs |

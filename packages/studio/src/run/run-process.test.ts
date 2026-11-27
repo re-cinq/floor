@@ -89,4 +89,23 @@ describe("runProcess", () => {
       exitCode: 1,
     });
   });
+
+  it(
+    "ends with exit code null and 'could not start floor-studio-no-such-agent: spawn floor-studio-no-such-agent ENOENT' when the program is not on PATH",
+    async () => {
+      const folder = await mkdtemp(join(tmpdir(), "run-process-folder-"));
+      tempDirs.push(folder);
+
+      const { done } = runProcess(
+        { command: ["floor-studio-no-such-agent"], folder, env: {} },
+        () => {},
+      );
+
+      expect(await done).toEqual({
+        exitCode: null,
+        error: "could not start floor-studio-no-such-agent: spawn floor-studio-no-such-agent ENOENT",
+      });
+    },
+    3000,
+  );
 });

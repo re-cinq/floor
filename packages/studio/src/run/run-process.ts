@@ -1,4 +1,4 @@
-// Spawns an agent CLI in a folder, streaming its stdout and stderr line by line, with cancel.
+// Spawns an agent CLI in a folder, streaming its stdout and stderr line by line, with cancel; ends with its exit code or why it could not start.
 import { spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import { createInterface } from "node:readline";
@@ -14,8 +14,13 @@ export interface RunLine {
   text: string;
 }
 
+export interface ProcessEnding {
+  exitCode: number | null;
+  error?: string;
+}
+
 export interface RunningProcess {
-  done: Promise<{ exitCode: number | null }>;
+  done: Promise<ProcessEnding>;
   cancel(): void;
 }
 
@@ -32,7 +37,10 @@ export function runProcess(
   });
   readLines(child.stdout, "stdout", onLine);
   readLines(child.stderr, "stderr", onLine);
-  const done = new Promise<{ exitCode: number | null }>((resolve) => {
+  const done = new Promise<ProcessEnding>((resolve) => {
+    child.on("error", (cause) =>
+      resolve({ exitCode: null, error: `could not start ${program}: ${cause.message}` }),
+    );
     child.on("close", (exitCode) => resolve({ exitCode }));
   });
 

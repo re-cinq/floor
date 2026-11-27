@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import WebSocket from "ws";
+import { z } from "zod";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
 import { serverFrameSchema, type ServerFrame } from "../protocol.js";
 import { WORKER_COLLECTION } from "./collection-view.fixtures.js";
@@ -120,17 +121,74 @@ export async function framesUntilRunEnded(client: Client): Promise<ServerFrame[]
   return frames;
 }
 
+const startedRunFrame = z.object({ type: z.literal("result"), result: z.object({ run: z.string() }) });
+
+export function sendWorkRunStart(client: Client, folder: string): void {
+  client.send({ id: "s1", type: "run.start", line: "flow", node: "work", fixture: { ticket: "ENG-1" }, folder, permission: "acceptEdits" });
+}
+
+export function runIdOf(startedFrame: ServerFrame): string {
+  const { result } = startedRunFrame.parse(startedFrame);
+
+  return result.run;
+}
+
+/** Starts flow/work with ticket ENG-1 in `folder` and gives the run id its result frame names. */
+export async function startWorkRun(client: Client, folder: string): Promise<string> {
+  sendWorkRunStart(client, folder);
+
+  return runIdOf(await client.nextOfType("result"));
+}
+
+/** Starts the work run, waits for its first output, cancels it and gives the `run.ended` frame with the run id. */
+export async function cancelledAfterFirstOutput(client: Client, folder: string) {
+  const run = await startWorkRun(client, folder);
+
+  await client.nextOfType("run.output");
+  client.send({ id: "c1", type: "run.cancel", run });
+
+  return { run, ended: await client.nextOfType("run.ended") };
+}
+
+/** Ends a work run of a claude running `script`, restarts the studio and gives the result frame its `run.read` after 0 answers. */
+export async function readAnswerAfterRestart(script: string): Promise<Extract<ServerFrame, { type: "result" }>> {
+  let answer: Extract<ServerFrame, { type: "result" }> | undefined;
+
+  await withFakeClaude(script, async (client, folder, restart) => {
+    const run = await startWorkRun(client, folder);
+
+    await client.nextOfType("run.ended");
+    const restarted = await restart();
+
+    restarted.send({ id: "r1", type: "run.read", run, after: 0 });
+    answer = await restarted.nextOfType("result");
+  });
+
+  return answer as Extract<ServerFrame, { type: "result" }>;
+}
+
+/** A scratch folder holding a `claude` that runs `script`, and the environment that puts it first on PATH; the caller removes the scratch. */
+export function fakeClaudeScratch(prefix: string, script: string): { scratch: string; runEnv: Record<string, string> } {
+  const scratch = mkdtempSync(join(tmpdir(), prefix));
+  const bin = join(scratch, "bin");
+
+  mkdirSync(bin);
+  writeFileSync(join(bin, "claude"), script, { mode: 0o755 });
+
+  return { scratch, runEnv: { PATH: `${bin}:${process.env.PATH}` } };
+}
+
 /** Runs `body` against a studio whose `claude` on PATH is `script`, past the hello frame. */
 export async function withFakeClaude(
   script: string,
   body: (client: Client, folder: string, restart: () => Promise<Client>) => Promise<void>,
+  files: readonly CollectionFile[] = WORKER_COLLECTION,
 ): Promise<void> {
-  const scratch = mkdtempSync(join(tmpdir(), "floor-run-start-"));
-  const bin = join(scratch, "bin");
-  const dir = collectionOnDisk(WORKER_COLLECTION);
+  const { scratch, runEnv } = fakeClaudeScratch("floor-run-start-", script);
+  const dir = collectionOnDisk(files);
 
   async function connectToNewStudio(): Promise<{ studio: Studio; client: Client }> {
-    const studio = await startedStudio({ dir, runEnv: { PATH: `${bin}:${process.env.PATH}` } });
+    const studio = await startedStudio({ dir, runEnv });
     const client = await openClient(studio.url, { token: studio.token });
 
     await client.next();
@@ -139,8 +197,6 @@ export async function withFakeClaude(
   }
 
   try {
-    mkdirSync(bin);
-    writeFileSync(join(bin, "claude"), script, { mode: 0o755 });
     const first = await connectToNewStudio();
 
     await body(first.client, join(scratch, "folder"), async () => {

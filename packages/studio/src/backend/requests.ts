@@ -9,6 +9,8 @@ import { runPreviewHandler, type RunPreviewRequest } from "./run-preview-request
 import { runCancelHandler, type RunCancelRequest } from "./run-cancel-request.js";
 import { runStartHandler, type RunStartRequest } from "./run-start-request.js";
 import { runReadHandler, type RunReadRequest } from "./run-read-request.js";
+import { folderListHandler, testEventHandler, folderOpenHandler, testCancelHandler, testPreviewHandler, testReadHandler, testReportHandler, testStartHandler, type FolderListRequest, type TestEventRequest, type FolderOpenRequest, type TestCancelRequest, type TestPreviewRequest, type TestReadRequest, type TestReportRequest, type TestStartRequest } from "./test-run-requests.js";
+import type { TestRunSession } from "./test-run-session.js";
 import type { RunRecord, RunTranscript } from "../run/run-records.js";
 
 export interface StudioContext {
@@ -24,10 +26,16 @@ export interface StudioContext {
   writeRun(run: string, transcript: RunTranscript): Promise<void>;
   /** The record of each run started by `run.start`, by run id; kept after the run ends. */
   runs: Map<string, RunRecord>;
+  /** The folder the studio serves: a test run snapshots it. */
+  collectionDir: string;
+  /** Each local test run started by `test.start`, by run id; kept after the run ends. */
+  testRuns: Map<string, TestRunSession>;
   /** Environment laid over the studio's own for each started process. */
   runEnv?: Record<string, string>;
   /** Sends a frame to every open socket. */
   broadcast(frame: ServerFrame): void;
+  /** Opens a folder in the desktop's file manager. */
+  openFolder(path: string): void;
 }
 
 export interface Handler<Asked extends Request> {
@@ -84,7 +92,7 @@ type CollectionRead = Extract<Request, { type: "collection.read" }>;
 const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
 
 /** One handler for each request type: a test holds the list to `REQUEST_TYPES`. */
-export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead> | Handler<RunPreviewRequest> | Handler<RunStartRequest> | Handler<RunCancelRequest> | Handler<RunReadRequest>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead, runPreviewHandler, runStartHandler, runCancelHandler, runReadHandler];
+export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead> | Handler<RunPreviewRequest> | Handler<RunStartRequest> | Handler<RunCancelRequest> | Handler<RunReadRequest> | Handler<TestStartRequest> | Handler<TestReportRequest> | Handler<TestCancelRequest> | Handler<TestReadRequest> | Handler<TestPreviewRequest> | Handler<FolderOpenRequest> | Handler<FolderListRequest> | Handler<TestEventRequest>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead, runPreviewHandler, runStartHandler, runCancelHandler, runReadHandler, testStartHandler, testReportHandler, testCancelHandler, testReadHandler, testPreviewHandler, folderOpenHandler, folderListHandler, testEventHandler];
 
 export async function answerFrame(text: string, context: StudioContext): Promise<ServerFrame> {
   const held = parsedJson(text);

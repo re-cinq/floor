@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answersOf, matchesWhen, repoFrom, startItemsFrom, startsOn } from "./event-match.js";
+import { repoFrom, startItemsFrom } from "./event-match.js";
 import type { LineBody } from "./types.js";
 
 const REVIEW_LINE: LineBody = {
@@ -27,38 +27,6 @@ const REVIEW_LINE: LineBody = {
 };
 
 const OPENED = { repository: "github.com/re-cinq/lore", head_ref: "feat", pull_request_url: "https://pr/412", draft: false };
-
-describe("matchesWhen", () => {
-  it("matches when there is nothing to compare", () => {
-    expect(matchesWhen(undefined, {})).toBe(true);
-  });
-
-  it("compares a boolean in the line with a boolean in the payload", () => {
-    expect(matchesWhen({ merged: true }, { merged: true })).toBe(true);
-  });
-
-  it("does not match a field the payload lacks", () => {
-    expect(matchesWhen({ merged: false }, {})).toBe(false);
-  });
-
-  it("does not match a different value", () => {
-    expect(matchesWhen({ outcome: "failed" }, { outcome: "success" })).toBe(false);
-  });
-});
-
-describe("startsOn", () => {
-  it("is true for a declared event whose payload satisfies when", () => {
-    expect(startsOn(REVIEW_LINE, "github.pull_request.opened", OPENED)).toBe(true);
-  });
-
-  it("is false for a draft, which when excludes", () => {
-    expect(startsOn(REVIEW_LINE, "github.pull_request.opened", { ...OPENED, draft: true })).toBe(false);
-  });
-
-  it("is false for an event the line does not declare", () => {
-    expect(startsOn(REVIEW_LINE, "github.pull_request.closed", OPENED)).toBe(false);
-  });
-});
 
 describe("startItemsFrom", () => {
   it("renders each argument from the payload, with the kind the line declares", () => {
@@ -90,19 +58,5 @@ describe("repoFrom", () => {
 
   it("answers no repo for an event with no git argument and no repo in its payload", () => {
     expect(repoFrom({}, {})).toBeNull();
-  });
-});
-
-describe("answersOf", () => {
-  it("answers success for a merged pull request", () => {
-    expect(answersOf(REVIEW_LINE, "github.pull_request.closed", { merged: true })).toEqual([{ nodeId: "merged", outcome: "success" }]);
-  });
-
-  it("answers failed for one closed unmerged", () => {
-    expect(answersOf(REVIEW_LINE, "github.pull_request.closed", { merged: false })).toEqual([{ nodeId: "merged", outcome: "failed" }]);
-  });
-
-  it("answers nothing for an event no node waits on", () => {
-    expect(answersOf(REVIEW_LINE, "github.pull_request.opened", OPENED)).toEqual([]);
   });
 });

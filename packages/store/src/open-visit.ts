@@ -5,10 +5,10 @@ import { collectNeeds, itemNeed, type CollectReaders } from "./fan-needs.js";
 import { forRepo } from "./repo-name.js";
 import type { Pool } from "pg";
 import { DefinitionsStore } from "./definitions.js";
-import { Refusal, enforce, requireNode } from "@re-cinq/floor-assembly-lines";
+import { Refusal, enforce, previousErrorNeed, previousFailuresNeed, requireNode, visitIdsSincePersonActed } from "@re-cinq/floor-assembly-lines";
 import { visitsWith, type Queryable } from "./rows.js";
 import { buildWalkGraph } from "./walk-graph.js";
-import { mergeAgentSettings, previousErrorNeed, previousFailuresNeed, resolveNeeds, visitIdsSincePersonActed } from "./resolve.js";
+import { mergeAgentSettings, resolveNeeds } from "./resolve.js";
 import type {
   AgentDefinitionBody,
   AgentSettings,

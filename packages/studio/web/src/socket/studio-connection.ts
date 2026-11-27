@@ -209,7 +209,12 @@ export class StudioConnection {
   }
 
   private answer(frame: Exclude<ServerFrame, { type: "hello" | "collection" }>): void {
+    if (frame.type === "test.changed") return;
     if (isRunFrame(frame)) return this.runListeners.forEach((listener) => listener(frame));
+    this.reply(frame);
+  }
+
+  private reply(frame: Extract<ServerFrame, { type: "result" | "refused" }>): void {
     if (frame.type === "result") return this.settle(frame.id)?.resolve(frame.result);
     if (frame.id === undefined) return this.unreadable(frame.reason);
     this.settle(frame.id)?.reject(new Error(frame.reason));

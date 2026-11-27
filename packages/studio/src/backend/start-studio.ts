@@ -3,21 +3,20 @@ import { randomBytes } from "node:crypto";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { basename, join, resolve } from "node:path";
+import { basename, join } from "node:path";
 import type { Duplex } from "node:stream";
 import { enforce } from "@re-cinq/floor-assembly-lines";
-import { collectionFilesIn, collectionSettingsIn, hostKeysIn, readAgentFile } from "@re-cinq/floor-pipeline";
+import { hostKeysIn, readAgentFile } from "@re-cinq/floor-pipeline";
 import { WebSocket, WebSocketServer } from "ws";
 import { PROTOCOL_VERSION, type ServerFrame } from "../protocol.js";
 import type { CollectionView } from "../view.js";
-import { collectionView } from "./collection-view.js";
 import { upgradeRefusal, type UpgradeRefusal } from "./guard.js";
 import { editedAgentText, textVersion, withOneNewline, type AgentEdit } from "./agent-file-text.js";
-import { environmentOf } from "./environment-usage.js";
+import { openOnDesktop } from "../shell/open-browser.js";
 import { fixtureFilesIn } from "./fixture-files.js";
 import { runFilesIn } from "./run-files.js";
 import { answerFrame, type StudioContext } from "./requests.js";
-import { isSkillPath, skillNamesIn } from "./skill-names.js";
+import { readCollectionView } from "./read-collection-view.js";
 import { watchCollection } from "./watcher.js";
 
 /** Never `0.0.0.0`: the backend writes files and starts processes. */
@@ -54,7 +53,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
   const token = randomBytes(TOKEN_BYTES).toString("hex");
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const allHostKeys = async () => [...hostKeys, ...(await hostKeysIn(dir))];
-  const readCollection = () => collectionRead(dir, hostKeys);
+  const readCollection = () => readCollectionView(dir, hostKeys);
 
   const writeAgent = async (file: string, edit: AgentEdit) => {
     const path = join(dir, file);
@@ -65,7 +64,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     await writeFile(path, text);
   };
 
-  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), ...runFilesIn(dir), runs: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)) };
+  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), ...runFilesIn(dir), runs: new Map(), collectionDir: dir, testRuns: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)), openFolder: openOnDesktop };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {
@@ -85,13 +84,6 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     pageCount: () => sockets.clients.size,
     close: () => closed({ watcher, sockets, server, runs: context.runs }),
   };
-}
-
-async function collectionRead(dir: string, hostKeys: readonly string[]): Promise<CollectionView> {
-  const files = (await collectionFilesIn(dir)).filter((file) => !isSkillPath(file.path));
-  const settings = await collectionSettingsIn(dir);
-
-  return { ...collectionView(files, [...hostKeys, ...settings.hostKeys], settings.groups), folder: basename(resolve(dir)), skills: await skillNamesIn(dir), environment: environmentOf(files) };
 }
 
 async function writeExtraFile(path: string, { text, version }: { text: string; version: string }): Promise<void> {
