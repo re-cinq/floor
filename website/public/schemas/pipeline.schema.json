@@ -511,6 +511,30 @@
                           "minLength": 1,
                           "description": "The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holding one whole header line, such as `Authorization: Bearer <token>`."
                         },
+                        "visit_token": {
+                          "type": "object",
+                          "properties": {
+                            "audience": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Who the token is for: the name the server expects to be called by, which it checks."
+                            },
+                            "scopes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^\\S+$"
+                              },
+                              "description": "What the token may do at the server, in the server's own words."
+                            }
+                          },
+                          "required": [
+                            "audience",
+                            "scopes"
+                          ],
+                          "additionalProperties": false,
+                          "description": "`http` and `sse` only, and never beside `headers_secret`. The floor signs a token for each visit, naming the visit, its run and its repository, for the pod to present to the server as `Authorization: Bearer <token>`. The server verifies it with the keys the floor publishes at `/.well-known/jwks.json`."
+                        },
                         "headers": {
                           "type": "array",
                           "items": {
@@ -793,6 +817,30 @@
                             "type": "string",
                             "minLength": 1,
                             "description": "The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holding one whole header line, such as `Authorization: Bearer <token>`."
+                          },
+                          "visit_token": {
+                            "type": "object",
+                            "properties": {
+                              "audience": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Who the token is for: the name the server expects to be called by, which it checks."
+                              },
+                              "scopes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^\\S+$"
+                                },
+                                "description": "What the token may do at the server, in the server's own words."
+                              }
+                            },
+                            "required": [
+                              "audience",
+                              "scopes"
+                            ],
+                            "additionalProperties": false,
+                            "description": "`http` and `sse` only, and never beside `headers_secret`. The floor signs a token for each visit, naming the visit, its run and its repository, for the pod to present to the server as `Authorization: Bearer <token>`. The server verifies it with the keys the floor publishes at `/.well-known/jwks.json`."
                           },
                           "headers": {
                             "type": "array",
