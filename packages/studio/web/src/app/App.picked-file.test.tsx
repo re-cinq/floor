@@ -150,4 +150,25 @@ describe("App test locally with a picked file", () => {
       );
     });
   });
+
+  it("offers no Use this file when photo.png was picked under All files and Show files returns to '*.md'", async () => {
+    await withScratchFolder(async (home) => {
+      writeFileSync(join(home, "notes.md"), "Marked up on disk.");
+      writeFileSync(join(home, "photo.png"), "pixels");
+      vi.stubEnv("HOME", home);
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          const dialog = await openChooseAFile(workspace);
+          const showFiles = within(dialog).getByRole("combobox", { name: "Show files" });
+          await userEvent.selectOptions(showFiles, "All files");
+          await userEvent.click(await within(dialog).findByRole("button", { name: "photo.png" }));
+          await userEvent.selectOptions(showFiles, "*.md");
+
+          expect({ useThisFile: within(dialog).queryByRole("button", { name: "Use this file" }) }).toEqual({ useThisFile: null });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    });
+  });
 });

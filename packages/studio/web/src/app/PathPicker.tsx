@@ -21,6 +21,7 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
   const [file, setFile] = useState<string>();
   const [maskIndex, setMaskIndex] = useState(0);
   const { listing, refusal, browse } = useFolderListing(list);
+  const shownFile = fileUnderMask(file, [...masks, ALL_FILES][maskIndex]!);
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -31,10 +32,14 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
     <dialog ref={dialogRef} aria-label={`Choose a ${mode}`} className={styles.dialog} onCancel={onClose}>
       <Listing listing={listing} browse={browse} pickFile={mode === "file" ? setFile : undefined} masks={masks} maskIndex={maskIndex} chooseMask={setMaskIndex} />
       {refusal && <p role="alert">{refusal}</p>}
-      {listing && <Choice mode={mode} path={listing.path} file={file} onChoose={onChoose} />}
+      {listing && <Choice mode={mode} path={listing.path} file={shownFile}onChoose={onChoose} />}
       <button type="button" onClick={onClose}>Cancel</button>
     </dialog>
   );
+}
+
+function fileUnderMask(file: string | undefined, mask: FileMask): string | undefined {
+  return file && matchesMask(file, mask.patterns) ? file : undefined;
 }
 
 function useFolderListing(list: Props["list"]) {
