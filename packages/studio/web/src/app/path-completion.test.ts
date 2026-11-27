@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { completedFilter, entriesMatching, splitTyped } from "./path-completion";
+import { completedFilter, enterAction, entriesMatching, splitTyped } from "./path-completion";
 
 describe("splitTyped", () => {
   it.each([
@@ -44,5 +44,20 @@ describe("completedFilter", () => {
     { matches: ["alpha-one", "beta-one"], filter: "one", expected: "one" },
   ])("returns '$expected' for filter '$filter' with matches $matches", ({ matches, filter, expected }) => {
     expect(completedFilter(matches, filter)).toEqual(expected);
+  });
+});
+
+describe("enterAction refusals", () => {
+  const shown = { folders: ["alpha"], files: ["notes.md"] };
+
+  it.each([
+    { mode: "file", filter: "note", why: "a prefix of a file" },
+    { mode: "file", filter: "missing.md", why: "an unknown name" },
+    { mode: "folder", filter: "notes.md", why: "a file name in folder mode" },
+    { mode: "folder", filter: "alp", why: "a partial folder name" },
+    { mode: "file", filter: "", why: "an empty filter in file mode" },
+    { mode: "file", filter: "NOTES.md", why: "a file name in different case" },
+  ] as const)("returns none for $mode mode with '$filter', $why", ({ mode, filter }) => {
+    expect(enterAction(mode, filter, shown)).toEqual({ kind: "none" });
   });
 });
