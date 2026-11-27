@@ -19,7 +19,7 @@ describe("answerFrame", () => {
   });
 
   it("refuses an unknown request type, naming it, with the id it carried", async () => {
-    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.nope" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.nope"; known: collection.read, agent.write, extra.write, fixture.write, fixture.read, run.preview, run.start, run.cancel, run.read, test.start, test.report, test.cancel, test.read, test.preview, folder.open, folder.list, test.event, test.last' });
+    expect(await answerFrame(JSON.stringify({ id: "r2", type: "run.nope" }), CONTEXT)).toEqual({ id: "r2", type: "refused", reason: 'unknown request type "run.nope"; known: collection.read, agent.write, extra.write, fixture.write, fixture.read, run.preview, run.start, run.cancel, run.read, test.start, test.report, test.cancel, test.read, test.preview, folder.open, folder.list, test.event, test.last, test.list' });
   });
 
   it("refuses a request that fails its schema, with the id it carried and the field named", async () => {

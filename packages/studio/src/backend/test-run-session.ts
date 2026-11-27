@@ -41,6 +41,7 @@ export interface TestRunStart {
 
 export interface TestRunSession {
   id: string;
+  startedAt: string;
   state(): TestRunState;
   idle(): Promise<void>;
   cancel(): Promise<void>;
@@ -89,6 +90,7 @@ export async function startTestRun(context: StudioContext, start: TestRunStart, 
 function sessionOf(work: RunWork): TestRunSession {
   return {
     id: work.id,
+    startedAt: work.startedAt,
     state: () => stateOf(work),
     idle: () => work.stepping,
     cancel: () => cancelWork(work),

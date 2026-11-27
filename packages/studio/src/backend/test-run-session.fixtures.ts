@@ -1,11 +1,12 @@
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { vi } from "vitest";
 import { join } from "node:path";
 import type { CollectionFile } from "@re-cinq/floor-pipeline";
 import type { ServerFrame } from "../protocol.js";
 import type { StandInAnswer } from "../test-run/stand-in-report.js";
 import { contextOver } from "./agent-run.fixtures.js";
-import type { StudioContext } from "./requests.js";
+import { answerFrame, type StudioContext } from "./requests.js";
 import { startTestRun, type TestRunSession } from "./test-run-session.js";
 import { collectionOnDisk, fakeClaudeScratch } from "./studio.fixtures.js";
 import { REVIEW_LOOP_COLLECTION } from "./test-run.fixtures.js";
@@ -29,6 +30,8 @@ export const EXITS_WITH_3 = "#!/bin/sh\nexit 3\n";
 export const RUN_FOLDER = "review-loop-20261127-141230";
 export const STARTED_AT = Date.parse("2026-11-27T14:12:30.000Z");
 const ANSWER_DELAY_MS = 90_000;
+
+export type TestRunContext = StudioContext;
 
 export interface TestRunSetup {
   context: StudioContext;
@@ -119,4 +122,27 @@ export function jsonLinesIn(path: string): unknown[] {
     .split("\n")
     .filter((line) => line !== "")
     .map((line) => JSON.parse(line) as unknown);
+}
+
+/** Starts review-loop on tides in `workspace` and waits for the run to idle; the answer to the start. */
+export async function startReviewLoop(workspace: string, context: TestRunContext): ReturnType<typeof answerFrame> {
+  const start = { id: "t1", type: "test.start", line: "review-loop", workspace, entered: { topic: "tides" }, permission: "acceptEdits" };
+  const answer = await answerFrame(JSON.stringify(start), context);
+
+  await Promise.all([...context.testRuns.values()].map((session) => session.idle()));
+
+  return answer;
+}
+
+/** `withTestRunSetup` over WRITES_DRAFT with XDG_CONFIG_HOME stubbed to a scratch folder, removed after `body`. */
+export async function withRememberedSetup(body: (setup: TestRunSetup & { configFolder: string }) => Promise<void>): Promise<void> {
+  const configFolder = mkdtempSync(join(tmpdir(), "floor-last-tests-"));
+
+  vi.stubEnv("XDG_CONFIG_HOME", configFolder);
+
+  try {
+    await withTestRunSetup(WRITES_DRAFT, (setup) => body({ ...setup, configFolder }));
+  } finally {
+    rmSync(configFolder, { recursive: true, force: true });
+  }
 }

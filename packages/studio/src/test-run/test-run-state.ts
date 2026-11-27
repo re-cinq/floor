@@ -11,6 +11,15 @@ export interface TestRunState {
   actions: Record<string, StandInAction[]>;
 }
 
+export interface TestRunListing {
+  run: string;
+  line: string;
+  folder: string;
+  status: TestRunState["status"];
+  startedAt: string;
+  ending?: TestRunEnding;
+}
+
 export interface TestRunEnding {
   outcome: "finished" | "iteration_max" | "error" | "failed" | "cancelled";
   reason?: string;

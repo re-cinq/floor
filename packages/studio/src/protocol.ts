@@ -8,7 +8,7 @@ import type { RunPreview } from "./run/run-preview.js";
 import type { CollectionView, NodeNeed, NodeProduce } from "./view.js";
 import type { FolderListing } from "./folder-listing.js";
 import type { TestPreview } from "./test-run/test-preview.js";
-import type { TestRunState } from "./test-run/test-run-state.js";
+import type { TestRunListing, TestRunState } from "./test-run/test-run-state.js";
 import type { StandInAction } from "./test-run/stand-in-actions.js";
 import type { VisitState } from "./test-run/test-visit.js";
 
@@ -51,6 +51,8 @@ export const testPreviewRequest = z.strictObject({ id: requestId, type: z.litera
 
 export const testLastRequest = z.strictObject({ id: requestId, type: z.literal("test.last"), line: z.string() });
 
+export const testListRequest = z.strictObject({ id: requestId, type: z.literal("test.list") });
+
 export const folderOpenRequest = z.strictObject({ id: requestId, type: z.literal("folder.open"), path: z.string() });
 
 export const folderListRequest = z.strictObject({ id: requestId, type: z.literal("folder.list"), path: z.string().optional() });
@@ -58,7 +60,7 @@ export const folderListRequest = z.strictObject({ id: requestId, type: z.literal
 export const testEventRequest = z.strictObject({ id: requestId, type: z.literal("test.event"), run: z.string(), event: z.string(), payload: z.record(z.string(), z.unknown()) });
 
 /** A new request type is one schema here and one handler in the backend's table. */
-export const requestSchema = z.discriminatedUnion("type", [collectionReadRequest, agentWriteRequest, extraWriteRequest, fixtureWriteRequest, fixtureReadRequest, runPreviewRequest, runStartRequest, runCancelRequest, runReadRequest, testStartRequest, testReportRequest, testCancelRequest, testReadRequest, testPreviewRequest, folderOpenRequest, folderListRequest, testEventRequest, testLastRequest]);
+export const requestSchema = z.discriminatedUnion("type", [collectionReadRequest, agentWriteRequest, extraWriteRequest, fixtureWriteRequest, fixtureReadRequest, runPreviewRequest, runStartRequest, runCancelRequest, runReadRequest, testStartRequest, testReportRequest, testCancelRequest, testReadRequest, testPreviewRequest, folderOpenRequest, folderListRequest, testEventRequest, testLastRequest, testListRequest]);
 
 export type Request = z.infer<typeof requestSchema>;
 export type RequestKind = Request["type"];
@@ -66,7 +68,7 @@ export type RequestKind = Request["type"];
 export const REQUEST_TYPES: RequestKind[] = requestSchema.options.map(({ shape }) => shape.type.value);
 
 /** What a request is answered with, in a `result` frame. */
-export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" | "extra.write" } ? { written: string } : Asked extends { type: "fixture.write" } ? { written: string } : Asked extends { type: "fixture.read" } ? { needs: Record<string, string> } : Asked extends { type: "run.preview" } ? RunPreview : Asked extends { type: "run.start" } ? { run: string } : Asked extends { type: "run.cancel" } ? { cancelled: string } : Asked extends { type: "run.read" } ? { lines: RunLine[]; ended?: RunEnding } : Asked extends { type: "test.start" } ? { run: string; folder: string } : Asked extends { type: "test.report" } ? { reported: string } : Asked extends { type: "test.cancel" } ? { cancelled: string } : Asked extends { type: "test.read" } ? TestRunState : Asked extends { type: "test.preview" } ? TestPreview : Asked extends { type: "folder.open" } ? { opened: string } : Asked extends { type: "folder.list" } ? FolderListing : Asked extends { type: "test.event" } ? { answered: string[] } : Asked extends { type: "test.last" } ? { workspace: string; entered: Record<string, string> } | null : never;
+export type ResultOf<Asked extends Request> = Asked extends { type: "collection.read" } ? CollectionView : Asked extends { type: "agent.write" | "extra.write" } ? { written: string } : Asked extends { type: "fixture.write" } ? { written: string } : Asked extends { type: "fixture.read" } ? { needs: Record<string, string> } : Asked extends { type: "run.preview" } ? RunPreview : Asked extends { type: "run.start" } ? { run: string } : Asked extends { type: "run.cancel" } ? { cancelled: string } : Asked extends { type: "run.read" } ? { lines: RunLine[]; ended?: RunEnding } : Asked extends { type: "test.start" } ? { run: string; folder: string } : Asked extends { type: "test.report" } ? { reported: string } : Asked extends { type: "test.cancel" } ? { cancelled: string } : Asked extends { type: "test.read" } ? TestRunState : Asked extends { type: "test.preview" } ? TestPreview : Asked extends { type: "folder.open" } ? { opened: string } : Asked extends { type: "folder.list" } ? FolderListing : Asked extends { type: "test.event" } ? { answered: string[] } : Asked extends { type: "test.last" } ? { workspace: string; entered: Record<string, string> } | null : Asked extends { type: "test.list" } ? TestRunListing[] : never;
 
 // Strict down to a node's agent; events, placeholders, needs, produces, edges, args, start and kind come from other packages and are only checked to be objects where required.
 const presentObject = <Shape>() => z.custom<Shape>((value) => typeof value === "object" && value !== null);

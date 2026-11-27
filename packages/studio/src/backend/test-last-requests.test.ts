@@ -1,9 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { answerFrame } from "./requests.js";
-import { WRITES_DRAFT, withTestRunSetup, type TestRunSetup } from "./test-run-session.fixtures.js";
+import { startReviewLoop, withRememberedSetup, type TestRunContext } from "./test-run-session.fixtures.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -60,29 +59,6 @@ describe("test.last", () => {
   });
 });
 
-type Context = TestRunSetup["context"];
-
-function lastFor(line: string, context: Context): ReturnType<typeof answerFrame> {
+function lastFor(line: string, context: TestRunContext): ReturnType<typeof answerFrame> {
   return answerFrame(JSON.stringify({ id: "t2", type: "test.last", line }), context);
-}
-
-async function startReviewLoop(workspace: string, context: Context): ReturnType<typeof answerFrame> {
-  const start = { id: "t1", type: "test.start", line: "review-loop", workspace, entered: { topic: "tides" }, permission: "acceptEdits" };
-  const answer = await answerFrame(JSON.stringify(start), context);
-
-  await Promise.all([...context.testRuns.values()].map((session) => session.idle()));
-
-  return answer;
-}
-
-async function withRememberedSetup(body: (setup: TestRunSetup & { configFolder: string }) => Promise<void>): Promise<void> {
-  const configFolder = mkdtempSync(join(tmpdir(), "floor-last-tests-"));
-
-  vi.stubEnv("XDG_CONFIG_HOME", configFolder);
-
-  try {
-    await withTestRunSetup(WRITES_DRAFT, (setup) => body({ ...setup, configFolder }));
-  } finally {
-    rmSync(configFolder, { recursive: true, force: true });
-  }
 }
