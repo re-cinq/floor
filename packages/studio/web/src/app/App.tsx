@@ -170,7 +170,7 @@ function useTestControls(connection: StudioConnection | undefined, line: string 
 function testRunControls(connection: StudioConnection | undefined): TestRunControls | undefined {
   if (!connection) return undefined;
 
-  return { cancel: (run) => connection.cancelTest(run), read: (run) => connection.readTest(run), report: (fields) => connection.reportTest(fields), sendEvent: (fields) => connection.sendTestEvent(fields), follow: (listener) => connection.onTestChanged(listener), openFolder: (path) => connection.openFolder(path) };
+  return { cancel: (run) => connection.cancelTest(run), read: (run) => connection.readTest(run), report: (fields) => connection.reportTest(fields), sendEvent: (fields) => connection.sendTestEvent(fields), follow: (listener) => connection.onTestChanged(listener), reopened: (listener) => connection.onOpened(listener),openFolder: (path) => connection.openFolder(path) };
 }
 
 /** A test run is previewed and started over a live connection, for the selected line. */

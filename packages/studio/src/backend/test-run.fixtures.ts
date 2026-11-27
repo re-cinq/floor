@@ -122,5 +122,10 @@ export const EVENT_REVIEW_COLLECTION: readonly CollectionFile[] = [
   { path: "review-loop/agents/draft-writer.md", text: DRAFT_WRITER_AGENT },
 ];
 
+const reviewLoopDraftingAt = (draftPath: string): readonly CollectionFile[] => REVIEW_LOOP_COLLECTION.map((file) => ({ ...file, text: file.text.replace("path: draft.md", `path: ${draftPath}`) }));
+
 /** The review-loop collection whose draft-writer produces draft at ../../escape.md. */
-export const ESCAPING_WRITER_COLLECTION: readonly CollectionFile[] = REVIEW_LOOP_COLLECTION.map((file) => ({ ...file, text: file.text.replace("path: draft.md", "path: ../../escape.md") }));
+export const ESCAPING_WRITER_COLLECTION: readonly CollectionFile[] = reviewLoopDraftingAt("../../escape.md");
+
+/** The review-loop collection whose draft-writer produces draft at notes/draft.md. */
+export const NOTES_WRITER_COLLECTION: readonly CollectionFile[] = reviewLoopDraftingAt("notes/draft.md");

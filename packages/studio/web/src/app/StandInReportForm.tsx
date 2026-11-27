@@ -1,27 +1,30 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import LabelledTextField from "./LabelledTextField";
-import { refusalOf, type Produced, type ReportField, type ReportOutcome } from "./stand-in-report";
+import { filesOf, producedOf, refusalOf, type Produced, type ReportField, type ReportOutcome } from "./stand-in-report";
 
 export default function StandInReportForm({ outcome, fields, report }: { outcome: string; fields: ReportField[]; report: ReportOutcome }) {
   const [entered, setEntered] = useState<Produced>({});
+  const [picked, setPicked] = useState<Produced>({});
   const [refusal, setRefusal] = useState<string>();
 
   const submit = () => {
-    const refused = refusalOf(fields, entered);
+    const refused = refusalOf(fields, entered, picked);
     setRefusal(refused);
     if (refused) return;
-    const filled = (kind: ReportField["kind"]) => fields.filter((field) => field.kind === kind && entered[field.name]).map(({ name }) => name);
     report({
       outcome,
-      produced: Object.fromEntries(filled("value").map((name) => [name, entered[name]])),
-      files: Object.fromEntries(filled("file").map((name) => [name, { pasted: entered[name] }])),
+      produced: producedOf(fields, entered),
+      files: filesOf(fields, entered, picked),
     });
   };
 
   return (
     <form onSubmit={(event) => event.preventDefault()}>
       {fields.map(({ name, kind }) => (
-        <LabelledTextField key={name} label={kind === "file" ? `${name} (paste)` : name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} />
+        <Fragment key={name}>
+          <LabelledTextField label={kind === "file" ? `${name} (paste)` : name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} />
+          {kind === "file" && <LabelledTextField label={`${name} (file on disk)`} value={picked[name] ?? ""} onChange={(value) => setPicked({ ...picked, [name]: value })} />}
+        </Fragment>
       ))}
       <button type="button" onClick={submit}>
         {outcome}

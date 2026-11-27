@@ -19,6 +19,7 @@ import type { TestRun, VisitState } from "../test-run/test-visit.js";
 import { visitRecordOf } from "../test-run/visit-record.js";
 import { visitKindOf } from "../test-run/visit-kind.js";
 import type { CollectionView } from "../view.js";
+import { inOrder } from "./in-order.js";
 import { readCollectionView } from "./read-collection-view.js";
 import { readTestLine } from "./read-test-line.js";
 import type { StudioContext } from "./requests.js";
@@ -58,6 +59,7 @@ interface RunWork {
   startedAt: string;
   cancelled: boolean;
   stepping: Promise<void>;
+  timelineWrites: ReturnType<typeof inOrder>;
   agentRun?: string;
 }
 
@@ -76,7 +78,7 @@ export async function startTestRun(context: StudioContext, start: TestRunStart, 
   const [line, view] = await Promise.all([readTestLine(snapshotDir, lineId), readCollectionView(snapshotDir, [])]);
   const state: RunWork["state"] = { folder, lineId, status: "running", visits: [] };
   const run: TestRun = { line, startItems, visits: state.visits };
-  const work: RunWork = { id: randomUUID(), context, start, view, run, state, clock, startedAt: startedAt.toISOString(), cancelled: false, stepping: Promise.resolve() };
+  const work: RunWork = { id: randomUUID(), context, start, view, run, state, clock, startedAt: startedAt.toISOString(), cancelled: false, stepping: Promise.resolve(), timelineWrites: inOrder() };
 
   await noteInTimeline(work, { "at": startedAt.toISOString(), type: "run_started", line: lineId });
   void trackStep(work, stepRun(work));
@@ -263,12 +265,15 @@ function endingOf(transition: Extract<Transition, { kind: "finish" | "halt" }>):
   return { outcome: transition.outcome, reason: transition.reason };
 }
 
-async function noteInTimeline(work: RunWork, entry: TimelineEntry): Promise<void> {
+function noteInTimeline(work: RunWork, entry: TimelineEntry): Promise<void> {
   const { state, run, startedAt } = work;
 
-  await appendTimeline(state.folder, entry);
-  await writeRunSummary(state.folder, runSummaryOf(startedAt, run.startItems, state));
-  work.context.broadcast({ type: "test.changed", run: work.id, state: stateOf(work) });
+  // Calls come from the run loop and from outside requests at once, and plain writes of one file may overlap: queue them so entries, summaries and frames keep call order.
+  return work.timelineWrites(async () => {
+    await appendTimeline(state.folder, entry);
+    await writeRunSummary(state.folder, runSummaryOf(startedAt, run.startItems, state));
+    work.context.broadcast({ type: "test.changed", run: work.id, state: stateOf(work) });
+  });
 }
 
 function noteOpened(work: RunWork, { id, nodeId, iteration, kind, needs, openedAt }: VisitState): Promise<void> {

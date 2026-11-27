@@ -15,6 +15,14 @@ describe("refusalOf", () => {
     expect(refusalOf(fields, { review_feedback: "tighten it" })).toBeUndefined();
   });
 
+  it("refuses annotated given both pasted and picked, saying not both", () => {
+    const fileFields = [{ name: "annotated", kind: "file" as const, required: false }];
+
+    expect(refusalOf(fileFields, { annotated: "pasted text" }, { annotated: "/tmp/annotated.md" })).toBe(
+      "annotated: paste its contents or give a file on disk, not both",
+    );
+  });
+
   it("returns undefined when there are no fields", () => {
     expect(refusalOf([], {})).toBeUndefined();
   });

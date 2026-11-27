@@ -1,8 +1,8 @@
 import { chmodSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ESCAPING_WRITER_COLLECTION } from "./test-run.fixtures.js";
-import { endOf, idleOrMessage, LINKS_ITS_DRAFT, LOCKS_ITS_VISIT_FOLDER, refusalOf, RUN_FOLDER, SLEEPS_THEN_WRITES, startReviewLoopOnTides, untilAgentSpeaks, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
+import { ESCAPING_WRITER_COLLECTION, NOTES_WRITER_COLLECTION } from "./test-run.fixtures.js";
+import { endOf, idleOrMessage, LINKS_ITS_DRAFT, LINKS_ITS_NOTES_FOLDER, LOCKS_ITS_VISIT_FOLDER, refusalOf, RUN_FOLDER, SLEEPS_THEN_WRITES, startReviewLoopOnTides, untilAgentSpeaks, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
 
 describe("startTestRun", () => {
   it("fails 001-write-1 with '\"draft\": ../../escape.md leaves the run folder' and settles review-loop as failed when the agent cannot be started", async () => {
@@ -37,6 +37,25 @@ describe("startTestRun", () => {
         copied: false,
       });
     });
+  }, 10_000);
+
+  it("fails 001-write-1 and copies nothing when the agent leaves notes as a link to a folder holding draft.md", async () => {
+    await withTestRunSetup(
+      LINKS_ITS_NOTES_FOLDER,
+      async (setup) => {
+        const session = await startReviewLoopOnTides(setup);
+
+        await idleOrMessage(session);
+
+        expect({ ...endOf(session), copied: existsSync(join(setup.workspace, RUN_FOLDER, "visits", "001-write-1", "outputs", "notes", "draft.md")) }).toEqual({
+          status: "settled",
+          ending: { outcome: "failed", reason: 'AssemblyLine review-loop: node "write" reported "failed"' },
+          visits: [["001-write-1", { outcome: "failed", error: "draft: notes/draft.md leads through a link, and an output must be a file the agent wrote" }]],
+          copied: false,
+        });
+      },
+      NOTES_WRITER_COLLECTION,
+    );
   }, 10_000);
 
   it.skipIf(process.getuid?.() === 0)(

@@ -5,33 +5,40 @@ import { ANNOTATING_REVIEWER_COLLECTION, ESCAPING_REVIEWER_COLLECTION, PATHLESS_
 import { endOf, refusalOf, RUN_FOLDER, startReviewLoopOnTides, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
 
 describe("report", () => {
-  it("refuses annotated picked from a path that is not on disk and leaves 002-review-1 open with no outputs", async () => {
-    await withTestRunSetup(
-      WRITES_DRAFT,
-      async (setup) => {
-        const session = await startReviewLoopOnTides(setup);
+  it.each([
+    { what: "a path that is not on disk", picked: (workspace: string) => join(workspace, "nowhere", "notes.md"), reason: "is not on disk" },
+    { what: "the workspace folder", picked: (workspace: string) => workspace, reason: "is not a file" },
+  ])(
+    "refuses annotated picked from $what, which $reason, and leaves 002-review-1 open with no outputs",
+    async ({ picked, reason }) => {
+      await withTestRunSetup(
+        WRITES_DRAFT,
+        async (setup) => {
+          const session = await startReviewLoopOnTides(setup);
 
-        await session.idle();
+          await session.idle();
 
-        const absent = join(setup.workspace, "nowhere", "notes.md");
-        const answer = { outcome: "approved", produced: {}, files: { annotated: { picked: absent } } };
+          const path = picked(setup.workspace);
+          const answer = { outcome: "approved", produced: {}, files: { annotated: { picked: path } } };
 
-        expect({
-          ...(await refusalOf(session, "002-review-1", answer)),
-          outputsFolder: existsSync(join(setup.workspace, RUN_FOLDER, "visits", "002-review-1", "outputs")),
-        }).toEqual({
-          refusal: `annotated: the picked file ${absent} is not on disk`,
-          status: "waiting",
-          visits: [
-            ["001-write-1", "success"],
-            ["002-review-1", null],
-          ],
-          outputsFolder: false,
-        });
-      },
-      ANNOTATING_REVIEWER_COLLECTION,
-    );
-  }, 10_000);
+          expect({
+            ...(await refusalOf(session, "002-review-1", answer)),
+            outputsFolder: existsSync(join(setup.workspace, RUN_FOLDER, "visits", "002-review-1", "outputs")),
+          }).toEqual({
+            refusal: `annotated: the picked file ${path} ${reason}`,
+            status: "waiting",
+            visits: [
+              ["001-write-1", "success"],
+              ["002-review-1", null],
+            ],
+            outputsFolder: false,
+          });
+        },
+        ANNOTATING_REVIEWER_COLLECTION,
+      );
+    },
+    10_000,
+  );
 
   it("refuses annotated picked as the relative path package.json and leaves 002-review-1 open", async () => {
     await withTestRunSetup(

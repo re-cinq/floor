@@ -21,7 +21,11 @@ export function useTestPreview(controls: TestStartControls | undefined, entered:
   useEffect(() => {
     let ignore = false;
     controls?.preview(entered).then(
-      (answer) => !ignore && setPreview(answer),
+      (answer) => {
+        if (ignore) return;
+        setPreview(answer);
+        setRefusal(undefined);
+      },
       (reason: Error) => !ignore && setRefusal(reason.message),
     );
 

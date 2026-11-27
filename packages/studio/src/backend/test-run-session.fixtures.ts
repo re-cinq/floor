@@ -18,6 +18,8 @@ export const WRITES_DRAFT = `#!/bin/sh\nprintf 'A draft about tides.\\n' > draft
 export const LOCKS_ITS_VISIT_FOLDER = `#!/bin/sh\nprintf 'A draft about tides.\\n' > draft.md\nchmod a-w ..\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
 /** A fake claude that writes secret.txt in the run folder, links draft.md to it and states success. */
 export const LINKS_ITS_DRAFT = `#!/bin/sh\nprintf 'secret\\n' > ../../../secret.txt\nln -s ../../../secret.txt draft.md\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
+/** A fake claude that writes draft.md in an outside folder in the run folder, links notes to that folder and states success. */
+export const LINKS_ITS_NOTES_FOLDER = `#!/bin/sh\nmkdir ../../../outside\nprintf 'secret\\n' > ../../../outside/draft.md\nln -s ../../../outside notes\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
 /** A fake claude that leaves its own arguments,the prompt among them, in draft.md and states success. */
 export const WRITES_ITS_PROMPT = `#!/bin/sh\nprintf '%s' "$*" > draft.md\nprintf '%s\\n' '${JSON.stringify(RESULT_LINE)}'\n`;
 /** A fake claude that says one line, then sleeps 5 s before it would write survived.txt. */

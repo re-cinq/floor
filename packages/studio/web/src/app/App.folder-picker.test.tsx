@@ -63,6 +63,23 @@ describe("App test locally folder picker", () => {
     });
   });
 
+  it.each([
+    { kind: "relative", pathIn: () => "relative/folder", reason: () => 'the folder to list must be an absolute path, and "relative/folder" is not' },
+    { kind: "missing absolute", pathIn: (scratch: string) => join(scratch, "absent"), reason: (scratch: string) => `${join(scratch, "absent")} is not a folder on disk` },
+  ])("shows the backend's reason and offers no Use this folder when Browse lists the $kind path", async ({ pathIn, reason }) => {
+    await withScratchFolder(async (scratch) => {
+      await openStartScreen();
+      await userEvent.type(await screen.findByRole("textbox", { name: "Workspace folder" }), pathIn(scratch));
+
+      await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+
+      expect({
+        alert: (await screen.findByRole("alert")).textContent,
+        use: screen.queryByRole("button", { name: "Use this folder" }),
+      }).toEqual({ alert: reason(scratch), use: null });
+    });
+  });
+
   it("puts / in the Workspace folder box when Browse is clicked with the box empty and the listing is used", async () => {
     await openStartScreen();
 

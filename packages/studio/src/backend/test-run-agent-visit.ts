@@ -1,5 +1,5 @@
 // An agent's visit in a local test run: previews the prompt, runs the agent in the visit folder and keeps what it wrote and said.
-import { copyFile, lstat, mkdir } from "node:fs/promises";
+import { copyFile, lstat, mkdir, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ProduceSpec, Report, StationBody } from "@re-cinq/floor-contracts";
 import { agentReportOf } from "../test-run/agent-report.js";
@@ -83,9 +83,23 @@ function foundOutputsOf(station: StationBody, { produced = [] }: RunEnding): Dec
 }
 
 async function linkReasonsOf(outputs: DeclaredOutput[], workFolder: string): Promise<string[]> {
-  const stats = await Promise.all(outputs.map(async (output) => ({ output, stat: await lstat(join(workFolder, output.path)) })));
+  const reasons = await Promise.all(outputs.map((output) => linkReasonOf(output, workFolder)));
 
-  return stats.filter(({ stat }) => stat.isSymbolicLink()).map(({ output }) => output).map(({ name, path }) => `${name}: ${path} is a link, and an output must be a file the agent wrote`);
+  return reasons.filter((reason) => reason !== undefined);
+}
+
+async function linkReasonOf({ name, path }: DeclaredOutput, workFolder: string): Promise<string | undefined> {
+  const stat = await lstat(join(workFolder, path));
+
+  if (stat.isSymbolicLink()) return linkReason(name, path, "is a link");
+
+  const [actualParent, plainParent] = await Promise.all([realpath(dirname(join(workFolder, path))), realpath(workFolder)]);
+
+  if (actualParent !== join(plainParent, dirname(path))) return linkReason(name, path, "leads through a link");
+}
+
+function linkReason(name: string, path: string, finding: string): string {
+  return `${name}: ${path} ${finding}, and an output must be a file the agent wrote`;
 }
 
 async function saveOutputs(outputs: DeclaredOutput[], { workFolder, outputsFolder }: OutputFolders): Promise<Record<string, string>> {
