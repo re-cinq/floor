@@ -10,7 +10,6 @@ import VisitTable from "./VisitTable";
 import { overlayOf, waitingOf } from "./run-overlay";
 import { graphOf } from "@/graph/graph-of";
 import { RunGraphView } from "@re-cinq/floor-graph";
-import lineStyles from "./line.module.css";
 
 export default function TestRunScreen({ line, run, controls }: { line: LineView; run: string; controls: TestRunControls | undefined }) {
   const { state, refusal, report, sendEvent, cancel, openRunFolder, openVisitFolder } = useTestRun(controls, run);
@@ -20,9 +19,9 @@ export default function TestRunScreen({ line, run, controls }: { line: LineView;
   const waiting = useMemo(() => waitingOf(state), [state]);
 
   return (
-    <div className={styles.screen}>
+    <div className={`${styles.screen} ${styles.testRun}`}>
       <h1>{line.id} test run</h1>
-      <div className={lineStyles.graph}>
+      <div className={styles.runGraph}>
         <RunGraphView definition={definition} run={overlay} waiting={waiting} show="all" />
       </div>
       <RunHeader state={state} cancel={cancel} openRunFolder={openRunFolder} />
