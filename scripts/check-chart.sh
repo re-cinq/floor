@@ -22,7 +22,13 @@ for scenario in both api-only cluster-agent-only seeded; do
 done
 
 say "helm template: subsystem enabled"
-helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" --set subsystem.enabled=true >/dev/null
+subsystem_render="$(helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" --set subsystem.enabled=true)"
+
+say "the subsystem defaults to v0.21.3, controller and agent image alike"
+grep -qF 'image: ghcr.io/re-cinq/ai-agent-controller:v0.21.3' <<<"${subsystem_render}" \
+  || fail "the controller image is not ai-agent-controller:v0.21.3"
+grep -qF 'value: ghcr.io/re-cinq/ai-agent:v0.21.3' <<<"${subsystem_render}" \
+  || fail "AGENT_IMAGE is not ai-agent:v0.21.3"
 
 say "the api asks the provider it was given for git credentials"
 helm template floor "${CHART}" -f "${CHART}/ci/values-both.yaml" \
