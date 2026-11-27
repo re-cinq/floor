@@ -15,7 +15,10 @@ export function enforcePickedFilesOnDisk(files: Readonly<Record<string, Supplied
     const { picked } = file;
 
     enforceAbsolute(picked, `${name}: the picked file`);
-    enforce(statSync(picked, { throwIfNoEntry: false })?.isFile() === true, `${name}: the picked file ${picked} is not on disk`);
+    const stats = statSync(picked, { throwIfNoEntry: false });
+
+    enforce(stats !== undefined, `${name}: the picked file ${picked} is not on disk`);
+    enforce(stats.isFile(), `${name}: the picked file ${picked} is not a file`);
   }
 }
 
