@@ -15,7 +15,7 @@ export interface TestRunControls {
 export function useTestRun(controls: TestRunControls | undefined, run: string) {
   const [state, setState] = useState<TestReadResult>();
   const [refusal, setRefusal] = useState<string>();
-  const showRefusal = (attempt: Promise<unknown> | undefined) => void attempt?.catch((error: Error) => setRefusal(error.message));
+  const showRefusal = (attempt: Promise<unknown> | undefined) => void attempt?.then(() => setRefusal(undefined), (error: Error) => setRefusal(error.message));
   const report: ReportVisit = (visit, answer) => showRefusal(controls?.report({ run, visit, ...answer }));
 
   const sendEvent: SendEvent = (event, payload) => showRefusal(controls?.sendEvent({ run, event, payload }));
