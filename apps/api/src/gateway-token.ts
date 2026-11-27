@@ -38,7 +38,7 @@ function repoClaim(repo: string | null): string {
   const named = repo?.toLowerCase() ?? "";
   const parts = named.split("/");
 
-  if (parts.length < REPO_PARTS || parts.some((part) => part === "")) throw new Refusal(`a gateway token names the run's repository as host/owner/name, and this run's is "${named}"`);
+  if (parts.length !== REPO_PARTS || parts.some((part) => part === "")) throw new Refusal(`a gateway token names the run's repository as host/owner/name, and this run's is "${named}"`);
 
   return named;
 }
