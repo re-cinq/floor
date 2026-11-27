@@ -10,14 +10,14 @@ Every route below is on the api, at `$FLOOR_API_URL`. Bodies are JSON in `camelC
 
 ## Authentication
 
-Send `authorization: Bearer <token>` with every call but the health routes. There are two tokens.
+Send `authorization: Bearer <token>` with every call but the health routes and the key set. There are two tokens.
 
 | Token | Who holds it | What it reaches |
 | --- | --- | --- |
 | The service token | You, a worker, the cluster agent, the CLI | Every route |
 | A visit token | The agent pod of one visit | Only the routes marked "visit" below, and only for its own visit. It expires at the visit's deadline |
 
-A missing or wrong token is `401`. A visit token on another route, or another visit, is `403`.
+A missing or wrong token is `401`. A visit token on another route, or another visit, is `403`. A [gateway token](#gateway-tokens) is for another service, and is `401` on every route here.
 
 ## Errors
 
@@ -99,7 +99,7 @@ It answers `201`, or `200` with `"joined": true` when a run on that subject was 
 | --- | --- | --- |
 | `GET /station-runs?run={id}` | Lists the visits of a run | service |
 | `GET /station-runs/{id}` | One visit, with its outcome, deadline and cost | service |
-| `GET /station-runs/{id}/brief` | What the visit needs, its settings and a fresh visit token | service, visit |
+| `GET /station-runs/{id}/brief` | What the visit needs, its settings, a fresh visit token and its gateway tokens | service, visit |
 | `POST /station-runs/{id}/records`, `GET /station-runs/{id}/records` | Writes and reads its logs, turns and model calls | service, visit |
 | `POST /station-runs/{id}/sink` | Takes the events of an agent's supervisor | service, visit |
 | `POST /station-runs/{id}/git-credential` | A git credential for a repository the visit needs. `501` when none is configured | service, visit |
@@ -137,6 +137,27 @@ It answers `201`, or `200` with `"joined": true` when a run on that subject was 
 | `GET /agent-definitions/presence` | Which clusters hold which agent definitions | service |
 | `GET /agent-definitions/{id}/clusters` | The clusters that hold one | service |
 | `GET /agent-definitions/{id}/recipes` | The settings a visit of its latest version gets | service |
+
+## Gateway tokens
+
+An MCP server with a [`visit_token`](/floor/specs/agent-file/) gets a token the floor signs for each visit, in the brief's `serverTokens` under the server's name. It is a JWT signed with Ed25519 (`alg: EdDSA`), and its `kid` is the RFC 7638 thumbprint of the signing key.
+
+| Claim | What it holds |
+| --- | --- |
+| `iss` | The floor's address, `FLOOR_BASE_URL` |
+| `aud` | The audience the definition names |
+| `sub`, `run` | The visit's id and its run's |
+| `repo` | The run's repository, `host/owner/name` in lower case |
+| `scope` | The definition's scopes, joined by single spaces |
+| `iat`, `exp` | When it was signed and the visit's deadline, in seconds. Never more than 24 hours apart |
+
+| Route | What it does | Who |
+| --- | --- | --- |
+| `GET /.well-known/jwks.json` | The public keys a token verifies with, the signing key first, then the retired ones | anyone |
+
+The cluster agent writes each token of the brief into `agent-secrets` as `Bearer <token>`, under the key `visit-<visit id>-gateway-token.<server name>`, and the pod sends it to the server as its `Authorization` header. A token is not renewed: it expires at the visit's deadline, and a visit that runs again gets a new one.
+
+The brief is `409` when the floor has no signing key, when the run names no such repository, or when the deadline is more than 24 hours away.
 
 ## Health
 

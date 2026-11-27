@@ -1,9 +1,11 @@
 // What a running visit's executor calls (docs/api_sketch.md, "Station runs"): its structured brief and its event sink. A visit token reaches only its own visit.
 import type { ResponseToolkit, Server } from "@hapi/hapi";
 import { Refusal, enforce, type DispatchBrief } from "@floor/store";
-import type { VisitBrief } from "@re-cinq/floor-contracts";
+import type { BriefSettings, VisitBrief } from "@re-cinq/floor-contracts";
 import { dispatchSettings, modelSecretKeyOf } from "../agent-config.js";
 import { VISITS_TOO } from "../auth.js";
+import { SIGNING_KEY_ENV } from "../gateway-keys.js";
+import { mintGatewayToken } from "../gateway-token.js";
 import { declaresWrite } from "../git-grant.js";
 import type { Deps } from "../deps.js";
 import { Sink } from "../engine/sink.js";
@@ -42,6 +44,7 @@ function briefResponse(deps: Deps, found: DispatchBrief): VisitBrief {
   const now = deps.now();
   const deadline = found.visit.deadline ?? new Date(now.getTime() + UNDATED_TOKEN_MINUTES * MS_PER_MINUTE);
   const conversation = found.conversation;
+  const settings = found.settings ? dispatchSettings(found.settings) : null;
 
   return {
     visitId: found.visit.id,
@@ -52,12 +55,26 @@ function briefResponse(deps: Deps, found: DispatchBrief): VisitBrief {
     floorBaseUrl: deps.config.baseUrl,
     token: mintVisitToken(found.visit.id, deadline, deps.config.visitTokenSecret),
     deadlineMinutes: Math.max(1, Math.ceil((deadline.getTime() - now.getTime()) / MS_PER_MINUTE)),
-    settings: found.settings ? dispatchSettings(found.settings) : null,
+    settings,
     needs: found.needs,
     produces: found.produces,
     conversation: conversation.mode === "continue" ? { mode: "continue", sessionRef: conversation.visitId } : conversation,
     modelSecretKey: modelSecretKeyOf(found.settings),
+    serverTokens: serverTokens(deps, found, { settings, deadline, now }),
   };
+}
+
+// One gateway token for each MCP server that asks for one, by the server's name; undefined when none does, so the brief of every other visit is what it was.
+function serverTokens(deps: Deps, found: DispatchBrief, visit: { settings: BriefSettings | null; deadline: Date; now: Date }): Record<string, string> | undefined {
+  const asking = (visit.settings?.mcpServers ?? []).flatMap((server) => (server.visitToken ? [{ name: server.name, ...server.visitToken }] : []));
+
+  if (asking.length === 0) return undefined;
+  const { baseUrl, gatewayKeys } = deps.config;
+
+  enforce(gatewayKeys.signing, `MCP server "${asking[0]!.name}" asks for a gateway token, and this floor has no key to sign one with: set ${SIGNING_KEY_ENV}`);
+  const ask = { issuer: baseUrl, visitId: found.visit.id, runId: found.visit.runId, repo: found.repo, deadline: visit.deadline, now: visit.now };
+
+  return Object.fromEntries(asking.map(({ name, audience, scopes }) => [name, mintGatewayToken({ ...ask, audience, scopes }, gatewayKeys.signing!)]));
 }
 
 async function takeEvent(sink: Sink, posted: { visitId: string; body: unknown }, toolkit: ResponseToolkit) {

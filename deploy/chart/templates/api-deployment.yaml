@@ -64,6 +64,21 @@ spec:
                   name: {{ $.Values.api.gitCredentialSecret.name | default $.Values.api.existingSecret }}
                   key: {{ $.Values.api.gitCredentialSecret.key }}
             {{- end }}
+            {{- with .Values.api.gatewayKeysSecret }}
+            {{- if .name }}
+            - name: FLOOR_GATEWAY_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .name }}
+                  key: {{ .signingKey }}
+            - name: FLOOR_GATEWAY_RETIRED_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .name }}
+                  key: {{ .retiredKeys }}
+                  optional: true
+            {{- end }}
+            {{- end }}
           # Ready is "can reach Postgres". Which replica runs the loop is the lease's business.
           # The timeouts are above the one second Kubernetes defaults to: /readyz gives up on the database after two and answers 503 itself, and a /metrics render can keep the event loop from /healthz for about that long.
           livenessProbe:

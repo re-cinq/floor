@@ -196,6 +196,40 @@ describe("buildAgentTriple", () => {
     expect(resources?.mcp_servers).toEqual([search, files]);
   });
 
+  const asking = { name: "search", transport: "http" as const, url: "http://search.test/mcp", visitToken: { audience: "search", scopes: ["context:read"] } };
+
+  it("opens a server that asks for a gateway token with the key holding this visit's, and tells the subsystem nothing of the asking", () => {
+    const { agentDefinition } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i", mcpServers: [asking] }, gatewayTokenKeys: { search: "visit-abc-123-gateway-token.search" } }));
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.mcp_servers).toEqual([{ name: "search", transport: "http", url: "http://search.test/mcp", headers_secret: "visit-abc-123-gateway-token.search" }]);
+  });
+
+  it("leaves a server with its own headers secret as it was, beside one that asks for a gateway token", () => {
+    const tools = { name: "tools", transport: "http" as const, url: "http://tools.test/mcp", headersSecret: "tools-mcp-auth" };
+    const { agentDefinition } = buildAgentTriple(brief({ settings: { prompt: "p", image: "i", mcpServers: [tools, asking] }, gatewayTokenKeys: { search: "visit-abc-123-gateway-token.search" } }));
+    const resources = agentDefinition.spec?.resources;
+
+    expect(resources?.mcp_servers?.[0]).toEqual({ name: "tools", transport: "http", url: "http://tools.test/mcp", headers_secret: "tools-mcp-auth" });
+  });
+
+  it("gives two visits of a definition that asks for a gateway token a recipe each, since each names its own key", () => {
+    const settings = { prompt: "p", image: "i", mcpServers: [asking] };
+    const { station: first } = buildAgentTriple(brief({ settings, gatewayTokenKeys: { search: "visit-abc-123-gateway-token.search" } }));
+    const { station: second } = buildAgentTriple(brief({ visitId: "def-456", settings, gatewayTokenKeys: { search: "visit-def-456-gateway-token.search" } }));
+
+    expect(first.spec?.agentDefRef).not.toBe(second.spec?.agentDefRef);
+  });
+
+  it.each([
+    ["no keys", undefined],
+    ["a key for another server only", { lore: "visit-abc-123-gateway-token.lore" }],
+  ])("refuses a visit whose server asks for a gateway token when given %s, naming the server", (described, gatewayTokenKeys) => {
+    const input = brief({ settings: { prompt: "p", image: "i", mcpServers: [asking] }, gatewayTokenKeys });
+
+    expect(() => buildAgentTriple(input)).toThrow('MCP server "search" asks for a gateway token, and station run "abc-123" has no secret key holding one');
+  });
+
   it("lets the agent use its tools unasked, a pod having nobody to ask", () => {
     const { agentDefinition } = buildAgentTriple(brief({}));
 

@@ -83,12 +83,32 @@ An entry of `mcp_servers`:
 | `args` | list of string | no | `stdio` only. The command's arguments. |
 | `url` | URL | no | `http` and `sse` only, and required there. The server's address. |
 | `headers_secret` | string | no | The key in `agent-secrets`, the Kubernetes Secret in the agents' namespace, holding one whole header line, such as `Authorization: Bearer <token>`. |
+| `visit_token` | object | no | `http` and `sse` only, and never beside `headers_secret`. The floor signs a token for each visit, naming the visit, its run and its repository, for the pod to present to the server as `Authorization: Bearer <token>`. The server verifies it with the keys the floor publishes at `/.well-known/jwks.json`. |
 | `headers` | list of object | no | `http` and `sse` only. Headers sent to the server, each taking its value from a key in `agent-secrets`. |
 | `env` | list of object | no | `stdio` only. Environment variables of the server's process, each taking its value from a key in `agent-secrets`. |
 
 <!-- /generated -->
 
 A `stdio` server MUST have a `command`, and any other a `url`. The floor says `a stdio server needs a command, any other a url`.
+
+A server's `visit_token`:
+
+<!-- generated:fields:gateway-token -->
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `audience` | string | yes | Who the token is for: the name the server expects to be called by, which it checks. |
+| `scopes` | list of string | yes | What the token may do at the server, in the server's own words. |
+
+<!-- /generated -->
+
+A server MUST NOT have both `visit_token` and `headers_secret`. The floor says `visit_token and headers_secret each set the server's authorization: give one`. A `stdio` server MUST NOT have a `visit_token`. The floor says `visit_token is for an http or sse server`. A floor with no signing key refuses to brief a visit whose definition has one, see [Gateway tokens](/floor/reference/http-api/#gateway-tokens).
+
+The cluster agent hands the token to the pod. It writes `Bearer <token>` into `agent-secrets` under the key `visit-<visit id>-gateway-token.<server name>`, and the visit's pod sends that value to the server as its `Authorization` header, as it would a `headers_secret`. A character of the server's name other than a letter, a digit, `-` or `_` is `_` in the key. The pod image needs no change. The key is removed when the visit ends.
+
+Two servers of one definition that both have a `visit_token` MUST NOT have names that differ only in case or in characters other than letters and digits, such as `my-search` and `my_search`. The cluster agent then starts no pod for the visit, and its dispatch fails with an error naming both. The same happens, naming the server, when the floor's brief carries no token for a server that has a `visit_token`. The visit ends at its deadline.
+
+The token is not renewed. It expires at the visit's deadline, and the floor ends a visit at its deadline. A visit that runs again is a new visit and gets a new token.
 
 An entry of `headers` or of a server's `env`:
 

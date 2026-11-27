@@ -10,7 +10,7 @@ export function executorSettings(config: AgentConfig): ExecutorSettings {
     disallowedTools: config.disallowed_tools,
     skills: config.skills,
     skillsSource: config.skills_source,
-    mcpServers: config.mcp_servers?.map(({ headers_secret: headersSecret, ...server }) => ({ ...server, headersSecret })),
+    mcpServers: config.mcp_servers?.map(({ headers_secret: headersSecret, visit_token: visitToken, ...server }) => ({ ...server, headersSecret, visitToken })),
     env: config.env,
     permissionMode: config.permission_mode,
     maxTurns: config.max_turns,
