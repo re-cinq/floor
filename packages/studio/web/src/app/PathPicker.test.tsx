@@ -36,9 +36,9 @@ describe("PathPicker", () => {
   });
 
   it.each([
-    { label: "nothing", typed: "", shown: { folders: ["alpha", "Beta"], files: ["notes.md", "bravo.txt"] } },
-    { label: "b", typed: "b", shown: { folders: ["Beta"], files: ["bravo.txt"] } },
-  ])("lists $shown.folders and $shown.files when $label is typed after /w/", async ({ typed, shown }) => {
+    { typed: "", listed: "alpha, Beta, notes.md and bravo.txt", shown: { folders: ["alpha", "Beta"], files: ["notes.md", "bravo.txt"] } },
+    { typed: "b", listed: "Beta and bravo.txt", shown: { folders: ["Beta"], files: ["bravo.txt"] } },
+  ])("lists $listed when \"$typed\" is typed after /w/", async ({ typed, shown }) => {
     const { calls, list } = controlledList();
     render(<PathPicker mode="file" startDir="/w" list={list} onChoose={() => undefined} onClose={() => undefined} />);
     await act(async () =>
@@ -54,6 +54,27 @@ describe("PathPicker", () => {
     expect({ folders: namesIn("Folders"), files: namesIn("Files") }).toEqual(shown);
   });
 
+  it.each([
+    { typed: "be", path: "/w/beta/", asked: ["/w", "/w/beta"] },
+    { typed: "a", path: "/w/al", asked: ["/w"] },
+    { typed: "no", path: "/w/notes.md", asked: ["/w"] },
+  ])("completes /w/$typed to $path on Tab, keeping focus in the path bar", async ({ typed, path, asked }) => {
+    const { calls, list } = controlledList();
+    render(<PathPicker mode="file" startDir="/w" list={list} onChoose={() => undefined} onClose={() => undefined} />);
+    await act(async () =>
+      calls[0]!.resolve({ path: "/w", parent: "/", folders: ["alpha", "albatross", "beta"], files: ["notes.md"] }),
+    );
+    const pathBox = await screen.findByRole("textbox", { name: "Path" });
+
+    await userEvent.type(pathBox, `{End}${typed}{Tab}`);
+
+    expect({
+      path: (pathBox as HTMLInputElement).value,
+      focused: document.activeElement === pathBox,
+      asked: calls.map((call) => call.path),
+    }).toEqual({ path, focused: true, asked });
+  });
+
   it("lists /w/alpha once, showing inner, when alpha/ is typed after /w/", async () => {
     const { calls, list } = controlledList();
     render(<PathPicker mode="folder" startDir="/w" list={list} onChoose={() => undefined} onClose={() => undefined} />);
@@ -67,5 +88,25 @@ describe("PathPicker", () => {
       asked: ["/w", "/w/alpha"],
       shown: ["inner"],
     });
+  });
+
+  it.each([
+    { mode: "file" as const, keys: "{End}notes.md{Enter}", label: "notes.md typed", chosen: ["/w/notes.md"], asked: ["/w"] },
+    { mode: "file" as const, keys: "{End}alpha{Enter}", label: "alpha typed", chosen: [], asked: ["/w", "/w/alpha"] },
+    { mode: "folder" as const, keys: "{Enter}", label: "nothing typed after /w/", chosen: ["/w"], asked: ["/w"] },
+  ])("in $mode mode, Enter with $label chooses $chosen and lists $asked", async ({ mode, keys, chosen, asked }) => {
+    const { calls, list } = controlledList();
+    const chosenPaths: string[] = [];
+
+    const onChoose = (path: string) => {
+      chosenPaths.push(path);
+    };
+
+    render(<PathPicker mode={mode} startDir="/w" list={list} onChoose={onChoose} onClose={() => undefined} />);
+    await act(async () => calls[0]!.resolve({ path: "/w", parent: "/", folders: ["alpha"], files: ["notes.md"] }));
+
+    await userEvent.type(await screen.findByRole("textbox", { name: "Path" }), keys);
+
+    expect({ chosen: chosenPaths, asked: calls.map((call) => call.path) }).toEqual({ chosen, asked });
   });
 });
