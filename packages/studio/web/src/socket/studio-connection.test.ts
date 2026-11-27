@@ -195,6 +195,27 @@ describe("StudioConnection against a server that speaks the protocol by hand", (
     expect(served.reads()).toBe(2);
   });
 
+  it("keeps the collection flow, reaches no run listener and stays open when a test.changed frame comes before each answer", async () => {
+    const view = collectionView(WORKER_COLLECTION, []);
+    const changed = JSON.stringify({ type: "test.changed", run: "r1", state: { folder: "/w/run", lineId: "flow", status: "running", visits: [] } });
+    const served = await protocolServer((socket) => {
+      socket.send(hello);
+      socket.on("message", (raw) => {
+        socket.send(changed);
+        socket.send(JSON.stringify({ id: (JSON.parse(raw.toString()) as { id: string }).id, type: "result", result: view }));
+      });
+    });
+    const connection = connected({ socket: served.address, token: "abc" });
+    const heard: unknown[] = [];
+
+    connection.onRunFrame((frame) => heard.push(frame));
+    await reaches(connection, ({ collection }) => collection !== null);
+    await connection.request("collection.read");
+    const snapshot = connection.snapshot();
+
+    expect({ heard, lines: lineIdsOf(snapshot), status: snapshot.connection.status }).toEqual({ heard: [], lines: ["flow"], status: "open" });
+  });
+
   it("drops the collection it held and keeps the reason when the read after a reconnect is refused", async () => {
     const view = collectionView(WORKER_COLLECTION, []);
     const served = await protocolServer(replyingToReads(({ sockets }) => (sockets.size === 1 ? { type: "result", result: view } : { type: "refused", reason: "the folder is gone" })));
