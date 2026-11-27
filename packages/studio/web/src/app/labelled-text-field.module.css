@@ -25,3 +25,31 @@
 .field input:hover {
   border-color: var(--text-muted);
 }
+
+.group {
+  display: flex;
+  align-items: stretch;
+}
+
+.group input {
+  flex: 1;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.group button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--bg-surface);
+  color: var(--text);
+  letter-spacing: normal;
+}
+
+.group button:hover {
+  background: var(--bg-hover);
+}

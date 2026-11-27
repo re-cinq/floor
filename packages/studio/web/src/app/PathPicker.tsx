@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ALL_FILES, matchesMask, type FileMask } from "./file-mask";
 import { childPath } from "./folder-path";
+import { UpIcon } from "./icons";
+import PathPickerList, { MaskSelect } from "./PathPickerList";
 import styles from "./path-picker.module.css";
 import type { FolderListing } from "@/socket/studio-connection";
 
@@ -21,20 +23,59 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
   const [pickedPath, setPickedPath] = useState<string>();
   const [maskIndex, setMaskIndex] = useState(0);
   const { listing, refusal, browse } = useFolderListing(list);
-  const offeredFile = offeredPath(pickedPath, listing, [...masks, ALL_FILES][maskIndex]!);
+  const titleId = useId();
+  const mask = [...masks, ALL_FILES][maskIndex]!;
+  const offeredFile = offeredPath(pickedPath, listing, mask);
 
   useEffect(() => {
     dialogRef.current?.showModal();
     browse(startDir);
   }, []);
 
+  const pickFile = mode === "file" && listing ? (name: string) => setPickedPath(childPath(listing.path, name)) : undefined;
+
   return (
-    <dialog ref={dialogRef} aria-label={`Choose a ${mode}`} className={styles.dialog} onCancel={onClose}>
-      <Listing listing={listing} browse={browse} pickFile={mode === "file" && listing ? (name) => setPickedPath(childPath(listing.path, name)) : undefined} masks={masks} maskIndex={maskIndex} chooseMask={setMaskIndex} />
-      {refusal && <p role="alert">{refusal}</p>}
-      {listing && <Choice mode={mode} path={listing.path} filePath={offeredFile} onChoose={onChoose} />}
-      <button type="button" onClick={onClose}>Cancel</button>
+    <dialog ref={dialogRef} aria-labelledby={titleId} className={styles.dialog} onCancel={onClose}>
+      <h2 id={titleId} className={styles.title}>Choose a {mode}</h2>
+      <Toolbar listing={listing} browse={browse} />
+      {refusal && <p role="alert" className={styles.refusal}>{refusal}</p>}
+      <PathPickerList listing={listing} browse={browse} pickFile={pickFile} pickedPath={offeredFile} mask={mask} />
+      <Footer mode={mode} masks={masks} maskIndex={maskIndex} chooseMask={setMaskIndex} onClose={onClose}>
+        {listing && <Choice mode={mode} path={listing.path} filePath={offeredFile} onChoose={onChoose} />}
+      </Footer>
     </dialog>
+  );
+}
+
+function Toolbar({ listing, browse }: { listing: FolderListing | undefined; browse: (path: string) => void }) {
+  const parent = listing?.parent;
+
+  return (
+    <div className={styles.toolbar}>
+      {parent && <button type="button" className={styles.up} aria-label="Up" onClick={() => browse(parent)}><UpIcon /></button>}
+      <div className={styles.pathBar}>{listing && <code>{listing.path}</code>}</div>
+    </div>
+  );
+}
+
+interface FooterProps {
+  mode: PathMode;
+  masks: FileMask[];
+  maskIndex: number;
+  chooseMask: (index: number) => void;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+function Footer({ mode, masks, maskIndex, chooseMask, onClose, children }: FooterProps) {
+  return (
+    <div className={styles.footer}>
+      {mode === "file" && <MaskSelect masks={masks} maskIndex={maskIndex} chooseMask={chooseMask} />}
+      <span className={styles.actions}>
+        <button type="button" className={styles.secondary} onClick={onClose}>Cancel</button>
+        {children}
+      </span>
+    </div>
   );
 }
 
@@ -71,63 +112,9 @@ function useFolderListing(list: Props["list"]) {
   return { listing, refusal, browse };
 }
 
-interface ListingProps {
-  listing: FolderListing | undefined;
-  browse: (path: string) => void;
-  pickFile: ((file: string) => void) | undefined;
-  masks: FileMask[];
-  maskIndex: number;
-  chooseMask: (index: number) => void;
-}
-
-function Listing({ listing, browse, pickFile, masks, maskIndex, chooseMask }: ListingProps) {
-  const parent = listing?.parent;
-
-  return (
-    <>
-      {listing && <code>{listing.path}</code>}
-      {parent && <button type="button" onClick={() => browse(parent)}>Up</button>}
-      <section aria-label="Folders">
-        {listing?.folders.map((folder) => (
-          <button key={folder} type="button" onClick={() => browse(childPath(listing.path, folder))}>{folder}</button>
-        ))}
-      </section>
-      {pickFile && <Files listing={listing} pick={pickFile} masks={masks} maskIndex={maskIndex} chooseMask={chooseMask} />}
-    </>
-  );
-}
-
 function Choice({ mode, path, filePath, onChoose }: { mode: PathMode; path: string; filePath: string | undefined; onChoose: Props["onChoose"] }) {
-  if (mode === "folder") return <button type="button" onClick={() => onChoose(path)}>Use this folder</button>;
+  if (mode === "folder") return <button type="button" className={styles.primary} onClick={() => onChoose(path)}>Use this folder</button>;
   if (!filePath) return null;
 
-  return <button type="button" onClick={() => onChoose(filePath)}>Use this file</button>;
-}
-
-interface FilesProps {
-  listing: FolderListing | undefined;
-  pick: (file: string) => void;
-  masks: FileMask[];
-  maskIndex: number;
-  chooseMask: (index: number) => void;
-}
-
-function Files({ listing, pick, masks, maskIndex, chooseMask }: FilesProps) {
-  const choices = [...masks, ALL_FILES];
-  const shown = (listing?.files ?? []).filter((file) => matchesMask(file, choices[maskIndex]!.patterns));
-
-  return (
-    <>
-      <select aria-label="Show files" value={maskIndex} onChange={(event) => chooseMask(Number(event.target.value))}>
-        {choices.map(({ label }, index) => (
-          <option key={label} value={index}>{label}</option>
-        ))}
-      </select>
-      <section aria-label="Files">
-        {shown.map((file) => (
-          <button key={file} type="button" onClick={() => pick(file)}>{file}</button>
-        ))}
-      </section>
-    </>
-  );
+  return <button type="button" className={styles.primary} onClick={() => onChoose(filePath)}>Use this file</button>;
 }
