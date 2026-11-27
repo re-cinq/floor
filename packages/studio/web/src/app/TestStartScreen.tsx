@@ -1,6 +1,6 @@
 import { useState } from "react";
-import FolderPicker from "./FolderPicker";
 import LabelledTextField from "./LabelledTextField";
+import WorkspaceField from "./WorkspaceField";
 import { useTestPreview, useTestStart, type TestStartControls } from "./use-test-start";
 import styles from "./screens.module.css";
 import type { LineView } from "@protocol";
@@ -27,8 +27,7 @@ export default function TestStartScreen({ line, controls, onStarted }: Props) {
       {missing.map((name) => (
         <p key={name}>{name} is missing</p>
       ))}
-      <LabelledTextField label="Workspace folder" value={workspace} onChange={setWorkspace} />
-      <FolderPicker controls={controls} workspace={workspace} onUse={setWorkspace} />
+      <WorkspaceField controls={controls} workspace={workspace} onChange={setWorkspace} />
       {!workspace && <p>Choose a workspace folder</p>}
       {refusal && <p role="alert">{refusal}</p>}
       <button type="button" onClick={start} disabled={missing.length > 0 || !workspace}>Start</button>

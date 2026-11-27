@@ -11,3 +11,10 @@ configure({ asyncUtilTimeout: PAGE_WAIT_MS });
 if (typeof window !== "undefined") {
   globalThis.WebSocket = WebSocket as unknown as typeof globalThis.WebSocket;
 }
+
+// jsdom has no HTMLDialogElement.showModal; opening is the `open` attribute.
+if (typeof HTMLDialogElement !== "undefined" && !Reflect.has(HTMLDialogElement.prototype, "showModal")) {
+  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+    this.setAttribute("open", "");
+  };
+}
