@@ -2,7 +2,7 @@ import { chmodSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ESCAPING_WRITER_COLLECTION } from "./test-run.fixtures.js";
-import { endOf, idleOrMessage, LINKS_ITS_DRAFT, LOCKS_ITS_VISIT_FOLDER, refusalOf, RUN_FOLDER, startReviewLoopOnTides, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
+import { endOf, idleOrMessage, LINKS_ITS_DRAFT, LOCKS_ITS_VISIT_FOLDER, refusalOf, RUN_FOLDER, SLEEPS_THEN_WRITES, startReviewLoopOnTides, untilAgentSpeaks, withTestRunSetup, WRITES_DRAFT } from "./test-run-session.fixtures.js";
 
 describe("startTestRun", () => {
   it("fails 001-write-1 with '\"draft\": ../../escape.md leaves the run folder' and settles review-loop as failed when the agent cannot be started", async () => {
@@ -82,6 +82,25 @@ describe("cancel", () => {
           ["002-review-1", null],
         ],
         ending: { outcome: "cancelled" },
+      });
+    });
+  }, 10_000);
+
+  it.each([
+    { moment: "while write runs", before: untilAgentSpeaks },
+    { moment: "before the write agent's run is known", before: async () => undefined },
+  ])("settles review-loop as cancelled with 001-write-1 failed 'the agent run was cancelled' when cancelled $moment", async ({ before }) => {
+    await withTestRunSetup(SLEEPS_THEN_WRITES, async (setup) => {
+      const session = await startReviewLoopOnTides(setup);
+
+      await before(setup);
+      await session.cancel();
+      await session.idle();
+
+      expect(endOf(session)).toEqual({
+        status: "settled",
+        ending: { outcome: "cancelled" },
+        visits: [["001-write-1", { outcome: "failed", error: "the agent run was cancelled" }]],
       });
     });
   }, 10_000);

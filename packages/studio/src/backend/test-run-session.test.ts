@@ -10,9 +10,7 @@ import {
   RUN_FOLDER,
   settleReviewLoopApproved,
   STARTED_AT,
-  SLEEPS_THEN_WRITES,
   startReviewLoopOnTides,
-  untilAgentSpeaks,
   withTestRunSetup,
   WRITES_DRAFT,
   WRITES_ITS_PROMPT,
@@ -291,24 +289,6 @@ describe("report", () => {
         ],
         firstDraftHasReason: false,
         revisedDraftHasReason: true,
-      });
-    });
-  }, 10_000);
-});
-
-describe("cancel", () => {
-  it("settles review-loop as cancelled with 001-write-1 failed 'the agent run was cancelled' when cancelled while write runs", async () => {
-    await withTestRunSetup(SLEEPS_THEN_WRITES, async (setup) => {
-      const session = await startReviewLoopOnTides(setup);
-
-      await untilAgentSpeaks(setup);
-      await session.cancel();
-      await session.idle();
-
-      expect(endOf(session)).toEqual({
-        status: "settled",
-        ending: { outcome: "cancelled" },
-        visits: [["001-write-1", { outcome: "failed", error: "the agent run was cancelled" }]],
       });
     });
   }, 10_000);
