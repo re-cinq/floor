@@ -172,11 +172,11 @@ describe("App test locally with a picked file", () => {
     });
   });
 
-  it("offers no Use this file when notes.md was picked in home and the drafts subfolder is opened", async () => {
+  it.each(["outline.md", "notes.md"])("offers no Use this file when notes.md was picked in home and the drafts subfolder holding %s is opened", async (draftsFile) => {
     await withScratchFolder(async (home) => {
       writeFileSync(join(home, "notes.md"), "Marked up on disk.");
       mkdirSync(join(home, "drafts"));
-      writeFileSync(join(home, "drafts", "outline.md"), "Outline.");
+      writeFileSync(join(home, "drafts", draftsFile), "Draft.");
       vi.stubEnv("HOME", home);
       await withScratchWorkspace(
         WRITES_DRAFT,
@@ -184,7 +184,7 @@ describe("App test locally with a picked file", () => {
           const dialog = await openChooseAFile(workspace);
           await userEvent.click(await within(dialog).findByRole("button", { name: "notes.md" }));
           await userEvent.click(within(dialog).getByRole("button", { name: "drafts" }));
-          await within(dialog).findByRole("button", { name: "outline.md" });
+          await within(dialog).findByText(join(home, "drafts"));
 
           expect({ useThisFile: within(dialog).queryByRole("button", { name: "Use this file" }) }).toEqual({ useThisFile: null });
         },
