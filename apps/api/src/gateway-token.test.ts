@@ -89,6 +89,7 @@ describe("mintGatewayToken", () => {
     ["a bare name", "widgets"],
     ["no host", "acme/widgets"],
     ["an empty part", "github.com//widgets"],
+    ["four parts", "github.com/acme/widgets/extra"],
   ])("refuses a run whose repository is %s", (described, repo) => {
     expect(() => minted({ repo })).toThrow(/names the run's repository as host\/owner\/name/);
   });
