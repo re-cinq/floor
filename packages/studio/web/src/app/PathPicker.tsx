@@ -45,17 +45,25 @@ function fileUnderMask(file: string | undefined, mask: FileMask): string | undef
 function useFolderListing(list: Props["list"]) {
   const [listing, setListing] = useState<FolderListing>();
   const [refusal, setRefusal] = useState<string>();
-  const browse = (path?: string) =>
+  const latestRequest = useRef(0);
+
+  const browse = (path?: string) => {
+    const request = ++latestRequest.current;
+    const isLatest = () => request === latestRequest.current;
+
     void list(path).then(
       (listed) => {
+        if (!isLatest()) return;
         setRefusal(undefined);
         setListing(listed);
       },
       (error: Error) => {
+        if (!isLatest()) return;
         setRefusal(error.message);
         setListing(undefined);
       },
     );
+  };
 
   return { listing, refusal, browse };
 }
