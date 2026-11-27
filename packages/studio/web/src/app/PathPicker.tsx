@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ALL_FILES, matchesMask, type FileMask } from "./file-mask";
 import { subfolderPath } from "./folder-path";
 import styles from "./path-picker.module.css";
 import type { FolderListing } from "@/socket/studio-connection";
@@ -10,13 +11,15 @@ interface Props {
   mode: PathMode;
   startDir?: string;
   list: ListFolder;
+  masks?: FileMask[];
   onChoose: (path: string) => void;
   onClose: () => void;
 }
 
-export default function PathPicker({ mode, startDir, list, onChoose, onClose }: Props) {
+export default function PathPicker({ mode, startDir, list, masks = [], onChoose, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [file, setFile] = useState<string>();
+  const [maskIndex, setMaskIndex] = useState(0);
   const { listing, refusal, browse } = useFolderListing(list);
 
   useEffect(() => {
@@ -26,7 +29,7 @@ export default function PathPicker({ mode, startDir, list, onChoose, onClose }: 
 
   return (
     <dialog ref={dialogRef} aria-label={`Choose a ${mode}`} className={styles.dialog} onCancel={onClose}>
-      <Listing listing={listing} browse={browse} pickFile={mode === "file" ? setFile : undefined} />
+      <Listing listing={listing} browse={browse} pickFile={mode === "file" ? setFile : undefined} masks={masks} maskIndex={maskIndex} chooseMask={setMaskIndex} />
       {refusal && <p role="alert">{refusal}</p>}
       {listing && <Choice mode={mode} path={listing.path} file={file} onChoose={onChoose} />}
       <button type="button" onClick={onClose}>Cancel</button>
@@ -52,7 +55,16 @@ function useFolderListing(list: Props["list"]) {
   return { listing, refusal, browse };
 }
 
-function Listing({ listing, browse, pickFile }: { listing: FolderListing | undefined; browse: (path: string) => void; pickFile: ((file: string) => void) | undefined }) {
+interface ListingProps {
+  listing: FolderListing | undefined;
+  browse: (path: string) => void;
+  pickFile: ((file: string) => void) | undefined;
+  masks: FileMask[];
+  maskIndex: number;
+  chooseMask: (index: number) => void;
+}
+
+function Listing({ listing, browse, pickFile, masks, maskIndex, chooseMask }: ListingProps) {
   const parent = listing?.parent;
 
   return (
@@ -64,7 +76,7 @@ function Listing({ listing, browse, pickFile }: { listing: FolderListing | undef
           <button key={folder} type="button" onClick={() => browse(subfolderPath(listing.path, folder))}>{folder}</button>
         ))}
       </section>
-      {pickFile && <Files listing={listing} pick={pickFile} />}
+      {pickFile && <Files listing={listing} pick={pickFile} masks={masks} maskIndex={maskIndex} chooseMask={chooseMask} />}
     </>
   );
 }
@@ -76,12 +88,30 @@ function Choice({ mode, path, file, onChoose }: { mode: PathMode; path: string; 
   return <button type="button" onClick={() => onChoose(subfolderPath(path, file))}>Use this file</button>;
 }
 
-function Files({ listing, pick }: { listing: FolderListing | undefined; pick: (file: string) => void }) {
+interface FilesProps {
+  listing: FolderListing | undefined;
+  pick: (file: string) => void;
+  masks: FileMask[];
+  maskIndex: number;
+  chooseMask: (index: number) => void;
+}
+
+function Files({ listing, pick, masks, maskIndex, chooseMask }: FilesProps) {
+  const choices = [...masks, ALL_FILES];
+  const shown = (listing?.files ?? []).filter((file) => matchesMask(file, choices[maskIndex]!.patterns));
+
   return (
-    <section aria-label="Files">
-      {listing?.files.map((file) => (
-        <button key={file} type="button" onClick={() => pick(file)}>{file}</button>
-      ))}
-    </section>
+    <>
+      <select aria-label="Show files" value={maskIndex} onChange={(event) => chooseMask(Number(event.target.value))}>
+        {choices.map(({ label }, index) => (
+          <option key={label} value={index}>{label}</option>
+        ))}
+      </select>
+      <section aria-label="Files">
+        {shown.map((file) => (
+          <button key={file} type="button" onClick={() => pick(file)}>{file}</button>
+        ))}
+      </section>
+    </>
   );
 }

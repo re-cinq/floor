@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { masksOfPath } from "./file-mask";
 import LabelledTextField from "./LabelledTextField";
 import PathField from "./PathField";
 import type { ListFolder } from "./PathPicker";
@@ -22,10 +23,10 @@ export default function StandInReportForm({ outcome, fields, report, listFolder 
 
   return (
     <form onSubmit={(event) => event.preventDefault()}>
-      {fields.map(({ name, kind }) => (
+      {fields.map(({ name, kind, path }) => (
         <Fragment key={name}>
           <LabelledTextField label={kind === "file" ? `${name} (paste)` : name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} />
-          {kind === "file" && <PathField label={`${name} (file on disk)`} browseLabel={`Browse for ${name}`} mode="file" value={picked[name] ?? ""} onChange={(value) => setPicked({ ...picked, [name]: value })} listFolder={listFolder} />}
+          {kind === "file" && <PathField label={`${name} (file on disk)`} browseLabel={`Browse for ${name}`} mode="file" value={picked[name] ?? ""} onChange={(value) => setPicked({ ...picked, [name]: value })} listFolder={listFolder} masks={masksOfPath(path)} />}
         </Fragment>
       ))}
       <button type="button" onClick={submit}>

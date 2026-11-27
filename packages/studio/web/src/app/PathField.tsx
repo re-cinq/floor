@@ -1,5 +1,6 @@
 import { useState } from "react";
 import LabelledTextField from "./LabelledTextField";
+import type { FileMask } from "./file-mask";
 import PathPicker, { type ListFolder, type PathMode } from "./PathPicker";
 
 interface Props {
@@ -10,9 +11,10 @@ interface Props {
   onChange: (value: string) => void;
   listFolder: ListFolder | undefined;
   startDir?: string;
+  masks?: FileMask[];
 }
 
-export default function PathField({ label, browseLabel, mode, value, onChange, listFolder, startDir }: Props) {
+export default function PathField({ label, browseLabel, mode, value, onChange, listFolder, startDir, masks }: Props) {
   const [browsing, setBrowsing] = useState(false);
 
   const choose = (path: string) => {
@@ -24,7 +26,7 @@ export default function PathField({ label, browseLabel, mode, value, onChange, l
     <>
       <LabelledTextField label={label} value={value} onChange={onChange} />
       {listFolder && <button type="button" onClick={() => setBrowsing(true)}>{browseLabel}</button>}
-      {browsing && listFolder && <PathPicker mode={mode} startDir={startDir} list={listFolder} onChoose={choose} onClose={() => setBrowsing(false)} />}
+      {browsing && listFolder && <PathPicker mode={mode} startDir={startDir} masks={masks} list={listFolder} onChoose={choose} onClose={() => setBrowsing(false)} />}
     </>
   );
 }

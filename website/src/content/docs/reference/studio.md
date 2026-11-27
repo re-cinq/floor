@@ -41,6 +41,6 @@ Runs and typed needs are kept in `.floor-studio/` in the collection, which ignor
 
 ## Testing a whole line
 
-Test locally, on a line's header, runs the line as saved on disk. The start screen asks for each start input and a workspace folder, which Browse lists, and names whatever is missing. Start copies the definitions into `<workspace>/<line>-<UTC time>/` and runs agent stations with your `claude`, while the floor's own routing picks each next step.
+Test locally, on a line's header, runs the line as saved on disk. The start screen asks for each start input and a workspace folder, and names whatever is missing. Browse starts in your home folder. Start copies the definitions into `<workspace>/<line>-<UTC time>/` and runs agent stations with your `claude`, while the floor's own routing picks each next step.
 
-A station Studio cannot run waits under Waiting for you: a button per outcome, a form when the next node reads what the station produces (a file is pasted or given as a path on disk), and a button per event the node answers. The run screen lists each visit with its outcome and cost, and opens the run folder or a visit's folder, which keeps its inputs, prompt, transcript and outputs. Cancel stops the run.
+A station Studio cannot run waits under Waiting for you: a button per outcome, a form when the next node reads what the station produces (a file is pasted or picked on disk), and a button per event the node answers. The run screen lists each visit with its outcome and cost, and opens the run folder or a visit's folder, which keeps its inputs, prompt, transcript and outputs. Cancel stops the run.
