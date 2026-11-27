@@ -14,12 +14,18 @@ export interface GitProvider {
   token: string;
 }
 
+/** Which visit of which run the credential is for, so the provider can decide by the run and not only by the repository. */
+export interface AskingVisit {
+  runId: string;
+  visitId: string;
+}
+
 /** Null for a provider that refused, or answered with something that is not a credential. */
-export async function askProvider(provider: GitProvider, need: GitNeed): Promise<GitCredential | null> {
+export async function askProvider(provider: GitProvider, need: GitNeed, asking: AskingVisit): Promise<GitCredential | null> {
   const response = await fetch(provider.url, {
     method: "POST",
     headers: { authorization: `Bearer ${provider.token}`, "content-type": "application/json" },
-    body: JSON.stringify({ repoUrl: need.repoUrl, access: need.access }),
+    body: JSON.stringify({ repoUrl: need.repoUrl, access: need.access, runId: asking.runId, visitId: asking.visitId }),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   const answered = gitCredential.safeParse(response.ok ? await response.json() : null);
