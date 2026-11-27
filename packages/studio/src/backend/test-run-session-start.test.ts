@@ -85,4 +85,17 @@ describe("cancel", () => {
       });
     });
   }, 10_000);
+
+  it("keeps review-loop finished when it is cancelled after 002-review-1 approved", async () => {
+    await withTestRunSetup(WRITES_DRAFT, async (setup) => {
+      const session = await startReviewLoopOnTides(setup);
+
+      await session.idle();
+      await session.report("002-review-1", { outcome: "approved", produced: {} });
+      await session.cancel();
+      const { status, ending } = session.state();
+
+      expect({ status, ending }).toEqual({ status: "settled", ending: { outcome: "finished" } });
+    });
+  }, 10_000);
 });
