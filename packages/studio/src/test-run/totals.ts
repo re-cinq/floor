@@ -1,7 +1,9 @@
 // The time and cost of a test run, per station and in all.
+import type { VisitMode } from "./timeline.js";
+
 export interface VisitMeasure {
   nodeId: string;
-  mode: "local" | "simulated";
+  mode: VisitMode;
   durationMs?: number;
   costUsd?: number;
 }

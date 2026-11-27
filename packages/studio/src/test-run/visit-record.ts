@@ -3,14 +3,14 @@ import type { Report } from "@re-cinq/floor-contracts";
 import { selectEdge } from "@re-cinq/floor-assembly-lines";
 import { walkGraphOfLine, type TestLine } from "./test-line.js";
 import type { VisitState } from "./test-visit.js";
-import { modeOf } from "./timeline.js";
+import { modeOf, type VisitMode } from "./timeline.js";
 
 export interface VisitRecord {
   id: string;
   node: string;
   station: string | null;
   iteration: number;
-  mode: "local" | "simulated";
+  mode: VisitMode;
   openedAt: string;
   reportedAt: string;
   durationMs: number;
@@ -35,12 +35,19 @@ export function visitRecordOf(line: TestLine, visit: VisitState, { outcome, prod
     mode: modeOf(kind),
     openedAt,
     reportedAt,
-    durationMs: Date.parse(reportedAt) - Date.parse(openedAt),
+    durationMs: wallTimeOf(openedAt, reportedAt),
     outcome,
     ...statedOnly({ agentDurationMs, costUsd, produced, error, next }),
   };
 }
 
-function statedOnly(optional: Partial<Record<keyof VisitRecord, unknown>>): Partial<VisitRecord> {
+export function wallTimeOf(openedAt: string, reportedAt: string): number {
+  return Date.parse(reportedAt) - Date.parse(openedAt);
+}
+
+type OptionalRecordField = "agentDurationMs" | "costUsd" | "produced" | "error" | "next";
+type MaybeStated = { [Field in OptionalRecordField]: VisitRecord[Field] | undefined };
+
+function statedOnly(optional: MaybeStated): Partial<MaybeStated> {
   return Object.fromEntries(Object.entries(optional).filter(([, value]) => value !== undefined));
 }
