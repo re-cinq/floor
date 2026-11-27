@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -184,7 +184,7 @@ describe("App test locally with a picked file", () => {
           const dialog = await openChooseAFile(workspace);
           await userEvent.click(await within(dialog).findByRole("button", { name: "notes.md" }));
           await userEvent.click(within(dialog).getByRole("button", { name: "drafts" }));
-          await within(dialog).findByDisplayValue(`${join(home, "drafts")}/`);
+          await waitFor(() => (within(dialog).queryByRole("button", { name: "drafts" }) === null ? null : Promise.reject(new Error("home is still listed"))));
 
           expect({ useThisFile: within(dialog).queryByRole("button", { name: "Use this file" }) }).toEqual({ useThisFile: null });
         },

@@ -24,9 +24,8 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
   const [pickedPath, setPickedPath] = useState<string>();
   const [maskIndex, setMaskIndex] = useState(0);
   const { listing, refusal, browse } = useFolderListing(list);
-  const [typed, setTyped] = useState("");
-  const titleId = useId();
   const mask = [...masks, ALL_FILES][maskIndex]!;
+  const titleId = useId();
   const offeredFile = offeredPath(pickedPath, listing, mask);
 
   useEffect(() => {
@@ -34,18 +33,15 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
     browse(startDir);
   }, []);
 
-  useEffect(() => {
-    if (listing) setTyped(listing.path.endsWith("/") ? listing.path : `${listing.path}/`);
-  }, [listing]);
-
   const pickFile = mode === "file" && listing ? (name: string) => setPickedPath(childPath(listing.path, name)) : undefined;
+  const { typed, openFolder, type } = usePathBar(listing, browse);
 
   return (
     <dialog ref={dialogRef} aria-labelledby={titleId} className={styles.dialog} onCancel={onClose}>
       <h2 id={titleId} className={styles.title}>Choose a {mode}</h2>
-      <Toolbar listing={listing} browse={browse} typed={typed} onType={setTyped} />
+      <Toolbar listing={listing} openFolder={openFolder} typed={typed} onType={type} />
       {refusal && <p role="alert" className={styles.refusal}>{refusal}</p>}
-      <PathPickerList listing={listing} browse={browse} pickFile={pickFile} pickedPath={offeredFile} mask={mask} filter={splitTyped(typed).filter} />
+      <PathPickerList listing={listing} browse={openFolder} pickFile={pickFile} pickedPath={offeredFile} mask={mask} filter={splitTyped(typed).filter} />
       <Footer mode={mode} masks={masks} maskIndex={maskIndex} chooseMask={setMaskIndex} onClose={onClose}>
         {listing && <Choice mode={mode} path={listing.path} filePath={offeredFile} onChoose={onChoose} />}
       </Footer>
@@ -55,17 +51,17 @@ export default function PathPicker({ mode, startDir, list, masks = [], onChoose,
 
 interface ToolbarProps {
   listing: FolderListing | undefined;
-  browse: (path: string) => void;
+  openFolder: (path: string) => void;
   typed: string;
   onType: (typed: string) => void;
 }
 
-function Toolbar({ listing, browse, typed, onType }: ToolbarProps) {
+function Toolbar({ listing, openFolder, typed, onType }: ToolbarProps) {
   const parent = listing?.parent;
 
   return (
     <div className={styles.toolbar}>
-      {parent && <button type="button" className={styles.up} aria-label="Up" onClick={() => browse(parent)}><UpIcon /></button>}
+      {parent && <button type="button" className={styles.up} aria-label="Up" onClick={() => openFolder(parent)}><UpIcon /></button>}
       <input type="text" aria-label="Path" className={styles.pathBar} value={typed} onChange={(event) => onType(event.target.value)} />
     </div>
   );
@@ -90,6 +86,31 @@ function Footer({ mode, masks, maskIndex, chooseMask, onClose, children }: Foote
       </span>
     </div>
   );
+}
+
+function usePathBar(listing: FolderListing | undefined, browse: (path?: string) => void) {
+  const [typed, setTyped] = useState("");
+
+  useEffect(() => {
+    if (listing) setTyped((current) => current === "" ? withSlash(listing.path) : current);
+  }, [listing]);
+
+  const openFolder = (path: string) => {
+    setTyped(withSlash(path));
+    browse(path);
+  };
+
+  const type = (next: string) => {
+    const { folder } = splitTyped(next);
+    if (folder !== splitTyped(typed).folder) browse(folder || undefined);
+    setTyped(next);
+  };
+
+  return { typed, openFolder, type };
+}
+
+function withSlash(path: string): string {
+  return path.endsWith("/") ? path : `${path}/`;
 }
 
 function offeredPath(pickedPath: string | undefined, listing: FolderListing | undefined, mask: FileMask): string | undefined {

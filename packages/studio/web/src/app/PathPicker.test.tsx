@@ -53,4 +53,19 @@ describe("PathPicker", () => {
         .map((row) => row.textContent);
     expect({ folders: namesIn("Folders"), files: namesIn("Files") }).toEqual(shown);
   });
+
+  it("lists /w/alpha once, showing inner, when alpha/ is typed after /w/", async () => {
+    const { calls, list } = controlledList();
+    render(<PathPicker mode="folder" startDir="/w" list={list} onChoose={() => undefined} onClose={() => undefined} />);
+    await act(async () => calls[0]!.resolve({ path: "/w", parent: "/", folders: ["alpha", "beta"], files: [] }));
+
+    await userEvent.type(await screen.findByRole("textbox", { name: "Path" }), "{End}alpha/");
+    await act(async () => calls[1]?.resolve({ path: "/w/alpha", parent: "/w", folders: ["inner"], files: [] }));
+
+    const folders = within(screen.getByRole("region", { name: "Folders" })).getAllByRole("button");
+    expect({ asked: calls.map((call) => call.path), shown: folders.map((folder) => folder.textContent) }).toEqual({
+      asked: ["/w", "/w/alpha"],
+      shown: ["inner"],
+    });
+  });
 });
