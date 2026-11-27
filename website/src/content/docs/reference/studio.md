@@ -1,7 +1,7 @@
 ---
 title: The floor-studio command
-description: A local page that draws a collection's assembly lines and runs one agent station on your machine.
-wordBudget: 250
+description: A local page that draws a collection's assembly lines, runs one agent station on your machine, and tests a whole line locally.
+wordBudget: 380
 sidebar:
   order: 4
 ---
@@ -38,3 +38,9 @@ Exit codes: 0 on `--help`, 1 for a directory that does not exist, 2 for a bad ar
 The Run tab takes a value for each need, a working folder and a permission (`acceptEdits`, or `bypass` as in the pod). Preview shows the exact prompt and command and what blocks the run. A run's transcript streams live, survives a page reload, and ends with the outcome, the produces found and the edge lit on the graph.
 
 Runs and typed needs are kept in `.floor-studio/` in the collection, which ignores itself in git.
+
+## Testing a whole line
+
+Test locally, on a line's header, runs the line as saved on disk. The start screen asks for each start input and a workspace folder, which Browse lists, and names whatever is missing. Start copies the definitions into `<workspace>/<line>-<UTC time>/` and runs agent stations with your `claude`, while the floor's own routing picks each next step.
+
+A station Studio cannot run waits under Waiting for you: a button per outcome, a form when the next node reads what the station produces, and a button per event the node answers. The run screen lists each visit with its outcome and cost, and opens the run folder or a visit's folder, which keeps its inputs, prompt, transcript and outputs. Cancel stops the run.

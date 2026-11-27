@@ -9,6 +9,7 @@ import type { CollectionView, NodeNeed, NodeProduce } from "./view.js";
 import type { FolderListing } from "./folder-listing.js";
 import type { TestPreview } from "./test-run/test-preview.js";
 import type { TestRunState } from "./test-run/test-run-state.js";
+import type { StandInAction } from "./test-run/stand-in-actions.js";
 import type { VisitState } from "./test-run/test-visit.js";
 
 export type { AgentUse, AgentView, CollectionView, LineView, NodeAgent, NodeNeed, NodeView, RefusedFile, ViewProblem } from "./view.js";
@@ -145,6 +146,7 @@ const testRunStateSchema: z.ZodType<TestRunState> = z.strictObject({
   status: z.enum(["running", "waiting", "settled"]),
   ending: z.strictObject({ outcome: z.enum(["finished", "iteration_max", "error", "failed", "cancelled"]), reason: z.string().optional() }).optional(),
   visits: z.array(presentObject<VisitState>()),
+  actions: z.record(z.string(), z.array(presentObject<StandInAction>())),
 });
 
 export const testChangedFrame = z.strictObject({ type: z.literal("test.changed"), run: z.string(), state: testRunStateSchema });

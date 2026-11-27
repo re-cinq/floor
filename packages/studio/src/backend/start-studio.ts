@@ -35,6 +35,8 @@ export interface StudioOptions {
   origins?: readonly string[];
   /** Environment laid over the studio's own for each process a run starts. */
   runEnv?: Record<string, string>;
+  /** Opens a run folder; the desktop opens it when none is given. */
+  openFolder?: (path: string) => void;
 }
 
 export interface Studio {
@@ -64,7 +66,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     await writeFile(path, text);
   };
 
-  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), ...runFilesIn(dir), runs: new Map(), collectionDir: dir, testRuns: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)), openFolder: openOnDesktop };
+  const context: StudioContext = { readCollection, writeAgent, writeExtra: (file, edit) => writeExtraFile(join(dir, file), edit), ...fixtureFilesIn(dir), ...runFilesIn(dir), runs: new Map(), collectionDir: dir, testRuns: new Map(), runEnv: options.runEnv, broadcast: (frame) => sockets.clients.forEach((socket) => send(socket, frame)), openFolder: options.openFolder ?? openOnDesktop };
   const server = createServer(refuseHttp);
 
   server.on("upgrade", (request, socket, head) => {

@@ -28,6 +28,11 @@
   margin-bottom: var(--space-6);
 }
 
+.testLocally {
+  align-self: flex-start;
+  margin-bottom: var(--space-6);
+}
+
 .file {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);

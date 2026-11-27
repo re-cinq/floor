@@ -1,0 +1,37 @@
+import { useState } from "react";
+import FolderPicker from "./FolderPicker";
+import LabelledTextField from "./LabelledTextField";
+import { useTestPreview, useTestStart, type TestStartControls } from "./use-test-start";
+import styles from "./screens.module.css";
+import type { LineView } from "@protocol";
+import type { TestPreviewFields } from "@/socket/studio-connection";
+
+interface Props {
+  line: LineView;
+  controls: TestStartControls | undefined;
+  onStarted: (run: string) => void;
+}
+
+export default function TestStartScreen({ line, controls, onStarted }: Props) {
+  const [workspace, setWorkspace] = useState("");
+  const [entered, setEntered] = useState<TestPreviewFields["entered"]>({});
+  const { preview, missing, refusal: previewRefusal } = useTestPreview(controls, entered);
+  const { start, refusal } = useTestStart(controls, { workspace, entered, permission: "acceptEdits" }, previewRefusal, onStarted);
+
+  return (
+    <div className={`${styles.screen} ${styles.testStart}`}>
+      <h1>Test {line.id} locally</h1>
+      {preview?.asked.map(({ name }) => (
+        <LabelledTextField key={name} label={name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} />
+      ))}
+      {missing.map((name) => (
+        <p key={name}>{name} is missing</p>
+      ))}
+      <LabelledTextField label="Workspace folder" value={workspace} onChange={setWorkspace} />
+      <FolderPicker controls={controls} workspace={workspace} onUse={setWorkspace} />
+      {!workspace && <p>Choose a workspace folder</p>}
+      {refusal && <p role="alert">{refusal}</p>}
+      <button type="button" onClick={start} disabled={missing.length > 0 || !workspace}>Start</button>
+    </div>
+  );
+}

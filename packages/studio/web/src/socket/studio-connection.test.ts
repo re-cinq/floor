@@ -197,7 +197,7 @@ describe("StudioConnection against a server that speaks the protocol by hand", (
 
   it("keeps the collection flow, reaches no run listener and stays open when a test.changed frame comes before each answer", async () => {
     const view = collectionView(WORKER_COLLECTION, []);
-    const changed = JSON.stringify({ type: "test.changed", run: "r1", state: { folder: "/w/run", lineId: "flow", status: "running", visits: [] } });
+    const changed = JSON.stringify({ type: "test.changed", run: "r1", state: { folder: "/w/run", lineId: "flow", status: "running", visits: [], actions: {} } });
     const served = await protocolServer((socket) => {
       socket.send(hello);
       socket.on("message", (raw) => {

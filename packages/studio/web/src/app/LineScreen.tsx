@@ -16,12 +16,13 @@ export interface LineScreenProps {
   inspector?: InspectorActions;
   takenEdge?: { from: string; to: string; on: string };
   onSelectNode: (nodeId: string | undefined) => void;
+  onTestLocally: () => void;
   onSelectLine?: (key: string) => void;
   selectedLineKey?: string;
   selectedLine?: LineEdge;
 }
 
-export default function LineScreen({ line, node, inspector, takenEdge, onSelectNode, onSelectLine, selectedLineKey, selectedLine }: LineScreenProps) {
+export default function LineScreen({ line, node, inspector, takenEdge, onSelectNode, onTestLocally, onSelectLine, selectedLineKey, selectedLine }: LineScreenProps) {
   const definition = useMemo(() => graphOf(line), [line]);
   const mainPathEdges = useMemo(() => mainPathOf(definition).edges, [definition]);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -40,6 +41,9 @@ export default function LineScreen({ line, node, inspector, takenEdge, onSelectN
     <div ref={screenRef} className={styles.screen} data-inspecting={node ? "" : undefined}>
       <div className={styles.primary}>
         <LineHeader line={line} />
+        <button type="button" className={styles.testLocally} onClick={onTestLocally}>
+          Test locally
+        </button>
         <div ref={graphRef} className={styles.graph}>
           <RunGraphView definition={definition} selectedNodeId={node?.id} coveredBelow={coveredBelow} takenEdge={takenEdge} onSelectNode={onSelectNode} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} />
         </div>

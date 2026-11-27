@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
-import type { CollectionView, NodeView } from "@protocol";
+import type { CollectionView, LineView, NodeView } from "@protocol";
 import { edgeKeyOf } from "@re-cinq/floor-graph";
 import { parseFragment, withSelection } from "@/socket/fragment";
 import type { StudioConnection, StudioSnapshot } from "@/socket/studio-connection";
@@ -12,6 +12,10 @@ import type { SaveSettings } from "./SettingsEditor";
 import type { InspectorActions } from "./Inspector";
 import { resolveSelection, type ResolvedSelection } from "./resolve-selection";
 import { AddressNeeded, CannotConnect, ChooseLine, Connecting, EmptyCollection, MissingLine, Refused, Unreadable } from "./Screens";
+import TestRunScreen from "./TestRunScreen";
+import TestStartScreen from "./TestStartScreen";
+import type { TestStartControls } from "./use-test-start";
+import type { TestRunControls } from "./use-test-run";
 import Sidebar from "./Sidebar";
 import { useSelection } from "./use-selection";
 import shell from "./shell.module.css";
@@ -25,11 +29,8 @@ export default function App() {
   const [selection, select] = useSelection();
   const resolved = resolveSelection(snapshot.collection, selection);
   const lineId = resolved.line?.id;
-  const { runs, fixtures, takenEdge } = useNodeRuns(connection, { selection, select, resolved });
-  const savePrompt = promptSaver(connection, lineId, resolved.node);
-  const saveExtra = extraSaver(connection, lineId, resolved.node);
-  const saveSettings = settingsSaver(connection, lineId, resolved.node);
-  const previewRun = runPreviewer(connection, lineId, resolved.node);
+  const test = useTestControls(connection, lineId, select);
+  const nodeRuns = useNodeRuns(connection, { selection, select, resolved });
   const scheme = useColorScheme();
 
   return (
@@ -42,10 +43,53 @@ export default function App() {
         scheme={{ pref: scheme.pref, onChoose: scheme.choose }}
       />
       <main className={shell.main}>
-        {address ? screenFor(snapshot, { requestedLine: selection.line, inspector: { savePrompt, saveExtra, saveSettings, previewRun, runs, fixtures, tabChoice: { tab: selection.tab, choose: (tab) => select({ line: lineId, node: resolved.node?.id, tab, run: selection.run }) } }, resolved, takenEdge, onSelectLine: (key) => select({ line: lineId, edge: key }), selectedLineKey: resolved.edge && edgeKeyOf(resolved.edge), onSelectNode: (node) => select(node ? { line: lineId, node, tab: selection.tab } : { line: lineId }) }) : <AddressNeeded />}
+        {address ? screenFor(snapshot, placeOf({ connection, selection, select, resolved, nodeRuns, test })) : <AddressNeeded />}
       </main>
     </div>
   );
+}
+
+interface PlaceInput {
+  connection: StudioConnection | undefined;
+  selection: Selection;
+  select: Select;
+  resolved: ResolvedSelection;
+  nodeRuns: ReturnType<typeof useNodeRuns>;
+  test: ReturnType<typeof useTestControls>;
+}
+
+function placeOf({ connection, selection, select, resolved, nodeRuns, test }: PlaceInput): Place {
+  const line = resolved.line?.id;
+
+  return {
+    requestedLine: selection.line,
+    inspector: inspectorActions({ connection, selection, select, resolved, nodeRuns }),
+    resolved,
+    takenEdge: nodeRuns.takenEdge,
+    testStart: test.controls,
+    testRun: test.runControls,
+    onTestStarted: test.onStarted,
+    onTestLocally: () => select({ line, test: "new" }),
+    testing: selection.test,
+    onSelectLine: (key) => select({ line, edge: key }),
+    selectedLineKey: resolved.edge && edgeKeyOf(resolved.edge),
+    onSelectNode: (node) => select(node ? { line, node, tab: selection.tab } : { line }),
+  };
+}
+
+function inspectorActions({ connection, selection, select, resolved, nodeRuns }: Omit<PlaceInput, "test">): InspectorActions {
+  const line = resolved.line?.id;
+  const node = resolved.node;
+
+  return {
+    savePrompt: promptSaver(connection, line, node),
+    saveExtra: extraSaver(connection, line, node),
+    saveSettings: settingsSaver(connection, line, node),
+    previewRun: runPreviewer(connection, line, node),
+    runs: nodeRuns.runs,
+    fixtures: nodeRuns.fixtures,
+    tabChoice: { tab: selection.tab, choose: (tab) => select({ line, node: node?.id, tab, run: selection.run }) },
+  };
 }
 
 /** A prompt is saved over a live connection against the file version it was read at; without that version there is nothing to guard the write, so no editor is offered. */
@@ -85,9 +129,12 @@ function runPreviewer(connection: StudioConnection | undefined, line: string | u
   return (fields) => connection.previewRun({ line, node: id, ...fields });
 }
 
+type Selection = ReturnType<typeof useSelection>[0];
+type Select = ReturnType<typeof useSelection>[1];
+
 interface NodeRunsInput {
-  selection: ReturnType<typeof useSelection>[0];
-  select: ReturnType<typeof useSelection>[1];
+  selection: Selection;
+  select: Select;
   resolved: ResolvedSelection;
 }
 
@@ -108,6 +155,33 @@ function useNodeRuns(connection: StudioConnection | undefined, { selection, sele
 
 function takenAt(taken: TakenEdge | undefined, line: string | undefined, node: string | undefined): EdgeEnds | undefined {
   return taken?.line === line && taken?.node === node ? taken?.edge : undefined;
+}
+
+/** The line's means of starting a test run, and what happens once one has started: its screen is selected. */
+function useTestControls(connection: StudioConnection | undefined, line: string | undefined, select: Select) {
+  const controls = useMemo(() => testStartControls(connection, line), [connection, line]);
+
+  const runControls = useMemo(() => testRunControls(connection), [connection]);
+
+  return { controls, runControls, onStarted: (run: string) => select({ line, test: run }) };
+}
+
+/** A test run is read and followed over a live connection. */
+function testRunControls(connection: StudioConnection | undefined): TestRunControls | undefined {
+  if (!connection) return undefined;
+
+  return { cancel: (run) => connection.cancelTest(run), read: (run) => connection.readTest(run), report: (fields) => connection.reportTest(fields), sendEvent: (fields) => connection.sendTestEvent(fields), follow: (listener) => connection.onTestChanged(listener), openFolder: (path) => connection.openFolder(path) };
+}
+
+/** A test run is previewed and started over a live connection, for the selected line. */
+function testStartControls(connection: StudioConnection | undefined, line: string | undefined): TestStartControls | undefined {
+  if (!connection || !line) return undefined;
+
+  return {
+    preview: (entered) => connection.previewTest({ line, entered }),
+    start: (fields) => connection.startTest({ line, ...fields }),
+    listFolder: (path) => connection.listFolder(path),
+  };
 }
 
 /** Runs are started, cancelled and followed over a live connection, for the selected node of a line. */
@@ -142,12 +216,17 @@ type EdgeEnds = { from: string; to: string; on: string };
 interface TakenEdge { line: string | undefined; node: string | undefined; edge: EdgeEnds }
 
 interface Place {
+  testStart: TestStartControls | undefined;
+  testRun: TestRunControls | undefined;
   takenEdge: EdgeEnds | undefined;
   requestedLine: string | undefined;
   inspector: InspectorActions;
   resolved: ResolvedSelection;
   onSelectNode: (nodeId: string | undefined) => void;
   onSelectLine: (key: string) => void;
+  onTestLocally: () => void;
+  onTestStarted: (run: string) => void;
+  testing: string | undefined;
   selectedLineKey: string | undefined;
 }
 
@@ -166,9 +245,14 @@ function unloadedScreen({ connection, readError }: StudioSnapshot): ReactElement
   return readError ? <Unreadable reason={readError} /> : <Connecting />;
 }
 
-function loadedScreen(collection: CollectionView, { requestedLine, inspector, resolved, takenEdge, onSelectNode, onSelectLine, selectedLineKey }: Place): ReactElement {
+function loadedScreen(collection: CollectionView, { requestedLine, inspector, resolved, takenEdge, onSelectNode, onSelectLine, onTestLocally, onTestStarted, testStart, testRun, testing, selectedLineKey }: Place): ReactElement {
   if (collection.lines.length === 0) return <EmptyCollection />;
-  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} takenEdge={takenEdge} inspector={{ ...inspector, skillNames: collection.skills }} onSelectNode={onSelectNode} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} selectedLine={resolved.edge} />;
+  if (resolved.line && testing) return testScreen(resolved.line, testing, { controls: testStart, runControls: testRun, onStarted: onTestStarted });
+  if (resolved.line) return <LineScreen line={resolved.line} node={resolved.node} takenEdge={takenEdge} inspector={{ ...inspector, skillNames: collection.skills }} onSelectNode={onSelectNode} onTestLocally={onTestLocally} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} selectedLine={resolved.edge} />;
 
   return requestedLine ? <MissingLine lineId={requestedLine} /> : <ChooseLine collection={collection} />;
+}
+
+function testScreen(line: LineView, testing: string, { controls, runControls, onStarted }: { controls: TestStartControls | undefined; runControls: TestRunControls | undefined; onStarted: (run: string) => void }): ReactElement {
+  return testing === "new" ? <TestStartScreen line={line} controls={controls} onStarted={onStarted} /> : <TestRunScreen line={line} run={testing} controls={runControls} />;
 }

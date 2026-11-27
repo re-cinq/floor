@@ -1,4 +1,5 @@
 // The state of a local test run that goes to the page: where it is, how it ended and the visits so far.
+import type { StandInAction } from "./stand-in-actions.js";
 import type { VisitState } from "./test-visit.js";
 
 export interface TestRunState {
@@ -7,6 +8,7 @@ export interface TestRunState {
   status: "running" | "waiting" | "settled";
   ending?: TestRunEnding;
   visits: VisitState[];
+  actions: Record<string, StandInAction[]>;
 }
 
 export interface TestRunEnding {

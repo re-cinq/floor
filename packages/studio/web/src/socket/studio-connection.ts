@@ -38,6 +38,16 @@ interface Attempt {
 type PreviewRequest = Extract<Request, { type: "run.preview" }>;
 export type PreviewFields = Omit<PreviewRequest, "id" | "type">;
 export type RunPreviewResult = ResultOf<PreviewRequest>;
+type TestPreviewRequest = Extract<Request, { type: "test.preview" }>;
+export type TestPreviewFields = Omit<TestPreviewRequest, "id" | "type">;
+export type TestPreviewResult = ResultOf<TestPreviewRequest>;
+type TestStartRequest = Extract<Request, { type: "test.start" }>;
+export type TestStartFields = Omit<TestStartRequest, "id" | "type">;
+export type TestStartResult = ResultOf<TestStartRequest>;
+type TestReportRequest = Extract<Request, { type: "test.report" }>;
+export type TestReportFields = Omit<TestReportRequest, "id" | "type">;
+type TestEventRequest = Extract<Request, { type: "test.event" }>;
+export type TestEventFields = Omit<TestEventRequest, "id" | "type">;
 type StartRequest = Extract<Request, { type: "run.start" }>;
 export type StartFields = Omit<StartRequest, "id" | "type">;
 export type RunStartResult = ResultOf<StartRequest>;
@@ -45,6 +55,11 @@ type ReadRequest = Extract<Request, { type: "run.read" }>;
 export type RunReadResult = ResultOf<ReadRequest>;
 export type RunFrame = Extract<ServerFrame, { type: "run.output" | "run.ended" }>;
 export type RunFrameListener = (frame: RunFrame) => void;
+type TestReadRequest = Extract<Request, { type: "test.read" }>;
+export type TestReadResult = ResultOf<TestReadRequest>;
+export type FolderListing = ResultOf<Extract<Request, { type: "folder.list" }>>;
+export type TestChangedFrame = Extract<ServerFrame, { type: "test.changed" }>;
+export type TestChangedListener = (frame: TestChangedFrame) => void;
 
 const backoff = (attempt: number): number => Math.min(FIRST_RETRY_MS * 2 ** attempt, LONGEST_RETRY_MS);
 
@@ -58,6 +73,7 @@ export class StudioConnection {
   private readonly listeners = new Set<() => void>();
   private readonly waiting = new Map<string, Waiting>();
   private readonly runListeners = new Set<RunFrameListener>();
+  private readonly testListeners = new Set<TestChangedListener>();
   private socket: WebSocket | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private attempt = 0;
@@ -115,6 +131,36 @@ export class StudioConnection {
     return this.request("run.preview", fields) as Promise<RunPreviewResult>;
   }
 
+  /** Asks the backend what a test run of a whole line would need, without starting it. */
+  previewTest(fields: TestPreviewFields): Promise<TestPreviewResult> {
+    return this.request("test.preview", fields) as Promise<TestPreviewResult>;
+  }
+
+  /** Asks the backend to start a test run of a whole line. */
+  startTest(fields: TestStartFields): Promise<TestStartResult> {
+    return this.request("test.start", fields) as Promise<TestStartResult>;
+  }
+
+  /** Reports a waiting visit of a test run on a person's behalf. */
+  reportTest(fields: TestReportFields): Promise<unknown> {
+    return this.request("test.report", fields);
+  }
+
+  /** Sends an event into a test run on a person's behalf. */
+  sendTestEvent(fields: TestEventFields): Promise<unknown> {
+    return this.request("test.event", fields);
+  }
+
+  /** Asks the backend which folders and files a folder holds. */
+  listFolder(path: string): Promise<FolderListing> {
+    return this.request("folder.list", { path }) as Promise<FolderListing>;
+  }
+
+  /** Asks the backend to open a folder inside a test run's folder. */
+  openFolder(path: string): Promise<unknown> {
+    return this.request("folder.open", { path });
+  }
+
   /** Asks the backend to start a run of one station. */
   startRun(fields: StartFields): Promise<RunStartResult> {
     return this.request("run.start", fields) as Promise<RunStartResult>;
@@ -138,6 +184,23 @@ export class StudioConnection {
   /** Asks the backend to cancel a run it started. */
   cancelRun(run: string): Promise<unknown> {
     return this.request("run.cancel", { run });
+  }
+
+  /** Asks the backend for a test run's state as it stands. */
+  readTest(run: string): Promise<TestReadResult> {
+    return this.request("test.read", { run }) as Promise<TestReadResult>;
+  }
+
+  /** Asks the backend to cancel a test run. */
+  cancelTest(run: string): Promise<unknown> {
+    return this.request("test.cancel", { run });
+  }
+
+  /** Hands every test run change to the listener until the returned function is called. */
+  onTestChanged(listener: TestChangedListener): () => void {
+    this.testListeners.add(listener);
+
+    return () => this.testListeners.delete(listener);
   }
 
   /** Hands every run frame that arrives to the listener until the returned function is called. */
@@ -209,7 +272,7 @@ export class StudioConnection {
   }
 
   private answer(frame: Exclude<ServerFrame, { type: "hello" | "collection" }>): void {
-    if (frame.type === "test.changed") return;
+    if (frame.type === "test.changed") return this.testListeners.forEach((listener) => listener(frame));
     if (isRunFrame(frame)) return this.runListeners.forEach((listener) => listener(frame));
     this.reply(frame);
   }
