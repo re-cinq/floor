@@ -1,4 +1,4 @@
-// The page's one link to the backend: a WebSocket opened with the launch token, every frame checked against the protocol's schema, requests matched to their answers by id, and a reconnect with backoff that reads the collection again. Pushes are not replayed, so a connection that drops and returns asks again. A read that fails, whether the page asked or the backend re-read on its own and pushed an unasked `refused`, replaces the collection with its reason.
+// The page's one link to the backend: a WebSocket opened with the launch token, every frame checked against the protocol's schema, requests matched to their answers by id, and a reconnect with backoff that reads the collection again. Pushes are not replayed, so a connection that drops and returns reads the collection again and tells `onOpened` listeners, which read again whatever else they follow. A read that fails, whether the page asked or the backend re-read on its own and pushed an unasked `refused`, replaces the collection with its reason.
 import type { ZodError } from "zod";
 import { collectionViewSchema, PROTOCOL_VERSION, serverFrameSchema, type CollectionView, type Request, type ResultOf, type ServerFrame } from "@protocol";
 
@@ -74,6 +74,7 @@ export class StudioConnection {
   private readonly waiting = new Map<string, Waiting>();
   private readonly runListeners = new Set<RunFrameListener>();
   private readonly testListeners = new Set<TestChangedListener>();
+  private readonly openedListeners = new Set<() => void>();
   private socket: WebSocket | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private attempt = 0;
@@ -203,6 +204,13 @@ export class StudioConnection {
     return () => this.testListeners.delete(listener);
   }
 
+  /** Calls the listener each time the studio's greeting is accepted, a reconnect included, until the returned function is called. */
+  onOpened(listener: () => void): () => void {
+    this.openedListeners.add(listener);
+
+    return () => this.openedListeners.delete(listener);
+  }
+
   /** Hands every run frame that arrives to the listener until the returned function is called. */
   onRunFrame(listener: RunFrameListener): () => void {
     this.runListeners.add(listener);
@@ -268,6 +276,7 @@ export class StudioConnection {
 
     this.attempt = 0;
     this.change({ connection: { status: "open" } });
+    this.openedListeners.forEach((listener) => listener());
     void this.readCollection();
   }
 

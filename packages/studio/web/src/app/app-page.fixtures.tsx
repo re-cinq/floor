@@ -23,6 +23,7 @@ interface PageOptions {
   hash?: string;
   runEnv?: Record<string, string>;
   openFolder?: (path: string) => void;
+  socketOf?: (studio: Studio) => string;
 }
 
 export async function openPage(files: CollectionFile[], options: PageOptions = {}): Promise<OpenedPage> {
@@ -30,7 +31,7 @@ export async function openPage(files: CollectionFile[], options: PageOptions = {
   const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [], runEnv: options.runEnv, openFolder: options.openFolder });
 
   running.push(studio);
-  window.location.hash = `#${new URLSearchParams({ socket: studio.url, token: options.token ?? studio.token }).toString()}${options.hash ?? ""}`;
+  window.location.hash = `#${new URLSearchParams({ socket: options.socketOf?.(studio) ?? studio.url, token: options.token ?? studio.token }).toString()}${options.hash ?? ""}`;
   render(<App />);
 
   return { dir, studio };

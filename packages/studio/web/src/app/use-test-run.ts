@@ -10,6 +10,7 @@ export interface TestRunControls {
   openFolder: (path: string) => Promise<unknown>;
   cancel: (run: string) => Promise<unknown>;
   follow: (listener: TestChangedListener) => () => void;
+  reopened: (listener: () => void) => () => void;
 }
 
 export function useTestRun(controls: TestRunControls | undefined, run: string) {
@@ -24,12 +25,17 @@ export function useTestRun(controls: TestRunControls | undefined, run: string) {
   const openVisitFolder = (visitId: string) => state && showRefusal(controls?.openFolder(`${state.folder}/visits/${visitId}`));
 
   useEffect(() => {
-    const unfollow = controls?.follow((frame) => frame.run === run && setState(frame.state));
-
     // A refused read (an unknown run, or the connection closing) shows its reason on the screen; the state stays as it was.
-    controls?.read(run).then(setState, (error: Error) => setRefusal(error.message));
+    const read = () => void controls?.read(run).then(setState, (error: Error) => setRefusal(error.message));
+    const unfollow = controls?.follow((frame) => frame.run === run && setState(frame.state));
+    const unreopen = controls?.reopened(read);
 
-    return unfollow;
+    read();
+
+    return () => {
+      unfollow?.();
+      unreopen?.();
+    };
   }, [controls, run]);
 
   return { state, refusal, report, sendEvent, cancel, openRunFolder, openVisitFolder };

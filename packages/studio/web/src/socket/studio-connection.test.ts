@@ -183,16 +183,18 @@ describe("StudioConnection against the real backend", () => {
 });
 
 describe("StudioConnection against a server that speaks the protocol by hand", () => {
-  it("reconnects after a drop and reads the collection again", async () => {
+  it("reconnects after a drop, reads the collection again and tells an onOpened listener once", async () => {
     const view = collectionView(WORKER_COLLECTION, []);
     const served = await protocolServer(replyingToReads(() => ({ type: "result", result: view })));
     const connection = await connectedThenDropped(served);
+    let opened = 0;
 
+    connection.onOpened(() => (opened += 1));
     await reaches(connection, ({ connection: state }) => state.status === "closed");
     await reaches(connection, ({ connection: state }) => state.status === "open");
     await reaches(connection, () => served.reads() === 2);
 
-    expect(served.reads()).toBe(2);
+    expect({ reads: served.reads(), opened }).toEqual({ reads: 2, opened: 1 });
   });
 
   it("keeps the collection flow, reaches no run listener and stays open when a test.changed frame comes before each answer", async () => {

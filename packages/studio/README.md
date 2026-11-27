@@ -143,7 +143,7 @@ The need values are saved in `.floor-studio/fixtures/<line>/<node>.json` and eac
 
 ### Testing a whole line
 
-The backend can run a whole assembly line on your machine as a test run (`startTestRun` in `src/backend/test-run-session.ts`), through the `test.*` and `folder.*` requests in the protocol. The page's Test locally button opens a start screen (workspace folder with a picker, inputs, blockers, permission, Start); the run screen lists the visits, offers a waiting visit's actions (a file output is pasted or given as a path on disk, not both), and has Cancel and the folder buttons. A refused request shows its reason until a later request succeeds.
+The backend can run a whole assembly line on your machine as a test run (`startTestRun` in `src/backend/test-run-session.ts`), through the `test.*` and `folder.*` requests in the protocol. The page's Test locally button opens a start screen (workspace folder with a picker, inputs, blockers, permission, Start); the run screen lists the visits, offers a waiting visit's actions (a file output is pasted or given as a path on disk, not both), and has Cancel and the folder buttons. A refused request shows its reason until a later request succeeds. When the connection drops and returns, the run screen reads its run again, since pushed changes are not replayed.
 
 A test run reads the line as saved on disk. It is refused before anything is written when an argument or line file has no value, or when the line cannot run locally: it fails validation, a node pins a station (`reviewer@abc123`), or a node fans out. One message lists every reason.
 

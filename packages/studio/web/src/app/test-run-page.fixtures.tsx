@@ -14,8 +14,9 @@ export async function openStartScreen(
   runEnv?: Record<string, string>,
   openFolder?: (path: string) => void,
   collection: readonly CollectionFile[] = REVIEW_LOOP_COLLECTION,
+  socketOf?: (studio: OpenedPage["studio"]) => string,
 ): Promise<OpenedPage> {
-  return openPage([...collection], { hash: "&line=review-loop&test=new", runEnv, openFolder });
+  return openPage([...collection], { hash: "&line=review-loop&test=new", runEnv, openFolder, socketOf });
 }
 
 export async function startReviewLoop(workspace: string): Promise<void> {
@@ -81,6 +82,7 @@ export async function withScratchWorkspace(
   script: string,
   body: (workspace: string, opened: string[], studio: OpenedPage["studio"]) => Promise<void>,
   collection: readonly CollectionFile[] = REVIEW_LOOP_COLLECTION,
+  socketOf?: (studio: OpenedPage["studio"]) => string,
 ): Promise<void> {
   const { scratch, runEnv } = fakeClaudeScratch("floor-test-page-", script);
 
@@ -88,7 +90,7 @@ export async function withScratchWorkspace(
     const workspace = join(scratch, "workspace");
     mkdirSync(workspace);
     const opened: string[] = [];
-    const { studio } = await openStartScreen(runEnv, (path) => opened.push(path), collection);
+    const { studio } = await openStartScreen(runEnv, (path) => opened.push(path), collection, socketOf);
     await body(workspace, opened, studio);
   } finally {
     rmSync(scratch, { recursive: true, force: true });
