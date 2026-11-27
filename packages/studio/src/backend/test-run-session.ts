@@ -11,6 +11,7 @@ import { enforceStartable } from "../test-run/start-blockers.js";
 import { runSummaryOf } from "../test-run/run-summary.js";
 import { startItemsOf } from "../test-run/start-items.js";
 import { standInReport, type StandInAnswer } from "../test-run/stand-in-report.js";
+import { waitingActionsOf } from "../test-run/stand-in-actions.js";
 import { nodeAt, stationAt } from "../test-run/test-line.js";
 import { modeOf, type TimelineEntry } from "../test-run/timeline.js";
 import type { TestRunEnding, TestRunState } from "../test-run/test-run-state.js";
@@ -52,7 +53,7 @@ interface RunWork {
   start: TestRunStart;
   view: CollectionView;
   run: TestRun;
-  state: TestRunState;
+  state: Omit<TestRunState, "actions">;
   clock: () => Date;
   startedAt: string;
   cancelled: boolean;
@@ -73,7 +74,7 @@ export async function startTestRun(context: StudioContext, start: TestRunStart, 
 
   await snapshotCollection(collectionDir, folder);
   const [line, view] = await Promise.all([readTestLine(snapshotDir, lineId), readCollectionView(snapshotDir, [])]);
-  const state: TestRunState = { folder, lineId, status: "running", visits: [] };
+  const state: RunWork["state"] = { folder, lineId, status: "running", visits: [] };
   const run: TestRun = { line, startItems, visits: state.visits };
   const work: RunWork = { id: randomUUID(), context, start, view, run, state, clock, startedAt: startedAt.toISOString(), cancelled: false, stepping: Promise.resolve() };
 
@@ -86,12 +87,16 @@ export async function startTestRun(context: StudioContext, start: TestRunStart, 
 function sessionOf(work: RunWork): TestRunSession {
   return {
     id: work.id,
-    state: () => work.state,
+    state: () => stateOf(work),
     idle: () => work.stepping,
     cancel: () => cancelWork(work),
     report: (visitId, answer) => reportAnswer(work, visitId, answer),
     event: (sent) => answerEvent(work, sent),
   };
+}
+
+function stateOf({ state, run }: RunWork): TestRunState {
+  return { ...state, actions: waitingActionsOf(run.line, state.visits) };
 }
 
 function cancelWork(work: RunWork): Promise<void> {
@@ -197,7 +202,7 @@ async function settleFailedRun(work: RunWork, cause: unknown): Promise<void> {
   try {
     await settleRun(work, { outcome: "error", reason });
   } catch {
-    work.context.broadcast({ type: "test.changed", run: work.id, state: work.state });
+    work.context.broadcast({ type: "test.changed", run: work.id, state: stateOf(work) });
   }
 }
 
@@ -235,6 +240,8 @@ async function runAgentStep(work: RunWork, visit: VisitState): Promise<void> {
 
   const onRun = (run: string): void => {
     work.agentRun = run;
+    // A cancel can arrive before the agent's run id is known; stop it as soon as it starts.
+    if (work.cancelled) cancelRun(context.runs, run);
   };
 
   const report = await runAgentVisit({ context, view, folder: state.folder, lineId: state.lineId, permission: start.permission, onRun }, visit);
@@ -261,7 +268,7 @@ async function noteInTimeline(work: RunWork, entry: TimelineEntry): Promise<void
 
   await appendTimeline(state.folder, entry);
   await writeRunSummary(state.folder, runSummaryOf(startedAt, run.startItems, state));
-  work.context.broadcast({ type: "test.changed", run: work.id, state: work.state });
+  work.context.broadcast({ type: "test.changed", run: work.id, state: stateOf(work) });
 }
 
 function noteOpened(work: RunWork, { id, nodeId, iteration, kind, needs, openedAt }: VisitState): Promise<void> {
