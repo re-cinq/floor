@@ -140,7 +140,7 @@ subsystem:
   # Overrides global.nodeSelector / global.tolerations for the controller when set.
   nodeSelector: {}
   tolerations: []
-  version: v0.21.1
+  version: v0.21.3
   # The only versions this chart knows how to deploy today; add to this list as the chart is
   # updated for a newer vendored controller.yaml.
   supportedVersions:
@@ -152,5 +152,6 @@ subsystem:
     - v0.15.0
     - v0.21.0
     - v0.21.1
+    - v0.21.3
   controllerImage: ghcr.io/re-cinq/ai-agent-controller
   agentImage: ghcr.io/re-cinq/ai-agent

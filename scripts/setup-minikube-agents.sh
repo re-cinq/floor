@@ -20,12 +20,12 @@ MANIFESTS="${ROOT}/deploy/agent-subsystem"
 COPY_FROM="${FLOOR_COPY_SECRETS_FROM:-}"
 FLOOR_PORT="${PORT:-8180}"
 
-# The pair the subsystem released as v0.21.1; they move together, never one without the other.
+# The pair the subsystem released as v0.21.3; they move together, never one without the other.
 # Check what a digest really is before trusting a label: the subsystem's own deploy/ at a
 # tag pins the release before it (at v0.11.6, v0.11.3).
 #   docker image inspect <image> --format '{{index .Config.Labels "org.opencontainers.image.version"}}'
-CONTROLLER_IMAGE="${FLOOR_CONTROLLER_IMAGE:-ghcr.io/re-cinq/ai-agent-controller@sha256:b66d58b34997824590e39ed7f719c57dc89051c028571cee303d05063416e84d}"
-AGENT_IMAGE="${FLOOR_AGENT_IMAGE:-ghcr.io/re-cinq/ai-agent@sha256:9f17a88d996b5782cd1ec9a3b1eea78c8c8af8b44a7143a5697c38e7e1d96ada}"
+CONTROLLER_IMAGE="${FLOOR_CONTROLLER_IMAGE:-ghcr.io/re-cinq/ai-agent-controller@sha256:0ea35e3e02f3da88212afa5e33179f9d36a624a159b972fb351b6e180d28dfd4}"
+AGENT_IMAGE="${FLOOR_AGENT_IMAGE:-ghcr.io/re-cinq/ai-agent@sha256:6ccb9ccb3f146252ff50097779a9bb173045616623baaac5144e7137f71114c5}"
 
 write_pull_secret() {
   if [ -n "${GHCR_USER:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then

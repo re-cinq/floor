@@ -1,6 +1,6 @@
 # The ai-agent-subsystem, vendored
 
-This is what runs an agent station's visit: the controller that turns an `Agent` resource into a pod, and the three CRDs it reads. It is vendored from [re-cinq/ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) `deploy/` at v0.21.1, the release `@re-cinq/agent-contracts` in `apps/cluster-agent` is pinned to. The two move together.
+This is what runs an agent station's visit: the controller that turns an `Agent` resource into a pod, and the three CRDs it reads. It is vendored from [re-cinq/ai-agent-subsystem](https://github.com/re-cinq/ai-agent-subsystem) `deploy/` at v0.21.3, the release `@re-cinq/agent-contracts` in `apps/cluster-agent` is pinned to. The two move together.
 
 This copy is for minikube (`npm run minikube-setup`) and for a cluster that runs nothing else, through the chart's `subsystem.*` values. re:cinq's internal cluster does not install it from here. There the operator is deployed from the upstream repository by Argo CD into its own namespace, `ai-agents`, and floor only names that namespace with `clusterAgent.agentsNamespace: ai-agents` (see [the chart's README](../chart/README.md#the-ai-agents-namespace)).
 
@@ -11,9 +11,9 @@ This copy is for minikube (`npm run minikube-setup`) and for a cluster that runs
 
 Two upstream pieces are left out on purpose. The `NetworkPolicy` is one, because on minikube the floor is a host process, which is exactly the traffic it would drop. The `agent-launcher` service account is the other, because the cluster agent runs on the host under your own kubeconfig.
 
-The images are not taken from upstream's `deploy/`. A tag's `deploy/` pins the digests of the release before it (at v0.11.6 it still pinned v0.11.3), so the digests are read from the registry for the tag itself. The digests in `scripts/setup-minikube-agents.sh` are the ones the v0.21.1 release published, checked by their image label.
+The images are not taken from upstream's `deploy/`. A tag's `deploy/` pins the digests of the release before it (at v0.11.6 it still pinned v0.11.3), so the digests are read from the registry for the tag itself. The digests in `scripts/setup-minikube-agents.sh` are the ones the v0.21.3 release published, checked by their image label.
 
-Since v0.21.0 Claude Code and Codex runs can call Microsoft Foundry through entries in `agent-secrets`, and the git credential helper asks the broker for a repository on any https git host, not only github.com. v0.21.1 also offers the pod's repository token as `GH_ENTERPRISE_TOKEN`, so `gh` is authenticated on a self-hosted GitHub Enterprise Server.
+Since v0.21.0 Claude Code and Codex runs can call Microsoft Foundry through entries in `agent-secrets`, and the git credential helper asks the broker for a repository on any https git host, not only github.com. v0.21.1 also offers the pod's repository token as `GH_ENTERPRISE_TOKEN`, so `gh` is authenticated on a self-hosted GitHub Enterprise Server. v0.21.3 creates an empty `~/.claude/settings.json` when a run has none, so a Claude run no longer fails with `Settings file not found: /agent/.claude/settings.json`.
 
 `npm run minikube-setup` installs this, and `npm run minikube-claude-auth` gives its agents a Claude credential. To move to a newer release, copy the new `deploy/crds/`, update the two image digests in the script, and bump `@re-cinq/agent-contracts`.
 
