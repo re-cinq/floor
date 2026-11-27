@@ -13,6 +13,7 @@ import type {
 import type { BriefConversation, BriefNeed, BriefSettings, FileNeed, GitNeed, McpServerSettings, PodResources, ProduceSpec, VisitBrief } from "@re-cinq/floor-contracts";
 import { environmentOf } from "./pod-environment.js";
 import { identityFor } from "./git-identity.js";
+import { unissuedGatewayTokenKey } from "./gateway-token-keys.js";
 import { GIT_CREDENTIAL_PARAMETER, GIT_CREDENTIAL_URL_PARAMETER, promptParameters, runParameters } from "@re-cinq/floor-assembly-lines";
 
 export type DispatchNeed = BriefNeed;
@@ -35,6 +36,8 @@ export type DispatchBrief = Pick<
   visitToken: string;
   /** The `agent-secrets` key holding the API key for this visit's model family; omitted when the model needs none. */
   modelSecretKey?: string;
+  /** The `secretName` key holding this visit's gateway token for each MCP server that asks for one, by the server's name; already written by the caller. */
+  gatewayTokenKeys?: Record<string, string>;
   secretName: string;
   settings: DispatchSettings;
 };
@@ -54,7 +57,7 @@ const AGENT_DEFINITION_LABEL = "agents.re-cinq.com/agent-definition";
 const RECIPE_HASH_LENGTH = 12;
 
 /** What a recipe is made of: the settings alone, never the visit, so a recipe pushed before any visit is the one a visit of the same settings names. */
-export type RecipeInput = Pick<DispatchBrief, "settings" | "floorBaseUrl" | "modelSecretKey"> & { deadlineMinutes?: number };
+export type RecipeInput = Pick<DispatchBrief, "settings" | "floorBaseUrl" | "modelSecretKey" | "gatewayTokenKeys"> & { deadlineMinutes?: number };
 
 export interface Recipe {
   name: string;
@@ -75,6 +78,7 @@ export function buildRecipe(input: RecipeInput): Recipe {
 }
 
 export function buildAgentTriple(input: DispatchBrief): AgentTriple {
+  enforceGatewayTokenKeys(input);
   const recipe = buildRecipe(input);
 
   return { agentDefinition: recipe.agentDefinition, station: recipe.station, agent: buildAgent(recipe.name, input) };
@@ -111,14 +115,25 @@ function recipeResources(input: RecipeInput): AgentResources {
     skills: input.settings.skills,
     // Always set, skills or none: the subsystem fetches the agent's settings.json from here, and starts Claude pointing at it.
     skills_source: input.settings.skillsSource ?? `${input.floorBaseUrl}/skills`,
-    mcp_servers: mcpServersOf(input.settings),
+    mcp_servers: mcpServersOf(input),
   };
 }
 
-function mcpServersOf(settings: DispatchSettings): AgentResources["mcp_servers"] {
-  const servers = settings.mcpServers;
+// A server that asks for a gateway token is opened by the key holding this visit's token, so its recipe is this visit's alone; `visitToken` is the floor's own word and never reaches the subsystem.
+function mcpServersOf(input: RecipeInput): AgentResources["mcp_servers"] {
+  const servers = input.settings.mcpServers;
 
-  return servers?.map(({ headersSecret, ...server }) => ({ ...server, headers_secret: headersSecret }));
+  return servers?.map(({ headersSecret, visitToken, ...server }) => ({
+    ...server,
+    headers_secret: visitToken ? (input.gatewayTokenKeys?.[server.name] ?? unissuedGatewayTokenKey(server.name)) : headersSecret,
+  }));
+}
+
+// A visit's pod is never made to call a server that expects a token with none: the recipe pushed before any visit names a key nothing writes, and a visit must bring the key of each.
+function enforceGatewayTokenKeys(input: DispatchBrief): void {
+  const missing = (input.settings.mcpServers ?? []).find((server) => server.visitToken && !input.gatewayTokenKeys?.[server.name]);
+
+  if (missing) throw new Error(`MCP server "${missing.name}" asks for a gateway token, and station run "${input.visitId}" has no secret key holding one`);
 }
 
 function envList(env: Record<string, string> | undefined): { name: string; value: string }[] | undefined {
