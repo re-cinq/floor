@@ -153,8 +153,8 @@ export class StudioConnection {
   }
 
   /** Asks the backend which folders and files a folder holds. */
-  listFolder(path: string): Promise<FolderListing> {
-    return this.request("folder.list", { path }) as Promise<FolderListing>;
+  listFolder(path?: string): Promise<FolderListing> {
+    return this.request("folder.list", path === undefined ? {} : { path }) as Promise<FolderListing>;
   }
 
   /** Asks the backend to open a folder inside a test run's folder. */

@@ -51,7 +51,7 @@ export const testPreviewRequest = z.strictObject({ id: requestId, type: z.litera
 
 export const folderOpenRequest = z.strictObject({ id: requestId, type: z.literal("folder.open"), path: z.string() });
 
-export const folderListRequest = z.strictObject({ id: requestId, type: z.literal("folder.list"), path: z.string() });
+export const folderListRequest = z.strictObject({ id: requestId, type: z.literal("folder.list"), path: z.string().optional() });
 
 export const testEventRequest = z.strictObject({ id: requestId, type: z.literal("test.event"), run: z.string(), event: z.string(), payload: z.record(z.string(), z.unknown()) });
 
