@@ -7,6 +7,7 @@ import type { FolderListing } from "../folder-listing.js";
 import type { Request } from "../protocol.js";
 import type { Handler, StudioContext } from "./requests.js";
 import { testPreviewOf } from "../test-run/test-preview.js";
+import { rememberLastTest } from "./last-tests.js";
 import { enforceAbsolute, isFolder } from "./test-run-folder.js";
 import { readTestLine } from "./read-test-line.js";
 import { snapshotPathsIn } from "./test-run-snapshot.js";
@@ -28,6 +29,8 @@ export const testStartHandler: Handler<TestStartRequest> = {
     const session = await startTestRun(context, { collectionDir: context.collectionDir, lineId: line, workspace, entered, permission });
 
     context.testRuns.set(session.id, session);
+    // Remembering is a convenience, the run has started.
+    await rememberLastTest(context.collectionDir, line, { workspace, entered }).catch(() => undefined);
 
     return { run: session.id, folder: session.state().folder };
   },

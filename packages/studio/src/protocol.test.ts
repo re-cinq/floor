@@ -21,7 +21,7 @@ describe("requestSchema", () => {
   });
 
   it("lists every request type there is", () => {
-    expect(REQUEST_TYPES).toEqual(["collection.read", "agent.write", "extra.write", "fixture.write", "fixture.read", "run.preview", "run.start", "run.cancel", "run.read", "test.start", "test.report", "test.cancel", "test.read", "test.preview", "folder.open", "folder.list", "test.event"]);
+    expect(REQUEST_TYPES).toEqual(["collection.read", "agent.write", "extra.write", "fixture.write", "fixture.read", "run.preview", "run.start", "run.cancel", "run.read", "test.start", "test.report", "test.cancel", "test.read", "test.preview", "folder.open", "folder.list", "test.event", "test.last"]);
   });
 });
 

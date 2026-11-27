@@ -9,6 +9,7 @@ import { runPreviewHandler, type RunPreviewRequest } from "./run-preview-request
 import { runCancelHandler, type RunCancelRequest } from "./run-cancel-request.js";
 import { runStartHandler, type RunStartRequest } from "./run-start-request.js";
 import { runReadHandler, type RunReadRequest } from "./run-read-request.js";
+import { testLastHandler, type TestLastRequest } from "./test-last-requests.js";
 import { folderListHandler, testEventHandler, folderOpenHandler, testCancelHandler, testPreviewHandler, testReadHandler, testReportHandler, testStartHandler, type FolderListRequest, type TestEventRequest, type FolderOpenRequest, type TestCancelRequest, type TestPreviewRequest, type TestReadRequest, type TestReportRequest, type TestStartRequest } from "./test-run-requests.js";
 import type { TestRunSession } from "./test-run-session.js";
 import type { RunRecord, RunTranscript } from "../run/run-records.js";
@@ -92,7 +93,7 @@ type CollectionRead = Extract<Request, { type: "collection.read" }>;
 const collectionRead: Handler<CollectionRead> = { type: "collection.read", handle: (context) => context.readCollection() };
 
 /** One handler for each request type: a test holds the list to `REQUEST_TYPES`. */
-export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead> | Handler<RunPreviewRequest> | Handler<RunStartRequest> | Handler<RunCancelRequest> | Handler<RunReadRequest> | Handler<TestStartRequest> | Handler<TestReportRequest> | Handler<TestCancelRequest> | Handler<TestReadRequest> | Handler<TestPreviewRequest> | Handler<FolderOpenRequest> | Handler<FolderListRequest> | Handler<TestEventRequest>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead, runPreviewHandler, runStartHandler, runCancelHandler, runReadHandler, testStartHandler, testReportHandler, testCancelHandler, testReadHandler, testPreviewHandler, folderOpenHandler, folderListHandler, testEventHandler];
+export const HANDLERS: (Handler<CollectionRead> | Handler<AgentWrite> | Handler<ExtraWrite> | Handler<FixtureWrite> | Handler<FixtureRead> | Handler<RunPreviewRequest> | Handler<RunStartRequest> | Handler<RunCancelRequest> | Handler<RunReadRequest> | Handler<TestStartRequest> | Handler<TestReportRequest> | Handler<TestCancelRequest> | Handler<TestReadRequest> | Handler<TestPreviewRequest> | Handler<FolderOpenRequest> | Handler<FolderListRequest> | Handler<TestEventRequest> | Handler<TestLastRequest>)[] = [collectionRead, agentWrite, extraWrite, fixtureWrite, fixtureRead, runPreviewHandler, runStartHandler, runCancelHandler, runReadHandler, testStartHandler, testReportHandler, testCancelHandler, testReadHandler, testPreviewHandler, folderOpenHandler, folderListHandler, testEventHandler, testLastHandler];
 
 export async function answerFrame(text: string, context: StudioContext): Promise<ServerFrame> {
   const held = parsedJson(text);
