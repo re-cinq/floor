@@ -1,5 +1,7 @@
 // The bag: start items folded with each done visit's produced items, in visit order, later wins.
 
+import { bagOf } from "@re-cinq/floor-assembly-lines";
+import type { ProduceSpec } from "@re-cinq/floor-contracts";
 import type { DefinitionsStore } from "./definitions.js";
 import type { Item, StationBody, Visit } from "./types.js";
 
@@ -8,48 +10,23 @@ export async function foldBag(
   startItems: Record<string, Item>,
   visits: Visit[],
 ): Promise<Record<string, Item>> {
-  const bag = { ...startItems };
-  const produceKinds = new Map<string, Map<string, "value" | "file">>();
+  const producesByHash = await producesOfEachStation(definitions, visits);
 
-  for (const visit of visits) {
-    await applyVisit(definitions, bag, produceKinds, visit);
-  }
-
-  return bag;
+  return bagOf(startItems, visits, (stationHash) => producesByHash.get(stationHash));
 }
 
-async function applyVisit(
+async function producesOfEachStation(
   definitions: DefinitionsStore,
-  bag: Record<string, Item>,
-  produceKinds: Map<string, Map<string, "value" | "file">>,
-  visit: Visit,
-): Promise<void> {
-  const produced = visit.report?.produced;
+  visits: Visit[],
+): Promise<Map<string, readonly ProduceSpec[] | undefined>> {
+  const stationHashes = new Set(visits.flatMap((visit) => (visit.stationHash ? [visit.stationHash] : [])));
+  const entries = await Promise.all([...stationHashes].map((hash) => producesOfStation(definitions, hash)));
 
-  if (!produced || !visit.stationHash) return;
-
-  const kinds = await produceKindsOf(definitions, produceKinds, visit.stationHash);
-
-  for (const [name, value] of Object.entries(produced)) {
-    const kind = kinds.get(name) ?? "value";
-
-    bag[name] = { kind, ref: value, by: visit.id };
-  }
+  return new Map(entries);
 }
 
-async function produceKindsOf(
-  definitions: DefinitionsStore,
-  cache: Map<string, Map<string, "value" | "file">>,
-  stationHash: string,
-): Promise<Map<string, "value" | "file">> {
-  const cached = cache.get(stationHash);
+async function producesOfStation(definitions: DefinitionsStore, hash: string) {
+  const station = await definitions.byHashOnly<StationBody>("station", hash);
 
-  if (cached) return cached;
-
-  const station = await definitions.byHashOnly<StationBody>("station", stationHash);
-  const kinds = new Map((station?.body.produces ?? []).map((produce) => [produce.name, produce.kind]));
-
-  cache.set(stationHash, kinds);
-
-  return kinds;
+  return [hash, station?.body.produces] as const;
 }

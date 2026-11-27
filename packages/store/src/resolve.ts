@@ -1,10 +1,7 @@
 // Pure resolution helpers: no query, no clock, no randomness — everything here is a function of its arguments alone.
 
-import { personLastActedAt, type WalkGraph } from "@re-cinq/floor-assembly-lines";
-import type { AgentSettings, Item, LineBody, NeedSpec, Visit } from "./types.js";
-
-const MAX_ERROR_CHARS = 2500;
-const MAX_PRIOR_FAILURES = 3;
+import { needItemsOf } from "@re-cinq/floor-assembly-lines";
+import type { AgentSettings, Item, LineBody, NeedSpec } from "./types.js";
 
 /** `"<argName>:<value>"` for the one argument marked `subject`, or null when none is. */
 export function deriveSubjectKey(line: LineBody, startItems: Record<string, Item>): string | null {
@@ -32,12 +29,6 @@ export interface ResolvedNeeds {
   missing: string[];
 }
 
-interface NeedScope {
-  bind: Record<string, string> | undefined;
-  bag: Record<string, Item>;
-  producedSincePerson: ReadonlySet<string> | undefined;
-}
-
 /** Resolves each declared need from the bag, via `bind` when the names differ; a missing required need is named in `missing` rather than thrown, so the caller decides how strict to be. `producedSincePerson` holds the visit ids from the one a person last acted at; absent, every item is fresh. */
 export function resolveNeeds(
   specs: NeedSpec[],
@@ -45,43 +36,10 @@ export function resolveNeeds(
   bag: Record<string, Item>,
   producedSincePerson?: ReadonlySet<string>,
 ): ResolvedNeeds {
-  const result: ResolvedNeeds = { needs: {}, missing: [] };
-  const scope: NeedScope = { bind, bag, producedSincePerson };
+  const { items: supplied, missing } = needItemsOf(specs, bind, bag, producedSincePerson);
+  const needs = Object.fromEntries(Object.entries(supplied).map(([name, bagEntry]) => [name, flattenItem(bagEntry)]));
 
-  for (const spec of specs) {
-    resolveOneNeed(spec, scope, result);
-  }
-
-  return result;
-}
-
-function resolveOneNeed(spec: NeedSpec, scope: NeedScope, result: ResolvedNeeds): void {
-  const boundItem = bagGet(scope.bag, scope.bind?.[spec.name] ?? spec.name);
-  const isStale = isStaleFor(spec, boundItem, scope.producedSincePerson);
-
-  if (boundItem && !isStale) {
-    result.needs[spec.name] = flattenItem(boundItem);
-
-    return;
-  }
-
-  if (!spec.optional) result.missing.push(missingLabel(spec.name, boundItem));
-}
-
-/** The ids of the visits from the one a person last acted at on; undefined when nobody has acted, as everything is then fresh. */
-export function visitIdsSincePersonActed(graph: WalkGraph, visits: readonly Visit[]): ReadonlySet<string> | undefined {
-  const index = personLastActedAt(graph, visits);
-  if (index < 0) return undefined;
-
-  return new Set(visits.slice(index).map((visit) => visit.id));
-}
-
-function missingLabel(name: string, staleItem: Item | undefined): string {
-  return staleItem ? `${name} (not produced since a person last acted)` : name;
-}
-
-function isStaleFor(spec: NeedSpec, candidate: Item | undefined, producedSincePerson: ReadonlySet<string> | undefined): boolean {
-  return Boolean(spec.fresh && candidate && producedSincePerson && !producedSincePerson.has(candidate.by));
+  return { needs, missing };
 }
 
 // A cast to Partial here, not the bag's own declared type: without noUncheckedIndexedAccess, `bag[key]` on a plain Record types as always-defined, which is not true of a bag a key may simply not be in.
@@ -110,18 +68,4 @@ export function foldLineFiles(files: Record<string, string> | undefined, startIt
   );
 
   return { ...seeded, ...startItems };
-}
-
-/** The last failed visit's error, capped, for the `previous_error` built-in need. */
-export function previousErrorNeed(lastFailedError: string | null | undefined): string | undefined {
-  if (!lastFailedError) return undefined;
-
-  return lastFailedError.slice(0, MAX_ERROR_CHARS);
-}
-
-/** Up to three earlier failures, newest first, for the `previous_failures` built-in need. */
-export function previousFailuresNeed(errors: (string | null | undefined)[]): string | undefined {
-  const named = errors.filter((error): error is string => Boolean(error)).slice(0, MAX_PRIOR_FAILURES);
-
-  return named.length > 0 ? named.join("\n---\n") : undefined;
 }

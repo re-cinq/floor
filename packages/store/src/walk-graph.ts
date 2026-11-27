@@ -1,6 +1,6 @@
-// Builds the kernel's WalkGraph from a line body: each node's kind comes from the station it points at, resolved once per next() call.
+// Builds the kernel's WalkGraph from a line body: each distinct station's kind is fetched once per next() call.
 
-import type { WalkGraph } from "@re-cinq/floor-assembly-lines";
+import { walkGraphOf, type WalkGraph } from "@re-cinq/floor-assembly-lines";
 import type { DefinitionsStore } from "./definitions.js";
 import type { LineBody, StationBody } from "./types.js";
 
@@ -9,24 +9,25 @@ export async function buildWalkGraph(
   lineName: string,
   line: LineBody,
 ): Promise<WalkGraph> {
-  const nodes = await Promise.all(line.nodes.map((node) => walkNodeOf(definitions, node)));
+  const kindByRef = await kindOfEachStation(definitions, line);
 
-  return { name: lineName, entry: line.entry, exit: line.exit, fail: line.fail, edges: line.edges, fans: fansOf(line), nodes };
+  return walkGraphOf(lineName, line, (ref) => kindByRef.get(ref));
 }
 
-function fansOf(line: LineBody): { source: string; body: string }[] {
-  return line.nodes.flatMap((node) => (node.fanout ? [{ source: node.id, body: node.fanout.to }] : []));
-}
-
-async function walkNodeOf(
+async function kindOfEachStation(
   definitions: DefinitionsStore,
-  node: LineBody["nodes"][number],
-): Promise<{ id: string; kind?: "agent" | "service" | "human" }> {
-  if (!node.station) return { id: node.id };
+  line: LineBody,
+): Promise<Map<string, StationBody["kind"] | undefined>> {
+  const refs = new Set(line.nodes.flatMap((node) => (node.station ? [node.station] : [])));
+  const entries = await Promise.all([...refs].map((ref) => kindOfStation(definitions, ref)));
 
-  const station = await stationOf(definitions, node.station);
+  return new Map(entries);
+}
 
-  return { id: node.id, kind: station?.kind };
+async function kindOfStation(definitions: DefinitionsStore, ref: string) {
+  const station = await stationOf(definitions, ref);
+
+  return [ref, station?.kind] as const;
 }
 
 async function stationOf(definitions: DefinitionsStore, ref: string): Promise<StationBody | null> {
