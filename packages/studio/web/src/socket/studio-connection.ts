@@ -44,6 +44,8 @@ export type TestPreviewResult = ResultOf<TestPreviewRequest>;
 type TestStartRequest = Extract<Request, { type: "test.start" }>;
 export type TestStartFields = Omit<TestStartRequest, "id" | "type">;
 export type TestStartResult = ResultOf<TestStartRequest>;
+type TestLastRequest = Extract<Request, { type: "test.last" }>;
+export type LastTest = NonNullable<ResultOf<TestLastRequest>>;
 type TestReportRequest = Extract<Request, { type: "test.report" }>;
 export type TestReportFields = Omit<TestReportRequest, "id" | "type">;
 type TestEventRequest = Extract<Request, { type: "test.event" }>;
@@ -140,6 +142,11 @@ export class StudioConnection {
   /** Asks the backend to start a test run of a whole line. */
   startTest(fields: TestStartFields): Promise<TestStartResult> {
     return this.request("test.start", fields) as Promise<TestStartResult>;
+  }
+
+  /** Asks which workspace and inputs a line was last tested with. */
+  lastTest(line: string): Promise<LastTest | null> {
+    return this.request("test.last", { line }) as Promise<LastTest | null>;
   }
 
   /** Reports a waiting visit of a test run on a person's behalf. */

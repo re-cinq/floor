@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ListFolder } from "./PathPicker";
-import type { TestPreviewFields, TestPreviewResult, TestStartFields, TestStartResult } from "@/socket/studio-connection";
+import type { LastTest, TestPreviewFields, TestPreviewResult, TestStartFields, TestStartResult } from "@/socket/studio-connection";
 
 /** Previews a test run of the line for the inputs entered so far. */
 export type PreviewTest = (entered: TestPreviewFields["entered"]) => Promise<TestPreviewResult>;
@@ -13,6 +13,7 @@ export interface TestStartControls {
   preview: PreviewTest;
   start: StartTest;
   listFolder: ListFolder;
+  last: () => Promise<LastTest | null>;
 }
 
 export function useTestPreview(controls: TestStartControls | undefined, entered: TestPreviewFields["entered"]) {

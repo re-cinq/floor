@@ -181,6 +181,7 @@ function testStartControls(connection: StudioConnection | undefined, line: strin
     preview: (entered) => connection.previewTest({ line, entered }),
     start: (fields) => connection.startTest({ line, ...fields }),
     listFolder: (path) => connection.listFolder(path),
+    last: () => connection.lastTest(line),
   };
 }
 
