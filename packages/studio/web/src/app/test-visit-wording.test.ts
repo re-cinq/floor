@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { costWording, outcomeWording } from "./test-visit-wording";
+import { costWording, outcomeWording, totalOf } from "./test-visit-wording";
 
 describe("outcomeWording", () => {
   it.each([
@@ -18,5 +18,14 @@ describe("costWording", () => {
 
   it("returns the dollar amount when cost 0.02", () => {
     expect(costWording(0.02)).toBe("$0.02");
+  });
+});
+
+describe("totalOf", () => {
+  it.each([
+    { name: "returns cost 0.3 and duration 3000 when visits cost 0.1 and 0.2 and last 1000 and 2000 ms", visits: [{ costUsd: 0.1, agentDurationMs: 1000 }, { costUsd: 0.2, agentDurationMs: 2000 }], total: { costUsd: 0.3, agentDurationMs: 3000 } },
+    { name: "returns no cost and no duration when no visit states one", visits: [{}, {}], total: { costUsd: undefined, agentDurationMs: undefined } },
+  ])("$name", ({ visits, total }) => {
+    expect(totalOf(visits)).toStrictEqual(total);
   });
 });
