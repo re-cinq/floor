@@ -6,6 +6,7 @@ export interface Selection {
   edge?: string;
   tab?: string;
   run?: string;
+  test?: string;
 }
 
 export interface PageLocation extends Selection {
@@ -13,7 +14,7 @@ export interface PageLocation extends Selection {
   token?: string;
 }
 
-const SELECTION_KEYS = ["line", "node", "edge", "tab", "run"] as const;
+const SELECTION_KEYS = ["line", "node", "edge", "tab", "run", "test"] as const;
 const KNOWN_KEYS = ["socket", "token", ...SELECTION_KEYS] as const;
 
 export function parseFragment(hash: string): PageLocation {

@@ -7,6 +7,7 @@ import type {
   RunReadResult,
   RunStartResult,
 } from "@/socket/studio-connection";
+import LabelledTextField from "./LabelledTextField";
 import RunAnswer from "./RunAnswer";
 import RunResult from "./RunResult";
 import { finalAnswer } from "./answer-parts";
@@ -63,9 +64,9 @@ export default function RunPanel({ node, onPreview, runs, fixtures }: { node: No
   return (
     <>
       {node.needs.map((need) => (
-        <TextField key={need.name} label={needLabel(need)} value={values[need.name] ?? ""} onChange={(value) => fixture.change(need.name, value)} />
+        <LabelledTextField key={need.name} label={needLabel(need)} value={values[need.name] ?? ""} onChange={(value) => fixture.change(need.name, value)} />
       ))}
-      <TextField label="Folder" value={folder} onChange={setFolder} />
+      <LabelledTextField label="Folder" value={folder} onChange={setFolder} />
       <PermissionChoice value={permission} onChange={setPermission} />
       <RunActions {...runActions({ fixture, fields, onPreview, setPreview, runs, run })} />
       {fixture.failure && <p role="alert">{fixture.failure}</p>}
@@ -126,27 +127,6 @@ function RunEnding({ ended, answer, raises }: { ended: RunEnded; answer?: string
       {answer && <RunAnswer text={answer} />}
       <RunResult ended={ended} raises={raises} />
     </>
-  );
-}
-
-function TextField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label>
-      {label}
-      <input
-        type="text"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
   );
 }
 

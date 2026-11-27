@@ -18,9 +18,16 @@ interface OpenedPage {
   studio: Studio;
 }
 
-export async function openPage(files: CollectionFile[], options: { token?: string; hash?: string; runEnv?: Record<string, string> } = {}): Promise<OpenedPage> {
+interface PageOptions {
+  token?: string;
+  hash?: string;
+  runEnv?: Record<string, string>;
+  openFolder?: (path: string) => void;
+}
+
+export async function openPage(files: CollectionFile[], options: PageOptions = {}): Promise<OpenedPage> {
   const dir = collectionOnDisk(files);
-  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [], runEnv: options.runEnv });
+  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [], runEnv: options.runEnv, openFolder: options.openFolder });
 
   running.push(studio);
   window.location.hash = `#${new URLSearchParams({ socket: studio.url, token: options.token ?? studio.token }).toString()}${options.hash ?? ""}`;

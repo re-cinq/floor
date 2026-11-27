@@ -15,3 +15,69 @@
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
+
+.testStart {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.testStart > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.testStart > p[role="alert"] {
+  color: var(--danger);
+}
+
+.visits {
+  width: 100%;
+  margin-top: var(--space-5);
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.visits th {
+  color: var(--text-muted);
+  font-weight: normal;
+  text-align: left;
+}
+
+.visits th,
+.visits td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.screen section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.screen section h3 {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.screen form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.screen section p[role="alert"] {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
