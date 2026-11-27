@@ -104,7 +104,11 @@ A server's `visit_token`:
 
 A server MUST NOT have both `visit_token` and `headers_secret`. The floor says `visit_token and headers_secret each set the server's authorization: give one`. A `stdio` server MUST NOT have a `visit_token`. The floor says `visit_token is for an http or sse server`. A floor with no signing key refuses to brief a visit whose definition has one, see [Gateway tokens](/floor/reference/http-api/#gateway-tokens).
 
-> **Not built yet.** The cluster agent does not hand the token to the pod, so a server with `visit_token` is called with no `Authorization` header.
+The cluster agent hands the token to the pod. It writes `Bearer <token>` into `agent-secrets` under the key `visit-<visit id>-gateway-token.<server name>`, and the visit's pod sends that value to the server as its `Authorization` header, as it would a `headers_secret`. A character of the server's name other than a letter, a digit, `-` or `_` is `_` in the key. The pod image needs no change. The key is removed when the visit ends.
+
+Two servers of one definition that both have a `visit_token` MUST NOT have names that differ only in case or in characters other than letters and digits, such as `my-search` and `my_search`. The cluster agent then starts no pod for the visit, and its dispatch fails with an error naming both. The same happens, naming the server, when the floor's brief carries no token for a server that has a `visit_token`. The visit ends at its deadline.
+
+The token is not renewed. It expires at the visit's deadline, and the floor ends a visit at its deadline. A visit that runs again is a new visit and gets a new token.
 
 An entry of `headers` or of a server's `env`:
 

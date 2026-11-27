@@ -48,7 +48,7 @@ export interface McpServerSettings {
   args?: string[];
   url?: string;
   headersSecret?: string;
-  /** http and sse: the floor signs a gateway token for each visit and the pod presents it to this server, in place of a header kept in a secret. Never beside `headersSecret`. */
+  /** http and sse: asks for a gateway token, and holds none. The floor signs one for each visit, a JWT for this server that arrives in `VisitBrief.serverTokens`, and the pod presents it in place of a header kept in a secret. Never beside `headersSecret`. Not the visit token (`VisitBrief.token`, `visitToken()` of `@re-cinq/floor-client`), the HMAC token a visit presents to the floor's own routes. */
   visitToken?: GatewayTokenSettings;
   /** http and sse: headers whose values the pod reads from the cluster's agent-secrets, by key. */
   headers?: SecretRef[];

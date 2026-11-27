@@ -155,6 +155,8 @@ An MCP server with a [`visit_token`](/floor/specs/agent-file/) gets a token the 
 | --- | --- | --- |
 | `GET /.well-known/jwks.json` | The public keys a token verifies with, the signing key first, then the retired ones | anyone |
 
+The cluster agent writes each token of the brief into `agent-secrets` as `Bearer <token>`, under the key `visit-<visit id>-gateway-token.<server name>`, and the pod sends it to the server as its `Authorization` header. A token is not renewed: it expires at the visit's deadline, and a visit that runs again gets a new one.
+
 The brief is `409` when the floor has no signing key, when the run names no such repository, or when the deadline is more than 24 hours away.
 
 ## Health
