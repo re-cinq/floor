@@ -42,6 +42,7 @@ The operator's guide is [Install on a cluster](https://re-cinq.github.io/floor/r
 | `clusterAgent.floorUrl` | Defaults to the in-cluster api Service when `api.enabled`. Required when it is not. |
 | `api.gitCredentialUrl` | Where the api asks for a git credential for a visit's repository. The provider is a service outside this chart, lore's. Empty means nothing provides them, and a visit that would write to a repository is not dispatched. |
 | `api.gitCredentialSecret` | The Secret holding the token the api presents to that provider (`FLOOR_GIT_CREDENTIAL_TOKEN`), never the service token. `name` defaults to `api.existingSecret` and `key` defaults to `gitCredentialToken`, so that Secret must hold that key. Needed only when `api.gitCredentialUrl` is set. The api refuses to start with the URL and no token. |
+| `api.gatewayKeysSecret` | The Secret holding the keys behind the gateway token, which the api signs for a visit whose agent definition gives an MCP server a `visit_token`. `name` is empty by default, and the api then signs none and refuses such a visit. `signingKey` (default `gatewaySigningKey`) is the key of the Secret holding an Ed25519 private key as PKCS#8 PEM (`FLOOR_GATEWAY_SIGNING_KEY`). `retiredKeys` (default `gatewayRetiredKeys`) is the key holding a JSON array of public JWKs (`FLOOR_GATEWAY_RETIRED_KEYS`), which the Secret may leave out. See [Gateway token keys](#gateway-token-keys). |
 | `postgres.*` | Either `existingSecret` + `secretKey` (a Secret already holding a full connection string), or `host`/`port`/`database`/`user`/`password`, from which the chart builds one. One or the other is always required, because the migration Job always runs, whether or not this release also deploys the api. |
 | `agentNetworkPolicy.*` | What an agent's pod may reach, on by default. See [What an agent's pod may reach](#what-an-agents-pod-may-reach). |
 | `global.nodeSelector`, `global.tolerations` | Where the chart's controllers run: the api, the cluster agent, the subsystem controller and the two hook Jobs. `api.*`, `clusterAgent.*`, `subsystem.*` and `jobs.*` each take their own `nodeSelector` / `tolerations`, which replace the global one for that component when set. Agent run pods are not covered. The subsystem's controller places those, so a tainted management pool keeps them off it. |
@@ -93,6 +94,27 @@ Nothing reaches a pod.
 ## The live channel
 
 Watching a run is a WebSocket on the api Service, on the same port as everything else: `GET /assembly-runs/<id>/live`, with the service token. It needs no value and no extra Service. Whatever stands between lore and the api Service must pass an upgrade through, and should not close a connection idle for less than 30 seconds, because the floor pings every 25. Each api replica holds one more Postgres connection once it has a viewer, named `floor-run-listener`.
+
+## Gateway token keys
+
+An agent definition may give an MCP server a `visit_token`. The api then signs a token for each visit, and the server verifies it with the public keys the api serves at `GET /.well-known/jwks.json`. The api signs with an Ed25519 private key, which it reads from a Secret you keep:
+
+```bash
+openssl genpkey -algorithm ed25519 -out gateway-signing-key.pem
+kubectl -n floor create secret generic floor-gateway-keys \
+  --from-file=gatewaySigningKey=gateway-signing-key.pem
+```
+
+Set `api.gatewayKeysSecret.name=floor-gateway-keys`. Without it the api starts, serves an empty key set, and refuses a visit whose definition asks for a token, naming `FLOOR_GATEWAY_SIGNING_KEY`. The api does not start with a key that is not Ed25519.
+
+To rotate the key:
+
+1. Read the public key in use, the first entry of the key set: `curl -s https://floor.example.com/.well-known/jwks.json`.
+2. Generate a new private key and put it under `gatewaySigningKey`.
+3. Put a JSON array holding that public entry, and every entry still retired, under `gatewayRetiredKeys`. An entry with a private member `d` stops the api from starting.
+4. Restart the api: `kubectl -n floor rollout restart deployment/floor-api`.
+
+Tokens the old key signed verify until they expire. The api signs no token that lives more than 24 hours, and a token expires at its visit's deadline, so remove a key from `gatewayRetiredKeys` no sooner than 24 hours after it stopped signing.
 
 ## Seeding pipelines
 

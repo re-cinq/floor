@@ -76,6 +76,7 @@ Two api pods serve, and one holds the lease that runs the event loop. `runsLoop`
 | `api.enabled` | Run the api | `true` |
 | `api.replicas` | Api pods. Every one serves | `2` |
 | `api.gitCredentialUrl` | A service the api asks for a git credential. With none, a visit that writes to a repository is not dispatched | `""` |
+| `api.gatewayKeysSecret.name` | A secret with the Ed25519 key that signs [gateway tokens](/floor/reference/http-api/#gateway-tokens), and the retired public keys. With none, no gateway token is signed | `""` |
 | `postgres.existingSecret`, `postgres.secretKey` | A secret holding a full connection string | `""` |
 | `postgres.host`, `port`, `database`, `user`, `password` | Instead of a secret, the parts the chart builds one from | `port` is `5432` |
 | `clusterAgent.enabled` | Run the cluster agent | `true` |
