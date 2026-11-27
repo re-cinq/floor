@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -56,10 +56,11 @@ describe("App test locally Choose a folder dialog", () => {
       await userEvent.type(await screen.findByRole("textbox", { name: "Workspace folder" }), notes);
 
       await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+      const dialog = await screen.findByRole("dialog", { name: "Choose a folder" });
 
       expect({
-        alert: (await screen.findByRole("alert")).textContent,
-        use: screen.queryByRole("button", { name: "Use this folder" }),
+        alert: (await within(dialog).findByRole("alert")).textContent,
+        use: within(dialog).queryByRole("button", { name: "Use this folder" }),
       }).toEqual({ alert: `${notes} is not a folder on disk`, use: null });
     });
   });
@@ -73,15 +74,19 @@ describe("App test locally Choose a folder dialog", () => {
       await userEvent.type(await screen.findByRole("textbox", { name: "Workspace folder" }), pathIn(scratch));
 
       await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+      const dialog = await screen.findByRole("dialog", { name: "Choose a folder" });
 
       expect({
-        alert: (await screen.findByRole("alert")).textContent,
-        use: screen.queryByRole("button", { name: "Use this folder" }),
+        alert: (await within(dialog).findByRole("alert")).textContent,
+        use: within(dialog).queryByRole("button", { name: "Use this folder" }),
       }).toEqual({ alert: reason(scratch), use: null });
     });
   });
 
-  it("closes the Choose a folder dialog and keeps <scratch> in the Workspace folder box when Cancel is clicked after Browse listed its alpha subfolder", async () => {
+  it.each([
+    { dismissal: "Cancel is clicked", dismiss: (dialog: HTMLElement) => userEvent.click(within(dialog).getByRole("button", { name: "Cancel" })) },
+    { dismissal: "Escape is pressed", dismiss: async (dialog: HTMLElement) => void fireEvent(dialog, new Event("cancel", { cancelable: true })) },
+  ])("closes the Choose a folder dialog and keeps <scratch> in the Workspace folder box when $dismissal after Browse listed its alpha subfolder", async ({ dismiss }) => {
     await withScratchFolder(async (scratch) => {
       mkdirSync(join(scratch, "alpha"));
       await openStartScreen();
@@ -91,7 +96,7 @@ describe("App test locally Choose a folder dialog", () => {
       const dialog = await screen.findByRole("dialog", { name: "Choose a folder" });
       await within(dialog).findByRole("button", { name: "alpha" });
 
-      await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      await dismiss(dialog);
 
       expect({ dialog: screen.queryByRole("dialog"), workspace: box.value }).toEqual({ dialog: null, workspace: scratch });
     });
