@@ -141,6 +141,32 @@ Two things match the pod. The run gets the agent's `config.env` over the studio'
 
 The need values are saved in `.floor-studio/fixtures/<line>/<node>.json` and each run in `.floor-studio/runs/<id>.json`, both in the collection folder. They are keyed by the line's name, so they do not move when a line folder moves into a group folder. The store folder gets a `.gitignore` of `*` on its first write. The run's id is kept in the page's fragment (`&run=<id>`), so after a reload the tab reads the transcript again with `run.read`, also for a run still going. Closing the studio cancels its runs.
 
+### Testing a whole line
+
+The backend can run a whole assembly line on your machine as a test run (`startTestRun` in `src/backend/test-run-session.ts`). The page and the protocol requests for it are not wired yet.
+
+A test run reads the line as saved on disk. It is refused before anything is written when an argument or line file has no value, or when the line cannot run locally: it fails validation, a node pins a station (`reviewer@abc123`), or a node fans out. One message lists every reason.
+
+The floor's routing kernel decides each next step. An agent station runs with the same code as the Run tab. Any other station waits for a person, who answers with an outcome, values, and a file for each file output, picked from disk or pasted. The answer is refused, and the visit stays open, when the outcome is not the station's, a required field is empty, a picked file is not on disk, a file is for an output that is not a file output, or the output's path leaves the visit's `outputs/` folder. A visit answers once. Cancel stops the running agent and settles the run as `cancelled`.
+
+The run is recorded in a new folder inside the workspace folder you give, named after the line and the start time in UTC:
+
+```
+review-loop-20261127-141230/
+  definitions/        the collection as it was when the run started; the run reads only this copy
+  timeline.jsonl      run_started, visit_opened, visit_reported, run_settled, each with its time
+  visits/
+    001-write-1/
+      inputs.json     what the station received, written when the visit opens
+      prompt.md       the rendered prompt (agent visits)
+      transcript.jsonl
+      work/           the agent's working folder
+      outputs/        a copy of each file output, so a later visit never overwrites it
+      visit.json      mode (local or simulated), opened, reported, durationMs, the agent's own time and cost, outcome, next node
+```
+
+`durationMs` is the wall time between opened and reported. `agentDurationMs` and `costUsd` are what the agent stated, and are absent when it stated none.
+
 ### The environment
 
 The sidebar lists the variables the settings name as `${NAME}`, with the files using each. A setting written that way shows as a chip, `env: NAME`. The studio does not fill it.
