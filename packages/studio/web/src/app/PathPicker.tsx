@@ -3,15 +3,20 @@ import { subfolderPath } from "./folder-path";
 import styles from "./path-picker.module.css";
 import type { FolderListing } from "@/socket/studio-connection";
 
+export type PathMode = "file" | "folder";
+export type ListFolder = (path?: string) => Promise<FolderListing>;
+
 interface Props {
+  mode: PathMode;
   startDir?: string;
-  list: (path?: string) => Promise<FolderListing>;
+  list: ListFolder;
   onChoose: (path: string) => void;
   onClose: () => void;
 }
 
-export default function PathPicker({ startDir, list, onChoose, onClose }: Props) {
+export default function PathPicker({ mode, startDir, list, onChoose, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [file, setFile] = useState<string>();
   const { listing, refusal, browse } = useFolderListing(list);
 
   useEffect(() => {
@@ -20,10 +25,10 @@ export default function PathPicker({ startDir, list, onChoose, onClose }: Props)
   }, []);
 
   return (
-    <dialog ref={dialogRef} aria-label="Choose a folder" className={styles.dialog} onCancel={onClose}>
-      <Listing listing={listing} browse={browse} />
+    <dialog ref={dialogRef} aria-label={`Choose a ${mode}`} className={styles.dialog} onCancel={onClose}>
+      <Listing listing={listing} browse={browse} pickFile={mode === "file" ? setFile : undefined} />
       {refusal && <p role="alert">{refusal}</p>}
-      {listing && <button type="button" onClick={() => onChoose(listing.path)}>Use this folder</button>}
+      {listing && <Choice mode={mode} path={listing.path} file={file} onChoose={onChoose} />}
       <button type="button" onClick={onClose}>Cancel</button>
     </dialog>
   );
@@ -47,16 +52,36 @@ function useFolderListing(list: Props["list"]) {
   return { listing, refusal, browse };
 }
 
-function Listing({ listing, browse }: { listing: FolderListing | undefined; browse: (path: string) => void }) {
+function Listing({ listing, browse, pickFile }: { listing: FolderListing | undefined; browse: (path: string) => void; pickFile: ((file: string) => void) | undefined }) {
+  const parent = listing?.parent;
+
   return (
     <>
       {listing && <code>{listing.path}</code>}
-      {listing?.parent && <button type="button" onClick={() => browse(listing.parent!)}>Up</button>}
+      {parent && <button type="button" onClick={() => browse(parent)}>Up</button>}
       <section aria-label="Folders">
         {listing?.folders.map((folder) => (
           <button key={folder} type="button" onClick={() => browse(subfolderPath(listing.path, folder))}>{folder}</button>
         ))}
       </section>
+      {pickFile && <Files listing={listing} pick={pickFile} />}
     </>
+  );
+}
+
+function Choice({ mode, path, file, onChoose }: { mode: PathMode; path: string; file: string | undefined; onChoose: Props["onChoose"] }) {
+  if (mode === "folder") return <button type="button" onClick={() => onChoose(path)}>Use this folder</button>;
+  if (!file) return null;
+
+  return <button type="button" onClick={() => onChoose(subfolderPath(path, file))}>Use this file</button>;
+}
+
+function Files({ listing, pick }: { listing: FolderListing | undefined; pick: (file: string) => void }) {
+  return (
+    <section aria-label="Files">
+      {listing?.files.map((file) => (
+        <button key={file} type="button" onClick={() => pick(file)}>{file}</button>
+      ))}
+    </section>
   );
 }

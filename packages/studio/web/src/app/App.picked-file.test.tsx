@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,13 +8,18 @@ import { join } from "node:path";
 import { REQUIRED_ANNOTATION_COLLECTION } from "../../../src/backend/test-run.fixtures";
 import { WRITES_DRAFT } from "../../../src/backend/test-run-session.fixtures";
 import { closeStudios } from "./app-page.fixtures";
-import { cellsOf, findWaitingReview, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
+import { cellsOf, findWaitingReview, startReviewLoop, withScratchFolder, withScratchWorkspace } from "./test-run-page.fixtures";
 
 afterEach(closeStudios);
+afterEach(() => vi.unstubAllEnvs());
 
-async function requestChangesPickingFile(workspace: string, pickedPath: string, pastedText = ""): Promise<void> {
+async function reachWaitingReview(workspace: string): Promise<void> {
   await startReviewLoop(workspace);
   await findWaitingReview();
+}
+
+async function requestChangesPickingFile(workspace: string, pickedPath: string, pastedText = ""): Promise<void> {
+  await reachWaitingReview(workspace);
 
   await userEvent.type(await screen.findByRole("textbox", { name: "review_feedback" }), "Shorter.");
   if (pastedText) await userEvent.type(await screen.findByRole("textbox", { name: "annotated (paste)" }), pastedText);
@@ -91,5 +96,27 @@ describe("App test locally with a picked file", () => {
     } finally {
       rmSync(pickedFolder, { recursive: true, force: true });
     }
+  });
+
+  it("puts <home>/notes.md in the annotated (file on disk) box when notes.md is picked in the Choose a file dialog and the box was empty", async () => {
+    await withScratchFolder(async (home) => {
+      writeFileSync(join(home, "notes.md"), "Marked up on disk.");
+      vi.stubEnv("HOME", home);
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          await reachWaitingReview(workspace);
+          const box = (await screen.findByRole("textbox", { name: "annotated (file on disk)" })) as HTMLInputElement;
+
+          await userEvent.click(await screen.findByRole("button", { name: "Browse for annotated" }));
+          const dialog = await screen.findByRole("dialog", { name: "Choose a file" });
+          await userEvent.click(await within(dialog).findByRole("button", { name: "notes.md" }));
+          await userEvent.click(within(dialog).getByRole("button", { name: "Use this file" }));
+
+          expect({ dialog: screen.queryByRole("dialog"), chosen: box.value }).toEqual({ dialog: null, chosen: join(home, "notes.md") });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    });
   });
 });

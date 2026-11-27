@@ -1,8 +1,10 @@
 import { Fragment, useState } from "react";
 import LabelledTextField from "./LabelledTextField";
+import PathField from "./PathField";
+import type { ListFolder } from "./PathPicker";
 import { filesOf, producedOf, refusalOf, type Produced, type ReportField, type ReportOutcome } from "./stand-in-report";
 
-export default function StandInReportForm({ outcome, fields, report }: { outcome: string; fields: ReportField[]; report: ReportOutcome }) {
+export default function StandInReportForm({ outcome, fields, report, listFolder }: { outcome: string; fields: ReportField[]; report: ReportOutcome; listFolder: ListFolder | undefined }) {
   const [entered, setEntered] = useState<Produced>({});
   const [picked, setPicked] = useState<Produced>({});
   const [refusal, setRefusal] = useState<string>();
@@ -23,7 +25,7 @@ export default function StandInReportForm({ outcome, fields, report }: { outcome
       {fields.map(({ name, kind }) => (
         <Fragment key={name}>
           <LabelledTextField label={kind === "file" ? `${name} (paste)` : name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} />
-          {kind === "file" && <LabelledTextField label={`${name} (file on disk)`} value={picked[name] ?? ""} onChange={(value) => setPicked({ ...picked, [name]: value })} />}
+          {kind === "file" && <PathField label={`${name} (file on disk)`} browseLabel={`Browse for ${name}`} mode="file" value={picked[name] ?? ""} onChange={(value) => setPicked({ ...picked, [name]: value })} listFolder={listFolder} />}
         </Fragment>
       ))}
       <button type="button" onClick={submit}>
