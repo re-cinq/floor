@@ -45,10 +45,19 @@ export function runProcess(
   });
 
   const cancel = () => {
-    if (child.pid !== undefined) process.kill(-child.pid, "SIGTERM");
+    if (child.pid !== undefined) terminateGroup(child.pid);
   };
 
   return { done, cancel };
+}
+
+function terminateGroup(pid: number): void {
+  try {
+    process.kill(-pid, "SIGTERM");
+  } catch (error) {
+    const hasExited = error instanceof Error && "code" in error && error.code === "ESRCH";
+    if (!hasExited) throw error;
+  }
 }
 
 function readLines(
