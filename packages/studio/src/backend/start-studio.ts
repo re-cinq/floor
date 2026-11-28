@@ -37,6 +37,8 @@ export interface StudioOptions {
   runEnv?: Record<string, string>;
   /** Opens a run folder; the desktop opens it when none is given. */
   openFolder?: (path: string) => void;
+  /** How long the folder stays quiet before the collection is pushed again; the watcher's own default when none is given. */
+  watchDebounceMs?: number;
 }
 
 export interface Studio {
@@ -76,7 +78,7 @@ export async function startStudio(options: StudioOptions): Promise<Studio> {
     sockets.handleUpgrade(request, socket, head, (opened) => sockets.emit("connection", opened, request));
   });
   sockets.on("connection", (socket) => serve(socket, context));
-  const watcher = watchCollection(dir, () => void pushCollection(sockets, readCollection));
+  const watcher = watchCollection(dir, () => void pushCollection(sockets, readCollection), options.watchDebounceMs);
 
   await new Promise<void>((resolve) => server.listen(options.port, LOOPBACK, resolve));
 

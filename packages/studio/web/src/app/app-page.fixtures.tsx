@@ -25,11 +25,12 @@ interface PageOptions {
   runEnv?: Record<string, string>;
   openFolder?: (path: string) => void;
   socketOf?: (studio: Studio) => string;
+  watchDebounceMs?: number;
 }
 
 export async function openPage(files: CollectionFile[], options: PageOptions = {}): Promise<OpenedPage> {
   const dir = options.dir ?? collectionOnDisk(files);
-  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [], runEnv: options.runEnv, openFolder: options.openFolder });
+  const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [], runEnv: options.runEnv, openFolder: options.openFolder, watchDebounceMs: options.watchDebounceMs });
 
   running.push(studio);
   window.location.hash = hashOf(studio, options);
