@@ -1,5 +1,8 @@
-export function outcomeWording(visit: { report: { outcome: string } | null; kind: string }): string {
+import type { TestReadResult } from "@/socket/studio-connection";
+
+export function outcomeWording(visit: { report: { outcome: string } | null; kind: string }, runStatus?: TestReadResult["status"]): string {
   if (visit.report) return visit.report.outcome;
+  if (runStatus === "stopped") return "stopped";
 
   return visit.kind === "agent" ? "running" : "waiting";
 }

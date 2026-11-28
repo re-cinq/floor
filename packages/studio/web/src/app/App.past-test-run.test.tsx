@@ -13,7 +13,7 @@ import { REVIEW_LOOP_COLLECTION } from "../../../src/backend/test-run.fixtures";
 afterEach(closeStudios);
 
 describe("App test run opened after a studio restart", () => {
-  it("shows review-loop as stopped with no Cancel and no Waiting for you", async () => {
+  it("shows review-loop and its unreported visit as stopped with no Cancel and no Waiting for you", async () => {
     const { scratch, runEnv } = fakeClaudeScratch("floor-past-run-", WRITES_DRAFT);
 
     try {
@@ -30,10 +30,10 @@ describe("App test run opened after a studio restart", () => {
       await userEvent.click(await within(runsList).findByRole("button", { name: /^stopped/ }));
 
       expect({
-        status: (await screen.findByText("stopped")).textContent,
+        stopped: (await screen.findAllByText("stopped")).map((element) => element.tagName),
         cancel: screen.queryByRole("button", { name: "Cancel" }),
         waiting: screen.queryByRole("heading", { name: "Waiting for you" }),
-      }).toEqual({ status: "stopped", cancel: null, waiting: null });
+      }).toEqual({ stopped: ["P", "TD"], cancel: null, waiting: null });
     } finally {
       rmSync(scratch, { recursive: true, force: true });
     }

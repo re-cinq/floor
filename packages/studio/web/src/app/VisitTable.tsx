@@ -2,7 +2,7 @@ import styles from "./screens.module.css";
 import type { TestReadResult } from "@/socket/studio-connection";
 import { costWording, outcomeWording, timeWording, totalOf } from "./test-visit-wording";
 
-export default function VisitTable({ visits, openVisitFolder }: { visits: TestReadResult["visits"]; openVisitFolder: (visitId: string) => void }) {
+export default function VisitTable({ visits, runStatus, openVisitFolder }: { visits: TestReadResult["visits"]; runStatus: TestReadResult["status"] | undefined; openVisitFolder: (visitId: string) => void }) {
   return (
     <table className={styles.visits}>
       <thead>
@@ -17,7 +17,7 @@ export default function VisitTable({ visits, openVisitFolder }: { visits: TestRe
       </thead>
       <tbody>
         {visits.map((visit) => (
-          <VisitRow key={visit.id} visit={visit} openVisitFolder={openVisitFolder} />
+          <VisitRow key={visit.id} visit={visit} runStatus={runStatus} openVisitFolder={openVisitFolder} />
         ))}
       </tbody>
       <tfoot>
@@ -27,12 +27,12 @@ export default function VisitTable({ visits, openVisitFolder }: { visits: TestRe
   );
 }
 
-function VisitRow({ visit, openVisitFolder }: { visit: TestReadResult["visits"][number]; openVisitFolder: (visitId: string) => void }) {
+function VisitRow({ visit, runStatus, openVisitFolder }: { visit: TestReadResult["visits"][number]; runStatus: TestReadResult["status"] | undefined; openVisitFolder: (visitId: string) => void }) {
   return (
     <tr>
       <td>{visit.id}</td>
       <td>{visit.nodeId}</td>
-      <td>{outcomeWording(visit)}</td>
+      <td>{outcomeWording(visit, runStatus)}</td>
       <td>{timeWording(visit)}</td>
       <td>{costWording(visit.costUsd)}</td>
       <td>

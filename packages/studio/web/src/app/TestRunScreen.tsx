@@ -15,7 +15,7 @@ export default function TestRunScreen({ line, run, controls }: { line: LineView;
   const { state, refusal, report, sendEvent, cancel, openRunFolder, openVisitFolder } = useTestRun(controls, run);
 
   const definition = useMemo(() => graphOf(line), [line]);
-  const overlay = useMemo(() => overlayOf(state?.visits ?? []), [state]);
+  const overlay = useMemo(() => overlayOf(state?.visits ?? [], state?.status), [state]);
   const waiting = useMemo(() => waitingOf(state), [state]);
 
   return (
@@ -25,7 +25,7 @@ export default function TestRunScreen({ line, run, controls }: { line: LineView;
         <RunGraphView definition={definition} run={overlay} waiting={waiting} show="all" />
       </div>
       <RunHeader state={state} cancel={cancel} openRunFolder={openRunFolder} />
-      <VisitTable visits={state?.visits ?? []} openVisitFolder={openVisitFolder} />
+      <VisitTable visits={state?.visits ?? []} runStatus={state?.status} openVisitFolder={openVisitFolder} />
       <WaitingForYou state={state} report={report} sendEvent={sendEvent} listFolder={controls?.listFolder} />
       {refusal && <p role="alert">{refusal}</p>}
     </div>
