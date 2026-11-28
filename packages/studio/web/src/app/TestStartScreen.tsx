@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import LabelledTextField from "./LabelledTextField";
 import WorkspaceField from "./WorkspaceField";
 import { useTestPreview, useTestStart, type TestStartControls } from "./use-test-start";
+import { enteredAfterLast, workspaceAfterLast } from "./last-test-fill";
 import styles from "./screens.module.css";
 import type { LineView } from "@protocol";
 import type { TestPreviewFields } from "@/socket/studio-connection";
@@ -37,8 +38,8 @@ function useLastTest(controls: TestStartControls | undefined, setWorkspace: (upd
     controls?.last().then(
       (last) => {
         if (!last) return;
-        setWorkspace((current) => current || last.workspace);
-        setEntered((current) => (Object.keys(current).length ? current : last.entered));
+        setWorkspace((current) => workspaceAfterLast(current, last));
+        setEntered((current) => enteredAfterLast(current, last));
       },
       () => undefined,
     );
