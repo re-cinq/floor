@@ -265,3 +265,34 @@
   list-style: none;
   padding: var(--space-1) 0 0 var(--space-4);
 }
+
+.breadcrumbs {
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs);
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumbs li + li::before {
+  content: "\203A";
+  margin-right: var(--space-2);
+  color: var(--text-muted);
+}
+
+.breadcrumbs a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--text);
+}

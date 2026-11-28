@@ -86,6 +86,14 @@ export const REVIEW_LOOP_COLLECTION: readonly CollectionFile[] = [
   { path: "review-loop/agents/draft-writer.md", text: DRAFT_WRITER_AGENT },
 ];
 
+const TOPIC_ARG = "    topic:\n      kind: value\n      subject: true\n";
+
+/** The review-loop collection whose line also takes the git arg repo and the file arg brief at start. */
+export const REPO_AND_BRIEF_COLLECTION: readonly CollectionFile[] = [
+  { path: "review-loop/assembly-line.yaml", text: REVIEW_LOOP_LINE.replace(TOPIC_ARG, `${TOPIC_ARG}    repo:\n      kind: git\n    brief:\n      kind: file\n`) },
+  { path: "review-loop/agents/draft-writer.md", text: DRAFT_WRITER_AGENT },
+];
+
 const REVIEWER_FEEDBACK_PRODUCE = "      - name: review_feedback\n        kind: value\n";
 
 /** The review-loop collection whose reviewer also produces the file annotated.md as annotated. */

@@ -1,6 +1,7 @@
 // The bag of a local test run: start items folded with each visit's produced items, a station name standing in for its hash.
 import { bagOf } from "@re-cinq/floor-assembly-lines";
 import type { Item } from "@re-cinq/floor-contracts";
+import type { BagEntry } from "./test-run-state.js";
 import type { TestRun } from "./test-visit.js";
 
 export function bagOfRun(run: TestRun): Record<string, Item> {
@@ -9,4 +10,8 @@ export function bagOfRun(run: TestRun): Record<string, Item> {
   const producing = visits.map(({ id, station, report }) => ({ id, stationHash: station, report }));
 
   return bagOf(startItems, producing, (name) => stations.get(name)?.produces);
+}
+
+export function bagEntriesOf(run: TestRun): BagEntry[] {
+  return Object.entries(bagOfRun(run)).map(([name, { kind, ref, by }]) => ({ name, kind, ref, by }));
 }

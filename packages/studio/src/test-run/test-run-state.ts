@@ -1,4 +1,5 @@
 // The state of a local test run that goes to the page: where it is, how it ended and the visits so far.
+import type { Item } from "@re-cinq/floor-contracts";
 import type { StandInAction } from "./stand-in-actions.js";
 import type { VisitState } from "./test-visit.js";
 
@@ -9,6 +10,14 @@ export interface TestRunState {
   ending?: TestRunEnding;
   visits: VisitState[];
   actions: Record<string, StandInAction[]>;
+  bag?: BagEntry[];
+}
+
+export interface BagEntry {
+  name: string;
+  kind: Item["kind"];
+  ref: string;
+  by: string;
 }
 
 export interface TestRunListing {

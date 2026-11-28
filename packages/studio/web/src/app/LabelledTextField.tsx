@@ -7,9 +7,10 @@ interface Props {
   onChange: (value: string) => void;
   addon?: ReactNode;
   error?: string;
+  labelClass?: string;
 }
 
-export default function LabelledTextField({ label, value, onChange, addon, error }: Props) {
+export default function LabelledTextField({ label, value, onChange, addon, error, labelClass }: Props) {
   const inputId = useId();
   const errorId = useId();
   const input = (
@@ -18,7 +19,7 @@ export default function LabelledTextField({ label, value, onChange, addon, error
 
   return (
     <div className={`${styles.field} ${error ? styles.invalid : ""}`}>
-      <label htmlFor={inputId}>{label}</label>
+      <label htmlFor={inputId} className={labelClass}>{label}</label>
       {addon ? (
         <div className={styles.group}>
           {input}

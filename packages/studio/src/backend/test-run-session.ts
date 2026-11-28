@@ -11,6 +11,7 @@ import { enforceStartable } from "../test-run/start-blockers.js";
 import { runSummaryOf } from "../test-run/run-summary.js";
 import { startItemsOf } from "../test-run/start-items.js";
 import { standInReport, type StandInAnswer } from "../test-run/stand-in-report.js";
+import { bagEntriesOf } from "../test-run/run-bag.js";
 import { waitingActionsOf } from "../test-run/stand-in-actions.js";
 import { nodeAt, stationAt } from "../test-run/test-line.js";
 import { modeOf, type TimelineEntry } from "../test-run/timeline.js";
@@ -55,7 +56,7 @@ interface RunWork {
   start: TestRunStart;
   view: CollectionView;
   run: TestRun;
-  state: Omit<TestRunState, "actions">;
+  state: Omit<TestRunState, "actions" | "bag">;
   clock: () => Date;
   startedAt: string;
   cancelled: boolean;
@@ -100,7 +101,7 @@ function sessionOf(work: RunWork): TestRunSession {
 }
 
 function stateOf({ state, run }: RunWork): TestRunState {
-  return { ...state, actions: waitingActionsOf(run.line, state.visits) };
+  return { ...state, actions: waitingActionsOf(run.line, state.visits), bag: bagEntriesOf(run) };
 }
 
 function cancelWork(work: RunWork): Promise<void> {

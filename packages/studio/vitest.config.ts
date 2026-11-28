@@ -10,5 +10,6 @@ export default defineConfig({
       "@protocol": fileURLToPath(new URL("./src/protocol.ts", import.meta.url)),
     },
   },
-  test: { setupFiles: ["./web/vitest.setup.ts"], environment: "node", testTimeout: 20000, include: ["src/**/*.test.ts", "web/src/**/*.test.{ts,tsx}"] },
+  // Each page test starts a backend and fake agent processes of its own, so one worker per core oversubscribes the machine and page waits time out.
+  test: { setupFiles: ["./web/vitest.setup.ts"], environment: "node", testTimeout: 20000, maxWorkers: "50%", include: ["src/**/*.test.ts", "web/src/**/*.test.{ts,tsx}"] },
 });

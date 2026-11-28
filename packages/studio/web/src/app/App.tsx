@@ -16,6 +16,8 @@ import TestRunScreen from "./TestRunScreen";
 import TestStartScreen from "./TestStartScreen";
 import type { TestStartControls } from "./use-test-start";
 import type { TestRunControls } from "./use-test-run";
+import Breadcrumbs from "./Breadcrumbs";
+import { crumbsOf, folderNameOfRun, type Crumb } from "./breadcrumbs";
 import Sidebar from "./Sidebar";
 import { useSelection } from "./use-selection";
 import { inProgressCounts } from "./in-progress-counts";
@@ -48,10 +50,15 @@ export default function App() {
         scheme={{ pref: scheme.pref, onChoose: scheme.choose }}
       />
       <main className={shell.main}>
+        <Breadcrumbs crumbs={trailOf(snapshot.collection, { line: lineId, test: selection.test }, allTestRuns)} />
         {address ? screenFor(snapshot, placeOf({ connection, selection, select, resolved, nodeRuns, test, testRuns })) : <AddressNeeded />}
       </main>
     </div>
   );
+}
+
+function trailOf(collection: CollectionView | null, place: { line: string | undefined; test: string | undefined }, listings: TestRunListings): Crumb[] {
+  return crumbsOf({ collectionName: collection?.folder ?? "Collection", ...place, runFolderName: folderNameOfRun(listings, place.test) });
 }
 
 interface PlaceInput {

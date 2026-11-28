@@ -7,6 +7,7 @@ import type { TestReadResult } from "@/socket/studio-connection";
 import type { ReportVisit, SendEvent } from "./stand-in-report";
 import { useTestRun, type TestRunControls } from "./use-test-run";
 import VisitTable from "./VisitTable";
+import { isInProgress } from "./in-progress-counts";
 import { overlayOf, waitingOf } from "./run-overlay";
 import { graphOf } from "@/graph/graph-of";
 import { RunGraphView } from "@re-cinq/floor-graph";
@@ -24,11 +25,20 @@ export default function TestRunScreen({ line, run, controls }: { line: LineView;
       <div className={styles.runGraph}>
         <RunGraphView definition={definition} run={overlay} waiting={waiting} show="all" />
       </div>
-      <RunHeader state={state} cancel={cancel} openRunFolder={openRunFolder} />
-      <VisitTable visits={state?.visits ?? []} runStatus={state?.status} openVisitFolder={openVisitFolder} />
+      <RunDetails state={state} cancel={cancel} openRunFolder={openRunFolder} openVisitFolder={openVisitFolder} />
       <WaitingForYou state={state} report={report} sendEvent={sendEvent} listFolder={controls?.listFolder} />
       {refusal && <p role="alert">{refusal}</p>}
     </div>
+  );
+}
+
+function RunDetails({ state, cancel, openRunFolder, openVisitFolder }: { state: TestReadResult | undefined; cancel: () => void; openRunFolder: () => void; openVisitFolder: (visit: string) => void }) {
+  return (
+    <>
+      <RunHeader state={state} cancel={cancel} openRunFolder={openRunFolder} />
+      <VisitTable visits={state?.visits ?? []} runStatus={state?.status} openVisitFolder={openVisitFolder} />
+      <RunBag bag={state?.bag} />
+    </>
   );
 }
 
@@ -36,9 +46,36 @@ function RunHeader({ state, cancel, openRunFolder }: { state: TestReadResult | u
   return (
     <>
       <p>{runStatus(state)}</p>
-      {(state?.status === "running" || state?.status === "waiting") && <button onClick={cancel}>Cancel</button>}
+      {isInProgress(state?.status) && <button onClick={cancel}>Cancel</button>}
       {state && <button onClick={openRunFolder}>Open run folder</button>}
     </>
+  );
+}
+
+function RunBag({ bag }: { bag: TestReadResult["bag"] }) {
+  if (!bag) return null;
+
+  return (
+    <table aria-label="Bag" className={styles.bag}>
+      <thead>
+        <tr>
+          <th>name</th>
+          <th>kind</th>
+          <th>value</th>
+          <th>by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {bag.map(({ name, kind, ref, by }) => (
+          <tr key={name}>
+            <td>{name}</td>
+            <td>{kind}</td>
+            <td>{ref}</td>
+            <td>{by}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
