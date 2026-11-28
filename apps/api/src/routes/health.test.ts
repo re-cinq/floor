@@ -45,10 +45,10 @@ describe("GET /version", () => {
     expect(response.result.runsLoop).toBe(true);
   });
 
-  it("returns schema version 8, the count of the store's migrations", async () => {
+  it("returns schema version 9, the count of the store's migrations", async () => {
     const response = await injectJson<{ schemaVersion: number }>(server(), { method: "GET", url: "/version" });
 
-    expect(response.result.schemaVersion).toBe(8);
+    expect(response.result.schemaVersion).toBe(9);
   });
 
   it("lists east with the build and subsystem it registered", async () => {
@@ -58,6 +58,6 @@ describe("GET /version", () => {
     await server().inject({ method: "PUT", url: "/clusters/east", headers: authHeaders(), payload: { tags: ["kind:agent"], build: "abc123", subsystem } });
     const response = await injectJson<{ clusters: unknown[] }>(server(), { method: "GET", url: "/version" });
 
-    expect(response.result.clusters).toEqual([{ id: "east", build: "abc123", subsystem, lastSeenAt: expect.any(Date) }]);
+    expect(response.result.clusters).toEqual([{ id: "east", build: "abc123", subsystem, models: null, lastSeenAt: expect.any(Date) }]);
   });
 });

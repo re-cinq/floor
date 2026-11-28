@@ -4,7 +4,7 @@ import type { AgentResourcesApi } from "./kube/agent-resources.js";
 import type { SecretKeyWriter } from "./kube/secret-writer.js";
 import { buildAgentTriple } from "./domain/agent-triple.js";
 import type { FloorClient } from "@re-cinq/floor-client";
-import type { ClaimedEvent, ClusterRegistration, SubsystemVersions } from "@re-cinq/floor-contracts";
+import type { ClaimedEvent, ClusterRegistration, ModelCatalogStatus, SubsystemVersions } from "@re-cinq/floor-contracts";
 import { backoffDelay, runPollLoop, type PollLoopDeps } from "./lib/poll-loop.js";
 import { modelSecretKeyFor, type KeyByFamily } from "./domain/model-secret.js";
 import { describeClaimTick, dueForLivenessLog } from "./domain/liveness.js";
@@ -22,6 +22,8 @@ export interface ClaimLoopDeps {
   build?: string;
   /** The agent subsystem this cluster runs, sent on every register; null when unknown. */
   readSubsystem?: () => Promise<SubsystemVersions | null>;
+  /** The model catalog this cluster publishes, sent on every register; null when unknown. */
+  readModels?: () => Promise<ModelCatalogStatus | null>;
   secretName?: string;
   /** The model secrets this cluster holds, by model family, where they differ from the usual API keys. */
   modelSecretKeys?: KeyByFamily;
@@ -116,7 +118,9 @@ async function registerIfDue(deps: ClaimLoopDeps, lastRegisteredAt: number | nul
 async function registrationOf(deps: ClaimLoopDeps): Promise<ClusterRegistration> {
   const subsystem = (await deps.readSubsystem?.()) ?? null;
 
-  return { tags: deps.tags, build: deps.build ?? "dev", subsystem };
+  const models = (await deps.readModels?.()) ?? null;
+
+  return { tags: deps.tags, build: deps.build ?? "dev", subsystem, models };
 }
 
 async function sweepIfDue(deps: ClaimLoopDeps, lastSweptAt: number | null, now: number): Promise<number | null> {

@@ -2,6 +2,7 @@
 
 import type { Pool, PoolClient } from "pg";
 import { DefinitionsStore } from "./definitions.js";
+import { unrunnableModelError } from "./clusters.js";
 import { EventStore } from "./events.js";
 import { buildWalkGraph } from "./walk-graph.js";
 import { foldBag } from "./bag.js";
@@ -250,13 +251,12 @@ export class AssemblyRunStore {
   private async dispatchOpened(client: PoolClient, runId: string, visit: Visit, context: OpenContext): Promise<Visit> {
     if (!context.stationHash) return this.reportInClient(client, visit.id, { outcome: "success" });
 
+    const error = await unrunnableModelError(client, context, this.now());
+
+    if (error) return this.reportInClient(client, visit.id, { outcome: "failed", error });
+
     if (context.dispatchTags.length > 0) {
-      await this.eventsOn(client).enqueue({
-        name: "station_run.dispatch",
-        payload: { visitId: visit.id },
-        tags: context.dispatchTags,
-        runId,
-      });
+      await this.eventsOn(client).enqueue({ name: "station_run.dispatch", payload: { visitId: visit.id }, tags: context.dispatchTags, runId });
     }
 
     return visit;

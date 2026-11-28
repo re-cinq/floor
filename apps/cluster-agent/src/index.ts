@@ -6,6 +6,7 @@ import { KubeAgentResourcesApi } from "./kube/agent-resources.js";
 import { KubeSecretKeyWriter } from "./kube/secret-writer.js";
 import { reportHolding, runClaimLoop } from "./claim-loop.js";
 import { watchRecipes } from "./kube/recipe-watch.js";
+import { catalogReader } from "./kube/model-catalog.js";
 import { subsystemReader } from "./kube/subsystem-versions.js";
 import { agentsNamespace } from "./kube/clients.js";
 import { parseKeyByFamily } from "./domain/model-secret.js";
@@ -55,6 +56,7 @@ function clusterSettings() {
     modelSecretKeys: parseKeyByFamily(process.env.FLOOR_MODEL_SECRET_KEYS),
     build: process.env.FLOOR_BUILD_SHA,
     readSubsystem: subsystemReader(process.env.FLOOR_SUBSYSTEM_NAMESPACE || agentsNamespace()),
+    readModels: catalogReader(process.env.FLOOR_SUBSYSTEM_NAMESPACE || agentsNamespace()),
   };
 }
 

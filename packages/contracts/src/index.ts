@@ -53,6 +53,10 @@ export type {
   Problem,
   PutResult,
   SubsystemVersions,
+  ModelCatalogStatus,
+  CatalogVendor,
+  CatalogModel,
+  ModelVendor,
   ValueNeed,
   VisitBrief,
 } from "./wire.js";

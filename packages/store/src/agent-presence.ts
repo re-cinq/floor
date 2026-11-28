@@ -23,6 +23,7 @@ export interface AgentPresence {
   state: PresenceState;
   latest: string;
   clusters: ClusterPresence[];
+  modelAvailable: true | false | "unverified";
 }
 
 export interface PresenceInput {
@@ -36,7 +37,7 @@ const MS_PER_MINUTE = 60_000;
 /** A cluster-agent registers again at least every minute; one silent this long is gone, and its old version must not hold the dot at yellow forever. */
 export const CLUSTER_LIVE_MINUTES = 5;
 
-export function presenceState(input: PresenceInput): AgentPresence {
+export function presenceState(input: PresenceInput): Omit<AgentPresence, "modelAvailable"> {
   const liveSince = input.now.getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE;
   const held = new Map(input.holdings.map((holding) => [holding.clusterId, holding.hash]));
   const { clusters: seen } = input;

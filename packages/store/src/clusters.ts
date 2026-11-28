@@ -2,10 +2,12 @@
 
 import type { Pool, PoolClient } from "pg";
 import { definitionHash } from "@re-cinq/floor-assembly-lines";
-import type { SubsystemVersions } from "@re-cinq/floor-contracts";
+import type { ModelCatalogStatus, SubsystemVersions } from "@re-cinq/floor-contracts";
 import { CLUSTER_LIVE_MINUTES, presenceState, type AgentPresence } from "./agent-presence.js";
 import { DefinitionsStore, type PutResult } from "./definitions.js";
 import { EventStore } from "./events.js";
+import { modelAvailability } from "./model-availability.js";
+import type { OpenContext } from "./open-visit.js";
 import { withTransaction } from "./rows.js";
 
 const MS_PER_MINUTE = 60_000;
@@ -34,12 +36,14 @@ export interface RecordedHolding {
 export interface ClusterBuild {
   build?: string;
   subsystem?: SubsystemVersions | null;
+  models?: ModelCatalogStatus | null;
 }
 
 export interface ClusterVersionsRow {
   id: string;
   build: string | null;
   subsystem: SubsystemVersions | null;
+  models: ModelCatalogStatus | null;
   lastSeenAt: Date;
 }
 
@@ -59,9 +63,9 @@ export class ClusterStore {
   async register(id: string, tags: string[], running: ClusterBuild = {}): Promise<void> {
     await withTransaction(this.deps.pool, async (client) => {
       await client.query(
-        `insert into clusters (id, tags, last_seen_at, build, subsystem) values ($1, $2::text[], $3, $4, $5::jsonb)
-         on conflict (id) do update set tags = excluded.tags, last_seen_at = excluded.last_seen_at, build = excluded.build, subsystem = excluded.subsystem`,
-        [id, tags, this.now(), running.build ?? null, running.subsystem ? JSON.stringify(running.subsystem) : null],
+        `insert into clusters (id, tags, last_seen_at, build, subsystem, models) values ($1, $2::text[], $3, $4, $5::jsonb, $6::jsonb)
+         on conflict (id) do update set tags = excluded.tags, last_seen_at = excluded.last_seen_at, build = excluded.build, subsystem = excluded.subsystem, models = excluded.models`,
+        [id, tags, this.now(), running.build ?? null, running.subsystem ? JSON.stringify(running.subsystem) : null, running.models ? JSON.stringify(running.models) : null],
       );
       await this.queueMissing(client, id);
     });
@@ -102,32 +106,38 @@ export class ClusterStore {
   /** The clusters seen within CLUSTER_LIVE_MINUTES, with what each last said it runs. */
   async liveVersions(): Promise<ClusterVersionsRow[]> {
     const liveSince = new Date(this.now().getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE);
-    const { rows } = await this.deps.pool.query(`select id, build, subsystem, last_seen_at from clusters where last_seen_at >= $1 order by id`, [liveSince]);
+    const { rows } = await this.deps.pool.query(`select id, build, subsystem, models, last_seen_at from clusters where last_seen_at >= $1 order by id`, [liveSince]);
 
-    return rows.map((row) => ({ id: row.id, build: row.build, subsystem: row.subsystem, lastSeenAt: row.last_seen_at }));
+    return rows.map((row) => ({ id: row.id, build: row.build, subsystem: row.subsystem, models: row.models, lastSeenAt: row.last_seen_at }));
   }
 
   /** Every agent definition's presence on the live clusters, by id. */
   async presence(): Promise<Record<string, AgentPresence>> {
     const [latest, clusters, holdings] = await Promise.all([
-      new DefinitionsStore({ connection: this.deps.pool }).listLatest("agent_definition"),
-      this.deps.pool.query(`select id, last_seen_at from clusters order by id`),
+      new DefinitionsStore({ connection: this.deps.pool }).listLatest<{ settings?: { model?: string; tags?: string[] } }>("agent_definition"),
+      this.deps.pool.query(`select id, tags, last_seen_at, models from clusters order by id`),
       this.deps.pool.query(`select cluster_id, definition_id, hash from cluster_agent_definitions`),
     ]);
     const { rows: heldRows } = holdings;
-    const seen = clusters.rows.map((row) => ({ id: row.id as string, lastSeenAt: row.last_seen_at as Date }));
+    const { rows: clusterRows } = clusters;
+    const seen = clusterRows.map((row) => ({ id: row.id as string, lastSeenAt: row.last_seen_at as Date }));
+    const liveSince = this.now().getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE;
+    const live = clusterRows.filter((row) => (row.last_seen_at as Date).getTime() >= liveSince).map((row) => ({ tags: row.tags as string[], models: row.models as ModelCatalogStatus | null }));
 
     return Object.fromEntries(
-      latest.map((definition) => [
-        definition.id,
-        presenceState({
-          latest: definition.hash,
+      latest.map(({ id, hash, body }) => [
+        id,
+        {
+          ...presenceState({
+          latest: hash,
           clusters: seen,
           holdings: heldRows
-            .filter((row) => row.definition_id === definition.id)
+            .filter((row) => row.definition_id === id)
             .map((row) => ({ clusterId: row.cluster_id as string, hash: row.hash as string })),
           now: this.now(),
-        }),
+          }),
+          modelAvailable: body.settings?.model ? modelAvailability(body.settings.model, catalogsTaking(live, body.settings.tags ?? [])) : "unverified",
+        },
       ]),
     );
   }
@@ -169,4 +179,29 @@ export class ClusterStore {
       await events.enqueue({ name: AGENT_DEFINITION_CHANGED, payload: { id: row.id, hash: row.hash }, tags: [clusterTag(clusterId)] });
     }
   }
+}
+
+/** The refusal for an agent naming a model no live cluster's catalog lists, or null when some cluster can run it or none can say. */
+export async function unrunnableModelError(client: PoolClient, context: OpenContext, now: Date): Promise<string | null> {
+  const model = context.agentSettings?.model;
+
+  if (!model) return null;
+  const liveSince = new Date(now.getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE);
+  const { rows } = await client.query<{ models: ModelCatalogStatus | null }>(`select models from clusters where last_seen_at >= $1 and tags @> $2::text[]`, [liveSince, context.dispatchTags]);
+
+  return unrunnableModelMessage(context.agentId, model, rows.map((row) => row.models));
+}
+
+function unrunnableModelMessage(agentId: string | null, model: string, catalogs: (ModelCatalogStatus | null)[]): string | null {
+  if (modelAvailability(model, catalogs) !== false) return null;
+  const refreshedAt = catalogs.map((catalog) => catalog?.refreshedAt ?? "").sort().at(-1);
+
+  return `agent ${agentId} names model ${model}, which no cluster can run (catalog refreshed ${refreshedAt})`;
+}
+
+// The catalogs of the clusters that could claim an agent's visits, as dispatch tags them: the same clusters the dispatch-time check judges.
+function catalogsTaking(clusters: { tags: string[]; models: ModelCatalogStatus | null }[], agentTags: string[]): (ModelCatalogStatus | null)[] {
+  const wanted = ["kind:agent", ...agentTags];
+
+  return clusters.filter((cluster) => wanted.every((tag) => cluster.tags.includes(tag))).map((cluster) => cluster.models);
 }

@@ -79,7 +79,7 @@ describe("runClaimLoop: registering", () => {
 
     await runOneTick(floor, { resources: fakeResources(), secrets: fakeSecrets(), tags: ["kind:agent", "cluster:east"], sleep: async () => {} });
 
-    expect(floor.register).toHaveBeenCalledWith("east", { tags: ["kind:agent", "cluster:east"], build: "dev", subsystem: null });
+    expect(floor.register).toHaveBeenCalledWith("east", { tags: ["kind:agent", "cluster:east"], build: "dev", subsystem: null, models: null });
   });
 
   it("registers east with build abc123 and the subsystem its ConfigMap names", async () => {
@@ -88,6 +88,6 @@ describe("runClaimLoop: registering", () => {
 
     await runOneTick(floor, { resources: fakeResources(), secrets: fakeSecrets(), tags: [], build: "abc123", readSubsystem: () => Promise.resolve(subsystem), sleep: async () => {} });
 
-    expect(floor.register).toHaveBeenCalledWith("east", { tags: [], build: "abc123", subsystem });
+    expect(floor.register).toHaveBeenCalledWith("east", { tags: [], build: "abc123", subsystem, models: null });
   });
 });

@@ -50,6 +50,14 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "create", "patch"]
+  {{- if .Values.subsystem.modelCatalog }}
+  # The subsystem's deploy/components/model-catalog grant: only agent-secrets, only get, for the
+  # keys the ModelCatalog lists or probes models with.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["agent-secrets"]
+    verbs: ["get"]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -116,6 +124,8 @@ spec:
               value: {{ .Values.subsystem.agentImage }}:{{ .Values.subsystem.version }}
             - name: MAX_OUTPUT_BYTES
               value: "262144"
+            - name: MODEL_CATALOG_ENABLED
+              value: {{ .Values.subsystem.modelCatalog | quote }}
           ports:
             - name: health
               containerPort: 8081

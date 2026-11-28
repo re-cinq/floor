@@ -26,7 +26,25 @@ export const enqueueEventSchema = z.object({
 
 const subsystemVersionsSchema = z.object({ version: z.string(), clis: z.record(z.string(), z.string()) });
 
-export const registerClusterSchema = z.object({ tags: z.array(z.string()), build: z.string().optional(), subsystem: subsystemVersionsSchema.nullable().optional() });
+const modelCatalogStatusSchema = z.object({
+  refreshedAt: z.string(),
+  vendors: z.array(
+    z.object({
+      vendor: z.string(),
+      provider: z.string(),
+      secretRefs: z.array(z.string()),
+      error: z.string(),
+      models: z.array(z.object({ id: z.string(), displayName: z.string() })),
+    }),
+  ),
+});
+
+export const registerClusterSchema = z.object({
+  tags: z.array(z.string()),
+  build: z.string().optional(),
+  subsystem: subsystemVersionsSchema.nullable().optional(),
+  models: modelCatalogStatusSchema.nullable().optional(),
+});
 
 export const claimEventsSchema = z.object({ tags: z.array(z.string()), limit: z.number().int().positive() });
 

@@ -3,6 +3,7 @@ import { definitionHash } from "@re-cinq/floor-assembly-lines";
 import { AGENT_DEFINITION_CHANGED, ClusterStore } from "./clusters.js";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
+import type { ModelCatalogStatus } from "@re-cinq/floor-contracts";
 import { setupTestPool } from "./pg-test-pool.js";
 
 const pool = setupTestPool();
@@ -97,13 +98,13 @@ describe("ClusterStore.liveVersions", () => {
   it("lists east with build abc123 and subsystem 0.19.0 after it registers them", async () => {
     await clusters().register("east", [], { build: "abc123", subsystem: SUBSYSTEM });
 
-    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: "abc123", subsystem: SUBSYSTEM, lastSeenAt: NOW }]);
+    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: "abc123", subsystem: SUBSYSTEM, models: null, lastSeenAt: NOW }]);
   });
 
   it("lists null build and subsystem for a cluster agent that sent neither", async () => {
     await clusters().register("east", []);
 
-    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: null, subsystem: null, lastSeenAt: NOW }]);
+    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: null, subsystem: null, models: null, lastSeenAt: NOW }]);
   });
 
   it("leaves out a cluster last seen six minutes ago", async () => {
@@ -111,6 +112,24 @@ describe("ClusterStore.liveVersions", () => {
     await clusters().register("east", []);
 
     expect((await clusters().liveVersions()).map((cluster) => cluster.id)).toEqual(["east"]);
+  });
+
+  it("lists east's model catalog refreshed 2026-11-28T09:00:00Z after it registers one", async () => {
+    const models: ModelCatalogStatus = {
+      refreshedAt: "2026-11-28T09:00:00Z",
+      vendors: [
+        {
+          vendor: "claude",
+          provider: "anthropic",
+          secretRefs: ["anthropic-key"],
+          error: "",
+          models: [{ id: "claude-haiku-4-5", displayName: "Claude Haiku 4.5" }],
+        },
+      ],
+    };
+    await clusters().register("east", [], { build: "abc123", subsystem: null, models });
+
+    expect(await clusters().liveVersions()).toMatchObject([{ id: "east", models }]);
   });
 });
 
@@ -161,6 +180,7 @@ describe("ClusterStore.presence", () => {
     expect(await clusters().presence()).toEqual({
       reviewer: {
         state: "some",
+        modelAvailable: "unverified",
         latest: hash,
         clusters: [
           { id: "east", hash, current: true },
@@ -178,6 +198,21 @@ describe("ClusterStore.presence", () => {
     expect(await clusters().holdings("reviewer")).toEqual([
       { clusterId: "east", hash: definitionHash(reviewer), body: reviewer, appliedAt: expect.any(Date) },
     ]);
+  });
+
+  it.each([
+    ["the live cluster's catalog lists only claude-haiku-4-5", [["east", ["kind:agent"], "claude-haiku-4-5"]]],
+    ["only west, which cannot take its visits, lists it", [["east", ["kind:agent"], "claude-haiku-4-5"], ["west", ["kind:other"], "claude-sonnet-5-5"]]],
+  ] as const)("answers modelAvailable false for reviewer on claude-sonnet-5-5 when %s", async (situation, registered) => {
+    for (const [id, tags, listed] of registered) {
+      const models: ModelCatalogStatus = { refreshedAt: "2026-11-28T09:00:00Z", vendors: [{ vendor: "claude", provider: "anthropic", secretRefs: [], error: "", models: [{ id: listed, displayName: listed }] }] };
+
+      await clusters().register(id, [...tags], { models });
+    }
+
+    await clusters().putAgentDefinition("reviewer", { settings: { ...reviewer.settings, model: "claude-sonnet-5-5" } });
+
+    expect(await clusters().presence()).toMatchObject({ reviewer: { modelAvailable: false } });
   });
 });
 

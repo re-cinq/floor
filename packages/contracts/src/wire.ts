@@ -136,6 +136,8 @@ export interface AgentPresence {
   state: PresenceState;
   latest: string;
   clusters: ClusterPresence[];
+  /** Whether the live clusters' model catalogs can run the definition's model; "unverified" when none can tell. */
+  modelAvailable: true | false | "unverified";
 }
 
 /** The agent subsystem a cluster runs, as its `agent-subsystem-versions` ConfigMap says: its release and the CLI each vendor's pod runs, by vendor (`claude`, `codex`, `gemini`, `opencode`). */
@@ -144,11 +146,35 @@ export interface SubsystemVersions {
   clis: Record<string, string>;
 }
 
+/** A model vendor's name as the catalog keys it (`claude`, `codex`, `gemini`, `opencode`). */
+export type ModelVendor = string;
+
+export interface CatalogModel {
+  id: string;
+  displayName: string;
+}
+
+/** One vendor's slice of a cluster's model catalog: the models its key lists, or the `error` that stopped the listing. */
+export interface CatalogVendor {
+  vendor: ModelVendor;
+  provider: string;
+  secretRefs: string[];
+  error: string;
+  models: CatalogModel[];
+}
+
+/** The status of the `ModelCatalog default` a cluster publishes. */
+export interface ModelCatalogStatus {
+  refreshedAt: string;
+  vendors: CatalogVendor[];
+}
+
 /** `PUT /clusters/{id}`: what a cluster agent sends each time it registers. `build` and `subsystem` are absent from an older agent; `subsystem` is null when the cluster's ConfigMap could not be read. */
 export interface ClusterRegistration {
   tags: string[];
   build?: string;
   subsystem?: SubsystemVersions | null;
+  models?: ModelCatalogStatus | null;
 }
 
 /** One live cluster on `GET /version`: the cluster agent's build and the subsystem it last reported. */
@@ -156,6 +182,8 @@ export interface ClusterVersions {
   id: string;
   build: string | null;
   subsystem: SubsystemVersions | null;
+  /** The status of its subsystem's `ModelCatalog default`: the models it can run; null when the agent could not read it. */
+  models: ModelCatalogStatus | null;
   lastSeenAt: string;
 }
 

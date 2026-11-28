@@ -27,13 +27,16 @@ GET    /version                          // build sha, schema version, whether t
 `/version` answers:
 
 ```
-{ "sha": "180a511…", "schemaVersion": 8, "runsLoop": true,
+{ "sha": "180a511…", "schemaVersion": 9, "runsLoop": true,
   "clusters": [ { "id": "internal", "build": "180a511…", "lastSeenAt": "2026-11-13T10:00:00Z",
                   "subsystem": { "version": "0.19.0",
-                                 "clis": { "claude": "2.1.311", "codex": "0.167.1", "gemini": "0.62.0", "opencode": "1.2.0" } } } ] }
+                                 "clis": { "claude": "2.1.311", "codex": "0.167.1", "gemini": "0.62.0", "opencode": "1.2.0" } },
+                  "models": { "refreshedAt": "2026-11-28T09:00:00Z",
+                              "vendors": [ { "vendor": "claude", "provider": "anthropic", "secretRefs": ["ANTHROPIC_API_KEY"], "error": "",
+                                             "models": [ { "id": "claude-sonnet-5-5", "displayName": "Claude Sonnet 5.5" } ] } ] } } ] }
 ```
 
-`schemaVersion` is the number of the store's migrations. `clusters` lists every cluster seen within `CLUSTER_LIVE_MINUTES` (5). `build` is its cluster agent's own build sha, and `subsystem` is what its `agent-subsystem-versions` ConfigMap says. Either is null for a cluster agent that does not send it, and `subsystem` is null when the agent cannot read that ConfigMap.
+`schemaVersion` is the number of the store's migrations. `clusters` lists every cluster seen within `CLUSTER_LIVE_MINUTES` (5). `build` is its cluster agent's own build sha, and `subsystem` is what its `agent-subsystem-versions` ConfigMap says. Either is null for a cluster agent that does not send it, and `subsystem` is null when the agent cannot read that ConfigMap. `models` is the `status` of its subsystem's `ModelCatalog default`, the models that cluster can run, or null when the agent cannot read it.
 
 ## Gateway tokens
 
