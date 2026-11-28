@@ -19,7 +19,7 @@ async function runsOf(line: string, workspace: string): Promise<TestRunListing[]
   const folders = entries.filter((entry) => entry.isDirectory() && entry.name.startsWith(`${line}-`)).map((entry) => join(workspace, entry.name));
   const listings = await Promise.all(folders.map(listingIn));
 
-  return listings.filter((listing) => listing !== null);
+  return listings.filter((listing) => listing !== null).filter((listing) => listing.line === line);
 }
 
 async function listingIn(folder: string): Promise<TestRunListing | null> {
