@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { answerFrame } from "./requests.js";
@@ -31,6 +31,18 @@ describe("test.last", () => {
       writeFileSync(join(configFolder, "floor-studio", "last-tests.json"), "{not json");
 
       expect(await lastFor("review-loop", context)).toEqual({ id: "t2", type: "result", result: null });
+    });
+  });
+
+  it("remembers review-loop's start under $HOME/.config/floor-studio when XDG_CONFIG_HOME is not set", async () => {
+    await withRememberedSetup(async ({ context, collectionDir, workspace, configFolder }) => {
+      vi.stubEnv("XDG_CONFIG_HOME", undefined);
+      vi.stubEnv("HOME", configFolder);
+      await startReviewLoop(workspace, context);
+
+      expect(JSON.parse(readFileSync(join(configFolder, ".config", "floor-studio", "last-tests.json"), "utf8"))).toEqual({
+        [collectionDir]: { "review-loop": { workspace, entered: { topic: "tides" }, workspaces: [workspace] } },
+      });
     });
   });
 
