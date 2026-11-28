@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { answerFrame, type StudioContext } from "./requests.js";
@@ -16,6 +16,13 @@ function freshWorkspaceBeside(workspace: string): string {
   mkdirSync(otherWorkspace);
 
   return otherWorkspace;
+}
+
+function rememberLineSharing(configFolder: string, collectionDir: string, line: string, workspace: string): void {
+  const file = join(configFolder, "floor-studio", "last-tests.json");
+  const remembered = JSON.parse(readFileSync(file, "utf8")) as Record<string, object>;
+
+  writeFileSync(file, JSON.stringify({ ...remembered, [collectionDir]: { ...remembered[collectionDir], [line]: { workspace, entered: {}, workspaces: [workspace] } } }));
 }
 
 function listAfterRestart(collectionDir: string, { runEnv }: StudioContext) {
@@ -68,6 +75,19 @@ describe("test.list", () => {
           { run: second, line: "review-loop", folder: second, status: "stopped", startedAt: expect.any(String) },
           { run: first, line: "review-loop", folder: first, status: "stopped", startedAt: expect.any(String) },
         ],
+      });
+    });
+  });
+
+  it("lists review-loop's run once after a restart when line review shares its workspace", async () => {
+    await withRememberedSetup(async ({ context, collectionDir, workspace, configFolder }) => {
+      const folder = startedFolderOf(await startReviewLoop(workspace, context));
+      rememberLineSharing(configFolder, collectionDir, "review", workspace);
+
+      expect(await listAfterRestart(collectionDir, context)).toEqual({
+        id: "t4",
+        type: "result",
+        result: [{ run: folder, line: "review-loop", folder, status: "stopped", startedAt: expect.any(String) }],
       });
     });
   });

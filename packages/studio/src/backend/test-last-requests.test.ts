@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { answerFrame } from "./requests.js";
 import { startReviewLoop, withRememberedSetup, type TestRunContext } from "./test-run-session.fixtures.js";
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+});
 
 describe("test.last", () => {
   it("answers null for review-loop when nothing is remembered", async () => {
@@ -40,7 +43,20 @@ describe("test.last", () => {
       vi.stubEnv("HOME", configFolder);
       await startReviewLoop(workspace, context);
 
-      expect(JSON.parse(readFileSync(join(configFolder, ".config", "floor-studio", "last-tests.json"), "utf8"))).toEqual({
+      expect(rememberedTests(join(configFolder, ".config"))).toEqual({
+        [collectionDir]: { "review-loop": { workspace, entered: { topic: "tides" }, workspaces: [workspace] } },
+      });
+    });
+  });
+
+  it("remembers review-loop's workspace once when it is started there twice", async () => {
+    await withRememberedSetup(async ({ context, collectionDir, workspace, configFolder }) => {
+      vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-28T08:00:00Z") });
+      await startReviewLoop(workspace, context);
+      vi.setSystemTime(new Date("2026-11-28T08:00:05Z"));
+      await startReviewLoop(workspace, context);
+
+      expect(rememberedTests(configFolder)).toEqual({
         [collectionDir]: { "review-loop": { workspace, entered: { topic: "tides" }, workspaces: [workspace] } },
       });
     });
@@ -70,6 +86,10 @@ describe("test.last", () => {
     });
   });
 });
+
+function rememberedTests(configHome: string): unknown {
+  return JSON.parse(readFileSync(join(configHome, "floor-studio", "last-tests.json"), "utf8"));
+}
 
 function lastFor(line: string, context: TestRunContext): ReturnType<typeof answerFrame> {
   return answerFrame(JSON.stringify({ id: "t2", type: "test.last", line }), context);
