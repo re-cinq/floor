@@ -136,6 +136,8 @@ export interface AgentPresence {
   state: PresenceState;
   latest: string;
   clusters: ClusterPresence[];
+  /** Whether the live clusters' model catalogs can run the definition's model; "unverified" when none can tell. */
+  modelAvailable: true | false | "unverified";
 }
 
 /** The agent subsystem a cluster runs, as its `agent-subsystem-versions` ConfigMap says: its release and the CLI each vendor's pod runs, by vendor (`claude`, `codex`, `gemini`, `opencode`). */

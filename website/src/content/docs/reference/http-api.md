@@ -133,8 +133,8 @@ It answers `201`, or `200` with `"joined": true` when a run on that subject was 
 
 | Route | What it does | Who |
 | --- | --- | --- |
-| `PUT /clusters/{id}` | Registers a cluster with its `tags`. The cluster agent calls it | service |
-| `GET /agent-definitions/presence` | Which clusters hold which agent definitions | service |
+| `PUT /clusters/{id}` | Registers a cluster with its `tags`, its build, its subsystem and its model catalog (`models`). The cluster agent calls it | service |
+| `GET /agent-definitions/presence` | Which clusters hold which agent definitions, and whether their model catalogs can run each one's model (`modelAvailable`) | service |
 | `GET /agent-definitions/{id}/clusters` | The clusters that hold one | service |
 | `GET /agent-definitions/{id}/recipes` | The settings a visit of its latest version gets | service |
 
@@ -164,5 +164,5 @@ The brief is `409` when the floor has no signing key, when the run names no such
 | Route | What it does | Who |
 | --- | --- | --- |
 | `GET /healthz`, `GET /readyz` | Answers while up, and while the database is reachable | anyone |
-| `GET /version` | The build, the schema version, whether this replica runs the loop, and what each cluster runs | anyone |
+| `GET /version` | The build, the schema version, whether this replica runs the loop, and what each cluster runs, its model catalog included | anyone |
 | `GET /metrics` | Prometheus metrics, listed in [Metrics](/floor/reference/metrics/) | anyone |

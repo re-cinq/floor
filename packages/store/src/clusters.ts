@@ -114,24 +114,30 @@ export class ClusterStore {
   /** Every agent definition's presence on the live clusters, by id. */
   async presence(): Promise<Record<string, AgentPresence>> {
     const [latest, clusters, holdings] = await Promise.all([
-      new DefinitionsStore({ connection: this.deps.pool }).listLatest("agent_definition"),
-      this.deps.pool.query(`select id, last_seen_at from clusters order by id`),
+      new DefinitionsStore({ connection: this.deps.pool }).listLatest<{ settings?: { model?: string } }>("agent_definition"),
+      this.deps.pool.query(`select id, last_seen_at, models from clusters order by id`),
       this.deps.pool.query(`select cluster_id, definition_id, hash from cluster_agent_definitions`),
     ]);
     const { rows: heldRows } = holdings;
-    const seen = clusters.rows.map((row) => ({ id: row.id as string, lastSeenAt: row.last_seen_at as Date }));
+    const { rows: clusterRows } = clusters;
+    const seen = clusterRows.map((row) => ({ id: row.id as string, lastSeenAt: row.last_seen_at as Date }));
+    const liveSince = this.now().getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE;
+    const liveCatalogs = clusterRows.filter((row) => (row.last_seen_at as Date).getTime() >= liveSince).map((row) => row.models as ModelCatalogStatus | null);
 
     return Object.fromEntries(
-      latest.map((definition) => [
-        definition.id,
-        presenceState({
-          latest: definition.hash,
+      latest.map(({ id, hash, body }) => [
+        id,
+        {
+          ...presenceState({
+          latest: hash,
           clusters: seen,
           holdings: heldRows
-            .filter((row) => row.definition_id === definition.id)
+            .filter((row) => row.definition_id === id)
             .map((row) => ({ clusterId: row.cluster_id as string, hash: row.hash as string })),
           now: this.now(),
-        }),
+          }),
+          modelAvailable: body.settings?.model ? modelAvailability(body.settings.model, liveCatalogs) : "unverified",
+        },
       ]),
     );
   }

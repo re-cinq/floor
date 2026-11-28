@@ -180,6 +180,7 @@ describe("ClusterStore.presence", () => {
     expect(await clusters().presence()).toEqual({
       reviewer: {
         state: "some",
+        modelAvailable: "unverified",
         latest: hash,
         clusters: [
           { id: "east", hash, current: true },
@@ -197,6 +198,19 @@ describe("ClusterStore.presence", () => {
     expect(await clusters().holdings("reviewer")).toEqual([
       { clusterId: "east", hash: definitionHash(reviewer), body: reviewer, appliedAt: expect.any(Date) },
     ]);
+  });
+
+  it("answers modelAvailable false for reviewer on claude-sonnet-5-5 when the live cluster's catalog lists only claude-haiku-4-5", async () => {
+    const haikuOnly: ModelCatalogStatus = {
+      refreshedAt: "2026-11-28T09:00:00Z",
+      vendors: [
+        { vendor: "claude", provider: "anthropic", secretRefs: [], error: "", models: [{ id: "claude-haiku-4-5", displayName: "claude-haiku-4-5" }] },
+      ],
+    };
+    await clusters().register("east", [], { models: haikuOnly });
+    await clusters().putAgentDefinition("reviewer", { settings: { ...reviewer.settings, model: "claude-sonnet-5-5" } });
+
+    expect(await clusters().presence()).toMatchObject({ reviewer: { modelAvailable: false } });
   });
 });
 
