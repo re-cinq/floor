@@ -151,6 +151,7 @@ const testRunStateSchema: z.ZodType<TestRunState> = z.strictObject({
   ending: z.strictObject({ outcome: z.enum(["finished", "iteration_max", "error", "failed", "cancelled"]), reason: z.string().optional() }).optional(),
   visits: z.array(presentObject<VisitState>()),
   actions: z.record(z.string(), z.array(presentObject<StandInAction>())),
+  bag: z.optional(z.array(z.strictObject({ name: z.string(), kind: z.enum(["value", "file", "git"]), ref: z.string(), by: z.string() }))),
 });
 
 export const testChangedFrame = z.strictObject({ type: z.literal("test.changed"), run: z.string(), state: testRunStateSchema });
