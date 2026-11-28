@@ -7,6 +7,7 @@ import type { TestReadResult } from "@/socket/studio-connection";
 import type { ReportVisit, SendEvent } from "./stand-in-report";
 import { useTestRun, type TestRunControls } from "./use-test-run";
 import VisitTable from "./VisitTable";
+import { isInProgress } from "./in-progress-counts";
 import { overlayOf, waitingOf } from "./run-overlay";
 import { graphOf } from "@/graph/graph-of";
 import { RunGraphView } from "@re-cinq/floor-graph";
@@ -37,7 +38,7 @@ function RunHeader({ state, cancel, openRunFolder }: { state: TestReadResult | u
   return (
     <>
       <p>{runStatus(state)}</p>
-      {(state?.status === "running" || state?.status === "waiting") && <button onClick={cancel}>Cancel</button>}
+      {isInProgress(state?.status) && <button onClick={cancel}>Cancel</button>}
       {state && <button onClick={openRunFolder}>Open run folder</button>}
     </>
   );
