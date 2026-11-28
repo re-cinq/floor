@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { answerFrame } from "./requests.js";
+import { answerFrame, type StudioContext } from "./requests.js";
 import { contextOver } from "./agent-run.fixtures.js";
 import { settleRunOnDisk, startedFolderOf, startReviewLoop, withRememberedSetup } from "./test-run-session.fixtures.js";
 
@@ -10,6 +10,17 @@ afterEach(() => vi.unstubAllEnvs());
 const listRequest = { id: "t4", type: "test.list" };
 
 const runOf = (started: unknown): string => (started as { result: { run: string } }).result.run;
+
+function freshWorkspaceBeside(workspace: string): string {
+  const otherWorkspace = join(dirname(workspace), "other-workspace");
+  mkdirSync(otherWorkspace);
+
+  return otherWorkspace;
+}
+
+function listAfterRestart(collectionDir: string, { runEnv }: StudioContext) {
+  return answerFrame(JSON.stringify(listRequest), contextOver(collectionDir, runEnv).context);
+}
 
 async function expectNothingListedAfterRestart(spoil: (placed: { folder: string; workspace: string }) => void): Promise<void> {
   await withRememberedSetup(async ({ context, collectionDir, workspace }) => {
@@ -37,13 +48,27 @@ describe("test.list", () => {
   it("answers the second run before the first when two runs start one after the other", async () => {
     await withRememberedSetup(async ({ context, workspace }) => {
       const first = await startReviewLoop(workspace, context);
-      const otherWorkspace = join(dirname(workspace), "other-workspace");
-      mkdirSync(otherWorkspace);
-      const second = await startReviewLoop(otherWorkspace, context);
+      const second = await startReviewLoop(freshWorkspaceBeside(workspace), context);
 
       const listings = await answerFrame(JSON.stringify({ id: "t3", type: "test.list" }), context);
 
       expect((listings as { result: { run: string }[] }).result.map((listing) => listing.run)).toEqual([runOf(second), runOf(first)]);
+    });
+  });
+
+  it("lists the runs of both workspaces review-loop was started in after a restart", async () => {
+    await withRememberedSetup(async ({ context, collectionDir, workspace }) => {
+      const first = startedFolderOf(await startReviewLoop(workspace, context));
+      const second = startedFolderOf(await startReviewLoop(freshWorkspaceBeside(workspace), context));
+
+      expect(await listAfterRestart(collectionDir, context)).toEqual({
+        id: "t4",
+        type: "result",
+        result: [
+          { run: second, line: "review-loop", folder: second, status: "stopped", startedAt: expect.any(String) },
+          { run: first, line: "review-loop", folder: first, status: "stopped", startedAt: expect.any(String) },
+        ],
+      });
     });
   });
 
@@ -64,9 +89,8 @@ describe("test.list", () => {
     await withRememberedSetup(async ({ context, collectionDir, workspace }) => {
       const folder = startedFolderOf(await startReviewLoop(workspace, context));
       settleRunOnDisk(folder);
-      const { context: restarted } = contextOver(collectionDir, context.runEnv);
 
-      expect(await answerFrame(JSON.stringify(listRequest), restarted)).toEqual({
+      expect(await listAfterRestart(collectionDir, context)).toEqual({
         id: "t4",
         type: "result",
         result: [{ run: folder, line: "review-loop", folder, status: "settled", startedAt: expect.any(String), ending: { outcome: "finished" } }],
