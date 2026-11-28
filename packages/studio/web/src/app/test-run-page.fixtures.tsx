@@ -35,6 +35,24 @@ export function cellsOf(row: HTMLElement): string[] {
     .map((cell) => cell.textContent);
 }
 
+export interface BagRow {
+  name: string;
+  kind: string;
+  value: string;
+  by: string;
+}
+
+export function bagRowsOf(table: HTMLElement): BagRow[] {
+  return within(table)
+    .getAllByRole("row")
+    .filter((row) => within(row).queryAllByRole("cell").length > 0)
+    .map((row) => {
+      const [name, kind, value, by] = cellsOf(row);
+
+      return { name, kind, value, by };
+    });
+}
+
 export function marksOfCard(nodeId: string): Record<string, string | null | undefined> {
   const card = document.querySelector(`[data-node="${nodeId}"]`);
 

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { WRITES_DRAFT } from "../../../src/backend/test-run-session.fixtures";
 import { closeStudios } from "./app-page.fixtures";
-import { cellsOf, findWaitingReview, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
+import { bagRowsOf, findWaitingReview, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
 
 afterEach(closeStudios);
 
@@ -14,14 +14,7 @@ describe("App test locally, run screen's Bag", () => {
       await findWaitingReview();
       const table = await screen.findByRole("table", { name: "Bag" });
 
-      const bag = within(table)
-        .getAllByRole("row")
-        .filter((row) => within(row).queryAllByRole("cell").length > 0)
-        .map((row) => {
-          const [name, kind, value, by] = cellsOf(row);
-
-          return { name, kind, value, by };
-        });
+      const bag = bagRowsOf(table);
 
       expect(bag).toEqual([
         { name: "topic", kind: "value", value: "tides", by: "start" },
