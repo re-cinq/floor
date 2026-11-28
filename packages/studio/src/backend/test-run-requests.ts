@@ -8,6 +8,7 @@ import type { Request } from "../protocol.js";
 import type { Handler, StudioContext } from "./requests.js";
 import type { TestRunState } from "../test-run/test-run-state.js";
 import { testPreviewOf } from "../test-run/test-preview.js";
+import { pastTestRuns } from "./past-test-runs.js";
 import { readPastRun } from "./past-test-run-state.js";
 import { rememberLastTest } from "./last-tests.js";
 import { enforceAbsolute, isFolder } from "./test-run-folder.js";
@@ -98,7 +99,7 @@ function sessionOf(context: StudioContext, run: string): TestRunSession {
 export const folderOpenHandler: Handler<FolderOpenRequest> = {
   type: "folder.open",
   handle: async (context, { path }) => {
-    const runFolder = runFolderOf(context, path);
+    const runFolder = await runFolderOf(context, path);
 
     enforce(runFolder, `${path} is not inside a test run's folder`);
     await enforceRealFolderInside(runFolder, path);
@@ -108,8 +109,11 @@ export const folderOpenHandler: Handler<FolderOpenRequest> = {
   },
 };
 
-function runFolderOf({ testRuns }: StudioContext, path: string): string | undefined {
-  return [...testRuns.values()].map((session) => session.state().folder).find((folder) => isInside(folder, path));
+async function runFolderOf({ testRuns, collectionDir }: StudioContext, path: string): Promise<string | undefined> {
+  const liveFolders = [...testRuns.values()].map((session) => session.state().folder);
+  const pastFolders = (await pastTestRuns(collectionDir)).map(({ folder }) => folder);
+
+  return [...liveFolders, ...pastFolders].find((folder) => isInside(folder, path));
 }
 
 async function enforceRealFolderInside(runFolder: string, path: string): Promise<void> {

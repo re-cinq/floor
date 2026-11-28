@@ -53,6 +53,17 @@ describe("test.read of a past run", () => {
     });
   });
 
+  it("opens review-loop's past run folder after a restart", async () => {
+    await withRememberedSetup(async ({ context, collectionDir, workspace }) => {
+      const folder = startedFolderOf(await startReviewLoop(workspace, context));
+      const restarted = contextOver(collectionDir, context.runEnv);
+
+      const answer = await answerFrame(JSON.stringify({ id: "r1", type: "folder.open", path: folder }), restarted.context);
+
+      expect({ answer, opened: restarted.opened }).toEqual({ answer: { id: "r1", type: "result", result: { opened: folder } }, opened: [folder] });
+    });
+  });
+
   it.each([
     { label: "a review-loop run folder the studio does not remember", runOf: ({ foreignFolder }: RunPaths) => foreignFolder },
     { label: "a path climbing out of the remembered workspace", runOf: ({ workspace }: RunPaths) => join(workspace, "..", "..", "etc") },

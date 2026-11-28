@@ -11,6 +11,12 @@ describe("outcomeWording", () => {
   });
 });
 
+describe("outcomeWording in a stopped run", () => {
+  it("words write's unreported agent visit stopped when the run is stopped", () => {
+    expect(outcomeWording({ report: null, kind: "agent" }, "stopped")).toEqual("stopped");
+  });
+});
+
 describe("costWording", () => {
   it("returns not stated when no cost", () => {
     expect(costWording(undefined)).toBe("not stated");

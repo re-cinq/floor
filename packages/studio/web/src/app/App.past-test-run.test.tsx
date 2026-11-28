@@ -34,19 +34,19 @@ async function reopenStoppedRun(whenOpen: () => Promise<void>): Promise<void> {
 }
 
 describe("App test run opened after a studio restart", () => {
-  it("shows review-loop as stopped with no Cancel and no Waiting for you", async () => {
+  it("shows review-loop and its unreported visit as stopped with no Cancel and no Waiting for you", async () => {
     await reopenStoppedRun(async () => {
       expect({
-        status: (await screen.findByText("stopped")).textContent,
+        stopped: (await screen.findAllByText("stopped")).map((element) => element.tagName),
         cancel: screen.queryByRole("button", { name: "Cancel" }),
         waiting: screen.queryByRole("heading", { name: "Waiting for you" }),
-      }).toEqual({ status: "stopped", cancel: null, waiting: null });
+      }).toEqual({ stopped: ["P", "TD"], cancel: null, waiting: null });
     });
   }, 20_000);
 
   it("shows no Bag table for a past review-loop run read back from disk", async () => {
     await reopenStoppedRun(async () => {
-      await screen.findByText("stopped");
+      await screen.findAllByText("stopped");
 
       expect(screen.queryByRole("table", { name: "Bag" })).toBeNull();
     });
