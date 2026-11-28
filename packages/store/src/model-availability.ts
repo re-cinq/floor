@@ -1,24 +1,6 @@
 // Pure: whether a model is offered by the clusters, from what each cluster's model catalog last reported.
 
-export type ModelVendor = "claude" | "codex" | "gemini";
-
-export interface CatalogModel {
-  id: string;
-  displayName: string;
-}
-
-export interface CatalogVendor {
-  vendor: ModelVendor;
-  provider: string;
-  secretRefs: string[];
-  error: string;
-  models: CatalogModel[];
-}
-
-export interface ModelCatalogStatus {
-  refreshedAt: string;
-  vendors: CatalogVendor[];
-}
+import type { CatalogVendor, ModelCatalogStatus } from "@re-cinq/floor-contracts";
 
 type Availability = true | false | "unverified";
 
@@ -34,7 +16,7 @@ export function modelAvailability(model: string, catalogs: (ModelCatalogStatus |
   return "unverified";
 }
 
-function availabilityInCatalog(model: string, vendor: ModelVendor, catalog: ModelCatalogStatus | null): Availability {
+function availabilityInCatalog(model: string, vendor: string, catalog: ModelCatalogStatus | null): Availability {
   const entries = decidingEntries((catalog?.vendors ?? []).filter((entry) => entry.vendor === vendor));
   if (entries.length === 0) return "unverified";
   if (entries.some((entry) => entry.models.some((listed) => listed.id === model))) return true;
@@ -50,7 +32,7 @@ function decidingEntries(entries: CatalogVendor[]): CatalogVendor[] {
   return onFoundry.length > 0 ? onFoundry : entries;
 }
 
-function vendorOf(model: string): ModelVendor | null {
+function vendorOf(model: string): string | null {
   if (model.includes("gemini")) return "gemini";
   if (model.includes("codex") || OPENAI_PREFIXES.some((prefix) => model.startsWith(prefix))) return "codex";
   if (model.startsWith("claude")) return "claude";

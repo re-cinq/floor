@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { modelAvailability, type ModelCatalogStatus, type ModelVendor } from "./model-availability.js";
+import type { ModelCatalogStatus } from "@re-cinq/floor-contracts";
+import { modelAvailability } from "./model-availability.js";
 
-function catalogOf(vendor: ModelVendor, ids: string[], error = ""): ModelCatalogStatus {
+function catalogOf(vendor: string, ids: string[], error = ""): ModelCatalogStatus {
   return {
     refreshedAt: "2026-11-28T10:00:00Z",
     vendors: [
@@ -44,7 +45,7 @@ describe("modelAvailability", () => {
     expect(modelAvailability("claude-sonnet-5-5", [catalogOf("claude", [], "auth failed")])).toEqual("unverified");
   });
 
-  it.each<[string, ModelVendor]>([
+  it.each<[string, string]>([
     ["gemini-3-pro", "gemini"],
     ["gpt-5", "codex"],
     ["o1-preview", "codex"],

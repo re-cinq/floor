@@ -3,7 +3,7 @@ import { definitionHash } from "@re-cinq/floor-assembly-lines";
 import { AGENT_DEFINITION_CHANGED, ClusterStore } from "./clusters.js";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
-import type { ModelCatalogStatus } from "./model-availability.js";
+import type { ModelCatalogStatus } from "@re-cinq/floor-contracts";
 import { setupTestPool } from "./pg-test-pool.js";
 
 const pool = setupTestPool();

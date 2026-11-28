@@ -2,11 +2,12 @@
 
 import type { Pool, PoolClient } from "pg";
 import { definitionHash } from "@re-cinq/floor-assembly-lines";
-import type { SubsystemVersions } from "@re-cinq/floor-contracts";
+import type { ModelCatalogStatus, SubsystemVersions } from "@re-cinq/floor-contracts";
 import { CLUSTER_LIVE_MINUTES, presenceState, type AgentPresence } from "./agent-presence.js";
 import { DefinitionsStore, type PutResult } from "./definitions.js";
 import { EventStore } from "./events.js";
-import type { ModelCatalogStatus } from "./model-availability.js";
+import { modelAvailability } from "./model-availability.js";
+import type { OpenContext } from "./open-visit.js";
 import { withTransaction } from "./rows.js";
 
 const MS_PER_MINUTE = 60_000;
@@ -172,4 +173,22 @@ export class ClusterStore {
       await events.enqueue({ name: AGENT_DEFINITION_CHANGED, payload: { id: row.id, hash: row.hash }, tags: [clusterTag(clusterId)] });
     }
   }
+}
+
+/** The refusal for an agent naming a model no live cluster's catalog lists, or null when some cluster can run it or none can say. */
+export async function unrunnableModelError(client: PoolClient, context: OpenContext, now: Date): Promise<string | null> {
+  const model = context.agentSettings?.model;
+
+  if (!model) return null;
+  const liveSince = new Date(now.getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE);
+  const { rows } = await client.query<{ models: ModelCatalogStatus | null }>(`select models from clusters where last_seen_at >= $1 and tags @> $2::text[]`, [liveSince, context.dispatchTags]);
+
+  return unrunnableModelMessage(context.agentId, model, rows.map((row) => row.models));
+}
+
+function unrunnableModelMessage(agentId: string | null, model: string, catalogs: (ModelCatalogStatus | null)[]): string | null {
+  if (modelAvailability(model, catalogs) !== false) return null;
+  const refreshedAt = catalogs.map((catalog) => catalog?.refreshedAt ?? "").sort().at(-1);
+
+  return `agent ${agentId} names model ${model}, which no cluster can run (catalog refreshed ${refreshedAt})`;
 }

@@ -63,10 +63,10 @@ export interface StoreFixture {
   store: () => AssemblyRunStore;
   definitions: () => DefinitionsStore;
   events: () => EventStore;
-  seedReviewLine: (line?: LineBody) => Promise<void>;
+  seedReviewLine: (line?: LineBody, agent?: AgentDefinitionBody) => Promise<void>;
   /** A one-node line, "digest", whose entry is its exit: a run of it needs no station. */
   seedDigestLine: (args?: LineBody["args"]) => Promise<void>;
-  openEntryVisit: (line?: LineBody) => Promise<{ runId: string; visitId: string }>;
+  openEntryVisit: (line?: LineBody, agent?: AgentDefinitionBody) => Promise<{ runId: string; visitId: string }>;
   reviewSucceedsIntoRetrospective: () => Promise<RetrospectiveOpened>;
 }
 
@@ -76,10 +76,10 @@ export function setupStoreFixture(): StoreFixture {
   const definitions = (): DefinitionsStore => new DefinitionsStore({ connection: pool() });
   const events = (): EventStore => new EventStore({ connection: pool(), now: () => FIXED_NOW });
 
-  const seedReviewLine = async (line: LineBody = REVIEW_LINE): Promise<void> => {
+  const seedReviewLine = async (line: LineBody = REVIEW_LINE, agent: AgentDefinitionBody = REVIEWER_AGENT_DEFINITION): Promise<void> => {
     await definitions().put("line", "code-review", line);
     await definitions().put("station", "review", REVIEW_STATION);
-    await definitions().put("agent_definition", "reviewer", REVIEWER_AGENT_DEFINITION);
+    await definitions().put("agent_definition", "reviewer", agent);
   };
 
   const seedDigestLine = async (args: LineBody["args"] = {}): Promise<void> => {
@@ -112,8 +112,8 @@ function buildScenarios(
   events: () => EventStore,
   seedReviewLine: StoreFixture["seedReviewLine"],
 ): Pick<StoreFixture, "openEntryVisit" | "reviewSucceedsIntoRetrospective"> {
-  const openEntryVisit = async (line: LineBody = REVIEW_LINE): Promise<{ runId: string; visitId: string }> => {
-    await seedReviewLine(line);
+  const openEntryVisit = async (line: LineBody = REVIEW_LINE, agent?: AgentDefinitionBody): Promise<{ runId: string; visitId: string }> => {
+    await seedReviewLine(line, agent);
     const { run } = await store().start({ lineId: "code-review", repo: "github.com/re-cinq/lore", startItems: startItems() });
     const { visit } = await store().openVisit(run.id, "review", 1);
 

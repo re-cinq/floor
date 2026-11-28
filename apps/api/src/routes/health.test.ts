@@ -58,6 +58,6 @@ describe("GET /version", () => {
     await server().inject({ method: "PUT", url: "/clusters/east", headers: authHeaders(), payload: { tags: ["kind:agent"], build: "abc123", subsystem } });
     const response = await injectJson<{ clusters: unknown[] }>(server(), { method: "GET", url: "/version" });
 
-    expect(response.result.clusters).toEqual([{ id: "east", build: "abc123", subsystem, lastSeenAt: expect.any(Date) }]);
+    expect(response.result.clusters).toEqual([{ id: "east", build: "abc123", subsystem, models: null, lastSeenAt: expect.any(Date) }]);
   });
 });

@@ -42,6 +42,7 @@ export interface OpenContext {
   requestedBy: string | null;
   stationHash: string | null;
   agentDefinitionHash: string | null;
+  agentId: string | null;
   brief: Brief;
   agentSettings: AgentSettings | null;
   resumedFrom: string | null;
@@ -120,6 +121,7 @@ export class OpenVisitResolver {
       requestedBy: request.requestedBy ?? null,
       stationHash: station.hash,
       agentDefinitionHash: fields.hash,
+      agentId: station.body.agentDefinition ?? null,
       brief: { needs: resolvedNeeds, iteration },
       agentSettings: fields.body,
       resumedFrom,
@@ -278,6 +280,7 @@ function markerContext(request: OpenRequest): OpenContext {
     requestedBy: request.requestedBy ?? null,
     stationHash: null,
     agentDefinitionHash: null,
+    agentId: null,
     brief: { needs: {}, iteration: request.iteration },
     agentSettings: null,
     resumedFrom: null,
