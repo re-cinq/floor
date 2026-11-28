@@ -7,7 +7,9 @@ import Inspector, { type InspectorActions } from "./Inspector";
 import LineHeader from "./LineHeader";
 import LineInspector from "./LineInspector";
 import ProblemsList from "./ProblemsList";
+import TestRunsList from "./TestRunsList";
 import { useCoveredBelow } from "./use-covered-below";
+import type { TestRunListings } from "@/socket/studio-connection";
 import styles from "./line.module.css";
 
 export interface LineScreenProps {
@@ -17,12 +19,14 @@ export interface LineScreenProps {
   takenEdge?: { from: string; to: string; on: string };
   onSelectNode: (nodeId: string | undefined) => void;
   onTestLocally: () => void;
+  testRuns?: TestRunListings;
+  onOpenTestRun?: (run: string) => void;
   onSelectLine?: (key: string) => void;
   selectedLineKey?: string;
   selectedLine?: LineEdge;
 }
 
-export default function LineScreen({ line, node, inspector, takenEdge, onSelectNode, onTestLocally, onSelectLine, selectedLineKey, selectedLine }: LineScreenProps) {
+export default function LineScreen({ line, node, inspector, takenEdge, onSelectNode, onTestLocally, testRuns = [], onOpenTestRun, onSelectLine, selectedLineKey, selectedLine }: LineScreenProps) {
   const definition = useMemo(() => graphOf(line), [line]);
   const mainPathEdges = useMemo(() => mainPathOf(definition).edges, [definition]);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -44,6 +48,7 @@ export default function LineScreen({ line, node, inspector, takenEdge, onSelectN
         <button type="button" className={styles.testLocally} onClick={onTestLocally}>
           Test locally
         </button>
+        <TestRunsList runs={testRuns} onOpen={onOpenTestRun} />
         <div ref={graphRef} className={styles.graph}>
           <RunGraphView definition={definition} selectedNodeId={node?.id} coveredBelow={coveredBelow} takenEdge={takenEdge} onSelectNode={onSelectNode} onSelectLine={onSelectLine} selectedLineKey={selectedLineKey} />
         </div>

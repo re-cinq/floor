@@ -111,6 +111,11 @@
   color: var(--danger);
 }
 
+.testRunCount {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+}
+
 .refused {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius);

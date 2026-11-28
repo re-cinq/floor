@@ -19,6 +19,7 @@ export interface OpenedPage {
 }
 
 interface PageOptions {
+  dir?: string;
   token?: string;
   hash?: string;
   runEnv?: Record<string, string>;
@@ -27,14 +28,18 @@ interface PageOptions {
 }
 
 export async function openPage(files: CollectionFile[], options: PageOptions = {}): Promise<OpenedPage> {
-  const dir = collectionOnDisk(files);
+  const dir = options.dir ?? collectionOnDisk(files);
   const studio = await startStudio({ dir, port: 0, hostKeys: [], origins: [], runEnv: options.runEnv, openFolder: options.openFolder });
 
   running.push(studio);
-  window.location.hash = `#${new URLSearchParams({ socket: options.socketOf?.(studio) ?? studio.url, token: options.token ?? studio.token }).toString()}${options.hash ?? ""}`;
+  window.location.hash = hashOf(studio, options);
   render(<App />);
 
   return { dir, studio };
+}
+
+function hashOf(studio: Studio, options: PageOptions): string {
+  return `#${new URLSearchParams({ socket: options.socketOf?.(studio) ?? studio.url, token: options.token ?? studio.token }).toString()}${options.hash ?? ""}`;
 }
 
 export function reloadPage(): void {

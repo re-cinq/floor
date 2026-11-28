@@ -5,10 +5,19 @@ import type { VisitState } from "./test-visit.js";
 export interface TestRunState {
   folder: string;
   lineId: string;
-  status: "running" | "waiting" | "settled";
+  status: "running" | "waiting" | "settled" | "stopped";
   ending?: TestRunEnding;
   visits: VisitState[];
   actions: Record<string, StandInAction[]>;
+}
+
+export interface TestRunListing {
+  run: string;
+  line: string;
+  folder: string;
+  status: TestRunState["status"];
+  startedAt: string;
+  ending?: TestRunEnding;
 }
 
 export interface TestRunEnding {

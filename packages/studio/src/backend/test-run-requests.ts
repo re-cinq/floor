@@ -6,7 +6,11 @@ import { enforce } from "@re-cinq/floor-assembly-lines";
 import type { FolderListing } from "../folder-listing.js";
 import type { Request } from "../protocol.js";
 import type { Handler, StudioContext } from "./requests.js";
+import type { TestRunState } from "../test-run/test-run-state.js";
 import { testPreviewOf } from "../test-run/test-preview.js";
+import { pastTestRuns } from "./past-test-runs.js";
+import { readPastRun } from "./past-test-run-state.js";
+import { rememberLastTest } from "./last-tests.js";
 import { enforceAbsolute, isFolder } from "./test-run-folder.js";
 import { readTestLine } from "./read-test-line.js";
 import { snapshotPathsIn } from "./test-run-snapshot.js";
@@ -28,6 +32,8 @@ export const testStartHandler: Handler<TestStartRequest> = {
     const session = await startTestRun(context, { collectionDir: context.collectionDir, lineId: line, workspace, entered, permission });
 
     context.testRuns.set(session.id, session);
+    // Remembering is a convenience, the run has started.
+    await rememberLastTest(context.collectionDir, line, { workspace, entered }).catch(() => undefined);
 
     return { run: session.id, folder: session.state().folder };
   },
@@ -62,13 +68,25 @@ export const testPreviewHandler: Handler<TestPreviewRequest> = {
 
 export const testReadHandler: Handler<TestReadRequest> = {
   type: "test.read",
-  handle: async (context, { run }) => sessionOf(context, run).state(),
+  handle: async (context, { run }) => {
+    const session = context.testRuns.get(run);
+
+    return session ? session.state() : await pastRunOf(context, run);
+  },
 };
 
 export const testEventHandler: Handler<TestEventRequest> = {
   type: "test.event",
   handle: async (context, { run, event, payload }) => sessionOf(context, run).event({ name: event, payload }),
 };
+
+async function pastRunOf(context: StudioContext, run: string): Promise<TestRunState> {
+  const past = await readPastRun(context.collectionDir, run);
+
+  enforce(past, `there is no test run ${run}`);
+
+  return past;
+}
 
 function sessionOf(context: StudioContext, run: string): TestRunSession {
   const session = context.testRuns.get(run);
@@ -81,7 +99,7 @@ function sessionOf(context: StudioContext, run: string): TestRunSession {
 export const folderOpenHandler: Handler<FolderOpenRequest> = {
   type: "folder.open",
   handle: async (context, { path }) => {
-    const runFolder = runFolderOf(context, path);
+    const runFolder = await runFolderOf(context, path);
 
     enforce(runFolder, `${path} is not inside a test run's folder`);
     await enforceRealFolderInside(runFolder, path);
@@ -91,8 +109,11 @@ export const folderOpenHandler: Handler<FolderOpenRequest> = {
   },
 };
 
-function runFolderOf({ testRuns }: StudioContext, path: string): string | undefined {
-  return [...testRuns.values()].map((session) => session.state().folder).find((folder) => isInside(folder, path));
+async function runFolderOf({ testRuns, collectionDir }: StudioContext, path: string): Promise<string | undefined> {
+  const liveFolders = [...testRuns.values()].map((session) => session.state().folder);
+  const pastFolders = (await pastTestRuns(collectionDir)).map(({ folder }) => folder);
+
+  return [...liveFolders, ...pastFolders].find((folder) => isInside(folder, path));
 }
 
 async function enforceRealFolderInside(runFolder: string, path: string): Promise<void> {
