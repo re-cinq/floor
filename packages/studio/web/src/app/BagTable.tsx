@@ -1,4 +1,6 @@
 import LabelledTextField from "./LabelledTextField";
+import PathField from "./PathField";
+import type { ListFolder, PathMode } from "./PathPicker";
 import { filledFrom } from "./bag-at-start";
 import styles from "./screens.module.css";
 import type { LineView } from "@protocol";
@@ -10,6 +12,7 @@ interface Props {
   entered: TestPreviewFields["entered"];
   missing: string[];
   onEnter: (entered: TestPreviewFields["entered"]) => void;
+  listFolder: ListFolder | undefined;
 }
 
 const HEADER = (
@@ -23,7 +26,7 @@ const HEADER = (
   </thead>
 );
 
-export default function BagTable({ line, asked, entered, missing, onEnter }: Props) {
+export default function BagTable({ line, asked, entered, missing, onEnter, listFolder }: Props) {
   const { args, start } = line;
 
   return (
@@ -42,7 +45,7 @@ export default function BagTable({ line, asked, entered, missing, onEnter }: Pro
               ))}
             </td>
             <td>
-              <ValueField name={name} entered={entered} missing={missing} onEnter={onEnter} />
+              <ValueField name={name} kind={kind} entered={entered} missing={missing} onEnter={onEnter} listFolder={listFolder} />
             </td>
           </tr>
         ))}
@@ -51,6 +54,11 @@ export default function BagTable({ line, asked, entered, missing, onEnter }: Pro
   );
 }
 
-function ValueField({ name, entered, missing, onEnter }: Omit<Props, "line" | "asked"> & { name: string }) {
-  return <LabelledTextField labelClass={styles.visuallyHidden} label={name} value={entered[name] ?? ""} onChange={(value) => onEnter({ ...entered, [name]: value })} error={missing.includes(name) ? `${name} is missing` : undefined} />;
+const PATH_MODES: Partial<Record<string, PathMode>> = { git: "folder", file: "file" };
+
+function ValueField({ name, kind, entered, missing, onEnter, listFolder }: Omit<Props, "line" | "asked"> & { name: string; kind: string }) {
+  const common = { labelClass: styles.visuallyHidden, label: name, value: entered[name] ?? "", onChange: (value: string) => onEnter({ ...entered, [name]: value }), error: missing.includes(name) ? `${name} is missing` : undefined };
+  const mode = PATH_MODES[kind];
+
+  return mode ? <PathField {...common} mode={mode} browseLabel={`Browse for ${name}`} listFolder={listFolder} /> : <LabelledTextField {...common} />;
 }

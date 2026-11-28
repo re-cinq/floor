@@ -22,7 +22,7 @@ export default function TestStartScreen({ line, controls, onStarted }: Props) {
   return (
     <div className={`${styles.screen} ${styles.testStart}`}>
       <h1>Test {line.id} locally</h1>
-      {preview && <BagTable line={line} asked={preview.asked} entered={entered} missing={missing} onEnter={setEntered} />}
+      {preview && <BagTable line={line} asked={preview.asked} entered={entered} missing={missing} onEnter={setEntered} listFolder={controls?.listFolder} />}
       <WorkspaceField controls={controls} workspace={workspace} onChange={setWorkspace} error={workspace ? undefined : "Choose a workspace folder"} />
       {refusal && <p role="alert">{refusal}</p>}
       <button type="button" onClick={start} disabled={missing.length > 0 || !workspace}>Start</button>
