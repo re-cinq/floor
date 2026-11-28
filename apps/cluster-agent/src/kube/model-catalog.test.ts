@@ -29,4 +29,16 @@ describe("readModelCatalog", () => {
       asked: [{ group: "agents.re-cinq.com", version: "v1beta1", namespace: "ai-agents", plural: "modelcatalogs", name: "default" }],
     });
   });
+
+  it.each([404, 403])("answers null for ModelCatalog default when the kube API answers %s", async (code) => {
+    const reader: CatalogReader = { getNamespacedCustomObject: () => Promise.reject(Object.assign(new Error("denied"), { code })) };
+
+    expect(await readModelCatalog(reader, "ai-agents")).toBeNull();
+  });
+
+  it("answers null for a ModelCatalog default that has no status yet", async () => {
+    const reader: CatalogReader = { getNamespacedCustomObject: () => Promise.resolve({ spec: {} }) };
+
+    expect(await readModelCatalog(reader, "ai-agents")).toBeNull();
+  });
 });

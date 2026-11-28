@@ -90,4 +90,10 @@ describe("modelAvailability", () => {
 
     expect(modelAvailability("claude-sonnet-5-5", [foundryCluster])).toEqual(false);
   });
+
+  it("answers unverified for claude-sonnet-5-5 when a working claude entry lacks it beside a failed one, which may be the key that lists it", () => {
+    const catalog: ModelCatalogStatus = { refreshedAt: "2026-11-28T10:00:00Z", vendors: [...catalogOf("claude", ["claude-haiku-4-5"]).vendors, ...catalogOf("claude", [], "team-b: HTTP 503").vendors] };
+
+    expect(modelAvailability("claude-sonnet-5-5", [catalog])).toEqual("unverified");
+  });
 });
