@@ -83,6 +83,20 @@ describe("startTestRun", () => {
   );
 });
 
+describe("two starts in the same second", () => {
+  it("starts two review-loop runs at 2026-11-27T14:12:30Z in review-loop-20261127-141230 and review-loop-20261127-141230-2", async () => {
+    await withTestRunSetup(WRITES_DRAFT, async (setup) => {
+      const first = await startReviewLoopOnTides(setup);
+      const second = await startReviewLoopOnTides(setup);
+
+      await Promise.all([first.idle(), second.idle()]);
+      await Promise.all([first.cancel(), second.cancel()]);
+
+      expect([first.state().folder, second.state().folder]).toEqual([join(setup.workspace, RUN_FOLDER), join(setup.workspace, `${RUN_FOLDER}-2`)]);
+    });
+  }, 10_000);
+});
+
 describe("cancel", () => {
   it("settles review-loop as cancelled at once when cancelled while 002-review-1 waits, and refuses its later answer", async () => {
     await withTestRunSetup(WRITES_DRAFT, async (setup) => {

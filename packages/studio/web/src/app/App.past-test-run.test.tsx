@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { fakeClaudeScratch } from "../../../src/backend/studio.fixtures";
 import { WRITES_DRAFT } from "../../../src/backend/test-run-session.fixtures";
 import { closeStudios, openPage } from "./app-page.fixtures";
-import { findWaitingReview, openStartScreen, startReviewLoop } from "./test-run-page.fixtures";
+import { bagRowsOf, findWaitingReview, openStartScreen, startReviewLoop } from "./test-run-page.fixtures";
 import { REVIEW_LOOP_COLLECTION } from "../../../src/backend/test-run.fixtures";
 
 afterEach(closeStudios);
@@ -44,11 +44,14 @@ describe("App test run opened after a studio restart", () => {
     });
   }, 20_000);
 
-  it("shows no Bag table for a past review-loop run read back from disk", async () => {
+  it("shows the Bag table of a past review-loop run with topic tides by start and draft by 001-write-1", async () => {
     await reopenStoppedRun(async () => {
-      await screen.findAllByText("stopped");
+      const table = await screen.findByRole("table", { name: "Bag" });
 
-      expect(screen.queryByRole("table", { name: "Bag" })).toBeNull();
+      expect(bagRowsOf(table)).toEqual([
+        { name: "topic", kind: "value", value: "tides", by: "start" },
+        { name: "draft", kind: "file", value: expect.stringMatching(/visits\/001-write-1\/outputs\/draft\.md$/), by: "001-write-1" },
+      ]);
     });
   }, 20_000);
 });

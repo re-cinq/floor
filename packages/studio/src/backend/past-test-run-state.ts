@@ -1,4 +1,4 @@
-// Reads a past test run's state back from its folder: run.json, timeline.jsonl and visits/*/visit.json.
+// Reads a past test run's state back from its folder: run.json, timeline.jsonl, visits/*/visit.json and the definitions/ snapshot.
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pastStateOf } from "../test-run/past-state.js";
@@ -7,6 +7,8 @@ import type { TestRunState } from "../test-run/test-run-state.js";
 import type { TimelineEntry } from "../test-run/timeline.js";
 import type { VisitRecord } from "../test-run/visit-record.js";
 import { pastTestRuns } from "./past-test-runs.js";
+import { readTestLine } from "./read-test-line.js";
+import { SNAPSHOT_FOLDER } from "./test-run-snapshot.js";
 import { RUN_FILE, TIMELINE_FILE } from "./test-run-timeline.js";
 import { visitFolderOf } from "./test-run-visit-files.js";
 
@@ -20,7 +22,11 @@ async function stateIn(folder: string): Promise<TestRunState> {
   const summary = JSON.parse(await readFile(join(folder, RUN_FILE), "utf8")) as RunSummary;
   const timeline = (await readFile(join(folder, TIMELINE_FILE), "utf8")).split("\n").filter(Boolean).map((line) => JSON.parse(line) as TimelineEntry);
   const ids = await readdir(join(folder, "visits")).catch(() => []);
-  const records = await Promise.all(ids.map(async (id) => JSON.parse(await readFile(join(visitFolderOf(folder, id), "visit.json"), "utf8").catch(() => "null")) as VisitRecord | null));
+  const [read, line] = await Promise.all([
+    Promise.all(ids.map(async (id) => JSON.parse(await readFile(join(visitFolderOf(folder, id), "visit.json"), "utf8").catch(() => "null")) as VisitRecord | null)),
+    readTestLine(join(folder, SNAPSHOT_FOLDER), summary.line).catch(() => undefined),
+  ]);
+  const records = Object.fromEntries(read.filter((record) => record !== null).map((record) => [record.id, record]));
 
-  return pastStateOf(folder, summary, timeline, Object.fromEntries(records.filter((record) => record !== null).map((record) => [record.id, record])));
+  return pastStateOf(folder, summary, timeline, { records, line });
 }

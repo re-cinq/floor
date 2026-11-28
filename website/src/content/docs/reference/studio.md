@@ -18,7 +18,7 @@ From the collection folder, run:
 npx @re-cinq/floor-studio .
 ```
 
-The dot means the current directory. From another directory, replace it with the path to your collection folder. Choose the folder containing your assembly lines.
+The dot means the current directory. From another directory, replace it with the path to your collection folder.
 
 Studio opens your collection in the browser. If the browser stays closed, open the full URL printed in the terminal. Keep the command running while you use Studio, then press Ctrl+C to stop it.
 
@@ -41,6 +41,6 @@ Runs and typed needs are kept in `.floor-studio/` in the collection, which ignor
 
 ## Testing a whole line
 
-Test locally runs the line as saved on disk. The start screen shows the bag at start, with your last values, and a workspace folder. Browse opens the typed folder, else home; type to filter, Tab completes. Start copies the definitions into `<workspace>/<line>-<UTC time>/` and runs agents with your `claude`; the floor's routing picks each step.
+Test locally runs the line as saved on disk. The start screen shows the bag at start, with your last values, and a workspace folder. Browse opens the typed folder, else home; type to filter, Tab completes. Start copies the definitions into `<workspace>/<line>-<UTC time>/` (`-2` and on when taken) and runs agents with your `claude`; the floor's routing picks each step.
 
-A station Studio cannot run waits under Waiting for you: a button per outcome, a form when the next node reads what the station produces (a file pasted or picked), and a button per answering event. The run screen lists each visit with its outcome and cost, shows the growing bag, and opens the run or visit folder. Cancel stops the run. The line lists its test runs, past ones too; the sidebar counts running ones.
+A station Studio cannot run waits under Waiting for you: a button per outcome, a form when the next node reads what the station produces (a file pasted or picked), and a button per answering event. The run screen lists each visit with its outcome and cost, shows the growing bag, and opens the run or visit folder. Cancel stops the run. The line lists its test runs, past ones too, with their bag; the sidebar counts running ones.

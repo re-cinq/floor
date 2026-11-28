@@ -7,14 +7,20 @@ export async function createRunFolder(workspace: string, name: string): Promise<
   enforceAbsolute(workspace, "the workspace folder");
   enforce(await isFolder(workspace), `the workspace folder ${workspace} is not a folder on disk`);
 
-  const runFolder = join(workspace, name);
+  return makeFirstFreeFolder(join(workspace, name), 1);
+}
 
-  await mkdir(runFolder).catch((error: NodeJS.ErrnoException) => {
-    enforce(error.code !== "EEXIST", `${runFolder} already exists, and a test run never reuses a folder`);
-    throw error;
-  });
+function makeFirstFreeFolder(wanted: string, attempt: number): Promise<string> {
+  const candidate = attempt === 1 ? wanted : `${wanted}-${attempt}`;
 
-  return runFolder;
+  return mkdir(candidate).then(
+    () => candidate,
+    (error: NodeJS.ErrnoException) => {
+      if (error.code !== "EEXIST") throw error;
+
+      return makeFirstFreeFolder(wanted, attempt + 1);
+    },
+  );
 }
 
 /** The text of a JSON file in a run folder: indented, one trailing newline. */
