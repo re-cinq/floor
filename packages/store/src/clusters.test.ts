@@ -3,6 +3,7 @@ import { definitionHash } from "@re-cinq/floor-assembly-lines";
 import { AGENT_DEFINITION_CHANGED, ClusterStore } from "./clusters.js";
 import { DefinitionsStore } from "./definitions.js";
 import { EventStore } from "./events.js";
+import type { ModelCatalogStatus } from "./model-availability.js";
 import { setupTestPool } from "./pg-test-pool.js";
 
 const pool = setupTestPool();
@@ -97,13 +98,13 @@ describe("ClusterStore.liveVersions", () => {
   it("lists east with build abc123 and subsystem 0.19.0 after it registers them", async () => {
     await clusters().register("east", [], { build: "abc123", subsystem: SUBSYSTEM });
 
-    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: "abc123", subsystem: SUBSYSTEM, lastSeenAt: NOW }]);
+    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: "abc123", subsystem: SUBSYSTEM, models: null, lastSeenAt: NOW }]);
   });
 
   it("lists null build and subsystem for a cluster agent that sent neither", async () => {
     await clusters().register("east", []);
 
-    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: null, subsystem: null, lastSeenAt: NOW }]);
+    expect(await clusters().liveVersions()).toEqual([{ id: "east", build: null, subsystem: null, models: null, lastSeenAt: NOW }]);
   });
 
   it("leaves out a cluster last seen six minutes ago", async () => {
@@ -111,6 +112,24 @@ describe("ClusterStore.liveVersions", () => {
     await clusters().register("east", []);
 
     expect((await clusters().liveVersions()).map((cluster) => cluster.id)).toEqual(["east"]);
+  });
+
+  it("lists east's model catalog refreshed 2026-11-28T09:00:00Z after it registers one", async () => {
+    const models: ModelCatalogStatus = {
+      refreshedAt: "2026-11-28T09:00:00Z",
+      vendors: [
+        {
+          vendor: "claude",
+          provider: "anthropic",
+          secretRefs: ["anthropic-key"],
+          error: "",
+          models: [{ id: "claude-haiku-4-5", displayName: "Claude Haiku 4.5" }],
+        },
+      ],
+    };
+    await clusters().register("east", [], { build: "abc123", subsystem: null, models });
+
+    expect(await clusters().liveVersions()).toMatchObject([{ id: "east", models }]);
   });
 });
 

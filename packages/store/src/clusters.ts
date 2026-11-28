@@ -6,6 +6,7 @@ import type { SubsystemVersions } from "@re-cinq/floor-contracts";
 import { CLUSTER_LIVE_MINUTES, presenceState, type AgentPresence } from "./agent-presence.js";
 import { DefinitionsStore, type PutResult } from "./definitions.js";
 import { EventStore } from "./events.js";
+import type { ModelCatalogStatus } from "./model-availability.js";
 import { withTransaction } from "./rows.js";
 
 const MS_PER_MINUTE = 60_000;
@@ -34,12 +35,14 @@ export interface RecordedHolding {
 export interface ClusterBuild {
   build?: string;
   subsystem?: SubsystemVersions | null;
+  models?: ModelCatalogStatus | null;
 }
 
 export interface ClusterVersionsRow {
   id: string;
   build: string | null;
   subsystem: SubsystemVersions | null;
+  models: ModelCatalogStatus | null;
   lastSeenAt: Date;
 }
 
@@ -59,9 +62,9 @@ export class ClusterStore {
   async register(id: string, tags: string[], running: ClusterBuild = {}): Promise<void> {
     await withTransaction(this.deps.pool, async (client) => {
       await client.query(
-        `insert into clusters (id, tags, last_seen_at, build, subsystem) values ($1, $2::text[], $3, $4, $5::jsonb)
-         on conflict (id) do update set tags = excluded.tags, last_seen_at = excluded.last_seen_at, build = excluded.build, subsystem = excluded.subsystem`,
-        [id, tags, this.now(), running.build ?? null, running.subsystem ? JSON.stringify(running.subsystem) : null],
+        `insert into clusters (id, tags, last_seen_at, build, subsystem, models) values ($1, $2::text[], $3, $4, $5::jsonb, $6::jsonb)
+         on conflict (id) do update set tags = excluded.tags, last_seen_at = excluded.last_seen_at, build = excluded.build, subsystem = excluded.subsystem, models = excluded.models`,
+        [id, tags, this.now(), running.build ?? null, running.subsystem ? JSON.stringify(running.subsystem) : null, running.models ? JSON.stringify(running.models) : null],
       );
       await this.queueMissing(client, id);
     });
@@ -102,9 +105,9 @@ export class ClusterStore {
   /** The clusters seen within CLUSTER_LIVE_MINUTES, with what each last said it runs. */
   async liveVersions(): Promise<ClusterVersionsRow[]> {
     const liveSince = new Date(this.now().getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE);
-    const { rows } = await this.deps.pool.query(`select id, build, subsystem, last_seen_at from clusters where last_seen_at >= $1 order by id`, [liveSince]);
+    const { rows } = await this.deps.pool.query(`select id, build, subsystem, models, last_seen_at from clusters where last_seen_at >= $1 order by id`, [liveSince]);
 
-    return rows.map((row) => ({ id: row.id, build: row.build, subsystem: row.subsystem, lastSeenAt: row.last_seen_at }));
+    return rows.map((row) => ({ id: row.id, build: row.build, subsystem: row.subsystem, models: row.models, lastSeenAt: row.last_seen_at }));
   }
 
   /** Every agent definition's presence on the live clusters, by id. */
