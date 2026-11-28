@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import LabelledTextField from "./LabelledTextField";
+import BagTable from "./BagTable";
 import WorkspaceField from "./WorkspaceField";
 import { useTestPreview, useTestStart, type TestStartControls } from "./use-test-start";
 import styles from "./screens.module.css";
@@ -22,9 +22,7 @@ export default function TestStartScreen({ line, controls, onStarted }: Props) {
   return (
     <div className={`${styles.screen} ${styles.testStart}`}>
       <h1>Test {line.id} locally</h1>
-      {preview?.asked.map(({ name }) => (
-        <LabelledTextField key={name} label={name} value={entered[name] ?? ""} onChange={(value) => setEntered({ ...entered, [name]: value })} error={missing.includes(name) ? `${name} is missing` : undefined} />
-      ))}
+      {preview && <BagTable line={line} asked={preview.asked} entered={entered} missing={missing} onEnter={setEntered} />}
       <WorkspaceField controls={controls} workspace={workspace} onChange={setWorkspace} error={workspace ? undefined : "Choose a workspace folder"} />
       {refusal && <p role="alert">{refusal}</p>}
       <button type="button" onClick={start} disabled={missing.length > 0 || !workspace}>Start</button>
