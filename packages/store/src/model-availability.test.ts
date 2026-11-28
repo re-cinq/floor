@@ -71,4 +71,22 @@ describe("modelAvailability", () => {
   it("answers unverified for claude-sonnet-5-5 when there are no catalogs", () => {
     expect(modelAvailability("claude-sonnet-5-5", [])).toEqual("unverified");
   });
+
+  it("answers false for claude-sonnet-5-5 on a Foundry cluster whose foundry claude entry lacks it, though its anthropic claude entry failed", () => {
+    const foundryCluster: ModelCatalogStatus = {
+      refreshedAt: "2026-11-28T10:00:00Z",
+      vendors: [
+        { vendor: "claude", provider: "anthropic", secretRefs: ["ANTHROPIC_API_KEY"], error: "ANTHROPIC_API_KEY: Secret has no key ANTHROPIC_API_KEY", models: [] },
+        {
+          vendor: "claude",
+          provider: "foundry",
+          secretRefs: ["ANTHROPIC_FOUNDRY_BASE_URL", "ANTHROPIC_FOUNDRY_API_KEY"],
+          error: "",
+          models: [{ id: "claude-haiku-4-5", displayName: "claude-haiku-4-5" }],
+        },
+      ],
+    };
+
+    expect(modelAvailability("claude-sonnet-5-5", [foundryCluster])).toEqual(false);
+  });
 });

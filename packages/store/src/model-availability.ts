@@ -1,6 +1,6 @@
 // Pure: whether a model is offered by the clusters, from what each cluster's model catalog last reported.
 
-export type ModelVendor ="claude" | "codex" | "gemini";
+export type ModelVendor = "claude" | "codex" | "gemini";
 
 export interface CatalogModel {
   id: string;
@@ -35,12 +35,19 @@ export function modelAvailability(model: string, catalogs: (ModelCatalogStatus |
 }
 
 function availabilityInCatalog(model: string, vendor: ModelVendor, catalog: ModelCatalogStatus | null): Availability {
-  const entries = (catalog?.vendors ?? []).filter((entry) => entry.vendor === vendor);
+  const entries = decidingEntries((catalog?.vendors ?? []).filter((entry) => entry.vendor === vendor));
   if (entries.length === 0) return "unverified";
   if (entries.some((entry) => entry.models.some((listed) => listed.id === model))) return true;
   if (entries.some((entry) => entry.error !== "")) return "unverified";
 
   return false;
+}
+
+// A cluster with AGENT_PROVIDER=foundry runs the vendor's CLI on Foundry, so its foundry entries alone say what it can run.
+function decidingEntries(entries: CatalogVendor[]): CatalogVendor[] {
+  const onFoundry = entries.filter((entry) => entry.provider === "foundry");
+
+  return onFoundry.length > 0 ? onFoundry : entries;
 }
 
 function vendorOf(model: string): ModelVendor | null {
