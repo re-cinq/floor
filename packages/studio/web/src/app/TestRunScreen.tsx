@@ -26,6 +26,7 @@ export default function TestRunScreen({ line, run, controls }: { line: LineView;
       </div>
       <RunHeader state={state} cancel={cancel} openRunFolder={openRunFolder} />
       <VisitTable visits={state?.visits ?? []} openVisitFolder={openVisitFolder} />
+      <RunBag bag={state?.bag} />
       <WaitingForYou state={state} report={report} sendEvent={sendEvent} listFolder={controls?.listFolder} />
       {refusal && <p role="alert">{refusal}</p>}
     </div>
@@ -39,6 +40,33 @@ function RunHeader({ state, cancel, openRunFolder }: { state: TestReadResult | u
       {(state?.status === "running" || state?.status === "waiting") && <button onClick={cancel}>Cancel</button>}
       {state && <button onClick={openRunFolder}>Open run folder</button>}
     </>
+  );
+}
+
+function RunBag({ bag }: { bag: TestReadResult["bag"] }) {
+  if (!bag) return null;
+
+  return (
+    <table aria-label="Bag" className={styles.bag}>
+      <thead>
+        <tr>
+          <th>name</th>
+          <th>kind</th>
+          <th>value</th>
+          <th>by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {bag.map(({ name, kind, ref, by }) => (
+          <tr key={name}>
+            <td>{name}</td>
+            <td>{kind}</td>
+            <td>{ref}</td>
+            <td>{by}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
