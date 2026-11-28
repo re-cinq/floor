@@ -6,6 +6,7 @@ export interface ReportField {
   name: string;
   kind: "value" | "file";
   required: boolean;
+  path?: string;
 }
 
 export interface StandInAnswer {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { TestChangedListener, TestReadResult, TestEventFields, TestReportFields } from "@/socket/studio-connection";
+import type { ListFolder } from "./PathPicker";
 import type { ReportVisit, SendEvent } from "./stand-in-report";
 
 /** What the run screen needs of a live connection. */
@@ -8,6 +9,7 @@ export interface TestRunControls {
   report: (fields: TestReportFields) => Promise<unknown>;
   sendEvent: (fields: TestEventFields) => Promise<unknown>;
   openFolder: (path: string) => Promise<unknown>;
+  listFolder: ListFolder;
   cancel: (run: string) => Promise<unknown>;
   follow: (listener: TestChangedListener) => () => void;
   reopened: (listener: () => void) => () => void;

@@ -78,7 +78,7 @@ describe("outcomeFieldsOf", () => {
       asks: "for cover (required) and summary (optional)",
       why: "cover by its own name, summary through the bind of blurb, notes unread",
       fields: [
-        { name: "cover", kind: "file", required: true },
+        { name: "cover", kind: "file", required: true, path: "cover.png" },
         { name: "summary", kind: "value", required: false },
       ],
     },

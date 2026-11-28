@@ -1,5 +1,6 @@
 // The requests that start, answer for, cancel and read a local test run of a whole line; its `test.changed` frames come from the session.
 import { readdir, realpath } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { enforce } from "@re-cinq/floor-assembly-lines";
 import type { FolderListing } from "../folder-listing.js";
@@ -110,7 +111,7 @@ function isInside(folder: string, path: string): boolean {
 
 export const folderListHandler: Handler<FolderListRequest> = {
   type: "folder.list",
-  handle: async (context, { path }) => {
+  handle: async (context, { path = homedir() }) => {
     enforceAbsolute(path, "the folder to list");
     enforce(await isFolder(path), `${path} is not a folder on disk`);
 

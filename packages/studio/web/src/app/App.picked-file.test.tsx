@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,13 +8,29 @@ import { join } from "node:path";
 import { REQUIRED_ANNOTATION_COLLECTION } from "../../../src/backend/test-run.fixtures";
 import { WRITES_DRAFT } from "../../../src/backend/test-run-session.fixtures";
 import { closeStudios } from "./app-page.fixtures";
-import { cellsOf, findWaitingReview, startReviewLoop, withScratchWorkspace } from "./test-run-page.fixtures";
+import { cellsOf, findWaitingReview, startReviewLoop, withScratchFolder, withScratchWorkspace } from "./test-run-page.fixtures";
 
 afterEach(closeStudios);
+afterEach(() => vi.unstubAllEnvs());
 
-async function requestChangesPickingFile(workspace: string, pickedPath: string, pastedText = ""): Promise<void> {
+async function openChooseAFile(workspace: string): Promise<HTMLElement> {
+  await reachWaitingReview(workspace);
+  await userEvent.click(await screen.findByRole("button", { name: "Browse for annotated" }));
+
+  return screen.findByRole("dialog", { name: "Choose a file" });
+}
+
+function listedFiles(dialog: HTMLElement): (string | null)[] {
+  return within(within(dialog).getByRole("region", { name: "Files" })).queryAllByRole("button").map((button) => button.textContent);
+}
+
+async function reachWaitingReview(workspace: string): Promise<void> {
   await startReviewLoop(workspace);
   await findWaitingReview();
+}
+
+async function requestChangesPickingFile(workspace: string, pickedPath: string, pastedText = ""): Promise<void> {
+  await reachWaitingReview(workspace);
 
   await userEvent.type(await screen.findByRole("textbox", { name: "review_feedback" }), "Shorter.");
   if (pastedText) await userEvent.type(await screen.findByRole("textbox", { name: "annotated (paste)" }), pastedText);
@@ -91,5 +107,89 @@ describe("App test locally with a picked file", () => {
     } finally {
       rmSync(pickedFolder, { recursive: true, force: true });
     }
+  });
+
+  it("puts <home>/notes.md in the annotated (file on disk) box when notes.md is picked in the Choose a file dialog and the box was empty", async () => {
+    await withScratchFolder(async (home) => {
+      writeFileSync(join(home, "notes.md"), "Marked up on disk.");
+      vi.stubEnv("HOME", home);
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          const dialog = await openChooseAFile(workspace);
+          const box = (await screen.findByRole("textbox", { name: "annotated (file on disk)" })) as HTMLInputElement;
+          await userEvent.click(await within(dialog).findByRole("button", { name: "notes.md" }));
+          await userEvent.click(within(dialog).getByRole("button", { name: "Use this file" }));
+
+          expect({ dialog: screen.queryByRole("dialog"), chosen: box.value }).toEqual({ dialog: null, chosen: join(home, "notes.md") });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    });
+  });
+
+  it("lists only notes.md under Show files '*.md' and both files after All files when annotated declares annotated.md", async () => {
+    await withScratchFolder(async (home) => {
+      writeFileSync(join(home, "notes.md"), "Marked up on disk.");
+      writeFileSync(join(home, "photo.png"), "pixels");
+      vi.stubEnv("HOME", home);
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          const dialog = await openChooseAFile(workspace);
+          await within(dialog).findByRole("button", { name: "notes.md" });
+          const masked = listedFiles(dialog);
+          const showFiles = within(dialog).getByRole("combobox", { name: "Show files" });
+          const shown = within(showFiles).getByRole("option", { selected: true }).textContent;
+
+          await userEvent.selectOptions(showFiles, "All files");
+
+          expect({ masked, shown, all: listedFiles(dialog) }).toEqual({ masked: ["notes.md"], shown: "*.md", all: ["notes.md", "photo.png"] });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    });
+  });
+
+  it("offers no Use this file when photo.png was picked under All files and Show files returns to '*.md'", async () => {
+    await withScratchFolder(async (home) => {
+      writeFileSync(join(home, "notes.md"), "Marked up on disk.");
+      writeFileSync(join(home, "photo.png"), "pixels");
+      vi.stubEnv("HOME", home);
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          const dialog = await openChooseAFile(workspace);
+          const showFiles = within(dialog).getByRole("combobox", { name: "Show files" });
+          await userEvent.selectOptions(showFiles, "All files");
+          await userEvent.click(await within(dialog).findByRole("button", { name: "photo.png" }));
+          await userEvent.selectOptions(showFiles, "*.md");
+
+          expect({ useThisFile: within(dialog).queryByRole("button", { name: "Use this file" }) }).toEqual({ useThisFile: null });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    });
+  });
+
+  it.each(["outline.md", "notes.md"])("offers no Use this file when notes.md was picked in home and the drafts subfolder holding %s is opened", async (draftsFile) => {
+    await withScratchFolder(async (home) => {
+      writeFileSync(join(home, "notes.md"), "Marked up on disk.");
+      mkdirSync(join(home, "drafts"));
+      writeFileSync(join(home, "drafts", draftsFile), "Draft.");
+      vi.stubEnv("HOME", home);
+      await withScratchWorkspace(
+        WRITES_DRAFT,
+        async (workspace) => {
+          const dialog = await openChooseAFile(workspace);
+          await userEvent.click(await within(dialog).findByRole("button", { name: "notes.md" }));
+          await userEvent.click(within(dialog).getByRole("button", { name: "drafts" }));
+          await waitFor(() => (within(dialog).queryByRole("button", { name: "drafts" }) === null ? null : Promise.reject(new Error("home is still listed"))));
+
+          expect({ useThisFile: within(dialog).queryByRole("button", { name: "Use this file" }) }).toEqual({ useThisFile: null });
+        },
+        REQUIRED_ANNOTATION_COLLECTION,
+      );
+    });
   });
 });

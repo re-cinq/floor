@@ -90,6 +90,17 @@ describe("runProcess", () => {
     });
   });
 
+  it("does nothing when cancel() is called after a claude printing one line has exited", async () => {
+    const { folder, bin } = await fakeClaude(`#!/bin/sh\necho '{"type":"system"}'\n`);
+    const running = runProcess(
+      { command: ["claude", "--print"], folder, env: { PATH: `${bin}:${process.env.PATH}` } },
+      () => {},
+    );
+    await running.done;
+
+    expect(() => running.cancel()).not.toThrow();
+  });
+
   it(
     "ends with exit code null and 'could not start floor-studio-no-such-agent: spawn floor-studio-no-such-agent ENOENT' when the program is not on PATH",
     async () => {

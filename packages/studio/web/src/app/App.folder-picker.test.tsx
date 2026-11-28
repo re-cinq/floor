@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -8,8 +8,9 @@ import { closeStudios } from "./app-page.fixtures";
 import { openStartScreen, withScratchFolder } from "./test-run-page.fixtures";
 
 afterEach(closeStudios);
+afterEach(() => vi.unstubAllEnvs());
 
-describe("App test locally folder picker", () => {
+describe("App test locally Choose a folder dialog", () => {
   it("puts <scratch>/runs in the Workspace folder box when runs is picked from the listing of <scratch>, which holds alpha and runs", async () => {
     await withScratchFolder(async (scratch) => {
       mkdirSync(join(scratch, "alpha"));
@@ -47,7 +48,7 @@ describe("App test locally folder picker", () => {
     });
   });
 
-  it("says '<scratch>/notes.txt is not a folder on disk' and offers no Use this folder when Browse lists a file", async () => {
+  it("says '<scratch>/notes.txt is not a folder on disk' and the Choose a folder dialog offers no Use this folder when Browse lists a file", async () => {
     await withScratchFolder(async (scratch) => {
       const notes = join(scratch, "notes.txt");
       writeFileSync(notes, "remember");
@@ -55,10 +56,11 @@ describe("App test locally folder picker", () => {
       await userEvent.type(await screen.findByRole("textbox", { name: "Workspace folder" }), notes);
 
       await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+      const dialog = await screen.findByRole("dialog", { name: "Choose a folder" });
 
       expect({
-        alert: (await screen.findByRole("alert")).textContent,
-        use: screen.queryByRole("button", { name: "Use this folder" }),
+        alert: (await within(dialog).findByRole("alert")).textContent,
+        use: within(dialog).queryByRole("button", { name: "Use this folder" }),
       }).toEqual({ alert: `${notes} is not a folder on disk`, use: null });
     });
   });
@@ -66,26 +68,54 @@ describe("App test locally folder picker", () => {
   it.each([
     { kind: "relative", pathIn: () => "relative/folder", reason: () => 'the folder to list must be an absolute path, and "relative/folder" is not' },
     { kind: "missing absolute", pathIn: (scratch: string) => join(scratch, "absent"), reason: (scratch: string) => `${join(scratch, "absent")} is not a folder on disk` },
-  ])("shows the backend's reason and offers no Use this folder when Browse lists the $kind path", async ({ pathIn, reason }) => {
+  ])("shows the backend's reason and the Choose a folder dialog offers no Use this folder when Browse lists the $kind path", async ({ pathIn, reason }) => {
     await withScratchFolder(async (scratch) => {
       await openStartScreen();
       await userEvent.type(await screen.findByRole("textbox", { name: "Workspace folder" }), pathIn(scratch));
 
       await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+      const dialog = await screen.findByRole("dialog", { name: "Choose a folder" });
 
       expect({
-        alert: (await screen.findByRole("alert")).textContent,
-        use: screen.queryByRole("button", { name: "Use this folder" }),
+        alert: (await within(dialog).findByRole("alert")).textContent,
+        use: within(dialog).queryByRole("button", { name: "Use this folder" }),
       }).toEqual({ alert: reason(scratch), use: null });
     });
   });
 
-  it("puts / in the Workspace folder box when Browse is clicked with the box empty and the listing is used", async () => {
-    await openStartScreen();
+  it.each([
+    { dismissal: "Cancel is clicked", dismiss: (dialog: HTMLElement) => userEvent.click(within(dialog).getByRole("button", { name: "Cancel" })) },
+    { dismissal: "Escape is pressed", dismiss: async (dialog: HTMLElement) => void fireEvent(dialog, new Event("cancel", { cancelable: true })) },
+  ])("closes the Choose a folder dialog and keeps <scratch> in the Workspace folder box when $dismissal after Browse listed its alpha subfolder", async ({ dismiss }) => {
+    await withScratchFolder(async (scratch) => {
+      mkdirSync(join(scratch, "alpha"));
+      await openStartScreen();
+      const box = (await screen.findByRole("textbox", { name: "Workspace folder" })) as HTMLInputElement;
+      await userEvent.type(box, scratch);
+      await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+      const dialog = await screen.findByRole("dialog", { name: "Choose a folder" });
+      await within(dialog).findByRole("button", { name: "alpha" });
 
-    await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Use this folder" }));
+      await dismiss(dialog);
 
-    expect(((await screen.findByRole("textbox", { name: "Workspace folder" })) as HTMLInputElement).value).toBe("/");
+      expect({ dialog: screen.queryByRole("dialog"), workspace: box.value }).toEqual({ dialog: null, workspace: scratch });
+    });
+  });
+
+  it("puts <scratch> in the Workspace folder box and lists projects when Browse is clicked with the box empty and HOME is <scratch>", async () => {
+    await withScratchFolder(async (scratch) => {
+      mkdirSync(join(scratch, "projects"));
+      vi.stubEnv("HOME", scratch);
+      await openStartScreen();
+      const box = (await screen.findByRole("textbox", { name: "Workspace folder" })) as HTMLInputElement;
+
+      await userEvent.click(await screen.findByRole("button", { name: "Browse" }));
+      const listing = await screen.findByRole("region", { name: "Folders" });
+      await within(listing).findByRole("button", { name: "projects" });
+      const folders = within(listing).getAllByRole("button").map((button) => button.textContent);
+      await userEvent.click(await screen.findByRole("button", { name: "Use this folder" }));
+
+      expect({ folders, chosen: box.value }).toEqual({ folders: ["projects"], chosen: scratch });
+    });
   });
 });

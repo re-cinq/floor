@@ -7,6 +7,7 @@ export interface OutcomeField {
   name: string;
   kind: "value" | "file";
   required: boolean;
+  path?: string;
 }
 
 export function outcomeFieldsOf(line: TestLine, nodeId: string, outcome: string): OutcomeField[] {
@@ -21,7 +22,12 @@ export function outcomeFieldsOf(line: TestLine, nodeId: string, outcome: string)
 
   return produces
     .filter((produce) => reads.has(produce.name))
-    .map(({ name, kind }) => ({ name, kind, required: isRequired(reads.get(name)!) }));
+    .map(({ name, kind, path }) => ({
+      name,
+      kind,
+      required: isRequired(reads.get(name)!),
+      ...(path === undefined ? {} : { path }),
+    }));
 }
 
 export function otherOutputsOf(produces: ProduceSpec[], fields: OutcomeField[]): OutcomeField[] {

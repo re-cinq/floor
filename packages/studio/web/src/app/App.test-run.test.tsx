@@ -32,6 +32,14 @@ describe("App test locally", () => {
     });
   });
 
+  it("marks the topic box invalid and described by 'topic is missing' on the review-loop start screen when topic is empty", async () => {
+    await openStartScreen();
+
+    const box = await screen.findByRole("textbox", { name: "topic", description: "topic is missing" });
+
+    expect(box.getAttribute("aria-invalid")).toEqual("true");
+  });
+
   it("drops 'topic is missing' from the review-loop start screen when tides is typed as topic", async () => {
     await openStartScreen();
     await screen.findByText("topic is missing");
