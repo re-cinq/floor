@@ -182,6 +182,8 @@ export interface ClusterVersions {
   id: string;
   build: string | null;
   subsystem: SubsystemVersions | null;
+  /** The status of its subsystem's `ModelCatalog default`: the models it can run; null when the agent could not read it. */
+  models: ModelCatalogStatus | null;
   lastSeenAt: string;
 }
 

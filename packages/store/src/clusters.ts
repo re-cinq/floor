@@ -114,15 +114,15 @@ export class ClusterStore {
   /** Every agent definition's presence on the live clusters, by id. */
   async presence(): Promise<Record<string, AgentPresence>> {
     const [latest, clusters, holdings] = await Promise.all([
-      new DefinitionsStore({ connection: this.deps.pool }).listLatest<{ settings?: { model?: string } }>("agent_definition"),
-      this.deps.pool.query(`select id, last_seen_at, models from clusters order by id`),
+      new DefinitionsStore({ connection: this.deps.pool }).listLatest<{ settings?: { model?: string; tags?: string[] } }>("agent_definition"),
+      this.deps.pool.query(`select id, tags, last_seen_at, models from clusters order by id`),
       this.deps.pool.query(`select cluster_id, definition_id, hash from cluster_agent_definitions`),
     ]);
     const { rows: heldRows } = holdings;
     const { rows: clusterRows } = clusters;
     const seen = clusterRows.map((row) => ({ id: row.id as string, lastSeenAt: row.last_seen_at as Date }));
     const liveSince = this.now().getTime() - CLUSTER_LIVE_MINUTES * MS_PER_MINUTE;
-    const liveCatalogs = clusterRows.filter((row) => (row.last_seen_at as Date).getTime() >= liveSince).map((row) => row.models as ModelCatalogStatus | null);
+    const live = clusterRows.filter((row) => (row.last_seen_at as Date).getTime() >= liveSince).map((row) => ({ tags: row.tags as string[], models: row.models as ModelCatalogStatus | null }));
 
     return Object.fromEntries(
       latest.map(({ id, hash, body }) => [
@@ -136,7 +136,7 @@ export class ClusterStore {
             .map((row) => ({ clusterId: row.cluster_id as string, hash: row.hash as string })),
           now: this.now(),
           }),
-          modelAvailable: body.settings?.model ? modelAvailability(body.settings.model, liveCatalogs) : "unverified",
+          modelAvailable: body.settings?.model ? modelAvailability(body.settings.model, catalogsTaking(live, body.settings.tags ?? [])) : "unverified",
         },
       ]),
     );
@@ -197,4 +197,11 @@ function unrunnableModelMessage(agentId: string | null, model: string, catalogs:
   const refreshedAt = catalogs.map((catalog) => catalog?.refreshedAt ?? "").sort().at(-1);
 
   return `agent ${agentId} names model ${model}, which no cluster can run (catalog refreshed ${refreshedAt})`;
+}
+
+// The catalogs of the clusters that could claim an agent's visits, as dispatch tags them: the same clusters the dispatch-time check judges.
+function catalogsTaking(clusters: { tags: string[]; models: ModelCatalogStatus | null }[], agentTags: string[]): (ModelCatalogStatus | null)[] {
+  const wanted = ["kind:agent", ...agentTags];
+
+  return clusters.filter((cluster) => wanted.every((tag) => cluster.tags.includes(tag))).map((cluster) => cluster.models);
 }

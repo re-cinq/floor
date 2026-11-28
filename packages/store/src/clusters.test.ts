@@ -200,14 +200,16 @@ describe("ClusterStore.presence", () => {
     ]);
   });
 
-  it("answers modelAvailable false for reviewer on claude-sonnet-5-5 when the live cluster's catalog lists only claude-haiku-4-5", async () => {
-    const haikuOnly: ModelCatalogStatus = {
-      refreshedAt: "2026-11-28T09:00:00Z",
-      vendors: [
-        { vendor: "claude", provider: "anthropic", secretRefs: [], error: "", models: [{ id: "claude-haiku-4-5", displayName: "claude-haiku-4-5" }] },
-      ],
-    };
-    await clusters().register("east", [], { models: haikuOnly });
+  it.each([
+    ["the live cluster's catalog lists only claude-haiku-4-5", [["east", ["kind:agent"], "claude-haiku-4-5"]]],
+    ["only west, which cannot take its visits, lists it", [["east", ["kind:agent"], "claude-haiku-4-5"], ["west", ["kind:other"], "claude-sonnet-5-5"]]],
+  ] as const)("answers modelAvailable false for reviewer on claude-sonnet-5-5 when %s", async (situation, registered) => {
+    for (const [id, tags, listed] of registered) {
+      const models: ModelCatalogStatus = { refreshedAt: "2026-11-28T09:00:00Z", vendors: [{ vendor: "claude", provider: "anthropic", secretRefs: [], error: "", models: [{ id: listed, displayName: listed }] }] };
+
+      await clusters().register(id, [...tags], { models });
+    }
+
     await clusters().putAgentDefinition("reviewer", { settings: { ...reviewer.settings, model: "claude-sonnet-5-5" } });
 
     expect(await clusters().presence()).toMatchObject({ reviewer: { modelAvailable: false } });

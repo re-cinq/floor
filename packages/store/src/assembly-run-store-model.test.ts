@@ -35,7 +35,7 @@ describe("AssemblyRunStore.openVisit with a model no cluster can run", () => {
     await clusters.register("west", ["kind:other"], { models: sonnetCatalog });
     const { visitId } = await openEntryVisit(undefined, { settings: { ...REVIEWER_AGENT_DEFINITION.settings, model: "claude-sonnet-5-5" } });
 
-    expect((await store().visit(visitId)).report).toMatchObject({ outcome: "failed" });
+    expect((await store().visit(visitId))?.report).toMatchObject({ outcome: "failed" });
   });
 
   it("leaves a visit on claude-sonnet-5-5 open when the only cluster with a catalog was last seen ten minutes ago", async () => {
@@ -44,6 +44,6 @@ describe("AssemblyRunStore.openVisit with a model no cluster can run", () => {
     await new ClusterStore({ pool: pool(), now: () => stale }).register("east", ["kind:agent"], { models: HAIKU_ONLY_CATALOG });
     const { visitId } = await openEntryVisit(undefined, { settings: { ...REVIEWER_AGENT_DEFINITION.settings, model: "claude-sonnet-5-5" } });
 
-    expect((await store().visit(visitId)).report).toBeNull();
+    expect((await store().visit(visitId))?.report).toBeNull();
   });
 });
