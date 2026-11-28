@@ -3,13 +3,11 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { answerFrame } from "./requests.js";
 import { contextOver } from "./agent-run.fixtures.js";
-import { startReviewLoop, withRememberedSetup } from "./test-run-session.fixtures.js";
+import { settleRunOnDisk, startedFolderOf, startReviewLoop, withRememberedSetup } from "./test-run-session.fixtures.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
 const listRequest = { id: "t4", type: "test.list" };
-
-const startedFolderOf = (started: unknown): string => (started as { result: { folder: string } }).result.folder;
 
 const runOf = (started: unknown): string => (started as { result: { run: string } }).result.run;
 
@@ -58,6 +56,20 @@ describe("test.list", () => {
         id: "t3",
         type: "result",
         result: [{ run: folder, line: "review-loop", folder, status: "stopped", startedAt: expect.any(String) }],
+      });
+    });
+  });
+
+  it("lists review-loop's settled run as settled with its finished ending after a restart", async () => {
+    await withRememberedSetup(async ({ context, collectionDir, workspace }) => {
+      const folder = startedFolderOf(await startReviewLoop(workspace, context));
+      settleRunOnDisk(folder);
+      const { context: restarted } = contextOver(collectionDir, context.runEnv);
+
+      expect(await answerFrame(JSON.stringify(listRequest), restarted)).toEqual({
+        id: "t4",
+        type: "result",
+        result: [{ run: folder, line: "review-loop", folder, status: "settled", startedAt: expect.any(String), ending: { outcome: "finished" } }],
       });
     });
   });

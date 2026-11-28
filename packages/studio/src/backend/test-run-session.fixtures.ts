@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { vi } from "vitest";
 import { join } from "node:path";
@@ -145,4 +145,16 @@ export async function withRememberedSetup(body: (setup: TestRunSetup & { configF
   } finally {
     rmSync(configFolder, { recursive: true, force: true });
   }
+}
+
+/** Rewrites the run.json in `folder` to say the run settled with a finished ending. */
+export function settleRunOnDisk(folder: string): void {
+  const summaryFile = join(folder, "run.json");
+  const summary = JSON.parse(readFileSync(summaryFile, "utf8")) as object;
+
+  writeFileSync(summaryFile, JSON.stringify({ ...summary, status: "settled", ending: { outcome: "finished" } }));
+}
+
+export function startedFolderOf(started: unknown): string {
+  return (started as { result: { folder: string } }).result.folder;
 }
