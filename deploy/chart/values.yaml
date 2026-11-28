@@ -147,6 +147,12 @@ postgres:
 # by default: a floor can share a subsystem another install already put on the cluster.
 subsystem:
   enabled: false
+  # The controller keeps the ModelCatalog `default` (MODEL_CATALOG_ENABLED) and may `get` the
+  # agent-secrets Secret for it. The cluster agent reports the catalog on every register, and the
+  # floor fails a visit at once when no cluster's catalog has its model. On a cluster whose
+  # agent-secrets holds AGENT_PROVIDER=foundry the catalog probes each model's deployment, one
+  # billed one-token call per model per refresh (hourly). false: no catalog, no model check.
+  modelCatalog: true
   # Overrides global.nodeSelector / global.tolerations for the controller when set.
   nodeSelector: {}
   tolerations: []

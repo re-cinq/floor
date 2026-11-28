@@ -1,6 +1,7 @@
 {{- if .Values.clusterAgent.enabled }}
 # Read-only on the one ConfigMap the ai-agent-subsystem's chart publishes with its release and CLI
-# pins, in the namespace it runs in; the cluster agent sends them to the floor on every register.
+# pins, and on the ModelCatalog its controller writes, in the namespace it runs in; the cluster
+# agent sends both to the floor on every register.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -12,6 +13,10 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     resourceNames: ["agent-subsystem-versions"]
+    verbs: ["get"]
+  - apiGroups: ["agents.re-cinq.com"]
+    resources: ["modelcatalogs"]
+    resourceNames: ["default"]
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
