@@ -30,7 +30,7 @@ describe("App against the real backend", () => {
     const lines = await screen.findByRole("navigation", { name: "Assembly lines" });
 
     expect({
-      folder: screen.getByText(basename(dir)).textContent,
+      folder: within(screen.getByRole("complementary", { name: "Collection" })).getByText(basename(dir)).textContent,
       lines: within(lines).getAllByRole("link").map((link) => link.textContent),
       connection: screen.getByRole("status").textContent,
     }).toEqual({ folder: basename(dir), lines: ["flow2 nodes"], connection: "Connected to the studio" });
