@@ -94,6 +94,7 @@ describe("PathPicker", () => {
     { mode: "file" as const, keys: "{End}notes.md{Enter}", label: "notes.md typed", chosen: ["/w/notes.md"], asked: ["/w"] },
     { mode: "file" as const, keys: "{End}alpha{Enter}", label: "alpha typed", chosen: [], asked: ["/w", "/w/alpha"] },
     { mode: "folder" as const, keys: "{Enter}", label: "nothing typed after /w/", chosen: ["/w"], asked: ["/w"] },
+    { mode: "folder" as const, keys: "{End}alpha{Enter}", label: "alpha typed", chosen: [], asked: ["/w", "/w/alpha"] },
   ])("in $mode mode, Enter with $label chooses $chosen and lists $asked", async ({ mode, keys, chosen, asked }) => {
     const { calls, list } = controlledList();
     const chosenPaths: string[] = [];
