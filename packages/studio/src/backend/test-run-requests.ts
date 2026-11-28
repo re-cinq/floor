@@ -6,7 +6,9 @@ import { enforce } from "@re-cinq/floor-assembly-lines";
 import type { FolderListing } from "../folder-listing.js";
 import type { Request } from "../protocol.js";
 import type { Handler, StudioContext } from "./requests.js";
+import type { TestRunState } from "../test-run/test-run-state.js";
 import { testPreviewOf } from "../test-run/test-preview.js";
+import { readPastRun } from "./past-test-run-state.js";
 import { rememberLastTest } from "./last-tests.js";
 import { enforceAbsolute, isFolder } from "./test-run-folder.js";
 import { readTestLine } from "./read-test-line.js";
@@ -65,13 +67,25 @@ export const testPreviewHandler: Handler<TestPreviewRequest> = {
 
 export const testReadHandler: Handler<TestReadRequest> = {
   type: "test.read",
-  handle: async (context, { run }) => sessionOf(context, run).state(),
+  handle: async (context, { run }) => {
+    const session = context.testRuns.get(run);
+
+    return session ? session.state() : await pastRunOf(context, run);
+  },
 };
 
 export const testEventHandler: Handler<TestEventRequest> = {
   type: "test.event",
   handle: async (context, { run, event, payload }) => sessionOf(context, run).event({ name: event, payload }),
 };
+
+async function pastRunOf(context: StudioContext, run: string): Promise<TestRunState> {
+  const past = await readPastRun(context.collectionDir, run);
+
+  enforce(past, `there is no test run ${run}`);
+
+  return past;
+}
 
 function sessionOf(context: StudioContext, run: string): TestRunSession {
   const session = context.testRuns.get(run);
