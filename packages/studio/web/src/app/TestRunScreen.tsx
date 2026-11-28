@@ -36,7 +36,7 @@ function RunHeader({ state, cancel, openRunFolder }: { state: TestReadResult | u
   return (
     <>
       <p>{runStatus(state)}</p>
-      {state && state.status !== "settled" && <button onClick={cancel}>Cancel</button>}
+      {(state?.status === "running" || state?.status === "waiting") && <button onClick={cancel}>Cancel</button>}
       {state && <button onClick={openRunFolder}>Open run folder</button>}
     </>
   );
