@@ -1,3 +1,6 @@
+import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { answerFrame } from "./requests.js";
 import { contextOver } from "./agent-run.fixtures.js";
@@ -7,6 +10,11 @@ afterEach(() => vi.unstubAllEnvs());
 
 interface Answer {
   result?: { folder: string; lineId: string; status: string; actions: unknown; visits: { id: string; report?: { outcome: string } }[] };
+}
+
+interface RunPaths {
+  workspace: string;
+  foreignFolder: string;
 }
 
 const readAnswer = async (run: string, context: Parameters<typeof answerFrame>[1]): Promise<Answer> =>
@@ -30,6 +38,29 @@ describe("test.read of a past run", () => {
           ["002-review-1", null],
         ],
       });
+    });
+  });
+
+  it.each([
+    { label: "a review-loop run folder the studio does not remember", runOf: ({ foreignFolder }: RunPaths) => foreignFolder },
+    { label: "a path climbing out of the remembered workspace", runOf: ({ workspace }: RunPaths) => join(workspace, "..", "..", "etc") },
+    { label: "the relative path review-loop-20261127-000000", runOf: () => "review-loop-20261127-000000" },
+  ])("refuses with 'there is no test run <id>' for $label after a restart", async ({ runOf }) => {
+    await withRememberedSetup(async ({ context, collectionDir, workspace }) => {
+      const { folder } = ((await startReviewLoop(workspace, context)) as { result: { folder: string } }).result;
+      const scratch = mkdtempSync(join(tmpdir(), "floor-foreign-run-"));
+      const foreignFolder = join(scratch, "review-loop-20261127-000000");
+
+      try {
+        cpSync(folder, foreignFolder, { recursive: true });
+        const run = runOf({ workspace, foreignFolder });
+
+        const answer = await answerFrame(JSON.stringify({ id: "r1", type: "test.read", run }), contextOver(collectionDir, context.runEnv).context);
+
+        expect(answer).toEqual({ id: "r1", type: "refused", reason: `there is no test run ${run}` });
+      } finally {
+        rmSync(scratch, { recursive: true, force: true });
+      }
     });
   });
 });
