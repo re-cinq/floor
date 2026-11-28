@@ -8,10 +8,22 @@ export interface LastTest {
   entered: Record<string, string>;
 }
 
-type LastTests = Partial<Record<string, Partial<Record<string, LastTest>>>>;
+interface RememberedTest extends LastTest {
+  workspaces?: string[];
+}
+
+type LastTests = Partial<Record<string, Partial<Record<string, RememberedTest>>>>;
 
 export async function readLastTest(collectionDir: string, line: string): Promise<LastTest | null> {
-  return (await readLastTests())[collectionDir]?.[line] ?? null;
+  const remembered = (await readLastTests())[collectionDir]?.[line];
+
+  return remembered ? { workspace: remembered.workspace, entered: remembered.entered } : null;
+}
+
+export async function rememberedWorkspaces(collectionDir: string): Promise<{ line: string; workspace: string }[]> {
+  const lines = (await readLastTests())[collectionDir] ?? {};
+
+  return Object.entries(lines).flatMap(([line, remembered]) => (remembered?.workspaces ?? []).map((workspace) => ({ line, workspace })));
 }
 
 export async function rememberLastTest(collectionDir: string, line: string, lastTest: LastTest): Promise<void> {
@@ -22,7 +34,11 @@ export async function rememberLastTest(collectionDir: string, line: string, last
 }
 
 function withLastTest(all: LastTests, collectionDir: string, line: string, lastTest: LastTest): LastTests {
-  return { ...all, [collectionDir]: { ...all[collectionDir], [line]: lastTest } };
+  const previous = all[collectionDir]?.[line];
+  const used = previous?.workspaces ?? [];
+  const workspaces = used.includes(lastTest.workspace) ? used : [...used, lastTest.workspace];
+
+  return { ...all, [collectionDir]: { ...all[collectionDir], [line]: { ...lastTest, workspaces } } };
 }
 
 async function readLastTests(): Promise<LastTests> {

@@ -15,7 +15,7 @@ export interface TestRunListing {
   run: string;
   line: string;
   folder: string;
-  status: TestRunState["status"];
+  status: TestRunState["status"] | "stopped";
   startedAt: string;
   ending?: TestRunEnding;
 }
